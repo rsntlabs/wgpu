@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Add an experimental `cuda-in` frontend for a restricted subset of CUDA compute kernels, with `.cu` input support in `naga-cli`.
 - Add `@builtin(hit_barycentrics)`, a `vec2<f32>` readable in `@any_hit` and `@closest_hit` ray tracing pipeline shaders, holding two of the barycentric coordinates of the hit point on the triangle (the third is `1.0 - x - y`). Currently only supported with the SPIR-V backend. By @JMS55 in [#10193](https://github.com/gfx-rs/wgpu/pull/10193).
 - Add the `wgpu_ray_tracing_invocation_reorder` WGSL enable-extension and the matching `Capabilities::RAY_TRACING_INVOCATION_REORDER`, exposing hit objects and shader invocation reordering. It provides the `hit_object` type, which records the result of a ray traversal without running any hit or miss shader, various `hitObject*` built-in functions, and `reorderThread`, which reorders invocations of a `@ray_generation` shader to improve coherence. Currently only supported with the SPIR-V backend. By @JMS55 in [#10311](https://github.com/gfx-rs/wgpu/pull/10311).
 - Support WGSL `bitcast` between `vec2<f16>` and 32-bit scalars, between `vec4<f16>` and `vec2` of 32-bit scalars, between `f16` and `i16`/`u16` (with `wgpu_int16`), and the corresponding SPIR-V `OpBitcast`s. By @DouglasDwyer in [#10613](https://github.com/gfx-rs/wgpu/pull/10613).
@@ -294,6 +295,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### naga
 
+- Report an HLSL error when `NumWorkGroups` is used without a host constants binding, and expose the binding through `naga-cli`.
 - Reject unsigned integer arguments to WGSL `sign()` during Naga validation instead of allowing them to reach and panic in the SPIR-V backend. By @notferdon in [#10451](https://github.com/gfx-rs/wgpu/pull/10451).
 - Declare `LocalInvocationIndex` only once in SPIR-V mesh shader entry points that don't take `local_invocation_index` as an argument. Previously these shaders were invalid SPIR-V. By @apollo-2006 in [#10497](https://github.com/gfx-rs/wgpu/pull/10497).
 - Fix panics when shader `var<immediate>` size is larger than 256 bytes. By @beicause in [#9725](https://github.com/gfx-rs/wgpu/pull/9725).
