@@ -82,6 +82,7 @@ serde_json.workspace = true
 
 [dev-dependencies]
 winit.workspace = true
+naga = { workspace = true, features = ["cuda-in"] }
 approx.workspace = true
 glam.workspace = true
 half = { workspace = true, features = ["bytemuck", "std"] }
