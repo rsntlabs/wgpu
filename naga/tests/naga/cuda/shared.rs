@@ -2,7 +2,7 @@
 
 use naga::front::cuda::{parse_str, Options};
 
-use super::helpers::parse_and_validate as validate;
+use super::helpers::{parse_and_validate as validate, root_expression};
 
 #[test]
 fn cuda_shared_scalars_use_unbound_workgroup_variables() {
@@ -28,19 +28,37 @@ fn cuda_shared_scalars_use_unbound_workgroup_variables() {
         .filter(|(_, variable)| variable.space == naga::AddressSpace::WorkGroup)
         .collect();
     assert_eq!(shared.len(), 3);
-    for ((_, variable), scalar) in
-        shared
-            .into_iter()
-            .zip([naga::Scalar::F32, naga::Scalar::I32, naga::Scalar::U32])
-    {
+    let function = &module.entry_points[0].function;
+    for ((global, variable), (name, scalar)) in shared.into_iter().zip([
+        ("f", naga::Scalar::F32),
+        ("i", naga::Scalar::I32),
+        ("u", naga::Scalar::U32),
+    ]) {
+        assert_eq!(variable.name.as_deref(), Some(name));
         assert_eq!(variable.binding, None);
         assert_eq!(variable.init, None);
         assert_eq!(
             module.types[variable.ty].inner,
             naga::TypeInner::Scalar(scalar)
         );
+        assert!(!function
+            .local_variables
+            .iter()
+            .any(|(_, local)| local.name.as_deref() == Some(name)));
+        assert!(naga::proc::any_statement(
+            &function.body,
+            &mut |statement| {
+                matches!(*statement, naga::Statement::Store { pointer, .. }
+                if function.expressions[root_expression(function, pointer)]
+                    == naga::Expression::GlobalVariable(global))
+            }
+        ));
+        assert!(function.expressions.iter().any(|(_, expression)| {
+            matches!(*expression, naga::Expression::Load { pointer }
+                if function.expressions[root_expression(function, pointer)]
+                    == naga::Expression::GlobalVariable(global))
+        }));
     }
-    assert!(module.entry_points[0].function.local_variables.is_empty());
 }
 
 #[test]

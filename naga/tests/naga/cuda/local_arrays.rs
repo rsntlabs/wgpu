@@ -1,6 +1,6 @@
 use naga::front::cuda::{parse_str, Options};
 
-use super::helpers::validate;
+use super::helpers::{root_expression, validate};
 
 fn rejected(source: &str) -> naga::front::cuda::ParseError {
     let error = parse_str(source, &Options::default()).unwrap_err();
@@ -135,9 +135,16 @@ fn cuda_local_array_lists_cache_the_declared_type_and_preserve_source_order() {
     let variables: Vec<_> = function
         .local_variables
         .iter()
+        .filter(|(_, value)| matches!(value.name.as_deref(), Some("Item" | "values" | "last")))
         .map(|(_, value)| value)
         .collect();
-    assert_eq!(variables.len(), 3);
+    assert_eq!(
+        variables
+            .iter()
+            .map(|value| value.name.as_deref())
+            .collect::<Vec<_>>(),
+        [Some("Item"), Some("values"), Some("last")]
+    );
     assert_eq!(
         module.types[variables[0].ty].inner,
         naga::TypeInner::Scalar(naga::Scalar::I32)
@@ -166,7 +173,43 @@ fn cuda_local_arrays_have_lexical_and_for_initializer_scopes() {
             out[1] = values[1];
         }",
     );
-    assert_eq!(module.entry_points[0].function.local_variables.len(), 4);
+    let function = &module.entry_points[0].function;
+    let variables: Vec<_> = function
+        .local_variables
+        .iter()
+        .filter(|(_, value)| matches!(value.name.as_deref(), Some("values" | "scratch" | "index")))
+        .collect();
+    assert_eq!(
+        variables
+            .iter()
+            .map(|(_, value)| value.name.as_deref())
+            .collect::<Vec<_>>(),
+        [
+            Some("values"),
+            Some("values"),
+            Some("scratch"),
+            Some("index")
+        ]
+    );
+    let mut final_output = None;
+    naga::proc::any_statement(&function.body, &mut |statement| {
+        if let naga::Statement::Store { pointer, value } = *statement {
+            if matches!(function.expressions[root_expression(function, pointer)],
+                naga::Expression::GlobalVariable(global)
+                    if module.global_variables[global].name.as_deref() == Some("out"))
+            {
+                final_output = Some(value);
+            }
+        }
+        false
+    });
+    let naga::Expression::Load { pointer } = function.expressions[final_output.unwrap()] else {
+        panic!("expected final output to read the outer array");
+    };
+    assert!(
+        matches!(function.expressions[root_expression(function, pointer)],
+        naga::Expression::LocalVariable(local) if local == variables[0].0)
+    );
     let source = "__global__ void kernel() { for (int hidden[2]; false;) {} hidden[0] = 1; }";
     assert_eq!(&source[rejected(source).span.to_range().unwrap()], "hidden");
 }
