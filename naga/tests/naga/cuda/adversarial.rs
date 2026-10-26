@@ -2,7 +2,7 @@
 
 use naga::front::cuda::{parse_str, Options};
 
-use super::helpers::parse_and_validate as validate;
+use super::helpers::{parse_and_validate as validate, root_expression};
 
 #[test]
 fn cuda_mutable_local_loads_follow_assignments() {
@@ -43,11 +43,16 @@ fn cuda_comments_preserve_utf8_and_crlf() {
 fn cuda_carriage_return_cannot_hide_a_store() {
     let source = "__global__ void mixed(int *out) { // comment\r out[0] = 1;\n }";
     if let Ok(module) = parse_str(source, &Options::default()) {
-        assert!(module.entry_points[0]
-            .function
-            .body
-            .iter()
-            .any(|statement| matches!(statement, naga::Statement::Store { .. })));
+        let function = &module.entry_points[0].function;
+        assert!(naga::proc::any_statement(
+            &function.body,
+            &mut |statement| {
+                matches!(*statement, naga::Statement::Store { pointer, .. }
+                if matches!(function.expressions[root_expression(function, pointer)],
+                    naga::Expression::GlobalVariable(global)
+                        if module.global_variables[global].name.as_deref() == Some("out")))
+            }
+        ));
     }
 }
 
@@ -66,11 +71,16 @@ fn cuda_applies_line_splices_before_comment_handling_and_rejects_trigraphs() {
             "__global__ void hidden(int *out) {{ // hidden \\{ending} out[0] = missing;\n }}"
         );
         let module = super::helpers::validate(&source).0;
-        assert!(!module.entry_points[0]
-            .function
-            .body
-            .iter()
-            .any(|statement| matches!(statement, naga::Statement::Store { .. })));
+        let function = &module.entry_points[0].function;
+        assert!(!naga::proc::any_statement(
+            &function.body,
+            &mut |statement| {
+                matches!(*statement, naga::Statement::Store { pointer, .. }
+                if matches!(function.expressions[root_expression(function, pointer)],
+                    naga::Expression::GlobalVariable(global)
+                        if module.global_variables[global].name.as_deref() == Some("out")))
+            }
+        ));
         let source =
             format!("__global__ void hidden(int *out) {{ // hidden ??/{ending} out[0] = 1;\n }}");
         assert!(parse_str(&source, &Options::default()).is_err());

@@ -155,11 +155,14 @@ fn cuda_early_return_guards_later_buffer_access() {
 #[test]
 fn cuda_unreachable_statements_after_return_are_checked_and_discarded() {
     let (module, _) = validate("__global__ void done(int *out) { return; out[0] = 1; }");
-    assert!(!module.entry_points[0]
-        .function
-        .body
-        .iter()
-        .any(|statement| matches!(statement, naga::Statement::Store { .. })));
+    let function = &module.entry_points[0].function;
+    assert!(!naga::proc::any_statement(
+        &function.body,
+        &mut |statement| {
+            matches!(*statement, naga::Statement::Store { pointer, .. }
+            if global_name(&module, function, pointer) == Some("out"))
+        }
+    ));
     assert!(parse_str(
         "__global__ void bad(int *out) { return; out[0] = missing; }",
         &Options::default(),

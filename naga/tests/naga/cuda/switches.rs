@@ -1,6 +1,6 @@
 use naga::front::cuda::{parse_str, Options};
 
-use super::helpers::validate;
+use super::helpers::{root_expression, validate};
 
 const FIXTURE: &str = include_str!("../../in/cuda/switch.cu");
 
@@ -192,7 +192,53 @@ fn cuda_switch_preserves_default_position_grouping_and_nonempty_fallthrough() {
         shapes[0].0,
         [naga::SwitchValue::Default, naga::SwitchValue::I32(3)]
     );
-    assert_eq!(shapes[0].1, [true, false]);
+    let function = &module.entry_points[0].function;
+    let mut updates = Vec::new();
+    naga::proc::any_statement(&function.body, &mut |statement| {
+        if let naga::Statement::Switch { cases, .. } = statement {
+            for (index, case) in cases.iter().enumerate() {
+                let mut increments = Vec::new();
+                for following in &cases[index..] {
+                    naga::proc::any_statement(&following.body, &mut |statement| {
+                        if let naga::Statement::Store { pointer, value } = *statement {
+                            if matches!(function.expressions[root_expression(function, pointer)],
+                                naga::Expression::GlobalVariable(global)
+                                    if module.global_variables[global].name.as_deref() == Some("out"))
+                            {
+                                let naga::Expression::Binary {
+                                    op: naga::BinaryOperator::Add,
+                                    right,
+                                    ..
+                                } = function.expressions[value]
+                                else {
+                                    panic!("expected an output increment");
+                                };
+                                let naga::Expression::Literal(naga::Literal::I32(amount)) =
+                                    function.expressions[right]
+                                else {
+                                    panic!("expected a constant increment");
+                                };
+                                increments.push(amount);
+                            }
+                        }
+                        false
+                    });
+                    if !following.fall_through {
+                        break;
+                    }
+                }
+                updates.push((case.value, increments));
+            }
+        }
+        false
+    });
+    assert_eq!(
+        updates,
+        [
+            (naga::SwitchValue::Default, vec![1, 2]),
+            (naga::SwitchValue::I32(3), vec![2]),
+        ]
+    );
     validate(
         "__global__ void bad(unsigned int *out) { switch (threadIdx.x) { case 0: out[0] = 1u; } }",
     );

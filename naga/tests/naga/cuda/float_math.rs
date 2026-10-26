@@ -1,6 +1,6 @@
 use naga::front::cuda::{parse_str, Options};
 
-use super::helpers::validate;
+use super::helpers::{root_expression, validate};
 
 const NAMES: [&str; 4] = ["min", "max", "fminf", "fmaxf"];
 
@@ -179,28 +179,59 @@ fn cuda_float_minmax_capture_arguments_before_later_mutation() {
             }}"
         ));
         let function = &module.entry_points[0].function;
-        let pointer = function
-            .expressions
+        let local = function
+            .local_variables
             .iter()
-            .find_map(|(handle, expression)| {
-                matches!(expression, naga::Expression::LocalVariable(_)).then_some(handle)
-            })
-            .unwrap();
+            .find(|(_, variable)| variable.name.as_deref() == Some("value"))
+            .unwrap()
+            .0;
+        let is_value_pointer = |pointer| {
+            function.expressions[root_expression(function, pointer)]
+                == naga::Expression::LocalVariable(local)
+        };
         let loads: Vec<_> = function
             .expressions
             .iter()
             .filter_map(|(handle, expression)| {
-                matches!(*expression, naga::Expression::Load { pointer: p } if p == pointer)
+                matches!(*expression, naga::Expression::Load { pointer } if is_value_pointer(pointer))
                     .then_some(handle)
             })
             .collect();
         assert!(loads.len() >= 3);
-        let first_emit = function.body.iter().position(|statement| {
-            matches!(*statement, naga::Statement::Emit(ref range) if range.clone().any(|handle| handle == loads[0]))
-        }).unwrap();
-        assert!(function.body.iter().skip(first_emit + 1).any(|statement| {
-            matches!(*statement, naga::Statement::Store { pointer: p, .. } if p == pointer)
-        }));
+        let mut events = Vec::new();
+        naga::proc::any_statement(&function.body, &mut |statement| {
+            match statement {
+                naga::Statement::Emit(range) => events.extend(
+                    range
+                        .clone()
+                        .filter(|handle| loads.contains(handle))
+                        .map(Some),
+                ),
+                naga::Statement::Store { pointer, .. } if is_value_pointer(*pointer) => {
+                    events.push(None);
+                }
+                _ => {}
+            }
+            false
+        });
+        let first_load = events
+            .iter()
+            .position(|event| *event == Some(loads[0]))
+            .unwrap();
+        let mutation = events
+            .iter()
+            .enumerate()
+            .skip(first_load + 1)
+            .find_map(|(index, event)| event.is_none().then_some(index))
+            .expect("the postfix argument must update value after capturing its inputs");
+        assert!(
+            events[..mutation]
+                .iter()
+                .filter(|event| event.is_some())
+                .count()
+                >= 2
+        );
+        assert!(events[mutation + 1..].iter().any(Option::is_some));
     }
 }
 

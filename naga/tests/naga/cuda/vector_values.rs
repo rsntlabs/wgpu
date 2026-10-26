@@ -82,9 +82,15 @@ fn cuda_vector_aliases_are_canonical_and_builtin_names_can_be_hidden() {
         .function
         .local_variables
         .iter()
-        .take(3)
+        .filter(|(_, local)| {
+            matches!(
+                local.name.as_deref(),
+                Some("original" | "copied" | "frozen")
+            )
+        })
         .map(|(_, local)| local.ty)
         .collect();
+    assert_eq!(types.len(), 3);
     assert_eq!(types[0], types[1]);
     assert_eq!(types[1], types[2]);
     for scalar in ["float", "int", "uint"] {

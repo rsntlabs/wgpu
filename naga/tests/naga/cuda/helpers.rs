@@ -25,6 +25,20 @@ pub(crate) fn parse_and_validate(source: &str) -> naga::Module {
     validate(source).0
 }
 
+pub(crate) fn root_expression(
+    function: &naga::Function,
+    mut pointer: naga::Handle<naga::Expression>,
+) -> naga::Handle<naga::Expression> {
+    loop {
+        match function.expressions[pointer] {
+            naga::Expression::Access { base, .. } | naga::Expression::AccessIndex { base, .. } => {
+                pointer = base
+            }
+            _ => return pointer,
+        }
+    }
+}
+
 #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
 #[track_caller]
 pub(crate) fn wgsl_roundtrip(
