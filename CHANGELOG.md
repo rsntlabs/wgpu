@@ -213,6 +213,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA local reference declarations with live aliases, const views, and temporary initialization.
 - Support CUDA device helper reference parameters with live aliases, const temporaries, and overlapping arguments.
 - Support CUDA device helper pointer parameters, array parameter adjustment, and borrowed pointer expressions with live aliases.
+- Support CUDA pointer member access with `->` for structs and numeric vector components.
 - Support CUDA vector buffer parameters with packed three-component layouts and const access.
 - Support CUDA shared numeric vectors and fixed vector arrays.
 - Support CUDA scalar bit reinterpretation intrinsics.
