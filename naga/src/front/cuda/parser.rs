@@ -307,9 +307,7 @@ impl<'a> Parser<'a> {
         }
         let pointer_span = self.lexer.peek()?.1;
         let is_pointer = self.lexer.next_if(Token::Operation('*'))?;
-        if is_pointer {
-            self.take_ident("const")?;
-        }
+        let pointer_const = is_pointer && self.take_ident("const")?;
         if self.function.kind == FunctionKind::Device && is_pointer {
             if matches!(
                 self.lexer.peek()?.0,
@@ -335,7 +333,7 @@ impl<'a> Parser<'a> {
                 name,
                 type_span,
                 &pointer_ty,
-                false,
+                pointer_const,
                 ParameterMode::Pointer { is_const },
             );
         }
@@ -408,15 +406,16 @@ impl<'a> Parser<'a> {
             span,
         );
         let pointer = self.append(Expression::GlobalVariable(global), span)?;
-        self.insert_symbol(
-            name,
-            Symbol::Array {
-                pointer,
-                ty,
-                writable: !is_const,
-            },
+        let pointer = self.decay_array(ReferenceValue {
+            reference: Reference::Pointer(pointer),
+            writable: !is_const,
+            ty: TypeResolution::Handle(array_ty),
             span,
-        )?;
+            constant: ConstantValue::default(),
+        })?;
+        let pointer = self.source_pointer_variable(pointer, pointer_const, span)?;
+        let pointer = self.retain_pointer_symbol(pointer)?;
+        self.insert_symbol(name, Symbol::Pointer(pointer), span)?;
         Ok(())
     }
 

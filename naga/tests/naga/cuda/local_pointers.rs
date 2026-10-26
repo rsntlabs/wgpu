@@ -543,48 +543,12 @@ __global__ void kernel() {
 }
 
 #[test]
-fn cuda_local_pointers_keep_updates_escaping_and_unsupported_declarators_rejected() {
+fn cuda_local_pointers_keep_reassignment_escaping_and_unsupported_declarators_rejected() {
     for source in [
         r#"__global__ void kernel() {
     int values[2]{2, 3};
     int *pointer = values;
     pointer = values + 1;
-}
-"#,
-        r#"__global__ void kernel() {
-    int values[2]{2, 3};
-    int *pointer = values;
-    pointer += 1;
-}
-"#,
-        r#"__global__ void kernel() {
-    int values[2]{2, 3};
-    int *pointer = values;
-    pointer -= 1;
-}
-"#,
-        r#"__global__ void kernel() {
-    int values[2]{2, 3};
-    int *pointer = values;
-    ++pointer;
-}
-"#,
-        r#"__global__ void kernel() {
-    int values[2]{2, 3};
-    int *pointer = values;
-    pointer++;
-}
-"#,
-        r#"__global__ void kernel() {
-    int values[2]{2, 3};
-    int *pointer = values;
-    --pointer;
-}
-"#,
-        r#"__global__ void kernel() {
-    int values[2]{2, 3};
-    int *pointer = values;
-    pointer--;
 }
 "#,
         r#"__global__ void kernel() {
@@ -801,7 +765,7 @@ __global__ void kernel() {
         r#"/* λ 漢 */
 __global__ void kernel() {
     int value = 3;
-    int *pointer = &value;
+    int *const pointer = &value;
     ++pointer;
 }
 "#,

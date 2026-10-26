@@ -39,6 +39,7 @@ mod operator_functions;
 mod overloads;
 mod parameters;
 mod pointer_parameters;
+mod pointer_updates;
 mod preprocessing;
 mod preprocessing_conditions;
 mod prototypes;

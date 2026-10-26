@@ -22,7 +22,6 @@ fn cuda_updates_reject_const_bool_and_non_lvalues() {
         "__global__ void bad(int *out) { int i = 1; (+i) = 2; }",
         "__global__ void bad(int *out) { int i = 1; (i + 1) = 2; }",
         "__global__ void bad(int *out) { out[0] = threadIdx.x++; }",
-        "__global__ void bad(int *out) { out++; }",
     ] {
         assert!(parse_str(source, &Options::default()).is_err(), "{source}");
     }

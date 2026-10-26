@@ -243,9 +243,15 @@ object addresses, pointer expressions, and pointee qualifications as helper
 arguments. Initializers evaluate once, so later changes to an index or condition
 do not retarget a pointer. Locals preserve live aliases in kernels and helpers,
 including mixed declaration lists and block or loop scopes. Pointee `const`
-prevents writes; optional top-level pointer `const` does not affect the pointee.
-Pointer reassignment, pointer updates, and `constexpr` pointer declarations
-remain unsupported.
+prevents writes; top-level pointer `const` prevents modifying the pointer itself.
+Mutable local pointers and pointer parameters support `++`, `--`, `+=`, and `-=`
+with integral displacements. Updates preserve the original array or object origin.
+Prefix updates and compound assignments return pointer lvalues; postfix updates
+capture the previous address. Conditional and comma expressions preserve compatible
+pointer lvalues. Kernel and helper parameters have private pointer values, so their
+updates do not retarget the caller's pointer or change buffer bindings. Copies and
+bound references retain their previously selected addresses. Plain pointer
+reassignment and `constexpr` pointer declarations remain unsupported.
 
 Single-dimensional helper array parameters, `T values[]` and `T values[N]`,
 adjust to `T*`. A written bound must be a positive integral constant expression;
@@ -273,7 +279,7 @@ they do not describe an exact allocator or process memory limit.
 Helpers have no resource bindings. Pointer and reference results,
 whole-array references, shared declarations, and barriers in helper bodies remain unsupported. Kernel prototypes
 remain unsupported.
-Pointer members, pointer assignment and updates, null pointers,
+Pointer members, plain pointer assignment, null pointers,
 pointer comparisons and differences, pointer casts, and general pointer
 declarators remain unsupported. Arrays selected from temporary struct values
 cannot supply borrowed pointers.

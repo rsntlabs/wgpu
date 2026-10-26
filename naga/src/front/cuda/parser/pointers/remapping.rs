@@ -1,5 +1,10 @@
 use super::*;
 
+struct MappedPointerExpression {
+    expression: Handle<PointerExpression>,
+    position: Option<Handle<Expression>>,
+}
+
 fn remapping_error(span: Span) -> ParseError {
     ParseError {
         message: String::from("invalid CUDA pointer parameter mapping"),
@@ -27,7 +32,7 @@ impl Parser<'_> {
         mapper: &mut impl PointerRemapper,
         depth: u32,
         span: Span,
-    ) -> Result<Handle<PointerExpression>, ParseError> {
+    ) -> Result<MappedPointerExpression, ParseError> {
         self.parameter_expansion_budget.charge_work(1, span)?;
         if depth > 64 {
             return Err(ParseError {
@@ -40,6 +45,7 @@ impl Parser<'_> {
             .expressions
             .try_get(handle)
             .map_err(|_| remapping_error(span))?;
+        let mut position = None;
         let kind = match expression.kind {
             PointerExpressionKind::Parameter(index) => {
                 let actual = mapper.parameter(index)?;
@@ -48,7 +54,13 @@ impl Parser<'_> {
                 {
                     return Err(remapping_error(span));
                 }
-                return Ok(actual.expression);
+                let PointerValueCategory::Value { position } = actual.category else {
+                    return Err(remapping_error(span));
+                };
+                return Ok(MappedPointerExpression {
+                    expression: actual.expression,
+                    position,
+                });
             }
             PointerExpressionKind::Array(binding) => PointerExpressionKind::Array(
                 self.remap_bound_binding(source, binding, mapper, span)?,
@@ -63,8 +75,9 @@ impl Parser<'_> {
             } => {
                 let base = self.remap_pointer_expression(source, base, mapper, depth + 1, span)?;
                 let offset = self.remap_pointer_snapshot(offset, mapper, span)?;
+                position = base.position;
                 PointerExpressionKind::Offset {
-                    base,
+                    base: base.expression,
                     offset,
                     subtract,
                 }
@@ -79,14 +92,41 @@ impl Parser<'_> {
                     self.remap_pointer_expression(source, accept, mapper, depth + 1, span)?;
                 let reject =
                     self.remap_pointer_expression(source, reject, mapper, depth + 1, span)?;
+                if accept.position.is_some() || reject.position.is_some() {
+                    let selected = self.load_pointer_position(Some(selector), span)?;
+                    let zero = self.append(Expression::Literal(Literal::U32(0)), span)?;
+                    let condition = self.append(
+                        Expression::Binary {
+                            op: BinaryOperator::NotEqual,
+                            left: selected,
+                            right: zero,
+                        },
+                        span,
+                    )?;
+                    let accept_position = self.load_pointer_position(accept.position, span)?;
+                    let reject_position = self.load_pointer_position(reject.position, span)?;
+                    let value = self.append(
+                        Expression::Select {
+                            condition,
+                            accept: accept_position,
+                            reject: reject_position,
+                        },
+                        span,
+                    )?;
+                    position = Some(self.freeze_reference_index(value, span)?);
+                }
                 PointerExpressionKind::Select {
                     selector,
-                    accept,
-                    reject,
+                    accept: accept.expression,
+                    reject: reject.expression,
                 }
             }
         };
-        self.retain_pointer_expression(kind, expression.pointee, span)
+        let expression = self.retain_pointer_expression(kind, expression.pointee, span)?;
+        Ok(MappedPointerExpression {
+            expression,
+            position,
+        })
     }
 
     pub(in super::super) fn remap_pointer_value(
@@ -95,10 +135,18 @@ impl Parser<'_> {
         value: &PointerValue,
         mapper: &mut impl PointerRemapper,
     ) -> Result<PointerValue, ParseError> {
-        let expression =
+        let mapped =
             self.remap_pointer_expression(source, value.expression, mapper, 1, value.span)?;
+        let PointerValueCategory::Value { position } = value.category else {
+            return Err(remapping_error(value.span));
+        };
+        let position = position
+            .map(|position| self.remap_pointer_snapshot(position, mapper, value.span))
+            .transpose()?;
+        let position = self.combine_pointer_positions(mapped.position, position, value.span)?;
         Ok(PointerValue {
-            expression,
+            expression: mapped.expression,
+            category: PointerValueCategory::Value { position },
             ..value.clone()
         })
     }
@@ -267,7 +315,7 @@ impl Parser<'_> {
         self.retain_bound_reference(Some(selected), targets, span)
     }
 
-    fn generated_pointer_statement(
+    pub(super) fn generated_pointer_statement(
         &mut self,
         statement: Statement,
         span: Span,

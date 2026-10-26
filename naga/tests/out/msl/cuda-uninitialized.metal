@@ -110,71 +110,193 @@ kernel void uninitialized(
 , constant type_5& n_1 [[user(fake0)]]
 , constant _mslBufferSizes& _buffer_sizes [[user(fake0)]]
 ) {
+    uint local = {};
+    uint local_1 = {};
     uint n = {};
     uint i = {};
     uint base = {};
     int value = {};
+    uint local_2 = {};
+    uint local_3 = {};
+    uint local_4 = {};
     int chosen = {};
+    uint local_5 = {};
+    uint local_6 = {};
+    uint local_7 = {};
+    uint local_8 = {};
+    uint local_9 = {};
+    uint local_10 = {};
     float weighted = {};
+    uint local_11 = {};
+    uint local_12 = {};
+    uint local_13 = {};
     bool negative = {};
+    uint local_14 = {};
+    uint local_15 = {};
+    uint local_16 = {};
     uint magnitude = {};
+    uint local_17 = {};
+    uint local_18 = {};
+    uint local_19 = {};
+    uint local_20 = {};
+    uint local_21 = {};
+    uint local_22 = {};
     int total = {};
     int iteration = {};
     int copied = {};
+    uint local_23 = {};
+    uint local_24 = {};
+    uint local_25 = {};
     int descending = {};
     int iteration_1 = {};
     int staged = {};
+    uint local_26 = {};
+    uint local_27 = {};
+    uint local_28 = {};
     int remaining = {};
     int partial = {};
     int next = {};
+    uint local_29 = {};
+    uint local_30 = {};
+    uint local_31 = {};
     int shadow = {};
     int shadow_1 = {};
-    uint _e4 = n_1.value;
-    n = _e4;
+    uint local_32 = {};
+    uint local_33 = {};
+    uint local_34 = {};
+    uint local_35 = {};
+    uint local_36 = {};
+    uint local_37 = {};
+    uint local_38 = {};
+    uint local_39 = {};
+    uint local_40 = {};
+    uint local_41 = {};
+    int local_42 = {};
+    uint local_43 = {};
+    uint local_44 = {};
+    uint local_45 = {};
+    uint local_46 = {};
+    uint local_47 = {};
+    uint local_48 = {};
+    uint local_49 = {};
+    uint local_50 = {};
+    uint local_51 = {};
+    uint local_52 = {};
+    uint local_53 = {};
+    uint local_54 = {};
+    local = 0u;
+    local_1 = 0u;
+    uint _e8 = n_1.value;
+    n = _e8;
     i = (blockIdx.x * 64u) + threadIdx.x;
-    uint _e14 = i;
-    uint _e15 = n;
-    if (_e14 < _e15) {
+    uint _e16 = i;
+    uint _e17 = n;
+    if (_e16 < _e17) {
         uint _e19 = i;
         base = _e19 * 12u;
-        uint _e22 = i;
-        int _e24 = input[_e22];
-        value = _e24;
-        uint _e27 = i;
-        if (naga_mod(_e27, 2u) == 0u) {
-            int _e32 = value;
-            chosen = as_type<int>(as_type<uint>(_e32) + as_type<uint>(7));
+        uint _e23 = local_1;
+        local_2 = _e23;
+        uint _e25 = local_2;
+        local_3 = static_cast<uint>(_e25);
+        uint _e28 = i;
+        local_4 = static_cast<uint>(_e28);
+        uint _e32 = local_3;
+        uint _e33 = local_4;
+        local_41 = static_cast<uint>(_e32 + _e33);
+        uint _e38 = local_41;
+        int _e40 = input[_e38];
+        local_42 = _e40;
+        int _e41 = local_42;
+        value = _e41;
+        uint _e43 = i;
+        if (naga_mod(_e43, 2u) == 0u) {
+            int _e48 = value;
+            chosen = as_type<int>(as_type<uint>(_e48) + as_type<uint>(7));
         } else {
-            int _e35 = value;
-            chosen = as_type<int>(as_type<uint>(_e35) - as_type<uint>(4));
+            int _e52 = value;
+            chosen = as_type<int>(as_type<uint>(_e52) - as_type<uint>(4));
         }
-        int _e39 = chosen;
-        uint _e37 = base;
-        out[_e37] = _e39;
-        int _e44 = value;
-        uint _e46 = i;
-        int _e50 = select_value(_e44, naga_mod(_e46, 3u) == 0u);
-        uint _e41 = base;
-        out[_e41 + 1u] = _e50;
-        int _e52 = value;
-        weighted = (static_cast<float>(_e52) * 1.5) + 2.0;
-        float _e62 = weighted;
-        uint _e59 = base;
-        out[_e59 + 2u] = naga_f2i32(_e62);
-        int _e66 = value;
-        negative = _e66 < 0;
-        bool _e72 = negative;
-        uint _e69 = base;
-        out[_e69 + 3u] = static_cast<int>(_e72);
-        int _e76 = value;
-        magnitude = static_cast<uint>(as_type<int>(as_type<uint>(_e76) + as_type<uint>(5)));
-        uint _e84 = magnitude;
-        uint _e80 = base;
-        out[_e80 + 4u] = static_cast<int>(_e84 * 3u);
-        uint _e92 = i;
-        uint _e94 = accumulate(naga_mod(_e92, 5u));
-        uint _e88 = base;
-        out[_e88 + 5u] = static_cast<int>(_e94);
+        int _e57 = chosen;
+        uint _e58 = local;
+        local_5 = _e58;
+        uint _e60 = local_5;
+        local_6 = static_cast<uint>(_e60);
+        uint _e63 = base;
+        local_7 = static_cast<uint>(_e63);
+        uint _e67 = local_6;
+        uint _e68 = local_7;
+        local_43 = static_cast<uint>(_e67 + _e68);
+        uint _e72 = local_43;
+        out[_e72] = _e57;
+        int _e74 = value;
+        uint _e75 = i;
+        int _e80 = select_value(_e74, naga_mod(_e75, 3u) == 0u);
+        uint _e81 = local;
+        local_8 = _e81;
+        uint _e83 = local_8;
+        local_9 = static_cast<uint>(_e83);
+        uint _e86 = base;
+        local_10 = static_cast<uint>(_e86 + 1u);
+        uint _e91 = local_9;
+        uint _e92 = local_10;
+        local_44 = static_cast<uint>(_e91 + _e92);
+        uint _e96 = local_44;
+        out[_e96] = _e80;
+        int _e98 = value;
+        weighted = (static_cast<float>(_e98) * 1.5) + 2.0;
+        float _e105 = weighted;
+        uint _e107 = local;
+        local_11 = _e107;
+        uint _e109 = local_11;
+        local_12 = static_cast<uint>(_e109);
+        uint _e112 = base;
+        local_13 = static_cast<uint>(_e112 + 2u);
+        uint _e117 = local_12;
+        uint _e118 = local_13;
+        local_45 = static_cast<uint>(_e117 + _e118);
+        uint _e122 = local_45;
+        out[_e122] = naga_f2i32(_e105);
+        int _e124 = value;
+        negative = _e124 < 0;
+        bool _e128 = negative;
+        uint _e129 = local;
+        local_14 = _e129;
+        uint _e131 = local_14;
+        local_15 = static_cast<uint>(_e131);
+        uint _e134 = base;
+        local_16 = static_cast<uint>(_e134 + 3u);
+        uint _e140 = local_15;
+        uint _e141 = local_16;
+        local_46 = static_cast<uint>(_e140 + _e141);
+        uint _e145 = local_46;
+        out[_e145] = static_cast<int>(_e128);
+        int _e147 = value;
+        magnitude = static_cast<uint>(as_type<int>(as_type<uint>(_e147) + as_type<uint>(5)));
+        uint _e152 = magnitude;
+        uint _e155 = local;
+        local_17 = _e155;
+        uint _e157 = local_17;
+        local_18 = static_cast<uint>(_e157);
+        uint _e160 = base;
+        local_19 = static_cast<uint>(_e160 + 4u);
+        uint _e166 = local_18;
+        uint _e167 = local_19;
+        local_47 = static_cast<uint>(_e166 + _e167);
+        uint _e171 = local_47;
+        out[_e171] = static_cast<int>(_e152 * 3u);
+        uint _e173 = i;
+        uint _e176 = accumulate(naga_mod(_e173, 5u));
+        uint _e177 = local;
+        local_20 = _e177;
+        uint _e179 = local_20;
+        local_21 = static_cast<uint>(_e179);
+        uint _e182 = base;
+        local_22 = static_cast<uint>(_e182 + 5u);
+        uint _e188 = local_21;
+        uint _e189 = local_22;
+        local_48 = static_cast<uint>(_e188 + _e189);
+        uint _e193 = local_48;
+        out[_e193] = static_cast<int>(_e176);
         total = 0;
         {
             iteration = 0;
@@ -184,26 +306,35 @@ kernel void uninitialized(
                 if (metal::all(loop_bound_1 == uint2(0u))) { break; }
                 loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
                 if (!loop_init_1) {
-                    int _e103 = iteration;
-                    iteration = as_type<int>(as_type<uint>(_e103) + as_type<uint>(1));
+                    int _e209 = iteration;
+                    iteration = as_type<int>(as_type<uint>(_e209) + as_type<uint>(1));
                 }
                 loop_init_1 = false;
-                int _e101 = iteration;
-                if (_e101 < 3) {
+                int _e199 = iteration;
+                if (_e199 < 3) {
                 } else {
                     break;
                 }
-                int _e107 = value;
-                int _e108 = iteration;
-                copied = as_type<int>(as_type<uint>(_e107) + as_type<uint>(_e108));
-                int _e110 = copied;
-                int _e111 = total;
-                total = as_type<int>(as_type<uint>(_e111) + as_type<uint>(_e110));
+                int _e202 = value;
+                int _e203 = iteration;
+                copied = as_type<int>(as_type<uint>(_e202) + as_type<uint>(_e203));
+                int _e206 = copied;
+                int _e207 = total;
+                total = as_type<int>(as_type<uint>(_e207) + as_type<uint>(_e206));
             }
         }
-        int _e117 = total;
-        uint _e114 = base;
-        out[_e114 + 6u] = _e117;
+        int _e212 = total;
+        uint _e213 = local;
+        local_23 = _e213;
+        uint _e215 = local_23;
+        local_24 = static_cast<uint>(_e215);
+        uint _e218 = base;
+        local_25 = static_cast<uint>(_e218 + 6u);
+        uint _e223 = local_24;
+        uint _e224 = local_25;
+        local_49 = static_cast<uint>(_e223 + _e224);
+        uint _e228 = local_49;
+        out[_e228] = _e212;
         descending = 0;
         iteration_1 = 0;
         {
@@ -213,66 +344,111 @@ kernel void uninitialized(
                 if (metal::all(loop_bound_2 == uint2(0u))) { break; }
                 loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
                 if (!loop_init_2) {
-                    int _e126 = iteration_1;
-                    iteration_1 = as_type<int>(as_type<uint>(_e126) + as_type<uint>(1));
+                    int _e244 = iteration_1;
+                    iteration_1 = as_type<int>(as_type<uint>(_e244) + as_type<uint>(1));
                 }
                 loop_init_2 = false;
-                int _e124 = iteration_1;
-                if (_e124 < 3) {
+                int _e234 = iteration_1;
+                if (_e234 < 3) {
                 } else {
                     break;
                 }
-                int _e129 = value;
-                int _e130 = iteration_1;
-                staged = as_type<int>(as_type<uint>(_e129) - as_type<uint>(_e130));
-                int _e132 = staged;
-                int _e133 = descending;
-                descending = as_type<int>(as_type<uint>(_e133) + as_type<uint>(_e132));
+                int _e237 = value;
+                int _e238 = iteration_1;
+                staged = as_type<int>(as_type<uint>(_e237) - as_type<uint>(_e238));
+                int _e241 = staged;
+                int _e242 = descending;
+                descending = as_type<int>(as_type<uint>(_e242) + as_type<uint>(_e241));
             }
         }
-        int _e139 = descending;
-        uint _e136 = base;
-        out[_e136 + 7u] = _e139;
+        int _e247 = descending;
+        uint _e248 = local;
+        local_26 = _e248;
+        uint _e250 = local_26;
+        local_27 = static_cast<uint>(_e250);
+        uint _e253 = base;
+        local_28 = static_cast<uint>(_e253 + 7u);
+        uint _e258 = local_27;
+        uint _e259 = local_28;
+        local_50 = static_cast<uint>(_e258 + _e259);
+        uint _e263 = local_50;
+        out[_e263] = _e247;
         remaining = 2;
-        int _e143 = value;
-        partial = _e143;
+        int _e267 = value;
+        partial = _e267;
         uint2 loop_bound_3 = uint2(4294967295u);
         while(true) {
             if (metal::all(loop_bound_3 == uint2(0u))) { break; }
             loop_bound_3 -= uint2(loop_bound_3.y == 0u, 1u);
-            int _e145 = remaining;
-            if (_e145 > 0) {
+            int _e269 = remaining;
+            if (_e269 > 0) {
             } else {
                 break;
             }
             {
-                int _e148 = partial;
-                int _e149 = remaining;
-                next = as_type<int>(as_type<uint>(_e148) + as_type<uint>(_e149));
-                int _e151 = next;
-                partial = _e151;
-                int _e152 = remaining;
-                remaining = as_type<int>(as_type<uint>(_e152) - as_type<uint>(1));
+                int _e272 = partial;
+                int _e273 = remaining;
+                next = as_type<int>(as_type<uint>(_e272) + as_type<uint>(_e273));
+                int _e276 = next;
+                partial = _e276;
+                int _e277 = remaining;
+                remaining = as_type<int>(as_type<uint>(_e277) - as_type<uint>(1));
             }
         }
-        int _e159 = partial;
-        uint _e156 = base;
-        out[_e156 + 8u] = _e159;
-        int _e161 = value;
-        shadow = _e161;
+        int _e280 = partial;
+        uint _e281 = local;
+        local_29 = _e281;
+        uint _e283 = local_29;
+        local_30 = static_cast<uint>(_e283);
+        uint _e286 = base;
+        local_31 = static_cast<uint>(_e286 + 8u);
+        uint _e291 = local_30;
+        uint _e292 = local_31;
+        local_51 = static_cast<uint>(_e291 + _e292);
+        uint _e296 = local_51;
+        out[_e296] = _e280;
+        int _e298 = value;
+        shadow = _e298;
         {
-            int _e164 = value;
-            shadow_1 = as_type<int>(as_type<uint>(_e164) + as_type<uint>(10));
-            int _e170 = shadow_1;
-            uint _e167 = base;
-            out[_e167 + 9u] = _e170;
+            int _e300 = value;
+            shadow_1 = as_type<int>(as_type<uint>(_e300) + as_type<uint>(10));
+            int _e304 = shadow_1;
+            uint _e305 = local;
+            local_32 = _e305;
+            uint _e307 = local_32;
+            local_33 = static_cast<uint>(_e307);
+            uint _e310 = base;
+            local_34 = static_cast<uint>(_e310 + 9u);
+            uint _e315 = local_33;
+            uint _e316 = local_34;
+            local_52 = static_cast<uint>(_e315 + _e316);
+            uint _e320 = local_52;
+            out[_e320] = _e304;
         }
-        int _e175 = shadow;
-        uint _e172 = base;
-        out[_e172 + 10u] = _e175;
-        int _e180 = value;
-        float _e182 = scaled(static_cast<float>(_e180));
-        uint _e177 = base;
-        out[_e177 + 11u] = naga_f2i32(_e182);
+        int _e322 = shadow;
+        uint _e323 = local;
+        local_35 = _e323;
+        uint _e325 = local_35;
+        local_36 = static_cast<uint>(_e325);
+        uint _e328 = base;
+        local_37 = static_cast<uint>(_e328 + 10u);
+        uint _e333 = local_36;
+        uint _e334 = local_37;
+        local_53 = static_cast<uint>(_e333 + _e334);
+        uint _e338 = local_53;
+        out[_e338] = _e322;
+        int _e340 = value;
+        float _e342 = scaled(static_cast<float>(_e340));
+        uint _e343 = local;
+        local_38 = _e343;
+        uint _e345 = local_38;
+        local_39 = static_cast<uint>(_e345);
+        uint _e348 = base;
+        local_40 = static_cast<uint>(_e348 + 11u);
+        uint _e354 = local_39;
+        uint _e355 = local_40;
+        local_54 = static_cast<uint>(_e354 + _e355);
+        uint _e359 = local_54;
+        out[_e359] = naga_f2i32(_e342);
     }
 }

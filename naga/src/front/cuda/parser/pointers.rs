@@ -3,12 +3,18 @@ use super::reference_bindings::{AddressProjection, BoundTarget};
 use super::*;
 
 mod remapping;
+mod updates;
 mod validation;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) enum PointerValueCategory {
-    Variable,
-    Value,
+    Variable {
+        binding: Handle<BoundReference>,
+        writable: bool,
+    },
+    Value {
+        position: Option<Handle<Expression>>,
+    },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -88,7 +94,7 @@ impl<'a> Parser<'a> {
         specifier: TypeSpecifier,
         is_const: bool,
     ) -> Result<Span, ParseError> {
-        self.take_ident("const")?;
+        let pointer_const = self.take_ident("const")?;
         let (name, span) = self.identifier()?;
         self.check_name(name, span)?;
         self.insert_symbol(name, Symbol::PendingPointer, span)?;
@@ -106,14 +112,8 @@ impl<'a> Parser<'a> {
             self.lexer.expect_span(Token::Paren('}'))?;
         }
         let value_span = value.span();
-        let mut pointer = self.convert_pointer(value, &ty, is_const, value_span)?;
-        pointer.span = span;
-        pointer.category = PointerValueCategory::Variable;
-        pointer.constant = ConstantValue {
-            literal: None,
-            is_discardable: true,
-        };
-        pointer.constant_address = None;
+        let pointer = self.convert_pointer(value, &ty, is_const, value_span)?;
+        let pointer = self.source_pointer_variable(pointer, pointer_const, span)?;
         let pointer = self.retain_pointer_symbol(pointer)?;
         self.function
             .symbol_table
@@ -178,13 +178,6 @@ impl<'a> Parser<'a> {
             span,
             constant,
         };
-        if matches!(self.function.ir.expressions[pointer], Expression::GlobalVariable(global) if matches!(self.module.global_variables[global].space, AddressSpace::Storage { .. }))
-        {
-            let mut pointer = self.decay_array(reference)?;
-            pointer.category = PointerValueCategory::Variable;
-            pointer.constant.is_discardable = true;
-            return self.pointer_result(pointer);
-        }
         Ok(ExpressionResult::Value(ExpressionValue::Reference(
             reference,
         )))
@@ -383,17 +376,25 @@ impl<'a> Parser<'a> {
                 is_discardable: true,
             },
             constant_address: None,
-            category: PointerValueCategory::Variable,
+            category: PointerValueCategory::Value { position: None },
         })
     }
 
-    pub(super) fn pointer_rvalue(&self, mut pointer: PointerValue) -> PointerValue {
-        if pointer.category == PointerValueCategory::Variable {
+    pub(super) fn pointer_rvalue(
+        &mut self,
+        mut pointer: PointerValue,
+    ) -> Result<PointerValue, ParseError> {
+        if let PointerValueCategory::Variable { binding, .. } = pointer.category {
+            let reference = self.pointer_position_reference(binding, true, pointer.span);
+            let position = self.rvalue(ExpressionValue::Reference(reference))?;
+            let position = self.freeze_reference_index(position.handle, pointer.span)?;
             pointer.constant = ConstantValue::default();
             pointer.constant_address = None;
-            pointer.category = PointerValueCategory::Value;
+            pointer.category = PointerValueCategory::Value {
+                position: Some(position),
+            };
         }
-        pointer
+        Ok(pointer)
     }
 
     pub(super) fn borrowed_pointer(
@@ -401,7 +402,7 @@ impl<'a> Parser<'a> {
         value: ExpressionValue,
     ) -> Result<PointerValue, ParseError> {
         match value {
-            ExpressionValue::Pointer(pointer) => Ok(self.pointer_rvalue(*pointer)),
+            ExpressionValue::Pointer(pointer) => self.pointer_rvalue(*pointer),
             ExpressionValue::Reference(reference)
                 if matches!(
                     *reference.ty.inner_with(&self.module.types),
@@ -466,7 +467,7 @@ impl<'a> Parser<'a> {
             span,
             constant,
             constant_address,
-            category: PointerValueCategory::Value,
+            category: PointerValueCategory::Value { position: None },
         })
     }
 
@@ -513,7 +514,7 @@ impl<'a> Parser<'a> {
             span,
             constant,
             constant_address,
-            category: PointerValueCategory::Value,
+            category: PointerValueCategory::Value { position: None },
         })
     }
 
@@ -542,7 +543,7 @@ impl<'a> Parser<'a> {
         subtract: bool,
         span: Span,
     ) -> Result<PointerValue, ParseError> {
-        let mut pointer = self.pointer_rvalue(pointer);
+        let mut pointer = self.pointer_rvalue(pointer)?;
         pointer.constant_address = pointer.constant_address.and_then(|address| {
             let delta = match offset.constant.literal {
                 Some(Literal::I32(value)) => i64::from(value),
@@ -623,7 +624,7 @@ impl<'a> Parser<'a> {
         &mut self,
         pointer: PointerValue,
     ) -> Result<ReferenceValue, ParseError> {
-        let pointer = self.pointer_rvalue(pointer);
+        let pointer = self.pointer_rvalue(pointer)?;
         let pointee = self.function.pointers.expressions[pointer.expression].pointee;
         let span = pointer.span;
         let discardable = pointer.constant.is_discardable
@@ -724,9 +725,11 @@ impl<'a> Parser<'a> {
     ) -> Result<PointerValue, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
-        let variable = matches!((&accept, &reject), (ExpressionValue::Pointer(accept), ExpressionValue::Pointer(reject)) if accept.category == PointerValueCategory::Variable && reject.category == PointerValueCategory::Variable && accept.is_const == reject.is_const && self.module.compare_types(&accept.ty, &reject.ty));
+        let variable = matches!((&accept, &reject), (ExpressionValue::Pointer(accept), ExpressionValue::Pointer(reject)) if matches!(accept.category, PointerValueCategory::Variable { .. }) && matches!(reject.category, PointerValueCategory::Variable { .. }) && accept.is_const == reject.is_const && self.module.compare_types(&accept.ty, &reject.ty));
         let selector = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
-        let branch = |parser: &mut Self, value, body, tag| {
+        let selected = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
+        let mut addresses = Vec::new();
+        let mut branch = |parser: &mut Self, value, body, tag| {
             parser.capture_block(|parser| {
                 parser.append_block(body);
                 let pointer = if variable {
@@ -737,6 +740,37 @@ impl<'a> Parser<'a> {
                 } else {
                     parser.borrowed_pointer(value)?
                 };
+                match pointer.category {
+                    PointerValueCategory::Variable { binding, .. } => {
+                        parser.with_bound_target(binding, span, &mut |parser, address| {
+                            parser
+                                .parameter_expansion_budget
+                                .charge_slice::<Handle<BoundAddress>>(1, span)?;
+                            addresses.push(address);
+                            let value = parser.append(
+                                Expression::Literal(Literal::U32(address.index() as u32)),
+                                span,
+                            )?;
+                            parser.generated_pointer_statement(
+                                Statement::Store {
+                                    pointer: selected,
+                                    value,
+                                },
+                                span,
+                            )
+                        })?;
+                    }
+                    PointerValueCategory::Value { position } => {
+                        let value = parser.load_pointer_position(position, span)?;
+                        parser.generated_pointer_statement(
+                            Statement::Store {
+                                pointer: selected,
+                                value,
+                            },
+                            span,
+                        )?;
+                    }
+                }
                 let value = parser.append(Expression::Literal(Literal::U32(tag)), span)?;
                 parser.parameter_expansion_budget.charge_nodes(1, span)?;
                 parser
@@ -791,6 +825,37 @@ impl<'a> Parser<'a> {
             pointee,
             span,
         )?;
+        let category = if variable {
+            let sorting_work = addresses
+                .len()
+                .saturating_mul((usize::BITS - addresses.len().leading_zeros()) as usize + 1);
+            self.parameter_expansion_budget
+                .charge_work(sorting_work, span)?;
+            addresses.sort_unstable_by_key(|address| address.index());
+            addresses.dedup();
+            self.parameter_expansion_budget
+                .charge_slice::<BoundTarget>(addresses.len(), span)?;
+            let targets = addresses
+                .into_iter()
+                .map(|address| BoundTarget {
+                    selector: address.index() as u32,
+                    address,
+                })
+                .collect();
+            let binding = self.retain_bound_reference(Some(selected), targets, span)?;
+            let writable = matches!(
+                accept.category,
+                PointerValueCategory::Variable { writable: true, .. }
+            ) && matches!(
+                reject.category,
+                PointerValueCategory::Variable { writable: true, .. }
+            );
+            PointerValueCategory::Variable { binding, writable }
+        } else {
+            PointerValueCategory::Value {
+                position: Some(selected),
+            }
+        };
         Ok(PointerValue {
             expression,
             ty: accept.ty,
@@ -798,11 +863,7 @@ impl<'a> Parser<'a> {
             span,
             constant,
             constant_address,
-            category: if variable {
-                PointerValueCategory::Variable
-            } else {
-                PointerValueCategory::Value
-            },
+            category,
         })
     }
 
@@ -850,8 +911,17 @@ impl<'a> Parser<'a> {
         if !self.pointer_origin_is_known(access.pointer.expression, reference.span)? {
             return Ok(reference);
         }
+        let PointerValueCategory::Value { position } = access.pointer.category else {
+            return Err(ParseError {
+                message: String::from("unresolved CUDA pointer object"),
+                span: reference.span,
+            });
+        };
+        let offset = position
+            .map(|pointer| self.append(Expression::Load { pointer }, reference.span))
+            .transpose()?;
         let root =
-            self.resolve_pointer_expression(access.pointer.expression, None, reference.span)?;
+            self.resolve_pointer_expression(access.pointer.expression, offset, reference.span)?;
         let mut binding = self.freeze_reference(root)?;
         for projection in access.projections {
             binding = self.project_bound_reference(binding, projection, reference.span)?;
