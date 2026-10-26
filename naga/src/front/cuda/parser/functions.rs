@@ -766,8 +766,12 @@ impl<'a> Parser<'a> {
         let Some(name) = name else {
             return Ok(());
         };
-        if let ParameterMode::Pointer { is_const } = mode {
-            let pointer = self.parameter_pointer(index, parameter_ty, is_const, span)?;
+        if let ParameterMode::Pointer {
+            is_const: pointee_const,
+        } = mode
+        {
+            let pointer = self.parameter_pointer(index, parameter_ty, pointee_const, span)?;
+            let pointer = self.source_pointer_variable(pointer, is_const, span)?;
             let pointer = self.retain_pointer_symbol(pointer)?;
             return self.insert_symbol(name, Symbol::Pointer(pointer), span);
         }

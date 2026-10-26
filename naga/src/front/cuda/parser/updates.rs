@@ -9,7 +9,7 @@ impl Parser<'_> {
                 span: reference.span,
             }),
             ExpressionValue::Pointer(pointer) => Err(ParseError {
-                message: String::from("pointer reassignment and increment are unsupported"),
+                message: String::from("expected an object lvalue"),
                 span: pointer.span,
             }),
             ExpressionValue::Plain(value) => Err(ParseError {
@@ -24,6 +24,9 @@ impl Parser<'_> {
         left: ExpressionValue,
         operator: Option<BinaryOperator>,
     ) -> Result<ExpressionValue, ParseError> {
+        if let ExpressionValue::Pointer(pointer) = left {
+            return self.pointer_assignment(*pointer, operator);
+        }
         let mut left = self.mutable_reference(left)?;
         self.lexer.next()?;
         let (right, right_body) = self.capture_block(|parser| {
@@ -63,6 +66,9 @@ impl Parser<'_> {
         postfix: bool,
         span: Span,
     ) -> Result<ExpressionValue, ParseError> {
+        if let ExpressionValue::Pointer(pointer) = value {
+            return self.pointer_update(*pointer, increment, postfix, span);
+        }
         let mut value = self.mutable_reference(value)?;
         if self.require_scalar_type(&value.ty, value.span)? == Scalar::BOOL {
             return Err(ParseError {
@@ -120,7 +126,7 @@ impl Parser<'_> {
         .into())
     }
 
-    fn update_pointer(
+    pub(super) fn update_pointer(
         &mut self,
         pointer: Handle<Expression>,
         ty: &TypeResolution,

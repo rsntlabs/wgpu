@@ -110,53 +110,114 @@ Packet_cuda_record_1_ ConstructPacket_cuda_record_1_(uint arg0, float2 arg1, Sam
 [numthreads(2, 1, 1)]
 void structures(uint3 threadIdx : SV_GroupThreadID)
 {
+    uint local = (uint)0;
+    uint local_1 = (uint)0;
     uint lane = (uint)0;
     Packet_cuda_record_1_ original = (Packet_cuda_record_1_)0;
+    uint local_2 = (uint)0;
+    uint local_3 = (uint)0;
+    uint local_4 = (uint)0;
     Packet_cuda_record_1_ changed = (Packet_cuda_record_1_)0;
-    Packet_cuda_record_2_ local = (Packet_cuda_record_2_)0;
+    Packet_cuda_record_2_ local_5 = (Packet_cuda_record_2_)0;
     Packet_cuda_record_1_ combined = (Packet_cuda_record_1_)0;
     uint slot = (uint)0;
+    uint local_6 = (uint)0;
+    uint local_7 = (uint)0;
+    uint local_8 = (uint)0;
+    uint local_9 = (uint)0;
+    uint local_10 = (uint)0;
+    uint local_11 = (uint)0;
     int sample_ = (int)0;
+    uint local_12 = (uint)0;
+    uint local_13 = (uint)0;
+    uint local_14 = (uint)0;
+    uint local_15 = (uint)0;
     int row = (int)0;
     int column = (int)0;
+    uint local_16 = (uint)0;
+    uint local_17 = (uint)0;
+    uint local_18 = (uint)0;
+    uint local_19 = (uint)0;
+    uint local_20 = (uint)0;
+    uint local_21 = (uint)0;
+    uint local_22 = (uint)0;
+    uint local_23 = (uint)0;
+    uint local_24 = (uint)0;
+    Packet_cuda_record_1_ local_25 = (Packet_cuda_record_1_)0;
+    uint local_26 = (uint)0;
+    uint local_27 = (uint)0;
+    uint local_28 = (uint)0;
+    uint local_29 = (uint)0;
+    uint local_30 = (uint)0;
 
+    local = 0u;
+    local_1 = 0u;
     lane = threadIdx.x;
-    uint _e6 = lane;
-    if ((_e6 >= 2u)) {
+    uint _e7 = lane;
+    if ((_e7 >= 2u)) {
         return;
     }
-    uint _e9 = lane;
-    Packet_cuda_record_1_ _e11 = ConstructPacket_cuda_record_1_(asuint(input.Load(_e9*80+0)), asfloat(input.Load2(_e9*80+8)), Constructarray2_Sample_cuda_record_0__(ConstructSample_cuda_record_0_(Constructfloat3_(asfloat(input.Load(_e9*80+16+0+0+0)), asfloat(input.Load(_e9*80+16+0+0+4)), asfloat(input.Load(_e9*80+16+0+0+8))), asuint(input.Load(_e9*80+16+0+12))), ConstructSample_cuda_record_0_(Constructfloat3_(asfloat(input.Load(_e9*80+16+16+0+0)), asfloat(input.Load(_e9*80+16+16+0+4)), asfloat(input.Load(_e9*80+16+16+0+8))), asuint(input.Load(_e9*80+16+16+12)))), Constructarray2_array2_float__(Constructarray2_float_(asfloat(input.Load(_e9*80+48+0+0)), asfloat(input.Load(_e9*80+48+0+4))), Constructarray2_float_(asfloat(input.Load(_e9*80+48+8+0)), asfloat(input.Load(_e9*80+48+8+4)))), asfloat(input.Load4(_e9*80+64)));
-    original = _e11;
-    Packet_cuda_record_1_ _e13 = original;
+    uint _e10 = local;
+    local_2 = _e10;
+    uint _e12 = local_2;
+    local_3 = uint(_e12);
     uint _e15 = lane;
-    const Packet_cuda_record_1_ _e18 = adjust(_e13, asint(asuint(int(3)) + asuint(int(_e15))));
-    changed = _e18;
+    local_4 = uint(_e15);
+    uint _e19 = local_3;
+    uint _e20 = local_4;
+    local_24 = uint((_e19 + _e20));
+    uint _e25 = local_24;
+    Packet_cuda_record_1_ _e27 = ConstructPacket_cuda_record_1_(asuint(input.Load(_e25*80+0)), asfloat(input.Load2(_e25*80+8)), Constructarray2_Sample_cuda_record_0__(ConstructSample_cuda_record_0_(Constructfloat3_(asfloat(input.Load(_e25*80+16+0+0+0)), asfloat(input.Load(_e25*80+16+0+0+4)), asfloat(input.Load(_e25*80+16+0+0+8))), asuint(input.Load(_e25*80+16+0+12))), ConstructSample_cuda_record_0_(Constructfloat3_(asfloat(input.Load(_e25*80+16+16+0+0)), asfloat(input.Load(_e25*80+16+16+0+4)), asfloat(input.Load(_e25*80+16+16+0+8))), asuint(input.Load(_e25*80+16+16+12)))), Constructarray2_array2_float__(Constructarray2_float_(asfloat(input.Load(_e25*80+48+0+0)), asfloat(input.Load(_e25*80+48+0+4))), Constructarray2_float_(asfloat(input.Load(_e25*80+48+8+0)), asfloat(input.Load(_e25*80+48+8+4)))), asfloat(input.Load4(_e25*80+64)));
+    local_25 = _e27;
+    Packet_cuda_record_1_ _e28 = local_25;
+    original = _e28;
+    Packet_cuda_record_1_ _e30 = original;
+    uint _e31 = lane;
+    const Packet_cuda_record_1_ _e35 = adjust(_e30, asint(asuint(int(3)) + asuint(int(_e31))));
+    changed = _e35;
     {
-        local.w = int(7);
-        local.x = int(11);
-        int _e30 = local.w;
-        int _e31 = local.x;
-        uint _e34 = changed.samples[int(0)].tag;
-        changed.samples[int(0)].tag = (_e34 + uint(asint(asuint(_e30) + asuint(_e31))));
+        local_5.w = int(7);
+        local_5.x = int(11);
+        int _e44 = local_5.w;
+        int _e45 = local_5.x;
+        uint _e52 = changed.samples[int(0)].tag;
+        changed.samples[int(0)].tag = (_e52 + uint(asint(asuint(_e44) + asuint(_e45))));
     }
-    Packet_cuda_record_1_ _e37 = changed;
-    Packet_cuda_record_1_ _e38 = original;
-    const Packet_cuda_record_1_ _e39 = operator_u002b(_e37, _e38);
-    combined = _e39;
-    uint _e46 = original.serial;
-    float _e48 = combined.weights[int(0)][int(0)];
-    combined.weights[int(0)][int(0)] = (_e48 + float(_e46));
-    uint _e53 = combined.serial;
-    combined.colour.w = float(_e53);
-    uint _e57 = lane;
-    slot = (_e57 + 1u);
-    uint _e63 = combined.serial;
-    uint _e59 = slot;
-    output.Store(0+_e59*80, asuint(_e63));
-    float2 _e68 = combined.uv;
-    uint _e64 = slot;
-    output.Store2(8+_e64*80, asuint(_e68));
+    Packet_cuda_record_1_ _e54 = changed;
+    Packet_cuda_record_1_ _e55 = original;
+    const Packet_cuda_record_1_ _e56 = operator_u002b(_e54, _e55);
+    combined = _e56;
+    uint _e59 = original.serial;
+    float _e66 = combined.weights[int(0)][int(0)];
+    combined.weights[int(0)][int(0)] = (_e66 + float(_e59));
+    uint _e69 = combined.serial;
+    combined.colour.w = float(_e69);
+    uint _e73 = lane;
+    slot = (_e73 + 1u);
+    uint _e78 = combined.serial;
+    uint _e79 = local_1;
+    local_6 = _e79;
+    uint _e81 = local_6;
+    local_7 = uint(_e81);
+    uint _e84 = slot;
+    local_8 = uint(_e84);
+    uint _e88 = local_7;
+    uint _e89 = local_8;
+    local_26 = uint((_e88 + _e89));
+    uint _e93 = local_26;
+    output.Store(0+_e93*80, asuint(_e78));
+    float2 _e97 = combined.uv;
+    uint _e98 = local_1;
+    local_9 = _e98;
+    uint _e100 = local_9;
+    local_10 = uint(_e100);
+    uint _e103 = slot;
+    local_11 = uint(_e103);
+    uint _e106 = local_10;
+    uint _e107 = local_11;
+    local_27 = uint((_e106 + _e107));
+    uint _e111 = local_27;
+    output.Store2(8+_e111*80, asuint(_e97));
     {
         sample_ = int(0);
         uint2 loop_bound = uint2(4294967295u, 4294967295u);
@@ -165,28 +226,39 @@ void structures(uint3 threadIdx : SV_GroupThreadID)
             if (all(loop_bound == uint2(0u, 0u))) { break; }
             loop_bound -= uint2(loop_bound.y == 0u, 1u);
             if (!loop_init) {
-                int _e74 = sample_;
-                sample_ = asint(asuint(_e74) + asuint(int(1)));
+                int _e144 = sample_;
+                sample_ = asint(asuint(_e144) + asuint(int(1)));
             }
             loop_init = false;
-            int _e72 = sample_;
-            if ((_e72 < int(2))) {
+            int _e116 = sample_;
+            if ((_e116 < int(2))) {
             } else {
                 break;
             }
-            int _e83 = sample_;
-            Sample_cuda_record_0_ _e85 = combined.samples[min(uint(_e83), 1u)];
-            uint _e77 = slot;
-            int _e80 = sample_;
+            int _e120 = sample_;
+            Sample_cuda_record_0_ _e122 = combined.samples[min(uint(_e120), 1u)];
+            uint _e123 = local_1;
+            local_12 = _e123;
+            uint _e125 = local_12;
+            local_13 = uint(_e125);
+            uint _e128 = slot;
+            local_14 = uint(_e128);
+            int _e131 = sample_;
+            local_15 = uint(_e131);
+            uint _e134 = local_13;
+            uint _e135 = local_14;
+            local_28 = uint((_e134 + _e135));
+            uint _e139 = local_28;
+            uint _e142 = local_15;
             {
-                Sample_cuda_record_0_ _value4 = _e85;
+                Sample_cuda_record_0_ _value4 = _e122;
                 {
                     float3_ _value5 = _value4.position;
-                    output.Store(_e80*16+16+_e77*80+0+0, asuint(_value5.x));
-                    output.Store(_e80*16+16+_e77*80+0+4, asuint(_value5.y));
-                    output.Store(_e80*16+16+_e77*80+0+8, asuint(_value5.z));
+                    output.Store(_e142*16+16+_e139*80+0+0, asuint(_value5.x));
+                    output.Store(_e142*16+16+_e139*80+0+4, asuint(_value5.y));
+                    output.Store(_e142*16+16+_e139*80+0+8, asuint(_value5.z));
                 }
-                output.Store(_e80*16+16+_e77*80+12, asuint(_value4.tag));
+                output.Store(_e142*16+16+_e139*80+12, asuint(_value4.tag));
             }
         }
     }
@@ -198,12 +270,12 @@ void structures(uint3 threadIdx : SV_GroupThreadID)
             if (all(loop_bound_1 == uint2(0u, 0u))) { break; }
             loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
             if (!loop_init_1) {
-                int _e91 = row;
-                row = asint(asuint(_e91) + asuint(int(1)));
+                int _e192 = row;
+                row = asint(asuint(_e192) + asuint(int(1)));
             }
             loop_init_1 = false;
-            int _e89 = row;
-            if ((_e89 < int(2))) {
+            int _e149 = row;
+            if ((_e149 < int(2))) {
             } else {
                 break;
             }
@@ -215,27 +287,49 @@ void structures(uint3 threadIdx : SV_GroupThreadID)
                     if (all(loop_bound_2 == uint2(0u, 0u))) { break; }
                     loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
                     if (!loop_init_2) {
-                        int _e99 = column;
-                        column = asint(asuint(_e99) + asuint(int(1)));
+                        int _e189 = column;
+                        column = asint(asuint(_e189) + asuint(int(1)));
                     }
                     loop_init_2 = false;
-                    int _e97 = column;
-                    if ((_e97 < int(2))) {
+                    int _e154 = column;
+                    if ((_e154 < int(2))) {
                     } else {
                         break;
                     }
-                    int _e110 = row;
-                    int _e112 = column;
-                    float _e114 = combined.weights[min(uint(_e110), 1u)][min(uint(_e112), 1u)];
-                    uint _e102 = slot;
-                    int _e105 = row;
-                    int _e107 = column;
-                    output.Store(_e107*4+_e105*8+48+_e102*80, asuint(_e114));
+                    int _e158 = row;
+                    int _e160 = column;
+                    float _e162 = combined.weights[min(uint(_e158), 1u)][min(uint(_e160), 1u)];
+                    uint _e163 = local_1;
+                    local_16 = _e163;
+                    uint _e165 = local_16;
+                    local_17 = uint(_e165);
+                    uint _e168 = slot;
+                    local_18 = uint(_e168);
+                    int _e171 = row;
+                    local_19 = uint(_e171);
+                    int _e174 = column;
+                    local_20 = uint(_e174);
+                    uint _e177 = local_17;
+                    uint _e178 = local_18;
+                    local_29 = uint((_e177 + _e178));
+                    uint _e182 = local_29;
+                    uint _e185 = local_19;
+                    uint _e187 = local_20;
+                    output.Store(_e187*4+_e185*8+48+_e182*80, asuint(_e162));
                 }
             }
         }
     }
-    float4 _e119 = combined.colour;
-    uint _e115 = slot;
-    output.Store4(64+_e115*80, asuint(_e119));
+    float4 _e196 = combined.colour;
+    uint _e197 = local_1;
+    local_21 = _e197;
+    uint _e199 = local_21;
+    local_22 = uint(_e199);
+    uint _e202 = slot;
+    local_23 = uint(_e202);
+    uint _e205 = local_22;
+    uint _e206 = local_23;
+    local_30 = uint((_e205 + _e206));
+    uint _e210 = local_30;
+    output.Store4(64+_e210*80, asuint(_e196));
 }

@@ -87,52 +87,113 @@ kernel void structures(
 , device type_8& output [[user(fake0)]]
 , constant _mslBufferSizes& _buffer_sizes [[user(fake0)]]
 ) {
+    uint local = {};
+    uint local_1 = {};
     uint lane = {};
     Packet_cuda_record_1_ original = {};
+    uint local_2 = {};
+    uint local_3 = {};
+    uint local_4 = {};
     Packet_cuda_record_1_ changed = {};
-    Packet_cuda_record_2_ local = {};
+    Packet_cuda_record_2_ local_5 = {};
     Packet_cuda_record_1_ combined = {};
     uint slot = {};
+    uint local_6 = {};
+    uint local_7 = {};
+    uint local_8 = {};
+    uint local_9 = {};
+    uint local_10 = {};
+    uint local_11 = {};
     int sample = {};
+    uint local_12 = {};
+    uint local_13 = {};
+    uint local_14 = {};
+    uint local_15 = {};
     int row = {};
     int column = {};
+    uint local_16 = {};
+    uint local_17 = {};
+    uint local_18 = {};
+    uint local_19 = {};
+    uint local_20 = {};
+    uint local_21 = {};
+    uint local_22 = {};
+    uint local_23 = {};
+    uint local_24 = {};
+    Packet_cuda_record_1_ local_25 = {};
+    uint local_26 = {};
+    uint local_27 = {};
+    uint local_28 = {};
+    uint local_29 = {};
+    uint local_30 = {};
+    local = 0u;
+    local_1 = 0u;
     lane = threadIdx.x;
-    uint _e6 = lane;
-    if (_e6 >= 2u) {
+    uint _e7 = lane;
+    if (_e7 >= 2u) {
         return;
     }
-    uint _e9 = lane;
-    Packet_cuda_record_1_ _e11 = input[_e9];
-    original = _e11;
-    Packet_cuda_record_1_ _e13 = original;
+    uint _e10 = local;
+    local_2 = _e10;
+    uint _e12 = local_2;
+    local_3 = static_cast<uint>(_e12);
     uint _e15 = lane;
-    Packet_cuda_record_1_ _e18 = adjust(_e13, as_type<int>(as_type<uint>(3) + as_type<uint>(static_cast<int>(_e15))));
-    changed = _e18;
+    local_4 = static_cast<uint>(_e15);
+    uint _e19 = local_3;
+    uint _e20 = local_4;
+    local_24 = static_cast<uint>(_e19 + _e20);
+    uint _e25 = local_24;
+    Packet_cuda_record_1_ _e27 = input[_e25];
+    local_25 = _e27;
+    Packet_cuda_record_1_ _e28 = local_25;
+    original = _e28;
+    Packet_cuda_record_1_ _e30 = original;
+    uint _e31 = lane;
+    Packet_cuda_record_1_ _e35 = adjust(_e30, as_type<int>(as_type<uint>(3) + as_type<uint>(static_cast<int>(_e31))));
+    changed = _e35;
     {
-        local.w = 7;
-        local.x = 11;
-        int _e30 = local.w;
-        int _e31 = local.x;
-        uint _e34 = changed.samples.inner[0].tag;
-        changed.samples.inner[0].tag = _e34 + static_cast<uint>(as_type<int>(as_type<uint>(_e30) + as_type<uint>(_e31)));
+        local_5.w = 7;
+        local_5.x = 11;
+        int _e44 = local_5.w;
+        int _e45 = local_5.x;
+        uint _e52 = changed.samples.inner[0].tag;
+        changed.samples.inner[0].tag = _e52 + static_cast<uint>(as_type<int>(as_type<uint>(_e44) + as_type<uint>(_e45)));
     }
-    Packet_cuda_record_1_ _e37 = changed;
-    Packet_cuda_record_1_ _e38 = original;
-    Packet_cuda_record_1_ _e39 = operator_u002b(_e37, _e38);
-    combined = _e39;
-    uint _e46 = original.serial;
-    float _e48 = combined.weights.inner[0].inner[0];
-    combined.weights.inner[0].inner[0] = _e48 + static_cast<float>(_e46);
-    uint _e53 = combined.serial;
-    combined.colour.w = static_cast<float>(_e53);
-    uint _e57 = lane;
-    slot = _e57 + 1u;
-    uint _e63 = combined.serial;
-    uint _e59 = slot;
-    output[_e59].serial = _e63;
-    metal::float2 _e68 = combined.uv;
-    uint _e64 = slot;
-    output[_e64].uv = _e68;
+    Packet_cuda_record_1_ _e54 = changed;
+    Packet_cuda_record_1_ _e55 = original;
+    Packet_cuda_record_1_ _e56 = operator_u002b(_e54, _e55);
+    combined = _e56;
+    uint _e59 = original.serial;
+    float _e66 = combined.weights.inner[0].inner[0];
+    combined.weights.inner[0].inner[0] = _e66 + static_cast<float>(_e59);
+    uint _e69 = combined.serial;
+    combined.colour.w = static_cast<float>(_e69);
+    uint _e73 = lane;
+    slot = _e73 + 1u;
+    uint _e78 = combined.serial;
+    uint _e79 = local_1;
+    local_6 = _e79;
+    uint _e81 = local_6;
+    local_7 = static_cast<uint>(_e81);
+    uint _e84 = slot;
+    local_8 = static_cast<uint>(_e84);
+    uint _e88 = local_7;
+    uint _e89 = local_8;
+    local_26 = static_cast<uint>(_e88 + _e89);
+    uint _e93 = local_26;
+    output[_e93].serial = _e78;
+    metal::float2 _e97 = combined.uv;
+    uint _e98 = local_1;
+    local_9 = _e98;
+    uint _e100 = local_9;
+    local_10 = static_cast<uint>(_e100);
+    uint _e103 = slot;
+    local_11 = static_cast<uint>(_e103);
+    uint _e106 = local_10;
+    uint _e107 = local_11;
+    local_27 = static_cast<uint>(_e106 + _e107);
+    uint _e111 = local_27;
+    output[_e111].uv = _e97;
     {
         sample = 0;
         uint2 loop_bound = uint2(4294967295u);
@@ -141,20 +202,31 @@ kernel void structures(
             if (metal::all(loop_bound == uint2(0u))) { break; }
             loop_bound -= uint2(loop_bound.y == 0u, 1u);
             if (!loop_init) {
-                int _e74 = sample;
-                sample = as_type<int>(as_type<uint>(_e74) + as_type<uint>(1));
+                int _e144 = sample;
+                sample = as_type<int>(as_type<uint>(_e144) + as_type<uint>(1));
             }
             loop_init = false;
-            int _e72 = sample;
-            if (_e72 < 2) {
+            int _e116 = sample;
+            if (_e116 < 2) {
             } else {
                 break;
             }
-            int _e83 = sample;
-            Sample_cuda_record_0_ _e85 = combined.samples.inner[_e83];
-            uint _e77 = slot;
-            int _e80 = sample;
-            output[_e77].samples.inner[_e80] = _e85;
+            int _e120 = sample;
+            Sample_cuda_record_0_ _e122 = combined.samples.inner[_e120];
+            uint _e123 = local_1;
+            local_12 = _e123;
+            uint _e125 = local_12;
+            local_13 = static_cast<uint>(_e125);
+            uint _e128 = slot;
+            local_14 = static_cast<uint>(_e128);
+            int _e131 = sample;
+            local_15 = static_cast<uint>(_e131);
+            uint _e134 = local_13;
+            uint _e135 = local_14;
+            local_28 = static_cast<uint>(_e134 + _e135);
+            uint _e139 = local_28;
+            uint _e142 = local_15;
+            output[_e139].samples.inner[_e142] = _e122;
         }
     }
     {
@@ -165,12 +237,12 @@ kernel void structures(
             if (metal::all(loop_bound_1 == uint2(0u))) { break; }
             loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
             if (!loop_init_1) {
-                int _e91 = row;
-                row = as_type<int>(as_type<uint>(_e91) + as_type<uint>(1));
+                int _e192 = row;
+                row = as_type<int>(as_type<uint>(_e192) + as_type<uint>(1));
             }
             loop_init_1 = false;
-            int _e89 = row;
-            if (_e89 < 2) {
+            int _e149 = row;
+            if (_e149 < 2) {
             } else {
                 break;
             }
@@ -182,27 +254,49 @@ kernel void structures(
                     if (metal::all(loop_bound_2 == uint2(0u))) { break; }
                     loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
                     if (!loop_init_2) {
-                        int _e99 = column;
-                        column = as_type<int>(as_type<uint>(_e99) + as_type<uint>(1));
+                        int _e189 = column;
+                        column = as_type<int>(as_type<uint>(_e189) + as_type<uint>(1));
                     }
                     loop_init_2 = false;
-                    int _e97 = column;
-                    if (_e97 < 2) {
+                    int _e154 = column;
+                    if (_e154 < 2) {
                     } else {
                         break;
                     }
-                    int _e110 = row;
-                    int _e112 = column;
-                    float _e114 = combined.weights.inner[_e110].inner[_e112];
-                    uint _e102 = slot;
-                    int _e105 = row;
-                    int _e107 = column;
-                    output[_e102].weights.inner[_e105].inner[_e107] = _e114;
+                    int _e158 = row;
+                    int _e160 = column;
+                    float _e162 = combined.weights.inner[_e158].inner[_e160];
+                    uint _e163 = local_1;
+                    local_16 = _e163;
+                    uint _e165 = local_16;
+                    local_17 = static_cast<uint>(_e165);
+                    uint _e168 = slot;
+                    local_18 = static_cast<uint>(_e168);
+                    int _e171 = row;
+                    local_19 = static_cast<uint>(_e171);
+                    int _e174 = column;
+                    local_20 = static_cast<uint>(_e174);
+                    uint _e177 = local_17;
+                    uint _e178 = local_18;
+                    local_29 = static_cast<uint>(_e177 + _e178);
+                    uint _e182 = local_29;
+                    uint _e185 = local_19;
+                    uint _e187 = local_20;
+                    output[_e182].weights.inner[_e185].inner[_e187] = _e162;
                 }
             }
         }
     }
-    metal::float4 _e119 = combined.colour;
-    uint _e115 = slot;
-    output[_e115].colour = _e119;
+    metal::float4 _e196 = combined.colour;
+    uint _e197 = local_1;
+    local_21 = _e197;
+    uint _e199 = local_21;
+    local_22 = static_cast<uint>(_e199);
+    uint _e202 = slot;
+    local_23 = static_cast<uint>(_e202);
+    uint _e205 = local_22;
+    uint _e206 = local_23;
+    local_30 = static_cast<uint>(_e205 + _e206);
+    uint _e210 = local_30;
+    output[_e210].colour = _e196;
 }

@@ -254,9 +254,16 @@ impl Parser<'_> {
     fn validate_source_pointer_value(
         &mut self,
         state: &PointerState,
+        function: &Function,
         value: &PointerValue,
     ) -> Result<(), ParseError> {
         self.parameter_expansion_budget.charge_work(1, value.span)?;
+        let PointerValueCategory::Value { position } = value.category else {
+            return Err(pointer_state_error(value.span));
+        };
+        if let Some(position) = position {
+            captured_pointer(function, position, &self.module, value.span)?;
+        }
         let expression = state
             .expressions
             .try_get(value.expression)
@@ -392,7 +399,7 @@ impl Parser<'_> {
         }
         for (handle, access) in state.pointers.accesses.iter() {
             let span = state.pointers.accesses.get_span(handle);
-            self.validate_source_pointer_value(&state.pointers, &access.pointer)?;
+            self.validate_source_pointer_value(&state.pointers, function, &access.pointer)?;
             self.parameter_expansion_budget
                 .charge_work(access.projections.len(), span)?;
             let mut ty = TypeResolution::Handle(
@@ -463,7 +470,7 @@ impl Parser<'_> {
             for argument in &call.arguments {
                 match *argument {
                     parameter_calls::DeferredArgument::Pointer(ref pointer) => {
-                        self.validate_source_pointer_value(&state.pointers, pointer)?
+                        self.validate_source_pointer_value(&state.pointers, function, pointer)?
                     }
                     parameter_calls::DeferredArgument::Reference(binding) => state
                         .bound_references

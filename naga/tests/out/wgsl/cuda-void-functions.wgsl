@@ -53,75 +53,155 @@ fn forward(stop_2: bool, value_5: i32) {
 
 @compute @workgroup_size(64, 1, 1)
 fn void_functions(@builtin(workgroup_id) blockIdx: vec3<u32>, @builtin(local_invocation_id) threadIdx: vec3<u32>) {
+    var local: u32;
     var n: u32;
     var i: u32;
     var base: u32;
     var value: i32;
+    var local_1: u32;
+    var local_2: u32;
+    var local_3: u32;
+    var local_4: u32;
+    var local_5: u32;
+    var local_6: u32;
+    var local_7: u32;
+    var local_8: u32;
+    var local_9: u32;
     var iterations: i32;
+    var local_10: u32;
+    var local_11: u32;
+    var local_12: u32;
+    var local_13: u32;
+    var local_14: u32;
+    var local_15: u32;
+    var local_16: u32;
+    var local_17: u32;
+    var local_18: u32;
+    var local_19: u32;
+    var local_20: u32;
+    var local_21: u32;
+    var local_22: u32;
+    var local_23: u32;
+    var local_24: u32;
 
-    let _e3 = n_1.value;
-    n = _e3;
+    local = 0u;
+    let _e6 = n_1.value;
+    n = _e6;
     i = ((blockIdx.x * 64u) + threadIdx.x);
-    let _e13 = i;
-    let _e14 = n;
-    if (_e13 < _e14) {
-        let _e18 = i;
-        base = (_e18 * 6u);
+    let _e14 = i;
+    let _e15 = n;
+    if (_e14 < _e15) {
+        let _e17 = i;
+        base = (_e17 * 6u);
         value = 2i;
         let _e23 = value;
         value = (_e23 + 1i);
         consume(false, _e23, 1u, 1.5f);
-        let _e30 = value;
-        let _e28 = base;
-        out[_e28] = _e30;
-        let _e32 = value;
-        value = (_e32 + 1i);
-        let _e35 = next_value(_e32);
-        consume(true, _e35, 2u, 0.5f);
-        let _e42 = value;
-        let _e39 = base;
-        out[(_e39 + 1u)] = _e42;
-        let _e44 = i;
-        let _e48 = value;
-        value = (_e48 + 1i);
-        forward(((_e44 % 2u) == 0u), _e48);
-        let _e55 = value;
-        let _e52 = base;
-        out[(_e52 + 2u)] = _e55;
+        let _e29 = value;
+        let _e30 = local;
+        local_1 = _e30;
+        let _e32 = local_1;
+        local_2 = u32(_e32);
+        let _e35 = base;
+        local_3 = u32(_e35);
+        let _e39 = local_2;
+        let _e40 = local_3;
+        local_19 = u32((_e39 + _e40));
+        let _e44 = local_19;
+        out[_e44] = _e29;
+        let _e46 = value;
+        value = (_e46 + 1i);
+        let _e49 = next_value(_e46);
+        consume(true, _e49, 2u, 0.5f);
+        let _e53 = value;
+        let _e54 = local;
+        local_4 = _e54;
+        let _e56 = local_4;
+        local_5 = u32(_e56);
+        let _e59 = base;
+        local_6 = u32((_e59 + 1u));
+        let _e64 = local_5;
+        let _e65 = local_6;
+        local_20 = u32((_e64 + _e65));
+        let _e69 = local_20;
+        out[_e69] = _e53;
+        let _e71 = i;
+        let _e76 = value;
+        value = (_e76 + 1i);
+        forward(((_e71 % 2u) == 0u), _e76);
+        let _e79 = value;
+        let _e80 = local;
+        local_7 = _e80;
+        let _e82 = local_7;
+        local_8 = u32(_e82);
+        let _e85 = base;
+        local_9 = u32((_e85 + 2u));
+        let _e90 = local_8;
+        let _e91 = local_9;
+        local_21 = u32((_e90 + _e91));
+        let _e95 = local_21;
+        out[_e95] = _e79;
         iterations = 0i;
         {
-            let _e59 = value;
-            value = (_e59 + 1i);
-            consume((0i != 0i), _e59, u32(0i), f32(1u));
+            let _e99 = value;
+            value = (_e99 + 1i);
+            consume((0i != 0i), _e99, u32(0i), f32(1u));
             loop {
-                let _e69 = iterations;
-                if (_e69 < 3i) {
+                let _e109 = iterations;
+                if (_e109 < 3i) {
                 } else {
                     break;
                 }
-                let _e78 = iterations;
-                iterations = (_e78 + 1i);
-                let _e82 = iterations;
-                if (_e82 == 1i) {
+                let _e112 = iterations;
+                iterations = (_e112 + 1i);
+                let _e115 = iterations;
+                if (_e115 == 1i) {
                     continue;
                 }
                 continuing {
-                    let _e72 = value;
-                    value = (_e72 + 1i);
-                    let _e75 = value;
-                    consume(false, _e75, 0u, 1f);
+                    let _e118 = value;
+                    value = (_e118 + 1i);
+                    let _e121 = value;
+                    consume(false, _e121, 0u, 1f);
                 }
             }
         }
-        let _e88 = value;
-        let _e85 = base;
-        out[(_e85 + 3u)] = _e88;
-        let _e93 = iterations;
-        let _e90 = base;
-        out[(_e90 + 4u)] = _e93;
-        let _e98 = value;
-        let _e99 = next_value(_e98);
-        let _e95 = base;
-        out[(_e95 + 5u)] = _e99;
+        let _e125 = value;
+        let _e126 = local;
+        local_10 = _e126;
+        let _e128 = local_10;
+        local_11 = u32(_e128);
+        let _e131 = base;
+        local_12 = u32((_e131 + 3u));
+        let _e136 = local_11;
+        let _e137 = local_12;
+        local_22 = u32((_e136 + _e137));
+        let _e141 = local_22;
+        out[_e141] = _e125;
+        let _e143 = iterations;
+        let _e144 = local;
+        local_13 = _e144;
+        let _e146 = local_13;
+        local_14 = u32(_e146);
+        let _e149 = base;
+        local_15 = u32((_e149 + 4u));
+        let _e154 = local_14;
+        let _e155 = local_15;
+        local_23 = u32((_e154 + _e155));
+        let _e159 = local_23;
+        out[_e159] = _e143;
+        let _e161 = value;
+        let _e162 = next_value(_e161);
+        let _e163 = local;
+        local_16 = _e163;
+        let _e165 = local_16;
+        local_17 = u32(_e165);
+        let _e168 = base;
+        local_18 = u32((_e168 + 5u));
+        let _e173 = local_17;
+        let _e174 = local_18;
+        local_24 = u32((_e173 + _e174));
+        let _e178 = local_24;
+        out[_e178] = _e162;
     }
 }
