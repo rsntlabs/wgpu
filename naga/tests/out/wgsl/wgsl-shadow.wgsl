@@ -79,11 +79,11 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             let _e16 = i;
             let light = s_lights[_e16];
             let _e19 = i;
-            let _e23 = fetch_shadow(_e19, (light.proj * in.world_position));
+            let shadow = fetch_shadow(_e19, (light.proj * in.world_position));
             let light_dir = normalize((light.pos.xyz - in.world_position.xyz));
             let diffuse = max(0f, dot(normal_1, light_dir));
             let _e33 = color;
-            color = (_e33 + ((_e23 * diffuse) * light.color.xyz));
+            color = (_e33 + ((shadow * diffuse) * light.color.xyz));
         }
         continuing {
             let _e40 = i;
@@ -112,11 +112,11 @@ fn fs_main_without_storage(in_1: VertexOutput) -> @location(0) vec4<f32> {
             let _e16 = i_1;
             let light_1 = u_lights[_e16];
             let _e19 = i_1;
-            let _e23 = fetch_shadow(_e19, (light_1.proj * in_1.world_position));
+            let shadow_1 = fetch_shadow(_e19, (light_1.proj * in_1.world_position));
             let light_dir_1 = normalize((light_1.pos.xyz - in_1.world_position.xyz));
             let diffuse_1 = max(0f, dot(normal_2, light_dir_1));
             let _e33 = color_1;
-            color_1 = (_e33 + ((_e23 * diffuse_1) * light_1.color.xyz));
+            color_1 = (_e33 + ((shadow_1 * diffuse_1) * light_1.color.xyz));
         }
         continuing {
             let _e40 = i_1;

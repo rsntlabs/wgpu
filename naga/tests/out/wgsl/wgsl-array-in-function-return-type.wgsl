@@ -11,6 +11,6 @@ fn ret_array_array() -> array<array<f32, 2>, 3> {
 
 @fragment
 fn main() -> @location(0) vec4<f32> {
-    let _e0 = ret_array_array();
-    return vec4<f32>(_e0[0][0], _e0[0][1], 0f, 1f);
+    let a = ret_array_array();
+    return vec4<f32>(a[0][0], a[0][1], 0f, 1f);
 }

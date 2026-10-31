@@ -25,8 +25,8 @@ fn test_packed_integer_dot_product() -> u32 {
 
 @compute @workgroup_size(1, 1, 1)
 fn main() {
-    let _e0 = test_fma();
-    let _e1 = test_integer_dot_product();
-    let _e2 = test_packed_integer_dot_product();
+    let a_1 = test_fma();
+    let b_1 = test_integer_dot_product();
+    let c_1 = test_packed_integer_dot_product();
     return;
 }

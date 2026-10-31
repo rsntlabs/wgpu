@@ -26,7 +26,7 @@ fn derivatives(@builtin(position) foo: vec4<f32>) -> @location(0) vec4<f32> {
     y = _e11;
     let _e12 = fwidth(foo);
     z = _e12;
-    let _e13 = test_any_and_all_for_bool();
+    let a = test_any_and_all_for_bool();
     let _e14 = x;
     let _e15 = y;
     let _e17 = z;
