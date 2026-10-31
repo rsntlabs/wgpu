@@ -519,15 +519,22 @@ The operation is strong: a target's weak compare-exchange failure retries when
 the observed value still equals `compare`. The address, comparison, and replacement
 are each evaluated once before any retries.
 
+`atomicInc(unsigned int *address, unsigned int limit)` stores zero when the old
+value is at least `limit`, otherwise the old value plus one.
+`atomicDec(unsigned int *address, unsigned int limit)` stores `limit` when the old
+value is zero or greater than `limit`, otherwise the old value minus one.
+Both return the old value and use the usual scalar conversions for `limit`.
+The address and limit are evaluated once. Retries handle spurious weak failures
+and recompute the update when another thread changes the observed value.
+
 The address can pass through local aliases and device helpers, including struct
 fields and individual integer vector components. Ordinary accesses and aggregate
 copies retain their source value types and byte layouts.
 
 These unsuffixed operations have relaxed device-scope semantics. They do not
 provide a memory fence or replace synchronization between threads; shared storage
-remains local to its thread block. Floating-point, 16-bit, 64-bit, and 128-bit overloads,
-block- and system-scope variants, `atomicInc`, and `atomicDec` remain
-unsupported.
+remains local to its thread block. Floating-point, 16-bit, 64-bit, and 128-bit overloads
+and block- and system-scope variants remain unsupported.
 
 ## Constant expressions
 

@@ -12,6 +12,7 @@ mod arrow_members;
 mod atomic_add;
 mod atomic_cas;
 mod atomic_operations;
+mod atomic_wrap;
 mod bitcasts;
 mod comma;
 mod conditionals;
@@ -76,6 +77,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_ATOMIC_ADD,
         CUDA_ATOMIC_CAS,
         CUDA_ATOMIC_OPERATIONS,
+        CUDA_ATOMIC_WRAP,
         CUDA_BITCASTS,
         CUDA_COMMA,
         CUDA_CONDITIONALS,
@@ -272,6 +274,8 @@ static CUDA_ATOMIC_ADD: GpuTestConfiguration = configuration(atomic_add::cases);
 static CUDA_ATOMIC_CAS: GpuTestConfiguration = configuration(atomic_cas::cases);
 #[apply(gpu_test!)]
 static CUDA_ATOMIC_OPERATIONS: GpuTestConfiguration = configuration(atomic_operations::cases);
+#[apply(gpu_test!)]
+static CUDA_ATOMIC_WRAP: GpuTestConfiguration = configuration(atomic_wrap::cases);
 #[apply(gpu_test!)]
 static CUDA_BITCASTS: GpuTestConfiguration = configuration(bitcasts::cases);
 #[apply(gpu_test!)]

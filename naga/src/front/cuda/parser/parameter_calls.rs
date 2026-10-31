@@ -208,6 +208,7 @@ impl Parser<'_> {
             candidate,
             functions::FunctionCandidate::Atomic { .. }
                 | functions::FunctionCandidate::AtomicCompareExchange(_)
+                | functions::FunctionCandidate::WrappingAtomic(_)
         ) {
             return self.atomic_call(arguments, candidate, span);
         }
