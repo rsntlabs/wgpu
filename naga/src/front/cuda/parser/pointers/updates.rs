@@ -8,58 +8,32 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<PointerValue, ParseError> {
         let mut pointer = self.pointer_rvalue(pointer)?;
-        let PointerValueCategory::Value { position } = pointer.category else {
-            unreachable!()
-        };
-        self.activate_parameter_expansion(span)?;
-        self.prepare_parameter_bindings(span)?;
-        let ty = scalar_resolution(Scalar::U32);
-        let cell = self.temporary_pointer(&ty, span)?;
-        let value = self.load_pointer_position(position, span)?;
-        self.generated_pointer_statement(
-            Statement::Store {
-                pointer: cell,
-                value,
+        let pointee = self.function.pointers.expressions[pointer.expression].pointee;
+        let cell = self.pointer_cell(
+            pointee,
+            pointer.is_const,
+            PointerCellKind::Object {
+                writable: !is_const,
             },
             span,
         )?;
-        while let PointerExpressionKind::Offset {
-            base,
-            offset,
-            subtract,
-        } = self.function.pointers.expressions[pointer.expression].kind
-        {
-            self.parameter_expansion_budget.charge_work(1, span)?;
-            let left = self.append(Expression::Load { pointer: cell }, span)?;
-            let right = self.append(Expression::Load { pointer: offset }, span)?;
-            let value = self.append(
-                Expression::Binary {
-                    op: if subtract {
-                        BinaryOperator::Subtract
-                    } else {
-                        BinaryOperator::Add
-                    },
-                    left,
-                    right,
-                },
-                span,
-            )?;
-            self.generated_pointer_statement(
-                Statement::Store {
-                    pointer: cell,
-                    value,
-                },
-                span,
-            )?;
-            pointer.expression = base;
-        }
+        let expression = self.function.pointers.cells[&cell].expression;
         let binding = self.freeze_reference(ReferenceValue {
-            reference: Reference::Pointer(cell),
+            reference: Reference::Pointer(expression),
             writable: true,
-            ty,
+            ty: scalar_resolution(Scalar::U32),
             span,
             constant: ConstantValue::default(),
         })?;
+        self.pointer_operation(
+            PointerOperation::Initialize {
+                destination: cell,
+                value: pointer.clone(),
+            },
+            span,
+        )?;
+        pointer.expression =
+            self.retain_pointer_expression(PointerExpressionKind::Object(binding), pointee, span)?;
         pointer.category = PointerValueCategory::Variable {
             binding,
             writable: !is_const,
@@ -73,30 +47,15 @@ impl Parser<'_> {
         Ok(pointer)
     }
 
-    pub(super) fn pointer_position_reference(
-        &self,
-        binding: Handle<BoundReference>,
-        writable: bool,
-        span: Span,
-    ) -> ReferenceValue {
-        ReferenceValue {
-            reference: Reference::Bound(binding),
-            writable,
-            ty: scalar_resolution(Scalar::U32),
-            span,
-            constant: ConstantValue::default(),
-        }
-    }
-
-    fn mutable_pointer_position(
+    fn mutable_pointer_binding(
         &self,
         pointer: &PointerValue,
-    ) -> Result<ReferenceValue, ParseError> {
+    ) -> Result<Handle<BoundReference>, ParseError> {
         match pointer.category {
             PointerValueCategory::Variable {
                 binding,
                 writable: true,
-            } => Ok(self.pointer_position_reference(binding, true, pointer.span)),
+            } => Ok(binding),
             PointerValueCategory::Variable {
                 writable: false, ..
             } => Err(ParseError {
@@ -117,20 +76,21 @@ impl Parser<'_> {
         postfix: bool,
         span: Span,
     ) -> Result<ExpressionValue, ParseError> {
-        let mut position = self.mutable_pointer_position(&pointer)?;
+        let binding = self.mutable_pointer_binding(&pointer)?;
         let previous = if postfix {
             Some(self.pointer_rvalue(pointer.clone())?)
         } else {
             None
         };
-        self.decorate_reference(&mut position, &mut |parser, cell, ty, reference_span| {
-            parser.parameter_expansion_budget.charge_nodes(1, span)?;
-            parser
-                .parameter_expansion_budget
-                .charge_slice::<(Statement, Span)>(1, span)?;
-            parser.update_pointer(cell, ty, increment, reference_span, span)?;
-            Ok(())
-        })?;
+        let amount = self.append(Expression::Literal(Literal::U32(1)), span)?;
+        self.pointer_operation(
+            PointerOperation::Update {
+                destination: binding,
+                amount,
+                subtract: !increment,
+            },
+            span,
+        )?;
         pointer = previous.unwrap_or(pointer);
         pointer.span = span;
         pointer.constant = ConstantValue::default();
@@ -143,14 +103,36 @@ impl Parser<'_> {
         mut pointer: PointerValue,
         operator: Option<BinaryOperator>,
     ) -> Result<ExpressionValue, ParseError> {
-        let Some(operator @ (BinaryOperator::Add | BinaryOperator::Subtract)) = operator else {
+        if operator.is_some_and(|operator| {
+            !matches!(operator, BinaryOperator::Add | BinaryOperator::Subtract)
+        }) {
             return Err(ParseError {
-                message: String::from("CUDA pointers support only += and -= assignment"),
+                message: String::from("CUDA pointers support only += and -= compound assignment"),
                 span: pointer.span,
             });
-        };
-        let mut position = self.mutable_pointer_position(&pointer)?;
+        }
+        let binding = self.mutable_pointer_binding(&pointer)?;
         self.lexer.next()?;
+        if operator.is_none() {
+            let (right, body) = self.capture_block(|parser| {
+                let right = parser.expression(0)?;
+                let span = right.span();
+                parser.convert_pointer(right, &pointer.ty, pointer.is_const, span)
+            })?;
+            let span = pointer.span.until(&right.span);
+            self.prepend_block(body);
+            self.pointer_operation(
+                PointerOperation::Assign {
+                    destination: binding,
+                    value: right,
+                },
+                span,
+            )?;
+            pointer.span = span;
+            pointer.constant = ConstantValue::default();
+            pointer.constant_address = None;
+            return Ok(ExpressionValue::Pointer(self.boxed_pointer_value(pointer)?));
+        }
         let (right, body) = self.capture_block(|parser| {
             let right = parser.expression(0)?;
             let right = parser.integral_operand(right)?;
@@ -158,24 +140,14 @@ impl Parser<'_> {
         })?;
         let span = pointer.span.until(&right.span);
         self.prepend_block(body);
-        self.decorate_reference(&mut position, &mut |parser, cell, _, _| {
-            let left = parser.append(Expression::Load { pointer: cell }, span)?;
-            let value = parser.append(
-                Expression::Binary {
-                    op: operator,
-                    left,
-                    right: right.handle,
-                },
-                span,
-            )?;
-            parser.generated_pointer_statement(
-                Statement::Store {
-                    pointer: cell,
-                    value,
-                },
-                span,
-            )
-        })?;
+        self.pointer_operation(
+            PointerOperation::Update {
+                destination: binding,
+                amount: right.handle,
+                subtract: operator == Some(BinaryOperator::Subtract),
+            },
+            span,
+        )?;
         pointer.span = span;
         pointer.constant = ConstantValue::default();
         pointer.constant_address = None;

@@ -29,53 +29,65 @@ uint naga_mod(uint lhs, uint rhs) {
     return lhs % (rhs == 0u ? 1u : rhs);
 }
 
+typedef uint ret_ZeroValuearray2_uint_[2];
+ret_ZeroValuearray2_uint_ ZeroValuearray2_uint_() {
+    return (uint[2])0;
+}
+
 [numthreads(1, 1, 1)]
 void integer_ops(uint3 threadIdx : SV_GroupThreadID)
 {
-    uint local = (uint)0;
+    uint local[2] = (uint[2])0;
     int value = (int)0;
     uint amount = (uint)0;
     int remainder = (int)0;
     uint bits = (uint)0;
     uint local_1 = (uint)0;
-    uint local_2 = (uint)0;
+    uint local_2[2] = (uint[2])0;
     uint local_3 = (uint)0;
-    uint local_4 = (uint)0;
+    uint local_4[2] = (uint[2])0;
     uint local_5 = (uint)0;
+    uint local_6 = (uint)0;
 
-    local = 0u;
-    int _e5 = value_1.value;
-    value = _e5;
-    uint _e9 = amount_1.value;
-    amount = _e9;
-    int _e13 = value;
-    remainder = naga_mod(_e13, naga_neg(int(3)));
-    int _e16 = remainder;
-    bits = (uint(_e16) & 15u);
-    uint _e21 = bits;
-    bits = (_e21 | 8u);
-    uint _e24 = bits;
-    bits = (_e24 ^ 1u);
-    uint _e27 = amount;
-    uint _e28 = bits;
-    local_1 = _e27;
-    uint _e30 = local_1;
-    bits = (_e28 << _e30);
-    uint _e32 = bits;
-    bits = (_e32 >> 1u);
-    uint _e35 = bits;
-    bits = naga_mod(_e35, 97u);
-    uint _e38 = bits;
-    bits = (_e38 & 255u);
-    uint _e41 = bits;
-    uint _e43 = local;
-    local_2 = _e43;
-    uint _e45 = local_2;
-    local_3 = uint(_e45);
-    local_4 = uint(threadIdx.x);
-    uint _e52 = local_3;
-    uint _e53 = local_4;
-    local_5 = uint((_e52 + _e53));
-    uint _e57 = local_5;
-    out_.Store(_e57*4, asuint(~(_e41)));
+    local = ZeroValuearray2_uint_();
+    local[0] = 0u;
+    local[1] = 0u;
+    int _e10 = value_1.value;
+    value = _e10;
+    uint _e14 = amount_1.value;
+    amount = _e14;
+    int _e18 = value;
+    remainder = naga_mod(_e18, naga_neg(int(3)));
+    int _e21 = remainder;
+    bits = (uint(_e21) & 15u);
+    uint _e26 = bits;
+    bits = (_e26 | 8u);
+    uint _e29 = bits;
+    bits = (_e29 ^ 1u);
+    uint _e32 = amount;
+    uint _e33 = bits;
+    local_1 = _e32;
+    uint _e35 = local_1;
+    bits = (_e33 << _e35);
+    uint _e37 = bits;
+    bits = (_e37 >> 1u);
+    uint _e40 = bits;
+    bits = naga_mod(_e40, 97u);
+    uint _e43 = bits;
+    bits = (_e43 & 255u);
+    uint _e46 = bits;
+    uint _e50[2] = local;
+    local_2 = _e50;
+    local_3 = uint(threadIdx.x);
+    uint _e55[2] = local_2;
+    local_4 = _e55;
+    uint _e56 = local_3;
+    uint _e58 = local_4[1];
+    local_4[1] = (_e58 + _e56);
+    uint _e62 = local_4[0];
+    local_5 = uint(_e62);
+    uint _e66 = local_4[1];
+    local_6 = uint(_e66);
+    uint _e69 = local_6;
+    out_.Store(_e69*4, asuint(~(_e46)));
 }

@@ -13,7 +13,7 @@ fn remapping_error(span: Span) -> ParseError {
 }
 
 impl Parser<'_> {
-    fn remap_pointer_snapshot(
+    pub(super) fn remap_pointer_snapshot(
         &mut self,
         source: Handle<Expression>,
         mapper: &mut impl PointerRemapper,
@@ -47,6 +47,12 @@ impl Parser<'_> {
             .map_err(|_| remapping_error(span))?;
         let mut position = None;
         let kind = match expression.kind {
+            PointerExpressionKind::Object(binding) => PointerExpressionKind::Object(
+                self.remap_bound_binding(source, binding, mapper, span)?,
+            ),
+            PointerExpressionKind::Snapshot(local) => PointerExpressionKind::Snapshot(
+                self.remap_pointer_cell(source, local, mapper, span)?,
+            ),
             PointerExpressionKind::Parameter(index) => {
                 let actual = mapper.parameter(index)?;
                 if self.function.pointers.expressions[actual.expression].pointee
@@ -163,6 +169,9 @@ impl Parser<'_> {
             .try_get(handle)
             .map_err(|_| remapping_error(Span::default()))?;
         let span = source.pointers.accesses.get_span(handle);
+        if let Some(runtime) = source.pointers.runtime.as_deref() {
+            return runtime.reference(self, source, handle, mapper, span);
+        }
         let pointer = self.remap_pointer_value(source, &access.pointer, mapper)?;
         self.parameter_expansion_budget
             .charge_slice::<AddressProjection>(access.projections.len(), span)?;
@@ -181,7 +190,7 @@ impl Parser<'_> {
         self.materialize_pointer_reference(reference)
     }
 
-    fn remap_bound_address(
+    pub(super) fn remap_bound_address(
         &mut self,
         source: &FunctionParameterState,
         handle: Handle<BoundAddress>,
@@ -228,7 +237,7 @@ impl Parser<'_> {
         Ok(binding)
     }
 
-    fn remap_bound_binding(
+    pub(super) fn remap_bound_binding(
         &mut self,
         source: &FunctionParameterState,
         handle: Handle<BoundReference>,
@@ -313,6 +322,76 @@ impl Parser<'_> {
             })
             .collect();
         self.retain_bound_reference(Some(selected), targets, span)
+    }
+
+    fn remap_pointer_cell(
+        &mut self,
+        source: &FunctionParameterState,
+        local: Handle<LocalVariable>,
+        mapper: &mut impl PointerRemapper,
+        span: Span,
+    ) -> Result<Handle<LocalVariable>, ParseError> {
+        let cell = source
+            .pointers
+            .cells
+            .get(&local)
+            .ok_or_else(|| remapping_error(span))?;
+        let expression = self.remap_pointer_snapshot(cell.expression, mapper, span)?;
+        let Expression::LocalVariable(local) = self.function.ir.expressions[expression] else {
+            return Err(remapping_error(span));
+        };
+        if !self.function.pointers.cells.contains_key(&local) {
+            return Err(remapping_error(span));
+        }
+        Ok(local)
+    }
+
+    pub(in super::super) fn remap_pointer_operation(
+        &mut self,
+        source: &FunctionParameterState,
+        operation: &PointerOperation,
+        mapper: &mut impl PointerRemapper,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        if let Some(runtime) = source.pointers.runtime.as_deref() {
+            return runtime.lower_operation(self, source, operation, mapper, span);
+        }
+        let operation = match *operation {
+            PointerOperation::Initialize {
+                destination,
+                ref value,
+            } => PointerOperation::Initialize {
+                destination: self.remap_pointer_cell(source, destination, mapper, span)?,
+                value: self.remap_pointer_value(source, value, mapper)?,
+            },
+            PointerOperation::Assign {
+                destination,
+                ref value,
+            } => {
+                let value = self.remap_pointer_value(source, value, mapper)?;
+                PointerOperation::Assign {
+                    destination: self.remap_bound_binding(source, destination, mapper, span)?,
+                    value,
+                }
+            }
+            PointerOperation::Capture {
+                destination,
+                source: binding,
+            } => PointerOperation::Capture {
+                destination: self.remap_pointer_cell(source, destination, mapper, span)?,
+                source: self.remap_bound_binding(source, binding, mapper, span)?,
+            },
+            PointerOperation::Update {
+                destination,
+                amount,
+                subtract,
+            } => PointerOperation::Update {
+                destination: self.remap_bound_binding(source, destination, mapper, span)?,
+                amount: self.remap_pointer_snapshot(amount, mapper, span)?,
+                subtract,
+            },
+        };
+        self.pointer_operation(operation, span)
     }
 
     pub(super) fn generated_pointer_statement(

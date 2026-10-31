@@ -9,85 +9,92 @@ var<uniform> n_1: type_3;
 
 @compute @workgroup_size(1, 1, 1)
 fn loops(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
-    var local: u32;
+    var local: array<u32, 2>;
     var n: i32;
     var sum: i32;
     var i: i32;
     var i_1: i32;
-    var local_1: u32;
+    var local_1: array<u32, 2>;
     var local_2: u32;
-    var local_3: u32;
+    var local_3: array<u32, 2>;
     var local_4: u32;
+    var local_5: u32;
 
-    local = 0u;
-    let _e5 = n_1.value;
-    n = _e5;
+    local = array<u32, 2>();
+    local[0] = 0u;
+    local[1] = 0u;
+    let _e10 = n_1.value;
+    n = _e10;
     sum = 0i;
     {
         i = 0i;
         loop {
-            let _e11 = i;
-            let _e12 = n;
-            if (_e11 < _e12) {
+            let _e16 = i;
+            let _e17 = n;
+            if (_e16 < _e17) {
             } else {
                 break;
             }
-            let _e14 = i;
-            if (_e14 == 2i) {
+            let _e19 = i;
+            if (_e19 == 2i) {
                 continue;
             }
-            let _e17 = i;
-            if (_e17 == 7i) {
+            let _e22 = i;
+            if (_e22 == 7i) {
                 break;
             }
-            let _e20 = sum;
-            let _e21 = i;
-            sum = (_e20 + _e21);
+            let _e25 = sum;
+            let _e26 = i;
+            sum = (_e25 + _e26);
             continuing {
-                let _e23 = i;
-                i = (_e23 + 1i);
+                let _e28 = i;
+                i = (_e28 + 1i);
             }
         }
     }
     i_1 = 0i;
     loop {
-        let _e28 = i_1;
-        if (_e28 < 3i) {
+        let _e33 = i_1;
+        if (_e33 < 3i) {
         } else {
             break;
         }
         {
-            let _e31 = i_1;
-            i_1 = (_e31 + 1i);
-            let _e34 = i_1;
-            if (_e34 == 2i) {
+            let _e36 = i_1;
+            i_1 = (_e36 + 1i);
+            let _e39 = i_1;
+            if (_e39 == 2i) {
                 continue;
             }
-            let _e37 = sum;
-            sum = (_e37 + 10i);
+            let _e42 = sum;
+            sum = (_e42 + 10i);
         }
     }
     loop {
-        let _e40 = sum;
-        sum = (_e40 + 100i);
-        let _e43 = sum;
-        if (_e43 > 200i) {
+        let _e45 = sum;
+        sum = (_e45 + 100i);
+        let _e48 = sum;
+        if (_e48 > 200i) {
             break;
         }
         continuing {
-            let _e46 = sum;
-            break if !((_e46 < 150i));
+            let _e51 = sum;
+            break if !((_e51 < 150i));
         }
     }
-    let _e50 = sum;
-    let _e51 = local;
-    local_1 = _e51;
-    let _e53 = local_1;
-    local_2 = u32(_e53);
-    local_3 = u32(threadIdx.x);
-    let _e60 = local_2;
-    let _e61 = local_3;
-    local_4 = u32((_e60 + _e61));
-    let _e65 = local_4;
-    out[_e65] = _e50;
+    let _e55 = sum;
+    let _e58 = local;
+    local_1 = _e58;
+    local_2 = u32(threadIdx.x);
+    let _e63 = local_1;
+    local_3 = _e63;
+    let _e64 = local_2;
+    let _e66 = local_3[1];
+    local_3[1] = (_e66 + _e64);
+    let _e70 = local_3[0];
+    local_4 = u32(_e70);
+    let _e74 = local_3[1];
+    local_5 = u32(_e74);
+    let _e77 = local_5;
+    out[_e77] = _e55;
 }

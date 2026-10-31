@@ -1,6 +1,6 @@
 use super::*;
 
-fn deferred_call_marker(body: &crate::Block) -> Option<Handle<Expression>> {
+pub(in super::super) fn deferred_call_marker(body: &crate::Block) -> Option<Handle<Expression>> {
     match body[..] {
         [Statement::Emit(ref range)]
         | [Statement::Emit(ref range), Statement::Return { value: None }] => {
@@ -278,6 +278,26 @@ impl Parser<'_> {
                     self.flush_emitter();
                 }
                 Statement::Block(ref body) => {
+                    let source_operation = invocation.source_state.and_then(|state| {
+                        deferred_call_marker(body)
+                            .and_then(|marker| state.pointers.operations.get(&marker))
+                            .map(|operation| (state, operation))
+                    });
+                    if let Some((state, operation)) = source_operation {
+                        self.remap_pointer_operation(state, operation, invocation, span)?;
+                        if let Some((&Statement::Return { value: None }, return_span)) =
+                            body.span_iter().nth(1)
+                        {
+                            self.clone_parameter_return(
+                                invocation,
+                                None,
+                                return_mode,
+                                *return_span,
+                            )?;
+                            has_return = true;
+                        }
+                        continue;
+                    }
                     let source_call = invocation.source_state.and_then(|state| {
                         deferred_call_marker(body)
                             .and_then(|marker| state.deferred_calls.get(&marker))
