@@ -522,7 +522,7 @@ pub(super) fn build(
     source: &FunctionParameterState,
     span: Span,
 ) -> Result<PointerRuntime, ParseError> {
-    if source.pointers.runtime.is_some() {
+    if source.pointers.immutable.is_some() || source.pointers.runtime.is_some() {
         return Err(runtime_error(span));
     }
     parser

@@ -1,5 +1,5 @@
 use super::parameter_calls::{DeferredArgument, DeferredCall, MappedExpression};
-use super::pointers::{PointerCell, PointerRemapper, PointerValue};
+use super::pointers::{ImmutablePointers, PointerCell, PointerRemapper, PointerValue};
 use super::*;
 
 mod budget;
@@ -272,14 +272,24 @@ impl Parser<'_> {
         parameters: Vec<SourceParameter>,
         span: Span,
     ) -> Result<(), ParseError> {
-        if !state.deferred_calls.is_empty() || state.pointers.runtime.is_some() {
+        if !state.deferred_calls.is_empty()
+            || state.pointers.immutable.is_some()
+            || state.pointers.runtime.is_some()
+        {
             return Err(expansion_error(span));
         }
-        self.parameter_expansion_budget
-            .charge_bytes(size_of::<pointers::runtime::PointerRuntime>(), span)?;
-        state.pointers.runtime = Some(Box::new(pointers::runtime::PointerRuntime::new(
-            self, &function, &state, span,
-        )?));
+        let immutable = ImmutablePointers::analyze(self, &function, &state, span)?;
+        if immutable.is_empty() {
+            self.parameter_expansion_budget
+                .charge_bytes(size_of::<pointers::runtime::PointerRuntime>(), span)?;
+            state.pointers.runtime = Some(Box::new(pointers::runtime::PointerRuntime::new(
+                self, &function, &state, span,
+            )?));
+        } else {
+            self.parameter_expansion_budget
+                .charge_bytes(size_of::<ImmutablePointers>(), span)?;
+            state.pointers.immutable = Some(Box::new(immutable));
+        }
         self.clone_parameter_function(function, state, parameters, None, span)
     }
 
@@ -294,8 +304,14 @@ impl Parser<'_> {
             .charge_slice::<Option<Handle<LocalVariable>>>(source.local_variables.len(), span)?;
         let mut locals = Vec::with_capacity(source.local_variables.len());
         for (handle, local) in source.local_variables.iter() {
-            if state.is_some_and(|state| state.pointers.validation_addresses.contains_key(&handle))
-                || promotions.is_some_and(|promotions| promotions.initializer(handle).is_some())
+            if state.is_some_and(|state| {
+                state.pointers.validation_addresses.contains_key(&handle)
+                    || state
+                        .pointers
+                        .immutable
+                        .as_deref()
+                        .is_some_and(|immutable| immutable.initializer(handle).is_some())
+            }) || promotions.is_some_and(|promotions| promotions.initializer(handle).is_some())
             {
                 locals.push(None);
                 continue;

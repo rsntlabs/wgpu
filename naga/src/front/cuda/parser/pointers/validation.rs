@@ -174,7 +174,7 @@ impl Parser<'_> {
             state.cells.len() + state.operations.len() + state.operation_markers.len(),
             span,
         )?;
-        if state.runtime.is_some() {
+        if state.immutable.is_some() || state.runtime.is_some() {
             return Err(pointer_state_error(span));
         }
         budget.charge_work(
@@ -317,7 +317,7 @@ impl Parser<'_> {
         function: &Function,
         span: Span,
     ) -> Result<(), ParseError> {
-        if state.pointers.runtime.is_some() {
+        if state.pointers.immutable.is_some() || state.pointers.runtime.is_some() {
             return Err(pointer_state_error(span));
         }
         if state.pointers.is_empty() {
@@ -625,6 +625,7 @@ impl Parser<'_> {
         if !state.pointers.cells.is_empty()
             || !state.pointers.operations.is_empty()
             || !state.pointers.operation_markers.is_empty()
+            || state.pointers.immutable.is_some()
             || state.pointers.runtime.is_some()
         {
             return Err(pointer_state_error(span));
