@@ -3,6 +3,18 @@ use crate::front::atomic_upgrade::{StorageViews, Upgrades};
 use crate::AtomicFunction;
 
 mod storage;
+mod wrapping;
+
+#[derive(Clone, Copy, PartialEq)]
+pub(super) enum WrappingAtomicFunction {
+    Increment,
+    Decrement,
+}
+
+pub(super) const WRAPPING_ATOMICS: [(&str, WrappingAtomicFunction); 2] = [
+    ("atomicInc", WrappingAtomicFunction::Increment),
+    ("atomicDec", WrappingAtomicFunction::Decrement),
+];
 
 pub(super) const INTEGER_ATOMICS: [(&str, AtomicFunction); 8] = [
     ("atomicAdd", AtomicFunction::Add),
@@ -46,6 +58,7 @@ impl Parser<'_> {
         let scalar = match candidate {
             functions::FunctionCandidate::Atomic { scalar, .. }
             | functions::FunctionCandidate::AtomicCompareExchange(scalar) => scalar,
+            functions::FunctionCandidate::WrappingAtomic(_) => Scalar::U32,
             _ => return Err(atomic_error(span)),
         };
         self.has_atomics = true;
@@ -66,6 +79,12 @@ impl Parser<'_> {
                 AtomicFunction::Exchange {
                     compare: Some(compare.handle),
                 }
+            }
+            functions::FunctionCandidate::WrappingAtomic(function) => {
+                let limit = arguments.next().ok_or_else(|| atomic_error(span))?;
+                self.append_block(limit.body);
+                let limit = self.convert_scalar(limit.value, scalar)?;
+                return self.wrapping_atomic_call(reference, limit.handle, function, span);
             }
             _ => return Err(atomic_error(span)),
         };

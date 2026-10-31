@@ -5,6 +5,7 @@ mod arrow_members;
 mod atomic_add;
 mod atomic_cas;
 mod atomic_operations;
+mod atomic_wrap;
 mod barriers;
 mod bitcasts;
 mod comma;
@@ -174,7 +175,7 @@ fn cuda_rejects_unsupported_or_invalid_source() {
         "__global__ void bad(unsigned int *out) { out[0] = 4294967296u; }",
         "__global__ void bad(unsigned int *out) { out[0] = 08u; }",
         "__global__ void bad(unsigned int *out) { switch (1.0f) { case 0: out[0] = 1u; } }",
-        "__global__ void bad(unsigned int *out) { out[0] = atomicInc(out, 1u); }",
+        "__global__ void bad(unsigned int *out) { out[0] = atomicAdd_system(out, 1u); }",
         "__global__ void bad(unsigned int *out) { return 1u; }",
         "__global__ void empty() {} trailing",
         "__global__ void first() {} __global__ void second() {}",

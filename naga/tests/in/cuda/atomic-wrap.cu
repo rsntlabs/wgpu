@@ -1,0 +1,33 @@
+__global__ void kernel(unsigned *output) {
+    output[16] = atomicInc(output, 0u);
+    output[17] = atomicInc(output + 1, 1.75f);
+    output[18] = atomicInc(output + 2, 1u);
+    output[19] = atomicInc(output + 3, 1u);
+    output[20] = atomicInc(output + 4, -1);
+    output[21] = atomicInc(output + 5, 0xffffffffu);
+    output[22] = atomicInc(output + 6, 0x80000000u);
+    output[23] = atomicInc(output + 7, 0x80000000u);
+    output[24] = atomicDec(output + 8, 0u);
+    output[25] = atomicDec(output + 9, 1.75f);
+    output[26] = atomicDec(output + 10, 1u);
+    output[27] = atomicDec(output + 11, 1u);
+    output[28] = atomicDec(output + 12, -1);
+    output[29] = atomicDec(output + 13, 0xffffffffu);
+    output[30] = atomicDec(output + 14, 1u);
+    output[31] = atomicDec(output + 15, 0x80000000u);
+    for (unsigned index = 0; index < 16u; ++index) output[32u + index] = output[index];
+    atomicInc(output, 1u);
+    atomicDec(output + 8, 1u);
+    output[48] = output[0];
+    output[49] = output[8];
+    output[50] = 2u;
+    output[51] = atomicInc(output + 50, output[50]++);
+    output[52] = output[50];
+    output[53] = atomicDec(output + 50, output[50]++);
+    output[54] = output[50];
+    output[50] = 2u;
+    output[55] = atomicDec(output + 50, atomicInc(output + 50, 3u));
+    output[56] = output[50];
+    output[57] = atomicInc(output + 50, atomicDec(output + 50, 3u));
+    output[58] = output[50];
+}

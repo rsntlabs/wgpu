@@ -1,6 +1,6 @@
 use super::*;
 
-use super::atomics::INTEGER_ATOMICS;
+use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
 use super::function_declarations::Inlining;
 use super::types::{IntegerSpecifiers, VECTOR_TYPES};
 use crate::MathFunction;
@@ -135,6 +135,11 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             GlobalDeclaration::Functions(Vec::new()),
         )))
         .chain(
+            WRAPPING_ATOMICS
+                .into_iter()
+                .map(|(name, _)| (name, GlobalDeclaration::Functions(Vec::new()))),
+        )
+        .chain(
             VECTOR_TYPES
                 .into_iter()
                 .flat_map(|(name, constructor, size, scalar)| {
@@ -182,6 +187,7 @@ pub(super) enum FunctionCandidate {
         scalar: Scalar,
     },
     AtomicCompareExchange(Scalar),
+    WrappingAtomic(WrappingAtomicFunction),
     Bitcast {
         source: Scalar,
         result: Scalar,
@@ -511,6 +517,7 @@ impl<'a> Parser<'a> {
                     | FunctionCandidate::Multiply24(_)
                     | FunctionCandidate::Atomic { .. }
                     | FunctionCandidate::AtomicCompareExchange(_)
+                    | FunctionCandidate::WrappingAtomic(_)
                     | FunctionCandidate::Bitcast { .. }
                     | FunctionCandidate::Unary { .. }
                     | FunctionCandidate::Sqrt
@@ -731,6 +738,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::AtomicCompareExchange(result)
             | FunctionCandidate::Bitcast { result, .. }
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
+            FunctionCandidate::WrappingAtomic(_) => TypeSpecifier::Scalar(Scalar::U32),
             FunctionCandidate::IntegralFabs(_) => unreachable!(),
             FunctionCandidate::Sqrt => TypeSpecifier::Scalar(Scalar::F32),
             FunctionCandidate::Constructor { size, scalar } => {
@@ -1334,6 +1342,13 @@ impl<'a> Parser<'a> {
                     .map(FunctionCandidate::AtomicCompareExchange),
             )
             .chain(
+                WRAPPING_ATOMICS
+                    .into_iter()
+                    .find(|&(candidate, _)| candidate == name)
+                    .filter(move |_| builtin_visible)
+                    .map(|(_, function)| FunctionCandidate::WrappingAtomic(function)),
+            )
+            .chain(
                 vector_constructor(name)
                     .filter(move |_| builtin_visible)
                     .map(|(size, scalar)| FunctionCandidate::Constructor { size, scalar }),
@@ -1345,7 +1360,9 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Defined(handle) => self.module.functions[handle].arguments.len(),
             FunctionCandidate::Current => self.function.ir.arguments.len(),
             FunctionCandidate::Builtin(builtin) => builtin.parameters.len(),
-            FunctionCandidate::Multiply24(_) | FunctionCandidate::Atomic { .. } => 2,
+            FunctionCandidate::Multiply24(_)
+            | FunctionCandidate::Atomic { .. }
+            | FunctionCandidate::WrappingAtomic(_) => 2,
             FunctionCandidate::AtomicCompareExchange(_) => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::Unary { .. }
@@ -1395,6 +1412,17 @@ impl<'a> Parser<'a> {
                     scalar_resolution(scalar)
                 }
             }
+            FunctionCandidate::WrappingAtomic(_) => {
+                return if index == 0 {
+                    TypeResolution::Value(TypeInner::ValuePointer {
+                        size: None,
+                        scalar: Scalar::U32,
+                        space: AddressSpace::Function,
+                    })
+                } else {
+                    scalar_resolution(Scalar::U32)
+                }
+            }
         };
         TypeResolution::Handle(argument.ty)
     }
@@ -1412,7 +1440,9 @@ impl<'a> Parser<'a> {
                     declaration.parameters[index].mode
                 }),
             FunctionCandidate::Current => self.function.parameters[index].mode,
-            FunctionCandidate::Atomic { .. } | FunctionCandidate::AtomicCompareExchange(_)
+            FunctionCandidate::Atomic { .. }
+            | FunctionCandidate::AtomicCompareExchange(_)
+            | FunctionCandidate::WrappingAtomic(_)
                 if index == 0 =>
             {
                 ParameterMode::Pointer { is_const: false }
@@ -1427,9 +1457,13 @@ impl<'a> Parser<'a> {
         index: usize,
         argument: &impl CallArgument,
     ) -> Option<u8> {
-        if let FunctionCandidate::Atomic { scalar, .. }
-        | FunctionCandidate::AtomicCompareExchange(scalar) = candidate
-        {
+        let atomic_scalar = match candidate {
+            FunctionCandidate::Atomic { scalar, .. }
+            | FunctionCandidate::AtomicCompareExchange(scalar) => Some(scalar),
+            FunctionCandidate::WrappingAtomic(_) => Some(Scalar::U32),
+            _ => None,
+        };
+        if let Some(scalar) = atomic_scalar {
             if index == 0 {
                 let pointer = argument.pointer_type(&self.module)?;
                 return (!pointer.is_const
