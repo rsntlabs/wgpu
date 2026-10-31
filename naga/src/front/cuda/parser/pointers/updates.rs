@@ -1,20 +1,19 @@
 use super::*;
 
 impl Parser<'_> {
-    pub(in super::super) fn source_pointer_variable(
+    fn pointer_object(
         &mut self,
         name: &str,
-        pointer: PointerValue,
-        is_const: bool,
+        pointee: Handle<Type>,
+        pointee_const: bool,
+        pointer_const: bool,
         span: Span,
-    ) -> Result<PointerValue, ParseError> {
-        let mut pointer = self.pointer_rvalue(pointer)?;
-        let pointee = self.function.pointers.expressions[pointer.expression].pointee;
+    ) -> Result<(Handle<LocalVariable>, Handle<BoundReference>), ParseError> {
         let cell = self.pointer_cell(
             pointee,
-            pointer.is_const,
+            pointee_const,
             PointerCellKind::Object {
-                writable: !is_const,
+                writable: !pointer_const,
             },
             span,
         )?;
@@ -29,6 +28,57 @@ impl Parser<'_> {
             span,
             constant: ConstantValue::default(),
         })?;
+        Ok((cell, binding))
+    }
+
+    pub(super) fn uninitialized_pointer_variable(
+        &mut self,
+        name: &str,
+        ty: &TypeResolution,
+        is_const: bool,
+        span: Span,
+    ) -> Result<PointerValue, ParseError> {
+        let TypeInner::Pointer {
+            base: pointee,
+            space: AddressSpace::Function,
+        } = *ty.inner_with(&self.module.types)
+        else {
+            return Err(ParseError {
+                message: String::from("expected a CUDA source pointer type"),
+                span,
+            });
+        };
+        let (_, binding) = self.pointer_object(name, pointee, is_const, false, span)?;
+        let expression =
+            self.retain_pointer_expression(PointerExpressionKind::Object(binding), pointee, span)?;
+        Ok(PointerValue {
+            expression,
+            ty: ty.clone(),
+            is_const,
+            span,
+            constant: ConstantValue {
+                literal: None,
+                is_discardable: true,
+            },
+            constant_address: None,
+            category: PointerValueCategory::Variable {
+                binding,
+                writable: true,
+            },
+        })
+    }
+
+    pub(in super::super) fn source_pointer_variable(
+        &mut self,
+        name: &str,
+        pointer: PointerValue,
+        is_const: bool,
+        span: Span,
+    ) -> Result<PointerValue, ParseError> {
+        let mut pointer = self.pointer_rvalue(pointer)?;
+        let pointee = self.function.pointers.expressions[pointer.expression].pointee;
+        let (cell, binding) =
+            self.pointer_object(name, pointee, pointer.is_const, is_const, span)?;
         self.pointer_operation(
             PointerOperation::Initialize {
                 destination: cell,

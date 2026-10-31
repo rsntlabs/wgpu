@@ -215,6 +215,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA device helper pointer parameters, array parameter adjustment, and borrowed pointer expressions with live aliases.
 - Support CUDA pointer member access with `->` for structs and numeric vector components.
 - Support initialized CUDA local pointer declarations with captured addresses, live aliases, and pointee constness.
+- Support CUDA local pointer declarations without initializers.
 - Support CUDA pointer increments, decrements, and compound offset assignments for locals and parameters.
 - Support CUDA pointer reassignment across compatible arrays and objects, including runtime control flow and chained assignments.
 - Preserve CUDA pointer variable and parameter names in generated shaders.

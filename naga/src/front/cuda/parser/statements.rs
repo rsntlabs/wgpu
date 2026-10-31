@@ -221,8 +221,11 @@ impl<'a> Parser<'a> {
                 if is_constexpr {
                     return self.fail("constexpr pointer declarations are unsupported");
                 }
-                let span = self.local_pointer_declaration(specifier, is_const)?;
-                self.function.initialized_declarations.push(span);
+                let (span, has_initializer) =
+                    self.local_pointer_declaration(specifier, is_const)?;
+                if has_initializer {
+                    self.function.initialized_declarations.push(span);
+                }
                 if self.lexer.next_if(Token::Separator(','))? {
                     continue;
                 }
