@@ -22,8 +22,11 @@ fn declarator(parser: &Parser<'_>, lexer: &mut Lexer<'_>, depth: u32) -> Result<
         lexer.peek()?.0,
         Token::Operation('*' | '&') | Token::LogicalOperation('&')
     ) {
-        lexer.next()?;
-        lexer.next_if(Token::Word("const"))?;
+        if lexer.next()?.0 == Token::Operation('*') {
+            types::pointer_qualifiers(lexer)?;
+        } else {
+            lexer.next_if(Token::Word("const"))?;
+        }
     }
     match lexer.peek()?.0 {
         Token::Word(name) if !Parser::reserved_name(name) => {

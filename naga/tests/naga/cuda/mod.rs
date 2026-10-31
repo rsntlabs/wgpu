@@ -48,6 +48,7 @@ mod preprocessing_conditions;
 mod prototypes;
 mod reference_bindings;
 mod reference_categories;
+mod restrict;
 mod saturate;
 mod scalar_promotion;
 mod shared;
