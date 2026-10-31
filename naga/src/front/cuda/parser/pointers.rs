@@ -127,14 +127,28 @@ impl<'a> Parser<'a> {
     pub(super) fn local_pointer_declaration(
         &mut self,
         specifier: TypeSpecifier,
-        is_const: bool,
+        pointee_const: bool,
+        pointer_const: bool,
     ) -> Result<(Span, bool), ParseError> {
-        let pointer_const = types::pointer_qualifiers(&mut self.lexer)?;
+        if matches!(
+            self.lexer.peek()?.0,
+            Token::Operation('*' | '&') | Token::LogicalOperation('&') | Token::Paren('(')
+        ) {
+            return self.fail("nested pointer and pointer reference declarators are unsupported");
+        }
         let (name, span) = self.identifier()?;
         self.check_name(name, span)?;
+        if self.lexer.peek()?.0 == Token::Paren('[') {
+            return self.fail("arrays of pointers are unsupported");
+        }
         self.insert_symbol(name, Symbol::PendingPointer, span)?;
-        let pointee = self.lower_type(specifier, span);
-        let pointee = self.type_handle(&pointee, span);
+        let pointee = match specifier {
+            TypeSpecifier::Pointer { pointee, .. } => pointee,
+            _ => {
+                let pointee = self.lower_type(specifier, span);
+                self.type_handle(&pointee, span)
+            }
+        };
         let ty = self.pointer_type(pointee, span);
         let has_equals = self.lexer.next_if(Token::Operation('='))?;
         let has_braces = self.lexer.next_if(Token::Paren('{'))?;
@@ -146,14 +160,14 @@ impl<'a> Parser<'a> {
                 self.lexer.expect_span(Token::Paren('}'))?;
             }
             let value_span = value.span();
-            let pointer = self.convert_pointer(value, &ty, is_const, value_span)?;
+            let pointer = self.convert_pointer(value, &ty, pointee_const, value_span)?;
             self.bind_local_pointer(name, pointer, pointer_const, span)?;
             return Ok((span, true));
         } else {
             if pointer_const {
                 return self.fail("pointer declaration requires an initializer");
             }
-            self.uninitialized_pointer_variable(name, &ty, is_const, span)?
+            self.uninitialized_pointer_variable(name, &ty, pointee_const, span)?
         };
         let pointer = self.retain_pointer_symbol(pointer)?;
         self.function

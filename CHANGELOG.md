@@ -160,6 +160,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 - Support lazy CUDA conditional expressions, including scalar lvalue assignments and updates.
 - Reject parenthesized CUDA declarations that were incorrectly parsed as scalar casts.
 - Support scalar CUDA `typedef` and `using` aliases in declarations, signatures, and casts.
+- Support CUDA pointer aliases with pointee and pointer-object constness in parameters and local declarations.
 - Support CUDA octal, hexadecimal, and binary integer literals with digit separators and 32-bit type selection.
 - Support standard CUDA `inline` helpers and kernels with reordered function header specifiers.
 - Support digit separators in CUDA decimal floating-point literals.

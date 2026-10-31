@@ -291,6 +291,12 @@ impl Parser<'_> {
                     return Ok(value.into());
                 }
                 if let Some(target) = self.type_name(name) {
+                    if matches!(target.ty, TypeSpecifier::Pointer { .. }) {
+                        return Err(ParseError {
+                            message: String::from("pointer value constructors are unsupported"),
+                            span: token.1,
+                        });
+                    }
                     if matches!(target.ty, TypeSpecifier::Structure(_)) {
                         if self.lexer.peek()?.0 != Token::Paren('{') {
                             return self.fail("structure values require a typed initializer list");

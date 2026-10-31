@@ -226,6 +226,9 @@ impl Parser<'_> {
                         pointer, actual_ty, has_braces, opening, None,
                     )?;
                 }
+                TypeSpecifier::Pointer { .. } => {
+                    return self.fail("arrays of pointers are unsupported");
+                }
             }
         }
         Ok(())

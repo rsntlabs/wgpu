@@ -223,12 +223,25 @@ impl<'a> Parser<'a> {
             return self.fail("constexpr requires a scalar variable");
         }
         loop {
-            if self.lexer.next_if(Token::Operation('*'))? {
+            let explicit_pointer = self.lexer.next_if(Token::Operation('*'))?;
+            let pointer_alias = match specifier {
+                TypeSpecifier::Pointer { pointee_const, .. } => Some(pointee_const),
+                _ => None,
+            };
+            if explicit_pointer && pointer_alias.is_some() {
+                return self.fail("nested pointer declarations are unsupported");
+            }
+            if explicit_pointer || pointer_alias.is_some() {
                 if is_constexpr {
                     return self.fail("constexpr pointer declarations are unsupported");
                 }
+                let (pointee_const, pointer_const) = if let Some(pointee_const) = pointer_alias {
+                    (pointee_const, is_const)
+                } else {
+                    (is_const, types::pointer_qualifiers(&mut self.lexer)?)
+                };
                 let (span, has_initializer) =
-                    self.local_pointer_declaration(specifier, is_const)?;
+                    self.local_pointer_declaration(specifier, pointee_const, pointer_const)?;
                 if has_initializer {
                     self.function.initialized_declarations.push(span);
                 }
@@ -382,6 +395,12 @@ impl<'a> Parser<'a> {
             ty: specifier,
             is_const,
         } = self.parse_type()?;
+        if matches!(specifier, TypeSpecifier::Pointer { .. }) {
+            return Err(ParseError {
+                message: String::from("shared pointer variables are unsupported"),
+                span: type_span,
+            });
+        }
         if matches!(specifier, TypeSpecifier::Scalar(Scalar::BOOL)) || is_const {
             return Err(ParseError {
                 message: String::from(

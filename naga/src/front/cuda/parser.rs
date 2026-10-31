@@ -309,7 +309,17 @@ impl<'a> Parser<'a> {
             ty: specifier,
             is_const,
         } = self.parse_type()?;
-        let ty = self.lower_type(specifier, type_span);
+        let (ty, is_const, aliased_pointer_const) = match specifier {
+            TypeSpecifier::Pointer {
+                pointee,
+                pointee_const,
+            } => (
+                TypeResolution::Handle(pointee),
+                pointee_const,
+                Some(is_const),
+            ),
+            _ => (self.lower_type(specifier, type_span), is_const, None),
+        };
         if self.function.kind == FunctionKind::Kernel
             && self
                 .module
@@ -318,12 +328,22 @@ impl<'a> Parser<'a> {
             return self.fail("boolean kernel parameters are unsupported");
         }
         let pointer_span = self.lexer.peek()?.1;
-        let is_pointer = self.lexer.next_if(Token::Operation('*'))?;
-        let pointer_const = is_pointer && types::pointer_qualifiers(&mut self.lexer)?;
+        let explicit_pointer = self.lexer.next_if(Token::Operation('*'))?;
+        if explicit_pointer && aliased_pointer_const.is_some() {
+            return self.fail("nested pointer parameters are unsupported");
+        }
+        let is_pointer = explicit_pointer || aliased_pointer_const.is_some();
+        let pointer_const = match aliased_pointer_const {
+            Some(is_const) => is_const,
+            None => explicit_pointer && types::pointer_qualifiers(&mut self.lexer)?,
+        };
+        if aliased_pointer_const.is_some() && self.lexer.peek()?.0 == Token::Paren('[') {
+            return self.fail("arrays of pointers are unsupported");
+        }
         if self.function.kind == FunctionKind::Device && is_pointer {
             if matches!(
                 self.lexer.peek()?.0,
-                Token::Operation('*' | '&') | Token::Paren('(')
+                Token::Operation('*' | '&') | Token::LogicalOperation('&') | Token::Paren('(')
             ) {
                 return self
                     .fail("nested pointer and pointer reference declarators are unsupported");
@@ -339,6 +359,9 @@ impl<'a> Parser<'a> {
             } else {
                 let (name, span) = self.identifier()?;
                 self.check_name(name, span)?;
+                if self.lexer.peek()?.0 == Token::Paren('[') {
+                    return self.fail("arrays of pointers are unsupported");
+                }
                 Some(name)
             };
             return self.device_parameter(
@@ -387,6 +410,9 @@ impl<'a> Parser<'a> {
         }
         let (name, span) = self.identifier()?;
         self.check_name(name, span)?;
+        if aliased_pointer_const.is_some() && self.lexer.peek()?.0 == Token::Paren('[') {
+            return self.fail("arrays of pointers are unsupported");
+        }
         if self.function.kind == FunctionKind::Device {
             if self.lexer.peek()?.0 == Token::Paren('[') {
                 return self.array_parameter(Some(name), span, &ty, is_const, mode);
