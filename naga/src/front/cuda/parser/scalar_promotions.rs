@@ -295,14 +295,22 @@ impl<'a> Analysis<'a> {
                     }
                     Statement::Atomic {
                         pointer,
+                        fun,
                         value,
                         result,
-                        ..
                     } => {
                         if !self.operand(None, pointer, false)?
                             || !self.operand(None, value, false)?
                         {
                             return Ok(false);
+                        }
+                        if let crate::AtomicFunction::Exchange {
+                            compare: Some(compare),
+                        } = fun
+                        {
+                            if !self.operand(None, compare, false)? {
+                                return Ok(false);
+                            }
                         }
                         if let Some(result) = result {
                             if !self.operand(None, result, false)? {

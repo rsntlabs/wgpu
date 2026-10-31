@@ -87,19 +87,14 @@ impl Parser<'_> {
     pub(super) fn append_atomic_result(
         &mut self,
         ty: Handle<Type>,
+        comparison: bool,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
         self.function
             .ir
             .body
             .extend(self.function.emitter.finish(&self.function.ir.expressions));
-        let result = self.append(
-            Expression::AtomicResult {
-                ty,
-                comparison: false,
-            },
-            span,
-        )?;
+        let result = self.append(Expression::AtomicResult { ty, comparison }, span)?;
         self.function.emitter.start(&self.function.ir.expressions);
         Ok(result)
     }

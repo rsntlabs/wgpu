@@ -16,9 +16,10 @@ pub(super) const INTEGER_ATOMICS: [(&str, AtomicFunction); 8] = [
 ];
 
 pub(super) fn supports_integer_atomic(function: AtomicFunction) -> bool {
-    INTEGER_ATOMICS
-        .into_iter()
-        .any(|(_, supported)| supported == function)
+    matches!(function, AtomicFunction::Exchange { compare: Some(_) })
+        || INTEGER_ATOMICS
+            .into_iter()
+            .any(|(_, supported)| supported == function)
 }
 
 pub(super) struct AtomicStorage {
@@ -36,13 +37,17 @@ pub(super) fn atomic_error(span: Span) -> ParseError {
 }
 
 impl Parser<'_> {
-    pub(super) fn atomic_binary(
+    pub(super) fn atomic_call(
         &mut self,
         arguments: Vec<CapturedArgument>,
-        function: AtomicFunction,
-        scalar: Scalar,
+        candidate: functions::FunctionCandidate,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
+        let scalar = match candidate {
+            functions::FunctionCandidate::Atomic { scalar, .. }
+            | functions::FunctionCandidate::AtomicCompareExchange(scalar) => scalar,
+            _ => return Err(atomic_error(span)),
+        };
         self.has_atomics = true;
         let mut arguments = arguments.into_iter();
         let destination = arguments.next().ok_or_else(|| atomic_error(span))?;
@@ -52,13 +57,25 @@ impl Parser<'_> {
             return Err(atomic_error(span));
         }
         let mut reference = self.pointer_reference(pointer)?;
+        let function = match candidate {
+            functions::FunctionCandidate::Atomic { function, .. } => function,
+            functions::FunctionCandidate::AtomicCompareExchange(_) => {
+                let compare = arguments.next().ok_or_else(|| atomic_error(span))?;
+                self.append_block(compare.body);
+                let compare = self.convert_scalar(compare.value, scalar)?;
+                AtomicFunction::Exchange {
+                    compare: Some(compare.handle),
+                }
+            }
+            _ => return Err(atomic_error(span)),
+        };
         let operand = arguments.next().ok_or_else(|| atomic_error(span))?;
         self.append_block(operand.body);
         let value = self.convert_scalar(operand.value, scalar)?;
         let ty = self.scalar_handle(scalar, span);
         let result_pointer = self.temporary_pointer(&scalar_resolution(scalar), span)?;
         self.decorate_reference(&mut reference, &mut |parser, pointer, _, span| {
-            let result = parser.append_atomic_result(ty, span)?;
+            let result = parser.append_atomic_result(ty, false, span)?;
             parser.push_statement(
                 Statement::Atomic {
                     pointer,

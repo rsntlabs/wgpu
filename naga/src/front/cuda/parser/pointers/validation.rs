@@ -714,12 +714,18 @@ impl Parser<'_> {
                     }
                     Statement::Atomic {
                         pointer,
+                        fun,
                         value,
                         result,
-                        ..
                     } => {
                         mark_pointer_expression(&mut live, pointer, None, span)?;
                         mark_pointer_expression(&mut live, value, None, span)?;
+                        if let crate::AtomicFunction::Exchange {
+                            compare: Some(compare),
+                        } = fun
+                        {
+                            mark_pointer_expression(&mut live, compare, None, span)?;
+                        }
                         if let Some(result) = result {
                             mark_pointer_expression(&mut live, result, None, span)?;
                         }

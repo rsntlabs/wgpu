@@ -110,34 +110,29 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<(), ParseError> {
         let pointer = self.invocation_expression(invocation, pointer)?;
+        let fun = match fun {
+            crate::AtomicFunction::Exchange {
+                compare: Some(compare),
+            } => crate::AtomicFunction::Exchange {
+                compare: Some(self.invocation_value(invocation, compare)?),
+            },
+            fun => fun,
+        };
         let value = self.invocation_value(invocation, value)?;
-        let ty = result
+        let result_type = result
             .map(|result| match invocation.source.expressions[result] {
-                Expression::AtomicResult {
-                    ty,
-                    comparison: false,
-                } => Ok(ty),
+                Expression::AtomicResult { ty, comparison } => Ok((ty, comparison)),
                 _ => Err(expansion_error(span)),
             })
             .transpose()?;
+        let ty = result_type.map(|(ty, _)| ty);
+        let comparison = result_type.is_some_and(|(_, comparison)| comparison);
         let mapped = match pointer {
             MappedExpression::Value(pointer) => {
                 if self.atomic_target_kind(pointer, span)? == AtomicTargetKind::Private {
                     return Err(super::super::atomics::atomic_error(span));
                 }
-                let result = ty
-                    .map(|ty| self.append_atomic_result(ty, span))
-                    .transpose()?;
-                self.generated_statement(
-                    Statement::Atomic {
-                        pointer,
-                        fun,
-                        value,
-                        result,
-                    },
-                    span,
-                )?;
-                result
+                self.emit_parameter_atomic(pointer, fun, value, result_type, span)?
             }
             MappedExpression::Reference {
                 binding,
@@ -146,19 +141,7 @@ impl Parser<'_> {
                 let concrete = self.atomic_binding_is_concrete(binding, span)?;
                 if !concrete {
                     let pointer = self.deferred_atomic_pointer(binding, pointee, span)?;
-                    let result = ty
-                        .map(|ty| self.append_atomic_result(ty, span))
-                        .transpose()?;
-                    self.generated_statement(
-                        Statement::Atomic {
-                            pointer,
-                            fun,
-                            value,
-                            result,
-                        },
-                        span,
-                    )?;
-                    result
+                    self.emit_parameter_atomic(pointer, fun, value, result_type, span)?
                 } else {
                     let destination = ty
                         .map(|ty| self.temporary_pointer(&TypeResolution::Handle(ty), span))
@@ -174,12 +157,16 @@ impl Parser<'_> {
                         if parser.atomic_target_kind(pointer, span)? == AtomicTargetKind::Private {
                             // A private selection has no defined CUDA atomic behavior.
                             if let (Some(pointer), Some(ty)) = (destination, ty) {
-                                let zero = match parser.module.types[ty].inner {
-                                    TypeInner::Scalar(Scalar::I32) => Literal::I32(0),
-                                    TypeInner::Scalar(Scalar::U32) => Literal::U32(0),
-                                    _ => return Err(expansion_error(span)),
+                                let expression = if comparison {
+                                    Expression::ZeroValue(ty)
+                                } else {
+                                    Expression::Literal(match parser.module.types[ty].inner {
+                                        TypeInner::Scalar(Scalar::I32) => Literal::I32(0),
+                                        TypeInner::Scalar(Scalar::U32) => Literal::U32(0),
+                                        _ => return Err(expansion_error(span)),
+                                    })
                                 };
-                                let value = parser.append(Expression::Literal(zero), span)?;
+                                let value = parser.append(expression, span)?;
                                 parser.generated_statement(
                                     Statement::Store { pointer, value },
                                     span,
@@ -187,18 +174,8 @@ impl Parser<'_> {
                             }
                             return Ok(());
                         }
-                        let result = ty
-                            .map(|ty| parser.append_atomic_result(ty, span))
-                            .transpose()?;
-                        parser.generated_statement(
-                            Statement::Atomic {
-                                pointer,
-                                fun,
-                                value,
-                                result,
-                            },
-                            span,
-                        )?;
+                        let result =
+                            parser.emit_parameter_atomic(pointer, fun, value, result_type, span)?;
                         if let (Some(pointer), Some(value)) = (destination, result) {
                             parser
                                 .generated_statement(Statement::Store { pointer, value }, span)?;
@@ -217,5 +194,39 @@ impl Parser<'_> {
             self.name_invocation_expression(invocation.source, source, mapped, span)?;
         }
         Ok(())
+    }
+
+    fn emit_parameter_atomic(
+        &mut self,
+        pointer: Handle<Expression>,
+        fun: crate::AtomicFunction,
+        value: Handle<Expression>,
+        result_type: Option<(Handle<Type>, bool)>,
+        span: Span,
+    ) -> Result<Option<Handle<Expression>>, ParseError> {
+        if self.atomic_storage.is_some() && !result_type.is_some_and(|(_, comparison)| comparison) {
+            if let crate::AtomicFunction::Exchange {
+                compare: Some(compare),
+            } = fun
+            {
+                let ty = result_type.ok_or_else(|| expansion_error(span))?.0;
+                return self
+                    .strong_compare_exchange(pointer, compare, value, ty, span)
+                    .map(Some);
+            }
+        }
+        let result = result_type
+            .map(|(ty, comparison)| self.append_atomic_result(ty, comparison, span))
+            .transpose()?;
+        self.generated_statement(
+            Statement::Atomic {
+                pointer,
+                fun,
+                value,
+                result,
+            },
+            span,
+        )?;
+        Ok(result)
     }
 }
