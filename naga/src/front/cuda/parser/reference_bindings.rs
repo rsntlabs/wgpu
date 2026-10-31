@@ -44,6 +44,17 @@ impl<'a> Parser<'a> {
             }
             self.expression(0)?
         };
+        self.bind_local_reference(name, span, ty, is_const, value)
+    }
+
+    pub(super) fn bind_local_reference(
+        &mut self,
+        name: &'a str,
+        span: Span,
+        ty: TypeResolution,
+        is_const: bool,
+        value: ExpressionValue,
+    ) -> Result<(), ParseError> {
         let (binding, constant) = match value {
             ExpressionValue::Reference(reference)
                 if self.module.compare_types(&reference.ty, &ty) =>

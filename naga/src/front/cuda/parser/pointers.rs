@@ -147,7 +147,8 @@ impl<'a> Parser<'a> {
             }
             let value_span = value.span();
             let pointer = self.convert_pointer(value, &ty, is_const, value_span)?;
-            self.source_pointer_variable(name, pointer, pointer_const, span)?
+            self.bind_local_pointer(name, pointer, pointer_const, span)?;
+            return Ok((span, true));
         } else {
             if pointer_const {
                 return self.fail("pointer declaration requires an initializer");
@@ -159,6 +160,21 @@ impl<'a> Parser<'a> {
             .symbol_table
             .add(name, Symbol::Pointer(pointer));
         Ok((span, has_initializer))
+    }
+
+    pub(super) fn bind_local_pointer(
+        &mut self,
+        name: &'a str,
+        pointer: PointerValue,
+        is_const: bool,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        let pointer = self.source_pointer_variable(name, pointer, is_const, span)?;
+        let pointer = self.retain_pointer_symbol(pointer)?;
+        self.function
+            .symbol_table
+            .add(name, Symbol::Pointer(pointer));
+        Ok(())
     }
 
     pub(super) fn boxed_pointer_value(

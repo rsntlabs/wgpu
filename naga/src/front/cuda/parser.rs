@@ -13,6 +13,7 @@ mod declarations;
 mod expressions;
 mod function_declarations;
 mod functions;
+mod inferred_declarations;
 mod initializers;
 mod loops;
 mod operators;
@@ -43,7 +44,7 @@ use pointers::{PointerAccess, PointerState, PointerValue};
 use reference_bindings::{BoundAddress, BoundReference};
 use scalar_promotions::ScalarPromotions;
 use types::scalar_resolution;
-use types::{GlobalDeclaration, QualifiedType, TypeSpecifier};
+use types::{DeclarationType, GlobalDeclaration, QualifiedType, TypeSpecifier};
 
 use crate::{
     front::SymbolTable, AddressSpace, Arena, ArraySize, BinaryOperator, Binding, BuiltIn,
@@ -69,6 +70,7 @@ enum Symbol {
     Member,
     PendingReference,
     PendingPointer,
+    PendingAuto,
     Pointer(Handle<PointerValue>),
     Reference {
         binding: Handle<BoundReference>,
@@ -916,6 +918,7 @@ impl<'a> Parser<'a> {
             .lookup(name)
             .cloned()
             .or_else(|| match self.global_declarations.get(name) {
+                Some(&GlobalDeclaration::PendingAuto) => Some(Symbol::PendingAuto),
                 Some(&GlobalDeclaration::Constant {
                     handle,
                     scalar,

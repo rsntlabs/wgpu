@@ -25,8 +25,14 @@ pub(super) struct QualifiedType {
     pub is_const: bool,
 }
 
+pub(super) enum DeclarationType {
+    Explicit(QualifiedType),
+    Inferred { is_const: bool },
+}
+
 #[derive(Clone, Debug)]
 pub(super) enum GlobalDeclaration {
+    PendingAuto,
     Type(QualifiedType),
     Functions(Vec<Handle<Function>>),
     Kernel,
@@ -117,16 +123,20 @@ fn parse_type(
     symbols: &SymbolTable<&str, Symbol>,
     globals: &FastHashMap<&str, GlobalDeclaration>,
 ) -> Result<QualifiedType, ParseError> {
-    declaration_type(lexer, symbols, globals, false).map(|(ty, _)| ty)
+    declaration_type(lexer, symbols, globals, false).map(|(ty, _)| match ty {
+        DeclarationType::Explicit(ty) => ty,
+        DeclarationType::Inferred { .. } => unreachable!(),
+    })
 }
 
 fn declaration_type(
     lexer: &mut Lexer<'_>,
     symbols: &SymbolTable<&str, Symbol>,
     globals: &FastHashMap<&str, GlobalDeclaration>,
-    allow_constexpr: bool,
-) -> Result<(QualifiedType, bool), ParseError> {
+    is_variable_declaration: bool,
+) -> Result<(DeclarationType, bool), ParseError> {
     let mut ty: Option<QualifiedType> = None;
+    let mut inferred = false;
     let mut explicit_const = false;
     let mut is_constexpr = false;
     let mut integers = IntegerSpecifiers::default();
@@ -147,7 +157,7 @@ fn declaration_type(
                 explicit_const = true;
             }
             Token::Word("constexpr") => {
-                if !allow_constexpr {
+                if !is_variable_declaration {
                     return Err(invalid("constexpr is unsupported in this type"));
                 }
                 if is_constexpr {
@@ -155,8 +165,17 @@ fn declaration_type(
                 }
                 is_constexpr = true;
             }
+            Token::Word("auto") => {
+                if !is_variable_declaration {
+                    return Err(invalid("auto deduction is unsupported in this type"));
+                }
+                if inferred || ty.is_some() {
+                    return Err(invalid("incompatible or repeated type specifier"));
+                }
+                inferred = true;
+            }
             Token::Word(specifier @ ("int" | "signed" | "unsigned")) => {
-                if ty.is_some() && integers.is_empty() {
+                if inferred || (ty.is_some() && integers.is_empty()) {
                     return Err(invalid("incompatible or repeated type specifier"));
                 }
                 let scalar = integers
@@ -167,7 +186,7 @@ fn declaration_type(
                     is_const: false,
                 });
             }
-            Token::Word(name) if ty.is_none() => {
+            Token::Word(name) if ty.is_none() && !inferred => {
                 ty = Some(type_name(name, symbols, globals).ok_or_else(|| ParseError {
                     message: format!("unknown or unsupported scalar type `{name}`"),
                     span: token.1,
@@ -177,6 +196,14 @@ fn declaration_type(
         }
         lexer.next()?;
     }
+    if inferred {
+        return Ok((
+            DeclarationType::Inferred {
+                is_const: explicit_const || is_constexpr,
+            },
+            is_constexpr,
+        ));
+    }
     let Some(mut ty) = ty else {
         return Err(ParseError {
             message: String::from("expected a scalar type"),
@@ -184,7 +211,7 @@ fn declaration_type(
         });
     };
     ty.is_const |= explicit_const || is_constexpr;
-    Ok((ty, is_constexpr))
+    Ok((DeclarationType::Explicit(ty), is_constexpr))
 }
 
 impl<'a> Parser<'a> {
@@ -296,7 +323,7 @@ impl<'a> Parser<'a> {
         )
     }
 
-    pub(super) fn declaration_type(&mut self) -> Result<(QualifiedType, bool), ParseError> {
+    pub(super) fn declaration_type(&mut self) -> Result<(DeclarationType, bool), ParseError> {
         declaration_type(
             &mut self.lexer,
             &self.function.symbol_table,

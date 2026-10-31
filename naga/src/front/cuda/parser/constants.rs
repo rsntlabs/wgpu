@@ -6,7 +6,7 @@ impl<'a> Parser<'a> {
         loop {
             match lexer.peek()?.0 {
                 Token::Word("constexpr") => return Ok(true),
-                Token::Word("const" | "int" | "unsigned") => {}
+                Token::Word("const" | "int" | "unsigned" | "auto") => {}
                 Token::Word(name) if self.type_name(name).is_some() => {}
                 _ => return Ok(false),
             }
@@ -15,7 +15,13 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn global_constant_declaration(&mut self) -> Result<(), ParseError> {
-        let (ty, _) = self.declaration_type()?;
+        let (declaration, _) = self.declaration_type()?;
+        let ty = match declaration {
+            DeclarationType::Explicit(ty) => ty,
+            DeclarationType::Inferred { .. } => {
+                return self.inferred_global_constant_declaration();
+            }
+        };
         let TypeSpecifier::Scalar(scalar) = ty.ty else {
             return self.fail("constexpr requires a scalar variable");
         };
@@ -37,33 +43,43 @@ impl<'a> Parser<'a> {
                 },
             );
             let literal = self.constant_initializer(&scalar_resolution(scalar))?;
-            let ty = self.scalar_handle(scalar, span);
-            let init = self
-                .module
-                .global_expressions
-                .append(Expression::Literal(literal), span);
-            let constant_handle = self.module.constants.append(
-                crate::Constant {
-                    name: Some(String::from(name)),
-                    ty,
-                    init,
-                },
-                span,
-            );
-            self.global_declarations.insert(
-                name,
-                GlobalDeclaration::Constant {
-                    handle: Some(constant_handle),
-                    scalar,
-                    literal: Some(literal),
-                },
-            );
-            self.function = FunctionContext::new(FunctionKind::Kernel);
+            self.bind_global_constant(name, scalar, literal, span);
             if !self.lexer.next_if(Token::Separator(','))? {
                 self.lexer.expect_span(Token::Separator(';'))?;
                 return Ok(());
             }
         }
+    }
+
+    pub(super) fn bind_global_constant(
+        &mut self,
+        name: &'a str,
+        scalar: Scalar,
+        literal: Literal,
+        span: Span,
+    ) {
+        let ty = self.scalar_handle(scalar, span);
+        let init = self
+            .module
+            .global_expressions
+            .append(Expression::Literal(literal), span);
+        let constant_handle = self.module.constants.append(
+            crate::Constant {
+                name: Some(String::from(name)),
+                ty,
+                init,
+            },
+            span,
+        );
+        self.global_declarations.insert(
+            name,
+            GlobalDeclaration::Constant {
+                handle: Some(constant_handle),
+                scalar,
+                literal: Some(literal),
+            },
+        );
+        self.function = FunctionContext::new(FunctionKind::Kernel);
     }
 
     pub(super) fn constant_initializer(
