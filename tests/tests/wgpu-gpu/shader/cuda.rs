@@ -46,6 +46,7 @@ mod multiply24;
 mod operator_addition;
 mod operator_functions;
 mod particles;
+mod pointer_aliases;
 mod pointer_assignments;
 mod pointer_parameters;
 mod pointer_updates;
@@ -112,6 +113,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_OPERATOR_ADDITION,
         CUDA_OPERATOR_FUNCTIONS,
         CUDA_PARTICLES,
+        CUDA_POINTER_ALIASES,
         CUDA_POINTER_ASSIGNMENTS,
         CUDA_POINTER_PARAMETERS,
         CUDA_POINTER_UPDATES,
@@ -351,6 +353,8 @@ static CUDA_PREPROCESSING: GpuTestConfiguration = configuration(preprocessing::c
 #[apply(gpu_test!)]
 static CUDA_PREPROCESSING_CONDITIONS: GpuTestConfiguration =
     configuration(preprocessing_conditions::cases);
+#[apply(gpu_test!)]
+static CUDA_POINTER_ALIASES: GpuTestConfiguration = configuration(pointer_aliases::cases);
 #[apply(gpu_test!)]
 static CUDA_POINTER_ASSIGNMENTS: GpuTestConfiguration = configuration(pointer_assignments::cases);
 #[apply(gpu_test!)]

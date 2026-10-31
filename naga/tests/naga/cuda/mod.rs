@@ -45,6 +45,7 @@ mod operator_addition;
 mod operator_functions;
 mod overloads;
 mod parameters;
+mod pointer_aliases;
 mod pointer_assignments;
 mod pointer_names;
 mod pointer_parameters;

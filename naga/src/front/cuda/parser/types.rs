@@ -3,8 +3,15 @@ use super::*;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) enum TypeSpecifier {
     Scalar(Scalar),
-    Vector { size: VectorSize, scalar: Scalar },
+    Vector {
+        size: VectorSize,
+        scalar: Scalar,
+    },
     Structure(Handle<Type>),
+    Pointer {
+        pointee: Handle<Type>,
+        pointee_const: bool,
+    },
 }
 
 pub(super) const VECTOR_TYPES: [(&str, &str, VectorSize, Scalar); 9] = [
@@ -219,6 +226,7 @@ impl<'a> Parser<'a> {
         let (size, scalar) = match ty {
             TypeSpecifier::Scalar(scalar) => return scalar_resolution(scalar),
             TypeSpecifier::Structure(handle) => return TypeResolution::Handle(handle),
+            TypeSpecifier::Pointer { pointee, .. } => return self.pointer_type(pointee, span),
             TypeSpecifier::Vector { size, scalar } => (size, scalar),
         };
         if size != VectorSize::Tri {
@@ -351,8 +359,9 @@ impl<'a> Parser<'a> {
         if self.take_ident("typedef")? {
             let ty = self.parse_type()?;
             loop {
+                let declarator = self.alias_declarator(ty.clone())?;
                 let (name, span) = self.identifier()?;
-                self.insert_type(name, ty.clone(), span, global)?;
+                self.insert_type(name, declarator, span, global)?;
                 if self.lexer.next_if(Token::Separator(';'))? {
                     return Ok(());
                 }
@@ -364,8 +373,35 @@ impl<'a> Parser<'a> {
         self.check_name(name, span)?;
         self.lexer.expect_span(Token::Operation('='))?;
         let ty = self.parse_type()?;
+        let ty = self.alias_declarator(ty)?;
         self.lexer.expect_span(Token::Separator(';'))?;
         self.insert_type(name, ty, span, global)
+    }
+
+    fn alias_declarator(&mut self, ty: QualifiedType) -> Result<QualifiedType, ParseError> {
+        let span = self.lexer.peek()?.1;
+        if !self.lexer.next_if(Token::Operation('*'))? {
+            return Ok(ty);
+        }
+        if matches!(ty.ty, TypeSpecifier::Pointer { .. }) {
+            return self.fail("nested pointer aliases are unsupported");
+        }
+        let pointer_const = pointer_qualifiers(&mut self.lexer)?;
+        if matches!(
+            self.lexer.peek()?.0,
+            Token::Operation('*' | '&') | Token::LogicalOperation('&')
+        ) {
+            return self.fail("nested pointer and pointer reference aliases are unsupported");
+        }
+        let resolution = self.lower_type(ty.ty, span);
+        let pointee = self.type_handle(&resolution, span);
+        Ok(QualifiedType {
+            ty: TypeSpecifier::Pointer {
+                pointee,
+                pointee_const: ty.is_const,
+            },
+            is_const: pointer_const,
+        })
     }
 
     pub(super) fn insert_type(

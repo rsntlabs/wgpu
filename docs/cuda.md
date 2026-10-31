@@ -607,7 +607,37 @@ qualifiers are rejected; requalifying an already const alias is allowed.
 Aliases can appear at file scope before, between, or after functions, and in
 blocks and `for` initializers. Local values can hide outer type names, and local
 aliases can hide outer values or functions. A `using` alias in a `for` initializer
-uses C++23 syntax. Pointer, array, function, and void aliases remain unsupported.
+uses C++23 syntax. Array, function, and void aliases remain unsupported.
+
+Pointer aliases use the existing scalar, vector, and completed struct pointee
+types, including packed three-component vectors. Both alias forms accept a
+pointer declarator, and each `typedef` declarator starts from the base type:
+
+```cuda
+typedef int *Pointer, Integer, *const FixedPointer;
+using ReadPointer = const int *;
+using FrozenPointer = Pointer const;
+```
+
+`Integer` denotes `int`. `FixedPointer`, `FrozenPointer`, and `const Pointer`
+denote a constant pointer to writable integers; `ReadPointer` denotes a mutable
+pointer to constant integers. Alias chains retain both levels of qualification.
+These rules follow C++20 [type aliases](https://timsong-cpp.github.io/cppwp/n4861/dcl.typedef)
+and [pointer declarators](https://timsong-cpp.github.io/cppwp/n4861/dcl.ptr).
+
+Pointer aliases work in kernel and helper parameters and in local declarations,
+with the same captures, assignments, updates, and borrowing rules as explicit
+pointers. Kernel bindings retain their pointee layout and access mode. Helper
+prototypes and overloads use the underlying pointer type; top-level pointer
+`const` affects the parameter's private copy and does not change its signature.
+Mutable pointer aliases may omit an initializer; constant pointers require one.
+`auto` copies retain pointee constness and discard the source pointer object's
+constness.
+
+Aliases preserve the current restrictions on nested pointers, pointer references,
+pointer arrays and members, shared pointer objects, pointer `constexpr`
+declarations, pointer function results, and pointer casts. Aliases cannot supply
+boolean kernel buffer parameters.
 
 Vector values support `float2`, `float3`, `float4`, `int2`, `int3`, `int4`,
 `uint2`, `uint3`, and `uint4`. These types can appear in local variables,

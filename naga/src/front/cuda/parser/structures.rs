@@ -65,6 +65,12 @@ impl<'a> Parser<'a> {
                 ty: specifier,
                 is_const,
             } = self.parse_type()?;
+            if matches!(specifier, TypeSpecifier::Pointer { .. }) {
+                return Err(ParseError {
+                    message: String::from("pointer structure members are unsupported"),
+                    span: type_span,
+                });
+            }
             if is_const || matches!(specifier, TypeSpecifier::Scalar(Scalar::BOOL)) {
                 return Err(ParseError {
                     message: String::from(
@@ -169,6 +175,12 @@ impl<'a> Parser<'a> {
         specifier: TypeSpecifier,
         span: Span,
     ) -> Result<Value, ParseError> {
+        if matches!(specifier, TypeSpecifier::Pointer { .. }) {
+            return Err(ParseError {
+                message: String::from("pointer value constructors are unsupported"),
+                span,
+            });
+        }
         let resolution = self.lower_type(specifier, span);
         let ty = self.type_handle(&resolution, span);
         let pointer = self.temporary_pointer(&resolution, span)?;

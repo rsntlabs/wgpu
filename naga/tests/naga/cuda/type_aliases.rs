@@ -360,8 +360,6 @@ fn cuda_aliases_reject_unsupported_types_declarators_and_malformed_source() {
         "typedef void Nothing;",
         "using Nothing = void;",
         "typedef double Wide;",
-        "using Pointer = int *;",
-        "typedef int *Pointer;",
         "typedef int Array[4];",
         "using Array = int[4];",
         "typedef int &Reference;",
@@ -374,6 +372,16 @@ fn cuda_aliases_reject_unsupported_types_declarators_and_malformed_source() {
         "using Element = ;",
     ] {
         rejected(&format!("{declaration} __global__ void kernel() {{}}"));
+    }
+}
+
+#[test]
+fn cuda_both_alias_syntaxes_support_pointer_types() {
+    for declaration in ["using Pointer = int *;", "typedef int *Pointer;"] {
+        validate(&format!(
+            "{declaration}
+            __global__ void kernel(Pointer output) {{ Pointer local = output; *local = 3; }}"
+        ));
     }
 }
 

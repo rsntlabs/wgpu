@@ -393,6 +393,9 @@ impl<'a> Parser<'a> {
         let Some(result) = result else {
             return self.fail("expected a supported function return type");
         };
+        if matches!(result, ReturnType::Value(TypeSpecifier::Pointer { .. })) {
+            return self.fail("pointer return types are unsupported");
+        }
         let Some(kind) = kind else {
             return self.fail("expected a CUDA execution space specifier");
         };
