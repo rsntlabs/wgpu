@@ -8,22 +8,30 @@ struct type_3 {
 RWByteAddressBuffer out_ : register(u0);
 cbuffer n_1 : register(b1) { type_3 n_1; }
 
+typedef uint ret_ZeroValuearray2_uint_[2];
+ret_ZeroValuearray2_uint_ ZeroValuearray2_uint_() {
+    return (uint[2])0;
+}
+
 [numthreads(1, 1, 1)]
 void loops(uint3 threadIdx : SV_GroupThreadID)
 {
-    uint local = (uint)0;
+    uint local[2] = (uint[2])0;
     int n = (int)0;
     int sum = (int)0;
     int i = (int)0;
     int i_1 = (int)0;
-    uint local_1 = (uint)0;
+    uint local_1[2] = (uint[2])0;
     uint local_2 = (uint)0;
-    uint local_3 = (uint)0;
+    uint local_3[2] = (uint[2])0;
     uint local_4 = (uint)0;
+    uint local_5 = (uint)0;
 
-    local = 0u;
-    int _e5 = n_1.value;
-    n = _e5;
+    local = ZeroValuearray2_uint_();
+    local[0] = 0u;
+    local[1] = 0u;
+    int _e10 = n_1.value;
+    n = _e10;
     sum = int(0);
     {
         i = int(0);
@@ -33,27 +41,27 @@ void loops(uint3 threadIdx : SV_GroupThreadID)
             if (all(loop_bound == uint2(0u, 0u))) { break; }
             loop_bound -= uint2(loop_bound.y == 0u, 1u);
             if (!loop_init) {
-                int _e23 = i;
-                i = asint(asuint(_e23) + asuint(int(1)));
+                int _e28 = i;
+                i = asint(asuint(_e28) + asuint(int(1)));
             }
             loop_init = false;
-            int _e11 = i;
-            int _e12 = n;
-            if ((_e11 < _e12)) {
+            int _e16 = i;
+            int _e17 = n;
+            if ((_e16 < _e17)) {
             } else {
                 break;
             }
-            int _e14 = i;
-            if ((_e14 == int(2))) {
+            int _e19 = i;
+            if ((_e19 == int(2))) {
                 continue;
             }
-            int _e17 = i;
-            if ((_e17 == int(7))) {
+            int _e22 = i;
+            if ((_e22 == int(7))) {
                 break;
             }
-            int _e20 = sum;
-            int _e21 = i;
-            sum = asint(asuint(_e20) + asuint(_e21));
+            int _e25 = sum;
+            int _e26 = i;
+            sum = asint(asuint(_e25) + asuint(_e26));
         }
     }
     i_1 = int(0);
@@ -61,20 +69,20 @@ void loops(uint3 threadIdx : SV_GroupThreadID)
     while(true) {
         if (all(loop_bound_1 == uint2(0u, 0u))) { break; }
         loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
-        int _e28 = i_1;
-        if ((_e28 < int(3))) {
+        int _e33 = i_1;
+        if ((_e33 < int(3))) {
         } else {
             break;
         }
         {
-            int _e31 = i_1;
-            i_1 = asint(asuint(_e31) + asuint(int(1)));
-            int _e34 = i_1;
-            if ((_e34 == int(2))) {
+            int _e36 = i_1;
+            i_1 = asint(asuint(_e36) + asuint(int(1)));
+            int _e39 = i_1;
+            if ((_e39 == int(2))) {
                 continue;
             }
-            int _e37 = sum;
-            sum = asint(asuint(_e37) + asuint(int(10)));
+            int _e42 = sum;
+            sum = asint(asuint(_e42) + asuint(int(10)));
         }
     }
     uint2 loop_bound_2 = uint2(4294967295u, 4294967295u);
@@ -83,28 +91,32 @@ void loops(uint3 threadIdx : SV_GroupThreadID)
         if (all(loop_bound_2 == uint2(0u, 0u))) { break; }
         loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
         if (!loop_init_1) {
-            int _e46 = sum;
-            if (!((_e46 < int(150)))) {
+            int _e51 = sum;
+            if (!((_e51 < int(150)))) {
                 break;
             }
         }
         loop_init_1 = false;
-        int _e40 = sum;
-        sum = asint(asuint(_e40) + asuint(int(100)));
-        int _e43 = sum;
-        if ((_e43 > int(200))) {
+        int _e45 = sum;
+        sum = asint(asuint(_e45) + asuint(int(100)));
+        int _e48 = sum;
+        if ((_e48 > int(200))) {
             break;
         }
     }
-    int _e50 = sum;
-    uint _e51 = local;
-    local_1 = _e51;
-    uint _e53 = local_1;
-    local_2 = uint(_e53);
-    local_3 = uint(threadIdx.x);
-    uint _e60 = local_2;
-    uint _e61 = local_3;
-    local_4 = uint((_e60 + _e61));
-    uint _e65 = local_4;
-    out_.Store(_e65*4, asuint(_e50));
+    int _e55 = sum;
+    uint _e58[2] = local;
+    local_1 = _e58;
+    local_2 = uint(threadIdx.x);
+    uint _e63[2] = local_1;
+    local_3 = _e63;
+    uint _e64 = local_2;
+    uint _e66 = local_3[1];
+    local_3[1] = (_e66 + _e64);
+    uint _e70 = local_3[0];
+    local_4 = uint(_e70);
+    uint _e74 = local_3[1];
+    local_5 = uint(_e74);
+    uint _e77 = local_5;
+    out_.Store(_e77*4, asuint(_e55));
 }

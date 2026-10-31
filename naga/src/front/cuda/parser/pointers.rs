@@ -4,13 +4,19 @@ use super::*;
 
 mod origins;
 mod remapping;
+pub(super) mod runtime;
+mod state;
+mod state_validation;
 mod updates;
 mod validation;
 
 use origins::PointerOrigin;
+pub(super) use state::{PointerCell, PointerCellKind, PointerOperation};
 
 #[cfg(test)]
 mod origins_tests;
+#[cfg(test)]
+mod state_tests;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) enum PointerValueCategory {
@@ -50,6 +56,8 @@ pub(super) struct PointerExpression {
 #[derive(Clone, Debug)]
 pub(super) enum PointerExpressionKind {
     Parameter(u32),
+    Object(Handle<BoundReference>),
+    Snapshot(Handle<LocalVariable>),
     Array(Handle<BoundReference>),
     Address(Handle<BoundReference>),
     Offset {
@@ -77,11 +85,19 @@ pub(super) struct PointerState {
     pub(super) accesses: Arena<PointerAccess>,
     pub(super) validation_addresses: FastHashMap<Handle<LocalVariable>, Handle<PointerAccess>>,
     pub(super) access_addresses: FastHashMap<Handle<PointerAccess>, Handle<LocalVariable>>,
+    pub(super) cells: FastHashMap<Handle<LocalVariable>, PointerCell>,
+    pub(super) operations: FastHashMap<Handle<Expression>, PointerOperation>,
+    pub(super) operation_markers: crate::FastHashSet<Handle<Expression>>,
+    pub(super) runtime: Option<Box<runtime::PointerRuntime>>,
 }
 
 impl PointerState {
-    pub(super) const fn is_empty(&self) -> bool {
-        self.expressions.is_empty() && self.accesses.is_empty()
+    pub(super) fn is_empty(&self) -> bool {
+        self.expressions.is_empty()
+            && self.accesses.is_empty()
+            && self.cells.is_empty()
+            && self.operations.is_empty()
+            && self.operation_markers.is_empty()
     }
 }
 
@@ -92,6 +108,14 @@ pub(super) trait PointerRemapper {
         source: Handle<Expression>,
     ) -> Result<MappedExpression, ParseError>;
     fn parameter(&self, index: u32) -> Result<PointerValue, ParseError>;
+
+    fn checkpoint(&self) -> usize {
+        0
+    }
+
+    fn restore(&mut self, _parser: &mut Parser<'_>, _checkpoint: usize) -> Result<(), ParseError> {
+        Ok(())
+    }
 }
 
 impl<'a> Parser<'a> {
@@ -391,14 +415,28 @@ impl<'a> Parser<'a> {
         mut pointer: PointerValue,
     ) -> Result<PointerValue, ParseError> {
         if let PointerValueCategory::Variable { binding, .. } = pointer.category {
-            let reference = self.pointer_position_reference(binding, true, pointer.span);
-            let position = self.rvalue(ExpressionValue::Reference(reference))?;
-            let position = self.freeze_reference_index(position.handle, pointer.span)?;
+            let pointee = self.function.pointers.expressions[pointer.expression].pointee;
+            let snapshot = self.pointer_cell(
+                pointee,
+                pointer.is_const,
+                PointerCellKind::Snapshot,
+                pointer.span,
+            )?;
+            self.pointer_operation(
+                PointerOperation::Capture {
+                    destination: snapshot,
+                    source: binding,
+                },
+                pointer.span,
+            )?;
+            pointer.expression = self.retain_pointer_expression(
+                PointerExpressionKind::Snapshot(snapshot),
+                pointee,
+                pointer.span,
+            )?;
             pointer.constant = ConstantValue::default();
             pointer.constant_address = None;
-            pointer.category = PointerValueCategory::Value {
-                position: Some(position),
-            };
+            pointer.category = PointerValueCategory::Value { position: None };
         }
         Ok(pointer)
     }
@@ -880,7 +918,9 @@ impl<'a> Parser<'a> {
     ) -> Result<bool, ParseError> {
         self.parameter_expansion_budget.charge_work(1, span)?;
         match self.function.pointers.expressions[expression].kind.clone() {
-            PointerExpressionKind::Parameter(_) => Ok(false),
+            PointerExpressionKind::Parameter(_)
+            | PointerExpressionKind::Object(_)
+            | PointerExpressionKind::Snapshot(_) => Ok(false),
             PointerExpressionKind::Offset { base, .. } => self.pointer_origin_is_known(base, span),
             PointerExpressionKind::Select { accept, reject, .. } => Ok(self
                 .pointer_origin_is_known(accept, span)?
@@ -987,7 +1027,9 @@ impl<'a> Parser<'a> {
         let source = self.function.pointers.expressions[expression].clone();
         let ty = TypeResolution::Handle(source.pointee);
         match source.kind {
-            PointerExpressionKind::Parameter(_) => Err(ParseError {
+            PointerExpressionKind::Parameter(_)
+            | PointerExpressionKind::Object(_)
+            | PointerExpressionKind::Snapshot(_) => Err(ParseError {
                 message: String::from("unresolved CUDA pointer parameter"),
                 span,
             }),

@@ -246,12 +246,18 @@ including mixed declaration lists and block or loop scopes. Pointee `const`
 prevents writes; top-level pointer `const` prevents modifying the pointer itself.
 Mutable local pointers and pointer parameters support `++`, `--`, `+=`, and `-=`
 with integral displacements. Updates preserve the original array or object origin.
+Plain assignment, `pointer = replacement`, captures the replacement's origin,
+offset, and evaluated array indices. It can select another compatible array or
+object at runtime, including across branches and loop iterations. Assignment
+allows adding pointee `const`, and rejects removing it or changing the pointee type.
 Prefix updates and compound assignments return pointer lvalues; postfix updates
 capture the previous address. Conditional and comma expressions preserve compatible
-pointer lvalues. Kernel and helper parameters have private pointer values, so their
-updates do not retarget the caller's pointer or change buffer bindings. Copies and
-bound references retain their previously selected addresses. Plain pointer
-reassignment and `constexpr` pointer declarations remain unsupported.
+pointer lvalues. Plain assignment also returns the destination pointer lvalue,
+allowing chained assignments and subsequent updates. Kernel and helper parameters
+have private pointer values, so their assignments and updates do not retarget the
+caller's pointer or change buffer bindings. Copies and bound references retain
+their previously selected addresses. `constexpr` pointer declarations remain
+unsupported.
 
 Single-dimensional helper array parameters, `T values[]` and `T values[N]`,
 adjust to `T*`. A written bound must be a positive integral constant expression;
@@ -279,7 +285,7 @@ they do not describe an exact allocator or process memory limit.
 Helpers have no resource bindings. Pointer and reference results,
 whole-array references, shared declarations, and barriers in helper bodies remain unsupported. Kernel prototypes
 remain unsupported.
-Pointer members, plain pointer assignment, null pointers,
+Pointer members, null pointers,
 pointer comparisons and differences, pointer casts, and general pointer
 declarators remain unsupported. Arrays selected from temporary struct values
 cannot supply borrowed pointers.

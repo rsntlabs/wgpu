@@ -283,17 +283,7 @@ impl Parser<'_> {
         };
         self.parameter_expansion_budget.charge_nodes(1, span)?;
         // Keep a unique emitted identity until the deferred call is expanded.
-        let (marker, body) = self.capture_block(|parser| {
-            let zero = parser.append(Expression::Literal(Literal::U32(0)), span)?;
-            parser.append(
-                Expression::Binary {
-                    op: BinaryOperator::Add,
-                    left: zero,
-                    right: zero,
-                },
-                span,
-            )
-        })?;
+        let (marker, body) = self.deferred_marker(span)?;
         self.function.calls.push(FunctionCall { function, span });
         self.function.deferred_calls.insert(
             marker,
@@ -309,6 +299,23 @@ impl Parser<'_> {
             (Some(pointer), Some(ty)) => Ok(self.load_pointer(pointer, &ty, span)?.into()),
             _ => Ok(ExpressionResult::Void(span)),
         }
+    }
+
+    pub(super) fn deferred_marker(
+        &mut self,
+        span: Span,
+    ) -> Result<(Handle<Expression>, crate::Block), ParseError> {
+        self.capture_block(|parser| {
+            let zero = parser.append(Expression::Literal(Literal::U32(0)), span)?;
+            parser.append(
+                Expression::Binary {
+                    op: BinaryOperator::Add,
+                    left: zero,
+                    right: zero,
+                },
+                span,
+            )
+        })
     }
 }
 

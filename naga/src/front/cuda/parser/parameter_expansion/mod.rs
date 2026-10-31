@@ -1,5 +1,5 @@
 use super::parameter_calls::{DeferredArgument, DeferredCall, MappedExpression};
-use super::pointers::{PointerRemapper, PointerValue};
+use super::pointers::{PointerCell, PointerRemapper, PointerValue};
 use super::*;
 
 mod budget;
@@ -12,6 +12,7 @@ mod tests;
 
 use budget::limit_error;
 pub(super) use budget::ExpansionBudget;
+pub(super) use statements::deferred_call_marker;
 
 #[derive(Clone)]
 enum CachedExpression {
@@ -55,6 +56,14 @@ impl PointerRemapper for Invocation<'_> {
             Some(&MappedExpression::Pointer(ref pointer)) => Ok(pointer.as_ref().clone()),
             _ => Err(expansion_error(self.span)),
         }
+    }
+
+    fn checkpoint(&self) -> usize {
+        self.mapped_handles.len()
+    }
+
+    fn restore(&mut self, parser: &mut Parser<'_>, checkpoint: usize) -> Result<(), ParseError> {
+        parser.restore_invocation_expressions(self, checkpoint)
     }
 }
 
@@ -106,16 +115,26 @@ impl Parser<'_> {
             let span = self.module.functions.get_span(handle);
             let function = core::mem::take(&mut self.module.functions[handle]);
             self.expand_parameter_function(function, state, parameters, span)?;
+            let parameters = core::mem::take(&mut self.function.parameters);
             let function = core::mem::take(&mut self.function.ir);
             let state = self.function.take_parameter_state();
             self.validate_pointer_state(&state, &function, span)?;
-            if !templates[handle.index()] {
+            if !templates[handle.index()] && !state.pointers.cells.is_empty() {
+                self.materialize_pointer_function(function, state, parameters, span)?;
+                let function = core::mem::take(&mut self.function.ir);
+                let state = self.function.take_parameter_state();
+                self.validate_pointer_state(&state, &function, span)?;
                 self.check_no_live_pointer_accesses(&function, &state, span)?;
+                self.module.functions[handle] = function;
+            } else {
+                if !templates[handle.index()] {
+                    self.check_no_live_pointer_accesses(&function, &state, span)?;
+                }
+                if !state.pointers.is_empty() {
+                    self.parameter_states.insert(handle, state);
+                }
+                self.module.functions[handle] = function;
             }
-            if !state.pointers.is_empty() {
-                self.parameter_states.insert(handle, state);
-            }
-            self.module.functions[handle] = function;
         }
         if let Some(state) = self.kernel_parameter_state.take() {
             let span = state
@@ -128,8 +147,17 @@ impl Parser<'_> {
             let function = core::mem::take(&mut self.function.ir);
             let state = self.function.take_parameter_state();
             self.validate_pointer_state(&state, &function, span)?;
-            self.check_no_live_pointer_accesses(&function, &state, span)?;
-            self.module.entry_points[0].function = function;
+            if !state.pointers.cells.is_empty() {
+                self.materialize_pointer_function(function, state, Vec::new(), span)?;
+                let function = core::mem::take(&mut self.function.ir);
+                let state = self.function.take_parameter_state();
+                self.validate_pointer_state(&state, &function, span)?;
+                self.check_no_live_pointer_accesses(&function, &state, span)?;
+                self.module.entry_points[0].function = function;
+            } else {
+                self.check_no_live_pointer_accesses(&function, &state, span)?;
+                self.module.entry_points[0].function = function;
+            }
         }
         self.function = FunctionContext::new(FunctionKind::Kernel);
         Ok(templates)
@@ -233,6 +261,24 @@ impl Parser<'_> {
         Ok(())
     }
 
+    fn materialize_pointer_function(
+        &mut self,
+        function: Function,
+        mut state: FunctionParameterState,
+        parameters: Vec<SourceParameter>,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        if !state.deferred_calls.is_empty() || state.pointers.runtime.is_some() {
+            return Err(expansion_error(span));
+        }
+        self.parameter_expansion_budget
+            .charge_bytes(size_of::<pointers::runtime::PointerRuntime>(), span)?;
+        state.pointers.runtime = Some(Box::new(pointers::runtime::PointerRuntime::new(
+            self, &function, &state, span,
+        )?));
+        self.clone_parameter_function(function, state, parameters, span)
+    }
+
     fn clone_invocation_locals(
         &mut self,
         source: &Function,
@@ -253,14 +299,33 @@ impl Parser<'_> {
                 .charge_slice::<(LocalVariable, Span)>(1, span)?;
             self.parameter_expansion_budget
                 .charge_bytes(local.name.as_ref().map_or(0, String::len), span)?;
-            locals.push(Some(self.function.ir.local_variables.append(
+            let cell = state.and_then(|state| state.pointers.cells.get(&handle));
+            let runtime = state.and_then(|state| state.pointers.runtime.as_deref());
+            let ty = if cell.is_some() {
+                runtime.map_or(local.ty, |runtime| runtime.state_type)
+            } else {
+                local.ty
+            };
+            let mapped = self.function.ir.local_variables.append(
                 LocalVariable {
                     name: local.name.clone(),
-                    ty: local.ty,
+                    ty,
                     init: None,
                 },
                 source.local_variables.get_span(handle),
-            )));
+            );
+            if let Some(cell) = cell.filter(|_| runtime.is_none()) {
+                let expression = self.append(Expression::LocalVariable(mapped), span)?;
+                self.register_pointer_cell(
+                    mapped,
+                    PointerCell {
+                        expression,
+                        ..*cell
+                    },
+                    span,
+                )?;
+            }
+            locals.push(Some(mapped));
         }
         Ok(locals)
     }
@@ -324,6 +389,12 @@ impl Parser<'_> {
             let Some(local_handle) = invocation.locals[handle.index()] else {
                 continue;
             };
+            if source_state
+                .as_ref()
+                .is_some_and(|state| state.pointers.cells.contains_key(&handle))
+            {
+                continue;
+            }
             let value = match local.init {
                 Some(initial) => self.invocation_value(&mut invocation, initial)?,
                 None => self.append(Expression::ZeroValue(local.ty), call.span)?,

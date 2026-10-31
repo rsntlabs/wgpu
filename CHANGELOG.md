@@ -179,6 +179,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 - Support CUDA pointer member access with `->` for structs and numeric vector components.
 - Support initialized CUDA local pointer declarations with captured addresses, live aliases, and pointee constness.
 - Support CUDA pointer increments, decrements, and compound offset assignments for locals and parameters.
+- Support CUDA pointer reassignment across compatible arrays and objects, including runtime control flow and chained assignments.
 - Support CUDA vector buffer parameters with packed three-component layouts and const access.
 - Support CUDA shared numeric vectors and fixed vector arrays.
 - Support CUDA scalar bit reinterpretation intrinsics.

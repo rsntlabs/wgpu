@@ -1,6 +1,6 @@
 use super::*;
 
-fn pointer_state_error(span: Span) -> ParseError {
+pub(super) fn pointer_state_error(span: Span) -> ParseError {
     ParseError {
         message: String::from("invalid CUDA source pointer state"),
         span,
@@ -58,7 +58,10 @@ fn pointer_dependencies(
 ) -> Result<(), ParseError> {
     match node {
         PointerDependency::Expression(handle) => match state.pointers.expressions[handle].kind {
-            PointerExpressionKind::Parameter(_) => {}
+            PointerExpressionKind::Parameter(_) | PointerExpressionKind::Snapshot(_) => {}
+            PointerExpressionKind::Object(binding) => {
+                visit(PointerDependency::Reference(binding))?;
+            }
             PointerExpressionKind::Array(binding) | PointerExpressionKind::Address(binding) => {
                 visit(PointerDependency::Reference(binding))?;
             }
@@ -93,7 +96,7 @@ fn pointer_dependencies(
     Ok(())
 }
 
-fn captured_pointer(
+pub(super) fn captured_pointer(
     function: &Function,
     handle: Handle<Expression>,
     module: &Module,
@@ -109,6 +112,10 @@ fn captured_pointer(
     let local = function
         .local_variables
         .try_get(local)
+        .map_err(|_| pointer_state_error(span))?;
+    module
+        .types
+        .check_contains_handle(local.ty)
         .map_err(|_| pointer_state_error(span))?;
     if module.types[local.ty].inner != TypeInner::Scalar(Scalar::U32) {
         return Err(pointer_state_error(span));
@@ -156,6 +163,20 @@ impl Parser<'_> {
             state.access_addresses.len(),
             span,
         )?;
+        budget.charge_nodes(state.cells.len() + state.operations.len(), span)?;
+        budget.charge_map_entry::<Handle<LocalVariable>, PointerCell>(state.cells.len(), span)?;
+        budget.charge_map_entry::<Handle<Expression>, PointerOperation>(
+            state.operations.len(),
+            span,
+        )?;
+        budget.charge_map_entry::<Handle<Expression>, ()>(state.operation_markers.len(), span)?;
+        budget.charge_work(
+            state.cells.len() + state.operations.len() + state.operation_markers.len(),
+            span,
+        )?;
+        if state.runtime.is_some() {
+            return Err(pointer_state_error(span));
+        }
         budget.charge_work(
             state.validation_addresses.len() + state.access_addresses.len(),
             span,
@@ -251,7 +272,7 @@ impl Parser<'_> {
         Ok(ty)
     }
 
-    fn validate_source_pointer_value(
+    pub(super) fn validate_source_pointer_value(
         &mut self,
         state: &PointerState,
         function: &Function,
@@ -278,6 +299,7 @@ impl Parser<'_> {
         if base != expression.pointee {
             return Err(pointer_state_error(value.span));
         }
+        self.validate_pointer_rvalue(state, value.expression, value.is_const, value.span)?;
         if let Some(address) = value.constant_address {
             if address.extent == 0
                 || address.offset < 0
@@ -295,9 +317,13 @@ impl Parser<'_> {
         function: &Function,
         span: Span,
     ) -> Result<(), ParseError> {
+        if state.pointers.runtime.is_some() {
+            return Err(pointer_state_error(span));
+        }
         if state.pointers.is_empty() {
             return Ok(());
         }
+        self.validate_pointer_cells(state, function, span)?;
         for (handle, expression) in state.pointers.expressions.iter() {
             let span = state.pointers.expressions.get_span(handle);
             self.parameter_expansion_budget.charge_work(1, span)?;
@@ -306,6 +332,28 @@ impl Parser<'_> {
                 .check_contains_handle(expression.pointee)
                 .map_err(|_| pointer_state_error(span))?;
             let expected_depth = match expression.kind {
+                PointerExpressionKind::Object(binding) => {
+                    self.validate_pointer_objects(state, function, binding, span, |cell| {
+                        if cell.pointee == expression.pointee {
+                            Ok(())
+                        } else {
+                            Err(pointer_state_error(span))
+                        }
+                    })?;
+                    1
+                }
+                PointerExpressionKind::Snapshot(local) => {
+                    let cell = state
+                        .pointers
+                        .cells
+                        .get(&local)
+                        .ok_or_else(|| pointer_state_error(span))?;
+                    if cell.kind != PointerCellKind::Snapshot || cell.pointee != expression.pointee
+                    {
+                        return Err(pointer_state_error(span));
+                    }
+                    1
+                }
                 PointerExpressionKind::Parameter(index) => {
                     let argument = function
                         .arguments
@@ -483,6 +531,8 @@ impl Parser<'_> {
                 }
             }
         }
+        self.validate_pointer_operations(state, function, span)?;
+        self.check_no_live_pointer_locals(function, state, true, span)?;
         self.validate_pointer_dependency_depth(state, function, span)
     }
 
@@ -572,7 +622,29 @@ impl Parser<'_> {
         state: &FunctionParameterState,
         span: Span,
     ) -> Result<(), ParseError> {
-        if state.pointers.validation_addresses.is_empty() {
+        if !state.pointers.cells.is_empty()
+            || !state.pointers.operations.is_empty()
+            || !state.pointers.operation_markers.is_empty()
+            || state.pointers.runtime.is_some()
+        {
+            return Err(pointer_state_error(span));
+        }
+        self.check_no_live_pointer_locals(function, state, false, span)
+    }
+
+    fn check_no_live_pointer_locals(
+        &mut self,
+        function: &Function,
+        state: &FunctionParameterState,
+        objects: bool,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        let has_no_forbidden_locals = if objects {
+            state.pointers.cells.is_empty()
+        } else {
+            state.pointers.validation_addresses.is_empty()
+        };
+        if has_no_forbidden_locals {
             return Ok(());
         }
         self.parameter_expansion_budget
@@ -679,7 +751,10 @@ impl Parser<'_> {
             };
             match *expression {
                 Expression::LocalVariable(local) => {
-                    if state.pointers.validation_addresses.contains_key(&local) {
+                    if objects && state.pointers.cells.contains_key(&local) {
+                        return Err(pointer_state_error(span));
+                    }
+                    if !objects && state.pointers.validation_addresses.contains_key(&local) {
                         return Err(ParseError {
                             message: String::from(
                                 "unresolved CUDA pointer access in retained function",
