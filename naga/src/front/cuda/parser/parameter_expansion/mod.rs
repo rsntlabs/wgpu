@@ -7,14 +7,27 @@ mod expressions;
 mod statements;
 mod validation;
 
+#[cfg(test)]
+mod tests;
+
 use budget::limit_error;
 pub(super) use budget::ExpansionBudget;
+
+#[derive(Clone)]
+enum CachedExpression {
+    Value(Handle<Expression>),
+    Reference {
+        binding: Handle<BoundReference>,
+        ty: Box<TypeResolution>,
+    },
+    Pointer(Box<PointerValue>),
+}
 
 struct Invocation<'a> {
     source: &'a Function,
     source_state: Option<&'a FunctionParameterState>,
     arguments: Vec<MappedExpression>,
-    expressions: Vec<Option<MappedExpression>>,
+    expressions: Vec<Option<CachedExpression>>,
     mapped_handles: Vec<Handle<Expression>>,
     locals: Vec<Option<Handle<LocalVariable>>>,
     result: Option<Handle<Expression>>,
@@ -193,7 +206,7 @@ impl Parser<'_> {
         }
         let locals = self.clone_invocation_locals(&source, Some(&state), span)?;
         self.parameter_expansion_budget
-            .charge_slice::<Option<MappedExpression>>(source.expressions.len(), span)?;
+            .charge_slice::<Option<CachedExpression>>(source.expressions.len(), span)?;
         let mut invocation = Invocation {
             source: &source,
             source_state: Some(&state),
@@ -275,7 +288,7 @@ impl Parser<'_> {
             None => None,
         };
         self.parameter_expansion_budget
-            .charge_slice::<Option<MappedExpression>>(source.expressions.len(), call.span)?;
+            .charge_slice::<Option<CachedExpression>>(source.expressions.len(), call.span)?;
         self.parameter_expansion_budget
             .charge_slice::<MappedExpression>(call.arguments.len(), call.span)?;
         let mut arguments = Vec::with_capacity(call.arguments.len());

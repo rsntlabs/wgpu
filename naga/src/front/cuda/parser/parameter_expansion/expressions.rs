@@ -13,6 +13,22 @@ impl Parser<'_> {
         Ok(expression.clone())
     }
 
+    fn clone_cached_expression(
+        &mut self,
+        expression: &CachedExpression,
+    ) -> Result<MappedExpression, ParseError> {
+        Ok(match *expression {
+            CachedExpression::Value(value) => MappedExpression::Value(value),
+            CachedExpression::Reference { binding, ref ty } => MappedExpression::Reference {
+                binding,
+                ty: ty.as_ref().clone(),
+            },
+            CachedExpression::Pointer(ref pointer) => {
+                MappedExpression::Pointer(self.boxed_pointer_value(pointer.as_ref().clone())?)
+            }
+        })
+    }
+
     pub(super) fn name_invocation_expression(
         &mut self,
         source: &Function,
@@ -47,7 +63,20 @@ impl Parser<'_> {
         self.parameter_expansion_budget
             .charge_slice::<Handle<Expression>>(1, invocation.span)?;
         invocation.mapped_handles.push(handle);
-        let cached = self.clone_mapped_expression(&mapped, invocation.span)?;
+        let cached = match mapped {
+            MappedExpression::Value(value) => CachedExpression::Value(value),
+            MappedExpression::Reference { binding, ref ty } => {
+                self.parameter_expansion_budget
+                    .charge_slice::<TypeResolution>(1, invocation.span)?;
+                CachedExpression::Reference {
+                    binding,
+                    ty: Box::new(ty.clone()),
+                }
+            }
+            MappedExpression::Pointer(ref pointer) => {
+                CachedExpression::Pointer(self.boxed_pointer_value(pointer.as_ref().clone())?)
+            }
+        };
         invocation.expressions[handle.index()] = Some(cached);
         Ok(mapped)
     }
@@ -104,7 +133,7 @@ impl Parser<'_> {
         self.parameter_expansion_budget
             .charge_work(1, invocation.span)?;
         if let Some(ref mapped) = invocation.expressions[handle.index()] {
-            return self.clone_mapped_expression(mapped, invocation.span);
+            return self.clone_cached_expression(mapped);
         }
         let source = invocation.source;
         let span = source.expressions.get_span(handle);
