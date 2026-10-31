@@ -19,7 +19,7 @@ fn returns() -> S {
 
 fn call() {
     statement();
-    let _e0 = returns();
+    let x = returns();
     let s = textureSample(Texture, Sampler, vec2(1f));
     return;
 }

@@ -239,7 +239,7 @@ fn foo_vert(@builtin(vertex_index) vi: u32) -> @builtin(position) vec4<f32> {
     let a_2 = bar.data[(arrayLength((&bar.data)) - 2u)].value;
     let c = qux;
     let data_pointer = (&bar.data[0].value);
-    let _e35 = read_from_private((&foo));
+    let foo_value = read_from_private((&foo));
     c2_ = array<i32, 5>(a_2, i32(b), 3i, 4i, 5i);
     c2_[(vi + 1u)] = 42i;
     let value_1 = c2_[vi];

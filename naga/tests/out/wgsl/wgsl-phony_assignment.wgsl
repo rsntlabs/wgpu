@@ -9,8 +9,8 @@ fn five() -> i32 {
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let phony = binding;
     let phony_1 = binding;
-    let _e6 = five();
-    let _e7 = five();
-    let phony_2 = binding;
+    let phony_2 = five();
+    let b = five();
+    let phony_3 = binding;
     return;
 }
