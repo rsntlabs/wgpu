@@ -347,6 +347,12 @@ impl Parser<'_> {
                             span: token.1,
                         });
                     }
+                    Symbol::PendingAuto => {
+                        return Err(ParseError {
+                            message: String::from("auto initializer cannot use its own binding"),
+                            span: token.1,
+                        });
+                    }
                     Symbol::PendingReference => {
                         return Err(ParseError {
                             message: String::from(

@@ -171,7 +171,10 @@ impl<'a> Parser<'a> {
 
     pub(super) fn starts_declaration(&mut self) -> Result<bool, ParseError> {
         if self.starts_alias()?
-            || matches!(self.lexer.peek()?.0, Token::Word("__shared__" | "struct"))
+            || matches!(
+                self.lexer.peek()?.0,
+                Token::Word("__shared__" | "struct" | "auto")
+            )
         {
             return Ok(true);
         }
@@ -206,13 +209,16 @@ impl<'a> Parser<'a> {
         if self.take_ident("__shared__")? {
             return self.shared_declaration();
         }
-        let (
-            QualifiedType {
-                ty: specifier,
-                is_const,
-            },
-            is_constexpr,
-        ) = self.declaration_type()?;
+        let (declaration, is_constexpr) = self.declaration_type()?;
+        let QualifiedType {
+            ty: specifier,
+            is_const,
+        } = match declaration {
+            DeclarationType::Explicit(ty) => ty,
+            DeclarationType::Inferred { is_const } => {
+                return self.inferred_local_declaration(is_const, is_constexpr);
+            }
+        };
         if is_constexpr && !matches!(specifier, TypeSpecifier::Scalar(_)) {
             return self.fail("constexpr requires a scalar variable");
         }
@@ -262,15 +268,7 @@ impl<'a> Parser<'a> {
             let ty = array.as_ref().map_or(base, |array| array.ty);
             let array_count = array.as_ref().and_then(|array| array.count);
             let has_initializer = !matches!(self.lexer.peek()?.0, Token::Separator(',' | ';'));
-            let local = self.function.ir.local_variables.append(
-                LocalVariable {
-                    name: Some(String::from(name)),
-                    ty,
-                    init: None,
-                },
-                span,
-            );
-            let pointer = self.append(Expression::LocalVariable(local), span)?;
+            let (local, pointer) = self.allocate_local(name, ty, span)?;
             let symbol = if is_array {
                 Symbol::Array {
                     pointer,
@@ -315,13 +313,7 @@ impl<'a> Parser<'a> {
             {
                 let (value, body) =
                     self.capture_block(|parser| parser.value_initializer(&declared_ty))?;
-                if let Some(literal) = value.constant.literal {
-                    self.function.constant_locals.insert(local, literal);
-                    Some(self.append(Expression::Literal(literal), value.span)?)
-                } else {
-                    self.append_block(body);
-                    Some(value.handle)
-                }
+                Some(self.constant_local_initializer(local, value, body)?)
             } else {
                 Some(self.value_initializer(&declared_ty)?.handle)
             };
@@ -345,6 +337,39 @@ impl<'a> Parser<'a> {
             if !has_next_declarator {
                 return Ok(());
             }
+        }
+    }
+
+    pub(super) fn allocate_local(
+        &mut self,
+        name: &str,
+        ty: Handle<Type>,
+        span: Span,
+    ) -> Result<(Handle<LocalVariable>, Handle<Expression>), ParseError> {
+        let local = self.function.ir.local_variables.append(
+            LocalVariable {
+                name: Some(String::from(name)),
+                ty,
+                init: None,
+            },
+            span,
+        );
+        let pointer = self.append(Expression::LocalVariable(local), span)?;
+        Ok((local, pointer))
+    }
+
+    pub(super) fn constant_local_initializer(
+        &mut self,
+        local: Handle<LocalVariable>,
+        value: Value,
+        body: crate::Block,
+    ) -> Result<Handle<Expression>, ParseError> {
+        if let Some(literal) = value.constant.literal {
+            self.function.constant_locals.insert(local, literal);
+            self.append(Expression::Literal(literal), value.span)
+        } else {
+            self.append_block(body);
+            Ok(value.handle)
         }
     }
 

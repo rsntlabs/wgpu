@@ -6,6 +6,7 @@ mod atomic_add;
 mod atomic_cas;
 mod atomic_operations;
 mod atomic_wrap;
+mod auto_declarations;
 mod barriers;
 mod bitcasts;
 mod ceilf;

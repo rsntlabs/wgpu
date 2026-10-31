@@ -166,6 +166,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 - Support dual `__host__ __device__` CUDA helpers.
 - Support CUDA mutable scalar local declarations without initializers.
 - Support comma-separated CUDA scalar local declarations.
+- Infer CUDA `auto` value, pointer, and reference declarations, including scalar `constexpr` declarations.
 - Support CUDA comma expressions with sequenced evaluation and lvalue results.
 - Support CUDA static functions and device-helper inlining specifiers.
 - Support scalar CUDA device-helper overloads with conversion ranking and ambiguity errors.

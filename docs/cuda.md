@@ -737,6 +737,42 @@ Local declarations can list comma-separated names, as in
 `int first = 1, next = first + 1;`. Each initializer finishes before the next
 declarator, and all names share the declared type and qualification.
 
+`auto` declarations infer the supported value or borrowed pointer type from an
+initializer. Values copy scalars, vectors, or structs without retaining a source
+reference or top-level `const`. Arrays decay to pointers, including pointers to
+rows of multidimensional arrays. The existing pointer bounds, aliases, and
+pointee constness remain effective.
+
+`auto&` binds a live reference to a scalar, vector, or struct lvalue and preserves
+its constness. `const auto&` also accepts temporary values. For pointer values,
+`const auto pointer = source;` makes the pointer object constant, while
+`const auto *pointer = source;` makes its pointee constant. `auto *const pointer`
+also makes the pointer object constant.
+
+Every declarator needs an initializer, evaluated once. Supported forms are
+`auto value = expression;`, `auto value{expression};`, and
+`auto value(expression);`. A direct braced initializer may have a trailing comma.
+Comma declarators must deduce the same placeholder type, even when their final
+types differ:
+
+```cuda
+auto value = 3, *pointer = &value, &alias = value;
+```
+
+Here the placeholder is `int`; the declarations produce an integer, a pointer,
+and a reference. These rules follow C++20
+[placeholder deduction](https://timsong-cpp.github.io/cppwp/n4861/dcl.type.auto.deduct)
+and [declaration consistency](https://timsong-cpp.github.io/cppwp/n4861/dcl.spec.auto#7).
+A name with an undeduced type cannot appear in its own initializer, including
+unselected branches or expressions that would otherwise name an outer variable.
+
+`const auto` follows the existing integral constant-expression rules.
+`constexpr auto` accepts supported scalar constant expressions locally or at file
+scope. Pointer and aggregate `constexpr` declarations remain unsupported.
+Copy-list deduction such as `auto value = {1};`, empty or multiple-element direct
+lists, `decltype(auto)`, rvalue references, pointer or whole-array references,
+and `auto` array declarators, parameters, and function results remain unsupported.
+
 Local `T&` and `const T&` declarations support the scalar, vector, and struct
 types above in kernels and device helpers. A mutable reference requires a writable
 lvalue of the same type. A const reference keeps a live view of a compatible
