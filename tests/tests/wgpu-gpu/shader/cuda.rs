@@ -45,6 +45,7 @@ mod preprocessing_conditions;
 mod prototypes;
 mod reference_bindings;
 mod reference_categories;
+mod saturate;
 mod shared_vectors;
 mod specifiers;
 mod sqrtf;
@@ -97,6 +98,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_PROTOTYPES,
         CUDA_REFERENCE_BINDINGS,
         CUDA_REFERENCE_CATEGORIES,
+        CUDA_SATURATE,
         CUDA_SHARED_VECTORS,
         CUDA_SPECIFIERS,
         CUDA_SQRTF,
@@ -317,6 +319,8 @@ static CUDA_PROTOTYPES: GpuTestConfiguration = configuration(prototypes::cases);
 static CUDA_REFERENCE_BINDINGS: GpuTestConfiguration = configuration(reference_bindings::cases);
 #[apply(gpu_test!)]
 static CUDA_REFERENCE_CATEGORIES: GpuTestConfiguration = configuration(reference_categories::cases);
+#[apply(gpu_test!)]
+static CUDA_SATURATE: GpuTestConfiguration = configuration(saturate::cases);
 #[apply(gpu_test!)]
 static CUDA_SHARED_VECTORS: GpuTestConfiguration = configuration(shared_vectors::cases);
 #[apply(gpu_test!)]
