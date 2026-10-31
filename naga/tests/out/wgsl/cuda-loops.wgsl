@@ -3,26 +3,26 @@ struct type_3 {
 }
 
 @group(0) @binding(0)
-var<storage, read_write> out: array<i32>;
+var<storage, read_write> out_1: array<i32>;
 @group(0) @binding(1)
 var<uniform> n_1: type_3;
 
 @compute @workgroup_size(1, 1, 1)
 fn loops(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
-    var local: array<u32, 2>;
+    var out: array<u32, 2>;
     var n: i32;
     var sum: i32;
     var i: i32;
     var i_1: i32;
-    var local_1: array<u32, 2>;
-    var local_2: u32;
-    var local_3: array<u32, 2>;
+    var local: array<u32, 2>;
+    var local_1: u32;
+    var local_2: array<u32, 2>;
+    var local_3: u32;
     var local_4: u32;
-    var local_5: u32;
 
-    local = array<u32, 2>();
-    local[0] = 0u;
-    local[1] = 0u;
+    out = array<u32, 2>();
+    out[0] = 0u;
+    out[1] = 0u;
     let _e10 = n_1.value;
     n = _e10;
     sum = 0i;
@@ -83,18 +83,18 @@ fn loops(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
         }
     }
     let _e55 = sum;
-    let _e58 = local;
-    local_1 = _e58;
-    local_2 = u32(threadIdx.x);
-    let _e63 = local_1;
-    local_3 = _e63;
-    let _e64 = local_2;
-    let _e66 = local_3[1];
-    local_3[1] = (_e66 + _e64);
-    let _e70 = local_3[0];
-    local_4 = u32(_e70);
-    let _e74 = local_3[1];
-    local_5 = u32(_e74);
-    let _e77 = local_5;
-    out[_e77] = _e55;
+    let _e58 = out;
+    local = _e58;
+    local_1 = u32(threadIdx.x);
+    let _e63 = local;
+    local_2 = _e63;
+    let _e64 = local_1;
+    let _e66 = local_2[1];
+    local_2[1] = (_e66 + _e64);
+    let _e70 = local_2[0];
+    local_3 = u32(_e70);
+    let _e74 = local_2[1];
+    local_4 = u32(_e74);
+    let _e77 = local_4;
+    out_1[_e77] = _e55;
 }

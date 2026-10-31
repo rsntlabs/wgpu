@@ -414,7 +414,7 @@ impl<'a> Parser<'a> {
             span,
             constant: ConstantValue::default(),
         })?;
-        let pointer = self.source_pointer_variable(pointer, pointer_const, span)?;
+        let pointer = self.source_pointer_variable(name, pointer, pointer_const, span)?;
         let pointer = self.retain_pointer_symbol(pointer)?;
         self.insert_symbol(name, Symbol::Pointer(pointer), span)?;
         Ok(())

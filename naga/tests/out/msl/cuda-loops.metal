@@ -21,23 +21,23 @@ struct loopsInput {
 };
 kernel void loops(
   metal::uint3 threadIdx [[thread_position_in_threadgroup]]
-, device type_1& out [[user(fake0)]]
+, device type_1& out_1 [[user(fake0)]]
 , constant type_3& n_1 [[user(fake0)]]
 , constant _mslBufferSizes& _buffer_sizes [[user(fake0)]]
 ) {
-    type_5 local = {};
+    type_5 out = {};
     int n = {};
     int sum = {};
     int i = {};
     int i_1 = {};
-    type_5 local_1 = {};
-    uint local_2 = {};
-    type_5 local_3 = {};
+    type_5 local = {};
+    uint local_1 = {};
+    type_5 local_2 = {};
+    uint local_3 = {};
     uint local_4 = {};
-    uint local_5 = {};
-    local = type_5 {};
-    local.inner[0] = 0u;
-    local.inner[1] = 0u;
+    out = type_5 {};
+    out.inner[0] = 0u;
+    out.inner[1] = 0u;
     int _e10 = n_1.value;
     n = _e10;
     sum = 0;
@@ -113,18 +113,18 @@ kernel void loops(
         }
     }
     int _e55 = sum;
-    type_5 _e58 = local;
-    local_1 = _e58;
-    local_2 = static_cast<uint>(threadIdx.x);
-    type_5 _e63 = local_1;
-    local_3 = _e63;
-    uint _e64 = local_2;
-    uint _e66 = local_3.inner[1];
-    local_3.inner[1] = _e66 + _e64;
-    uint _e70 = local_3.inner[0];
-    local_4 = static_cast<uint>(_e70);
-    uint _e74 = local_3.inner[1];
-    local_5 = static_cast<uint>(_e74);
-    uint _e77 = local_5;
-    out[_e77] = _e55;
+    type_5 _e58 = out;
+    local = _e58;
+    local_1 = static_cast<uint>(threadIdx.x);
+    type_5 _e63 = local;
+    local_2 = _e63;
+    uint _e64 = local_1;
+    uint _e66 = local_2.inner[1];
+    local_2.inner[1] = _e66 + _e64;
+    uint _e70 = local_2.inner[0];
+    local_3 = static_cast<uint>(_e70);
+    uint _e74 = local_2.inner[1];
+    local_4 = static_cast<uint>(_e74);
+    uint _e77 = local_4;
+    out_1[_e77] = _e55;
 }
