@@ -8,6 +8,7 @@ mod atomic_operations;
 mod atomic_wrap;
 mod barriers;
 mod bitcasts;
+mod ceilf;
 mod comma;
 mod conditionals;
 mod constant_expressions;

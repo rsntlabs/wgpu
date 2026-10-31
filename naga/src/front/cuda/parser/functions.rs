@@ -2,6 +2,7 @@ use super::*;
 
 use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
 use super::function_declarations::Inlining;
+use super::rounding::Rounding;
 use super::types::{IntegerSpecifiers, VECTOR_TYPES};
 use crate::MathFunction;
 
@@ -30,7 +31,7 @@ const BITCAST_BUILTINS: [(&str, Scalar, Scalar); 4] = [
     ("__uint_as_float", Scalar::U32, Scalar::F32),
 ];
 
-const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 10] = [
+const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 11] = [
     (
         "__clz",
         MathFunction::CountLeadingZeros,
@@ -56,6 +57,7 @@ const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 10] = [
         Scalar::U32,
     ),
     ("floorf", MathFunction::Floor, Scalar::F32, Scalar::F32),
+    ("ceilf", MathFunction::Ceil, Scalar::F32, Scalar::F32),
     ("fabsf", MathFunction::Abs, Scalar::F32, Scalar::F32),
     ("fabs", MathFunction::Abs, Scalar::F32, Scalar::F32),
     ("sinf", MathFunction::Sin, Scalar::F32, Scalar::F32),
@@ -972,7 +974,8 @@ impl<'a> Parser<'a> {
             let argument =
                 self.convert_scalar(arguments.into_iter().next().unwrap().into(), source)?;
             let handle = match function {
-                MathFunction::Floor => self.floorf(argument.handle, span)?,
+                MathFunction::Floor => self.round_float(argument.handle, Rounding::Floor, span)?,
+                MathFunction::Ceil => self.round_float(argument.handle, Rounding::Ceil, span)?,
                 MathFunction::Abs => self.absolute_value(argument.handle, span)?,
                 MathFunction::Saturate => self.saturate(argument.handle, span)?,
                 MathFunction::Sin | MathFunction::Cos => {

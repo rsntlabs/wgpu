@@ -168,7 +168,7 @@ fn output_case(name: &str, source: &str, expected: &[u32; 32]) -> ShaderTest {
     )
 }
 
-fn input_bits() -> Vec<u32> {
+pub(super) fn input_bits() -> Vec<u32> {
     let mut inputs = Vec::new();
     let mut add = |bits| {
         if !inputs.contains(&bits) {

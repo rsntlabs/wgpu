@@ -399,6 +399,16 @@ canonical quiet NaN `0x7fc00000`. These results follow NVIDIA's
 Calls execute at runtime and are not constant expressions. Double-precision
 `floor` remains unsupported.
 
+`ceilf(float)` returns the least integral value no less than its argument,
+represented as `float`. Scalar arguments convert to `float` first. Positive
+nonzero subnormals produce `1.0f`; negative values between `-1.0f` and zero
+produce negative zero. Integer operations preserve both signed zeros, infinities,
+and large integral values. NaNs produce the canonical quiet NaN `0x7fc00000`.
+These results follow NVIDIA's
+[`ceilf` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__SINGLE.html).
+Calls execute at runtime and are not constant expressions. Double-precision
+`ceil` remains unsupported.
+
 `__saturatef(float)` clamps its argument to `[+0.0, 1.0]` and returns `float`.
 Scalar arguments convert to `float` first. Negative values, both signed zeros,
 and NaNs produce positive zero; values greater than one produce one. Positive
@@ -428,7 +438,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `sqrtf`, `floorf`, `__saturatef`, `sinf`, or `cosf` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `sqrtf`, `floorf`, `ceilf`, `__saturatef`, `sinf`, or `cosf` remain unsupported.
 
 ## Bit reinterpretation
 
