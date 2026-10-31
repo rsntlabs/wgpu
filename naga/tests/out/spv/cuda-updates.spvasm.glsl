@@ -18,20 +18,16 @@ layout(set = 0, binding = 1, std140) uniform _12_11
 
 void main()
 {
-    uint _36 = 0u;
-    uint _29 = 0u;
-    uint _34 = 0u;
     int _26 = 0;
+    uint _29 = 0u;
     uint _32 = 0u;
     _26 = _11._m0._m0;
-    int _42 = _26;
-    _26 = _42 + 1;
+    int _38 = _26;
+    _26 = _38 + 1;
     _29 = gl_LocalInvocationID.x;
-    _34 = _29;
-    _8._m0[_34] += _42;
+    _8._m0[_29] += _38;
     _26++;
     _32 = gl_LocalInvocationID.x;
-    _36 = _32;
-    _8._m0[_36] = _26;
+    _8._m0[_32] = _26;
 }
 

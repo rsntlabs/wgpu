@@ -12,8 +12,6 @@ fn updates(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
     var value: i32;
     var local: u32;
     var local_1: u32;
-    var local_2: u32;
-    var local_3: u32;
 
     let _e3 = value_1.value;
     value = _e3;
@@ -21,17 +19,12 @@ fn updates(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
     value = (previous + 1i);
     local = u32(threadIdx.x);
     let _e11 = local;
-    local_2 = u32(_e11);
-    let _e14 = local_2;
-    let _e17 = out[_e14];
-    let _e19 = local_2;
-    out[_e19] = (_e17 + previous);
-    let _e21 = value;
-    value = (_e21 + 1i);
-    let _e24 = value;
+    let _e14 = out[_e11];
+    out[_e11] = (_e14 + previous);
+    let _e17 = value;
+    value = (_e17 + 1i);
+    let _e20 = value;
     local_1 = u32(threadIdx.x);
-    let _e28 = local_1;
-    local_3 = u32(_e28);
-    let _e31 = local_3;
-    out[_e31] = _e24;
+    let _e24 = local_1;
+    out[_e24] = _e20;
 }

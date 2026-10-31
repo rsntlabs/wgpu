@@ -23,17 +23,13 @@ layout(set = 0, binding = 2, std430) buffer _15_14
 
 void main()
 {
-    uint _40 = 0u;
-    uint _33 = 0u;
-    uint _38 = 0u;
     float _30 = 0.0;
+    uint _33 = 0u;
     uint _36 = 0u;
     _30 = _8._m0._m0;
     _30 *= 2.0;
     _36 = gl_LocalInvocationID.x;
-    _38 = _36;
     _33 = gl_LocalInvocationID.x;
-    _40 = _33;
-    _14._m0[_40] = _11._m0[_38] * _30;
+    _14._m0[_33] = _11._m0[_36] * _30;
 }
 

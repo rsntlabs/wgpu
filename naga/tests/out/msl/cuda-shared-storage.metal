@@ -44,30 +44,27 @@ kernel void shared_storage(
     uint local_2 = {};
     uint local_3 = {};
     uint local_4 = {};
-    uint local_5 = {};
     uint lane = threadIdx.x;
     uint base = blockIdx.x * 128u;
     values.inner[lane] = ((blockIdx.x * 1000u) + lane) + 10u;
     uint _e15 = values.inner[lane];
     local = static_cast<uint>(base + lane);
     uint _e19 = local;
-    local_3 = static_cast<uint>(_e19);
-    uint _e22 = local_3;
-    out[_e22] = _e15;
+    out[_e19] = _e15;
     if (lane == 0u) {
         signed_value = naga_neg(7);
         float_value = 3.5;
-        int _e32 = signed_value;
+        int _e29 = signed_value;
         local_1 = static_cast<uint>(base + 64u);
-        uint _e40 = local_1;
-        local_4 = static_cast<uint>(_e40);
-        uint _e43 = local_4;
-        out[_e43] = static_cast<uint>(as_type<int>(as_type<uint>(_e32) + as_type<uint>(10)));
-        float _e45 = float_value;
+        uint _e37 = local_1;
+        local_3 = _e37;
+        uint _e39 = local_3;
+        out[_e39] = static_cast<uint>(as_type<int>(as_type<uint>(_e29) + as_type<uint>(10)));
+        float _e41 = float_value;
         local_2 = static_cast<uint>(base + 65u);
-        uint _e53 = local_2;
-        local_5 = static_cast<uint>(_e53);
-        uint _e56 = local_5;
-        out[_e56] = naga_f2u32(_e45 * 2.0);
+        uint _e49 = local_2;
+        local_4 = _e49;
+        uint _e51 = local_4;
+        out[_e51] = naga_f2u32(_e41 * 2.0);
     }
 }

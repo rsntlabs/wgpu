@@ -15,7 +15,6 @@ void loops(uint3 threadIdx : SV_GroupThreadID)
     int i = (int)0;
     int i_1 = (int)0;
     uint local = (uint)0;
-    uint local_1 = (uint)0;
 
     int n_1 = n.value;
     sum = int(0);
@@ -92,7 +91,5 @@ void loops(uint3 threadIdx : SV_GroupThreadID)
     int _e46 = sum;
     local = uint(threadIdx.x);
     uint _e50 = local;
-    local_1 = uint(_e50);
-    uint _e53 = local_1;
-    out_.Store(_e53*4, asuint(_e46));
+    out_.Store(_e50*4, asuint(_e46));
 }

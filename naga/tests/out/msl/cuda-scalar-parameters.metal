@@ -27,21 +27,15 @@ kernel void scale(
     float factor = {};
     uint local = {};
     uint local_1 = {};
-    uint local_2 = {};
-    uint local_3 = {};
     float _e3 = factor_1.value;
     factor = _e3;
     float _e5 = factor;
     factor = _e5 * 2.0;
     local_1 = static_cast<uint>(threadIdx.x);
     uint _e11 = local_1;
-    local_2 = static_cast<uint>(_e11);
-    uint _e14 = local_2;
-    float _e17 = input[_e14];
-    float _e18 = factor;
+    float _e14 = input[_e11];
+    float _e15 = factor;
     local = static_cast<uint>(threadIdx.x);
-    uint _e23 = local;
-    local_3 = static_cast<uint>(_e23);
-    uint _e26 = local_3;
-    output[_e26] = _e17 * _e18;
+    uint _e20 = local;
+    output[_e20] = _e14 * _e15;
 }

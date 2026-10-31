@@ -229,14 +229,28 @@ impl<'a> Parser<'a> {
     ) -> Result<Handle<Expression>, ParseError> {
         self.charge_reference_binding(1, span)?;
         let pointer = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
-        let value = self.append(
-            Expression::As {
-                expr: index,
-                kind: ScalarKind::Uint,
-                convert: Some(4),
+        let is_unsigned_load = match self.function.ir.expressions[index] {
+            Expression::Load { pointer } => match self.function.ir.expressions[pointer] {
+                Expression::LocalVariable(local) => self.module.compare_types(
+                    &TypeResolution::Handle(self.function.ir.local_variables[local].ty),
+                    &scalar_resolution(Scalar::U32),
+                ),
+                _ => false,
             },
-            span,
-        )?;
+            _ => false,
+        };
+        let value = if is_unsigned_load {
+            index
+        } else {
+            self.append(
+                Expression::As {
+                    expr: index,
+                    kind: ScalarKind::Uint,
+                    convert: Some(4),
+                },
+                span,
+            )?
+        };
         self.push_statement(Statement::Store { pointer, value }, span);
         Ok(pointer)
     }

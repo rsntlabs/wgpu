@@ -18,26 +18,19 @@ void main() {
     int value = 0;
     uint local = 0u;
     uint local_1 = 0u;
-    uint local_2 = 0u;
-    uint local_3 = 0u;
     int _e3 = _group_0_binding_1_cs.value;
     value = _e3;
     int previous = value;
     value = (previous + 1);
     local = uint(threadIdx.x);
     uint _e11 = local;
-    local_2 = uint(_e11);
-    uint _e14 = local_2;
-    int _e17 = _group_0_binding_0_cs[_e14];
-    uint _e19 = local_2;
-    _group_0_binding_0_cs[_e19] = (_e17 + previous);
-    int _e21 = value;
-    value = (_e21 + 1);
-    int _e24 = value;
+    int _e14 = _group_0_binding_0_cs[_e11];
+    _group_0_binding_0_cs[_e11] = (_e14 + previous);
+    int _e17 = value;
+    value = (_e17 + 1);
+    int _e20 = value;
     local_1 = uint(threadIdx.x);
-    uint _e28 = local_1;
-    local_3 = uint(_e28);
-    uint _e31 = local_3;
-    _group_0_binding_0_cs[_e31] = _e24;
+    uint _e24 = local_1;
+    _group_0_binding_0_cs[_e24] = _e20;
 }
 

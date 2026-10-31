@@ -108,6 +108,44 @@ fn assert_emitted_values(function: &naga::Function, expected: &[&str]) {
     }
 }
 
+fn assert_particle_point_indices(module: &naga::Module) {
+    let function = &module.entry_points[0].function;
+    let particle_index = function
+        .named_expressions
+        .iter()
+        .find_map(|(&handle, name)| (name == "i").then_some(handle))
+        .expect("missing particle index");
+    let points = module
+        .global_variables
+        .iter()
+        .find_map(|(handle, global)| {
+            (global.binding
+                == Some(naga::ResourceBinding {
+                    group: 0,
+                    binding: 0,
+                }))
+            .then_some(handle)
+        })
+        .expect("missing particle buffer");
+    let indices: Vec<_> = function
+        .expressions
+        .iter()
+        .filter_map(|(_, expression)| match *expression {
+            naga::Expression::Access { base, index }
+                if matches!(function.expressions[base], naga::Expression::GlobalVariable(global) if global == points) =>
+            {
+                Some(index)
+            }
+            _ => None,
+        })
+        .collect();
+    assert!(!indices.is_empty(), "missing particle buffer access");
+    assert!(
+        indices.iter().all(|&index| index == particle_index),
+        "particle writes retain redundant index snapshots instead of reusing i"
+    );
+}
+
 #[test]
 fn cuda_scalar_promotion_names_the_complete_particles_shader() {
     let (module, info) = validate_with_options(
@@ -117,6 +155,7 @@ fn cuda_scalar_promotion_names_the_complete_particles_shader() {
         },
     );
     assert_particle_values(&module, &info);
+    assert_particle_point_indices(&module);
     assert!(
         module.entry_points[0]
             .function
@@ -139,6 +178,7 @@ fn cuda_scalar_promotion_names_the_complete_particles_shader() {
             &reparsed.entry_points[0].function,
             &["i", "count", "time", "side", "x", "y", "distance", "ripple"],
         );
+        assert_particle_point_indices(&reparsed);
         let (_, wave) = reparsed
             .functions
             .iter()

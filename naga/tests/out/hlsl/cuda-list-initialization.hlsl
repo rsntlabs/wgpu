@@ -27,22 +27,22 @@ int ZeroValueint() {
 int list_sum(int seed)
 {
     int values_1[3] = (int[3])0;
-    uint local_66 = (uint)0;
+    uint local_35 = (uint)0;
 
     values_1[0] = seed;
     values_1[1] = asint(asuint(seed) + asuint(int(1)));
-    local_66 = 2u;
+    local_35 = 2u;
     uint2 loop_bound = uint2(4294967295u, 4294967295u);
     bool loop_init = true;
     while(true) {
         if (all(loop_bound == uint2(0u, 0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
         if (!loop_init) {
-            uint _e13 = local_66;
-            local_66 = (_e13 + 1u);
+            uint _e13 = local_35;
+            local_35 = (_e13 + 1u);
         }
         loop_init = false;
-        uint _e8 = local_66;
+        uint _e8 = local_35;
         if ((_e8 >= 3u)) {
             break;
         }
@@ -141,43 +141,10 @@ void list_initialization()
     uint local_32 = (uint)0;
     uint local_33 = (uint)0;
     uint local_34 = (uint)0;
-    uint local_35 = (uint)0;
-    uint local_36 = (uint)0;
-    uint local_37 = (uint)0;
-    uint local_38 = (uint)0;
-    uint local_39 = (uint)0;
-    uint local_40 = (uint)0;
-    uint local_41 = (uint)0;
-    uint local_42 = (uint)0;
-    uint local_43 = (uint)0;
-    uint local_44 = (uint)0;
-    uint local_45 = (uint)0;
-    uint local_46 = (uint)0;
-    uint local_47 = (uint)0;
-    uint local_48 = (uint)0;
-    uint local_49 = (uint)0;
-    uint local_50 = (uint)0;
-    uint local_51 = (uint)0;
-    uint local_52 = (uint)0;
-    uint local_53 = (uint)0;
-    uint local_54 = (uint)0;
-    uint local_55 = (uint)0;
-    uint local_56 = (uint)0;
-    uint local_57 = (uint)0;
-    uint local_58 = (uint)0;
-    uint local_59 = (uint)0;
-    uint local_60 = (uint)0;
-    uint local_61 = (uint)0;
-    uint local_62 = (uint)0;
-    uint local_63 = (uint)0;
-    uint local_64 = (uint)0;
-    uint local_65 = (uint)0;
 
     local = uint(int(0));
     uint _e3 = local;
-    local_35 = uint(_e3);
-    uint _e6 = local_35;
-    int seed_2 = asint(out_.Load(_e6*4));
+    int seed_2 = asint(out_.Load(_e3*4));
     zero = int(0);
     copy_zero = int(0);
     enabled = true;
@@ -193,201 +160,159 @@ void list_initialization()
         if (all(loop_bound_1 == uint2(0u, 0u))) { break; }
         loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
         if (!loop_init_1) {
-            uint _e34 = local_2;
-            local_2 = (_e34 + 1u);
+            uint _e31 = local_2;
+            local_2 = (_e31 + 1u);
         }
         loop_init_1 = false;
-        uint _e29 = local_2;
-        if ((_e29 >= 3u)) {
+        uint _e26 = local_2;
+        if ((_e26 >= 3u)) {
             break;
         }
-        safe_values[min(uint(_e29), 2u)] = ZeroValueint();
+        safe_values[min(uint(_e26), 2u)] = ZeroValueint();
     }
-    int _e37 = zero;
+    int _e34 = zero;
     local_3 = uint(int(0));
-    uint _e41 = local_3;
-    local_36 = uint(_e41);
-    uint _e44 = local_36;
-    out_.Store(_e44*4, asuint(_e37));
-    int _e46 = copy_zero;
+    uint _e38 = local_3;
+    out_.Store(_e38*4, asuint(_e34));
+    int _e40 = copy_zero;
     local_4 = uint(int(1));
-    uint _e50 = local_4;
-    local_37 = uint(_e50);
-    uint _e53 = local_37;
-    out_.Store(_e53*4, asuint(_e46));
-    bool _e55 = enabled;
+    uint _e44 = local_4;
+    out_.Store(_e44*4, asuint(_e40));
+    bool _e46 = enabled;
     local_5 = uint(int(2));
-    uint _e60 = local_5;
-    local_38 = uint(_e60);
-    uint _e63 = local_38;
-    out_.Store(_e63*4, asuint(int(_e55)));
+    uint _e51 = local_5;
+    out_.Store(_e51*4, asuint(int(_e46)));
     local_6 = uint(int(3));
-    uint _e69 = local_6;
-    local_39 = uint(_e69);
-    uint _e72 = local_39;
-    out_.Store(_e72*4, asuint(int(count)));
-    float _e74 = sample_;
+    uint _e57 = local_6;
+    out_.Store(_e57*4, asuint(int(count)));
+    float _e59 = sample_;
     local_7 = uint(int(4));
-    uint _e81 = local_7;
-    local_40 = uint(_e81);
-    uint _e84 = local_40;
-    out_.Store(_e84*4, asuint(naga_f2i32((_e74 * 2.0))));
-    int _e86 = Local;
+    uint _e66 = local_7;
+    out_.Store(_e66*4, asuint(naga_f2i32((_e59 * 2.0))));
+    int _e68 = Local;
     local_8 = uint(int(5));
-    uint _e92 = local_8;
-    local_41 = uint(_e92);
-    uint _e95 = local_41;
-    out_.Store(_e95*4, asuint(asint(asuint(Global) + asuint(_e86))));
-    int _e99 = safe_values[int(2)];
+    uint _e74 = local_8;
+    out_.Store(_e74*4, asuint(asint(asuint(Global) + asuint(_e68))));
+    int _e78 = safe_values[int(2)];
     local_9 = uint(int(6));
-    uint _e103 = local_9;
-    local_42 = uint(_e103);
-    uint _e106 = local_42;
-    out_.Store(_e106*4, asuint(_e99));
+    uint _e82 = local_9;
+    out_.Store(_e82*4, asuint(_e78));
     values[0] = int(1);
-    int _e114 = values[int(0)];
-    values[1] = asint(asuint(_e114) + asuint(int(1)));
-    int _e120 = values[int(1)];
-    values[2] = asint(asuint(_e120) + asuint(int(1)));
-    int _e127 = values[int(0)];
-    int _e128 = values[int(1)];
-    int _e132 = values[int(2)];
+    int _e90 = values[int(0)];
+    values[1] = asint(asuint(_e90) + asuint(int(1)));
+    int _e96 = values[int(1)];
+    values[2] = asint(asuint(_e96) + asuint(int(1)));
+    int _e103 = values[int(0)];
+    int _e104 = values[int(1)];
+    int _e108 = values[int(2)];
     local_10 = uint(int(7));
-    uint _e137 = local_10;
-    local_43 = uint(_e137);
-    uint _e140 = local_43;
-    out_.Store(_e140*4, asuint(asint(asuint(asint(asuint(_e127) + asuint(_e128))) + asuint(_e132))));
+    uint _e113 = local_10;
+    out_.Store(_e113*4, asuint(asint(asuint(asint(asuint(_e103) + asuint(_e104))) + asuint(_e108))));
     changed[0] = int(1);
     changed[int(0)] = int(7);
     changed[1] = int(2);
-    int _e153 = changed[int(0)];
-    changed[2] = _e153;
-    int _e156 = changed[int(0)];
+    int _e126 = changed[int(0)];
+    changed[2] = _e126;
+    int _e129 = changed[int(0)];
     local_11 = uint(int(8));
-    uint _e160 = local_11;
-    local_44 = uint(_e160);
-    uint _e163 = local_44;
-    out_.Store(_e163*4, asuint(_e156));
-    int _e167 = changed[int(2)];
+    uint _e133 = local_11;
+    out_.Store(_e133*4, asuint(_e129));
+    int _e137 = changed[int(2)];
     local_12 = uint(int(9));
-    uint _e171 = local_12;
-    local_45 = uint(_e171);
-    uint _e174 = local_45;
-    out_.Store(_e174*4, asuint(_e167));
+    uint _e141 = local_12;
+    out_.Store(_e141*4, asuint(_e137));
     point_.x = int(1);
-    int _e180 = point_.x;
-    point_.y = asint(asuint(_e180) + asuint(int(1)));
-    int _e185 = point_.y;
-    point_.z = asint(asuint(_e185) + asuint(int(1)));
-    int _e190 = point_.z;
+    int _e147 = point_.x;
+    point_.y = asint(asuint(_e147) + asuint(int(1)));
+    int _e152 = point_.y;
+    point_.z = asint(asuint(_e152) + asuint(int(1)));
+    int _e157 = point_.z;
     local_13 = uint(int(10));
-    uint _e194 = local_13;
-    local_46 = uint(_e194);
-    uint _e197 = local_46;
-    out_.Store(_e197*4, asuint(_e190));
+    uint _e161 = local_13;
+    out_.Store(_e161*4, asuint(_e157));
     changed_point.x = int(1);
     changed_point.x = int(9);
     changed_point.y = int(2);
-    int _e207 = changed_point.x;
-    changed_point.z = _e207;
-    int _e210 = changed_point.x;
+    int _e171 = changed_point.x;
+    changed_point.z = _e171;
+    int _e174 = changed_point.x;
     local_14 = uint(int(11));
-    uint _e214 = local_14;
-    local_47 = uint(_e214);
-    uint _e217 = local_47;
-    out_.Store(_e217*4, asuint(_e210));
-    int _e220 = changed_point.z;
+    uint _e178 = local_14;
+    out_.Store(_e178*4, asuint(_e174));
+    int _e181 = changed_point.z;
     local_15 = uint(int(12));
-    uint _e224 = local_15;
-    local_48 = uint(_e224);
-    uint _e227 = local_48;
-    out_.Store(_e227*4, asuint(_e220));
+    uint _e185 = local_15;
+    out_.Store(_e185*4, asuint(_e181));
     nested[0].x = int(1);
     nested[0].y = int(2);
     nested[0].z = ZeroValueint();
     nested[1].x = int(3);
     nested[1].y = ZeroValueint();
     nested[1].z = ZeroValueint();
-    int _e250 = nested[int(0)].z;
-    int _e251 = nested[int(1)].x;
+    int _e208 = nested[int(0)].z;
+    int _e209 = nested[int(1)].x;
     local_16 = uint(int(13));
-    uint _e256 = local_16;
-    local_49 = uint(_e256);
-    uint _e259 = local_49;
-    out_.Store(_e259*4, asuint(asint(asuint(_e250) + asuint(_e251))));
+    uint _e214 = local_16;
+    out_.Store(_e214*4, asuint(asint(asuint(_e208) + asuint(_e209))));
     flat[0].x = int(1);
     flat[0].y = int(2);
     flat[1].x = int(3);
     flat[1].y = ZeroValueint();
-    int _e278 = flat[int(0)].x;
-    int _e279 = flat[int(0)].y;
-    int _e284 = flat[int(1)].x;
-    int _e289 = flat[int(1)].y;
+    int _e233 = flat[int(0)].x;
+    int _e234 = flat[int(0)].y;
+    int _e239 = flat[int(1)].x;
+    int _e244 = flat[int(1)].y;
     local_17 = uint(int(14));
-    uint _e294 = local_17;
-    local_50 = uint(_e294);
-    uint _e297 = local_50;
-    out_.Store(_e297*4, asuint(asint(asuint(asint(asuint(asint(asuint(_e278) + asuint(_e279))) + asuint(_e284))) + asuint(_e289))));
+    uint _e249 = local_17;
+    out_.Store(_e249*4, asuint(asint(asuint(asint(asuint(asint(asuint(_e233) + asuint(_e234))) + asuint(_e239))) + asuint(_e244))));
     original.x = int(2);
     original.y = int(3);
     original.z = int(4);
-    int3_ _e306 = original;
-    copied = _e306;
-    int3_ _e310 = original;
-    copies[0] = _e310;
+    int3_ _e258 = original;
+    copied = _e258;
+    int3_ _e262 = original;
+    copies[0] = _e262;
     copies[1].x = int(5);
     copies[1].y = int(6);
     copies[1].z = ZeroValueint();
     original.x = int(99);
-    int _e321 = copied.x;
+    int _e273 = copied.x;
     local_18 = uint(int(15));
-    uint _e325 = local_18;
-    local_51 = uint(_e325);
-    uint _e328 = local_51;
-    out_.Store(_e328*4, asuint(_e321));
-    int _e333 = copies[int(0)].x;
+    uint _e277 = local_18;
+    out_.Store(_e277*4, asuint(_e273));
+    int _e282 = copies[int(0)].x;
     local_19 = uint(int(16));
-    uint _e337 = local_19;
-    local_52 = uint(_e337);
-    uint _e340 = local_52;
-    out_.Store(_e340*4, asuint(_e333));
-    int _e345 = copies[int(1)].z;
+    uint _e286 = local_19;
+    out_.Store(_e286*4, asuint(_e282));
+    int _e291 = copies[int(1)].z;
     local_20 = uint(int(17));
-    uint _e349 = local_20;
-    local_53 = uint(_e349);
-    uint _e352 = local_53;
-    out_.Store(_e352*4, asuint(_e345));
+    uint _e295 = local_20;
+    out_.Store(_e295*4, asuint(_e291));
     counter = seed_2;
-    int _e357 = counter;
-    counter = asint(asuint(_e357) + asuint(int(1)));
-    ordered[0] = _e357;
-    int _e361 = counter;
-    counter = asint(asuint(_e361) + asuint(int(1)));
-    ordered[1] = _e361;
-    int _e365 = counter;
-    ordered[2] = _e365;
-    int _e368 = ordered[int(0)];
-    int _e373 = ordered[int(1)];
-    int _e379 = ordered[int(2)];
+    int _e300 = counter;
+    counter = asint(asuint(_e300) + asuint(int(1)));
+    ordered[0] = _e300;
+    int _e304 = counter;
+    counter = asint(asuint(_e304) + asuint(int(1)));
+    ordered[1] = _e304;
+    int _e308 = counter;
+    ordered[2] = _e308;
+    int _e311 = ordered[int(0)];
+    int _e316 = ordered[int(1)];
+    int _e322 = ordered[int(2)];
     local_21 = uint(int(18));
-    uint _e384 = local_21;
-    local_54 = uint(_e384);
-    uint _e387 = local_54;
-    out_.Store(_e387*4, asuint(asint(asuint(asint(asuint(asint(asuint(_e368) * asuint(int(100)))) + asuint(asint(asuint(_e373) * asuint(int(10)))))) + asuint(_e379))));
-    int _e389 = counter;
+    uint _e327 = local_21;
+    out_.Store(_e327*4, asuint(asint(asuint(asint(asuint(asint(asuint(_e311) * asuint(int(100)))) + asuint(asint(asuint(_e316) * asuint(int(10)))))) + asuint(_e322))));
+    int _e329 = counter;
     local_22 = uint(int(19));
-    uint _e393 = local_22;
-    local_55 = uint(_e393);
-    uint _e396 = local_55;
-    out_.Store(_e396*4, asuint(_e389));
-    int _e398 = counter;
-    counter = asint(asuint(_e398) + asuint(int(1)));
-    const int _e402 = pair(_e398, int(4));
+    uint _e333 = local_22;
+    out_.Store(_e333*4, asuint(_e329));
+    int _e335 = counter;
+    counter = asint(asuint(_e335) + asuint(int(1)));
+    const int _e339 = pair(_e335, int(4));
     local_23 = uint(int(20));
-    uint _e406 = local_23;
-    local_56 = uint(_e406);
-    uint _e409 = local_56;
-    out_.Store(_e409*4, asuint(_e402));
+    uint _e343 = local_23;
+    out_.Store(_e343*4, asuint(_e339));
     zero_total = int(0);
     {
         iteration = int(0);
@@ -397,17 +322,17 @@ void list_initialization()
             if (all(loop_bound_2 == uint2(0u, 0u))) { break; }
             loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
             if (!loop_init_2) {
-                int _e439 = iteration;
-                iteration = asint(asuint(_e439) + asuint(int(1)));
+                int _e373 = iteration;
+                iteration = asint(asuint(_e373) + asuint(int(1)));
             }
             loop_init_2 = false;
-            int _e415 = iteration;
-            if ((_e415 < int(3))) {
+            int _e349 = iteration;
+            if ((_e349 < int(3))) {
             } else {
                 break;
             }
-            int _e420 = iteration;
-            reset[0] = _e420;
+            int _e354 = iteration;
+            reset[0] = _e354;
             local_24 = 1u;
             uint2 loop_bound_3 = uint2(4294967295u, 4294967295u);
             bool loop_init_3 = true;
@@ -415,28 +340,26 @@ void list_initialization()
                 if (all(loop_bound_3 == uint2(0u, 0u))) { break; }
                 loop_bound_3 -= uint2(loop_bound_3.y == 0u, 1u);
                 if (!loop_init_3) {
-                    uint _e428 = local_24;
-                    local_24 = (_e428 + 1u);
+                    uint _e362 = local_24;
+                    local_24 = (_e362 + 1u);
                 }
                 loop_init_3 = false;
-                uint _e423 = local_24;
-                if ((_e423 >= 3u)) {
+                uint _e357 = local_24;
+                if ((_e357 >= 3u)) {
                     break;
                 }
-                reset[min(uint(_e423), 2u)] = ZeroValueint();
+                reset[min(uint(_e357), 2u)] = ZeroValueint();
             }
-            int _e433 = reset[int(2)];
-            int _e434 = zero_total;
-            zero_total = asint(asuint(_e434) + asuint(_e433));
+            int _e367 = reset[int(2)];
+            int _e368 = zero_total;
+            zero_total = asint(asuint(_e368) + asuint(_e367));
             reset[int(2)] = int(9);
         }
     }
-    int _e442 = zero_total;
+    int _e376 = zero_total;
     local_25 = uint(int(21));
-    uint _e446 = local_25;
-    local_57 = uint(_e446);
-    uint _e449 = local_57;
-    out_.Store(_e449*4, asuint(_e442));
+    uint _e380 = local_25;
+    out_.Store(_e380*4, asuint(_e376));
     total = int(0);
     {
         iteration_1 = int(0);
@@ -447,38 +370,34 @@ void list_initialization()
             if (all(loop_bound_4 == uint2(0u, 0u))) { break; }
             loop_bound_4 -= uint2(loop_bound_4.y == 0u, 1u);
             if (!loop_init_4) {
-                int _e463 = iteration_1;
-                iteration_1 = asint(asuint(_e463) + asuint(int(1)));
+                int _e394 = iteration_1;
+                iteration_1 = asint(asuint(_e394) + asuint(int(1)));
             }
             loop_init_4 = false;
-            int _e457 = iteration_1;
-            int _e458 = limit;
-            if ((_e457 < _e458)) {
+            int _e388 = iteration_1;
+            int _e389 = limit;
+            if ((_e388 < _e389)) {
             } else {
                 break;
             }
-            int _e460 = iteration_1;
-            int _e461 = total;
-            total = asint(asuint(_e461) + asuint(_e460));
+            int _e391 = iteration_1;
+            int _e392 = total;
+            total = asint(asuint(_e392) + asuint(_e391));
         }
     }
-    int _e466 = total;
+    int _e397 = total;
     local_26 = uint(int(22));
-    uint _e470 = local_26;
-    local_58 = uint(_e470);
-    uint _e473 = local_58;
-    out_.Store(_e473*4, asuint(_e466));
+    uint _e401 = local_26;
+    out_.Store(_e401*4, asuint(_e397));
     Number = int(4);
-    int _e479 = Number;
-    cached[0] = _e479;
-    int _e481 = Number;
-    cached[1] = asint(asuint(_e481) + asuint(int(1)));
-    int _e486 = cached[int(1)];
+    int _e407 = Number;
+    cached[0] = _e407;
+    int _e409 = Number;
+    cached[1] = asint(asuint(_e409) + asuint(int(1)));
+    int _e414 = cached[int(1)];
     local_27 = uint(int(23));
-    uint _e490 = local_27;
-    local_59 = uint(_e490);
-    uint _e493 = local_59;
-    out_.Store(_e493*4, asuint(_e486));
+    uint _e418 = local_27;
+    out_.Store(_e418*4, asuint(_e414));
     frozen[0] = int(3);
     local_28 = 1u;
     uint2 loop_bound_5 = uint2(4294967295u, 4294967295u);
@@ -487,57 +406,45 @@ void list_initialization()
         if (all(loop_bound_5 == uint2(0u, 0u))) { break; }
         loop_bound_5 -= uint2(loop_bound_5.y == 0u, 1u);
         if (!loop_init_5) {
-            uint _e505 = local_28;
-            local_28 = (_e505 + 1u);
+            uint _e430 = local_28;
+            local_28 = (_e430 + 1u);
         }
         loop_init_5 = false;
-        uint _e500 = local_28;
-        if ((_e500 >= 3u)) {
+        uint _e425 = local_28;
+        if ((_e425 >= 3u)) {
             break;
         }
-        frozen[min(uint(_e500), 2u)] = ZeroValueint();
+        frozen[min(uint(_e425), 2u)] = ZeroValueint();
     }
-    int _e512 = frozen[int(0)];
-    int _e513 = frozen[int(1)];
-    int _e517 = frozen[int(2)];
+    int _e437 = frozen[int(0)];
+    int _e438 = frozen[int(1)];
+    int _e442 = frozen[int(2)];
     local_29 = uint(int(24));
-    uint _e522 = local_29;
-    local_60 = uint(_e522);
-    uint _e525 = local_60;
-    out_.Store(_e525*4, asuint(asint(asuint(asint(asuint(_e512) + asuint(_e513))) + asuint(_e517))));
+    uint _e447 = local_29;
+    out_.Store(_e447*4, asuint(asint(asuint(asint(asuint(_e437) + asuint(_e438))) + asuint(_e442))));
     floating.x = 1.5;
     floating.y = -(0.0);
     floating.z = ZeroValuefloat();
-    float _e536 = floating.y;
+    float _e458 = floating.y;
     local_30 = uint(int(25));
-    uint _e541 = local_30;
-    local_61 = uint(_e541);
-    uint _e544 = local_61;
-    out_.Store(_e544*4, asuint(asint(_e536)));
-    float _e547 = floating.z;
+    uint _e463 = local_30;
+    out_.Store(_e463*4, asuint(asint(_e458)));
+    float _e466 = floating.z;
     local_31 = uint(int(26));
-    uint _e552 = local_31;
-    local_62 = uint(_e552);
-    uint _e555 = local_62;
-    out_.Store(_e555*4, asuint(asint(_e547)));
-    const int3_ _e558 = make_list(int(6));
-    from_call = _e558;
-    int _e562 = from_call.x;
-    int _e563 = from_call.z;
+    uint _e471 = local_31;
+    out_.Store(_e471*4, asuint(asint(_e466)));
+    const int3_ _e474 = make_list(int(6));
+    from_call = _e474;
+    int _e478 = from_call.x;
+    int _e479 = from_call.z;
     local_32 = uint(int(27));
-    uint _e568 = local_32;
-    local_63 = uint(_e568);
-    uint _e571 = local_63;
-    out_.Store(_e571*4, asuint(asint(asuint(_e562) + asuint(_e563))));
+    uint _e484 = local_32;
+    out_.Store(_e484*4, asuint(asint(asuint(_e478) + asuint(_e479))));
     local_33 = uint(int(28));
-    uint _e580 = local_33;
-    local_64 = uint(_e580);
-    uint _e583 = local_64;
-    out_.Store(_e583*4, asuint(naga_f2i32((Scale * 10.0))));
-    const int _e587 = list_sum(asint(asuint(seed_2) + asuint(int(3))));
+    uint _e493 = local_33;
+    out_.Store(_e493*4, asuint(naga_f2i32((Scale * 10.0))));
+    const int _e497 = list_sum(asint(asuint(seed_2) + asuint(int(3))));
     local_34 = uint(int(29));
-    uint _e591 = local_34;
-    local_65 = uint(_e591);
-    uint _e594 = local_65;
-    out_.Store(_e594*4, asuint(_e587));
+    uint _e501 = local_34;
+    out_.Store(_e501*4, asuint(_e497));
 }

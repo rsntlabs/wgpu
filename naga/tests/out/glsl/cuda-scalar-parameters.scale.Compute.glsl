@@ -20,22 +20,16 @@ void main() {
     float factor = 0.0;
     uint local = 0u;
     uint local_1 = 0u;
-    uint local_2 = 0u;
-    uint local_3 = 0u;
     float _e3 = _group_0_binding_0_cs.value;
     factor = _e3;
     float _e5 = factor;
     factor = (_e5 * 2.0);
     local_1 = uint(threadIdx.x);
     uint _e11 = local_1;
-    local_2 = uint(_e11);
-    uint _e14 = local_2;
-    float _e17 = _group_0_binding_1_cs[_e14];
-    float _e18 = factor;
+    float _e14 = _group_0_binding_1_cs[_e11];
+    float _e15 = factor;
     local = uint(threadIdx.x);
-    uint _e23 = local;
-    local_3 = uint(_e23);
-    uint _e26 = local_3;
-    _group_0_binding_2_cs[_e26] = (_e17 * _e18);
+    uint _e20 = local;
+    _group_0_binding_2_cs[_e20] = (_e14 * _e15);
 }
 

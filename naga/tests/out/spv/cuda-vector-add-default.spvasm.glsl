@@ -18,19 +18,7 @@ layout(set = 0, binding = 2, std430) buffer _14_13
 
 void main()
 {
-    uint _40 = 0u;
-    uint _34 = 0u;
-    uint _38 = 0u;
-    uint _31 = 0u;
-    uint _42 = 0u;
-    uint _36 = 0u;
-    uint _48 = (gl_WorkGroupID.x * 1u) + gl_LocalInvocationID.x;
-    _34 = _48;
-    _36 = _48;
-    _38 = _36;
-    _40 = _34;
-    _31 = _48;
-    _42 = _31;
-    _13._m0[_42] = _7._m0[_40] + (_10._m0[_38] * 2.0);
+    uint _35 = (gl_WorkGroupID.x * 1u) + gl_LocalInvocationID.x;
+    _13._m0[_35] = _7._m0[_35] + (_10._m0[_35] * 2.0);
 }
 

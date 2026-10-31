@@ -18,132 +18,93 @@ fn kernel() {
     var local_12: u32;
     var local_13: u32;
     var local_14: u32;
-    var local_15: u32;
-    var local_16: u32;
-    var local_17: u32;
-    var local_18: u32;
-    var local_19: u32;
-    var local_20: u32;
-    var local_21: u32;
-    var local_22: u32;
-    var local_23: u32;
-    var local_24: u32;
-    var local_25: u32;
-    var local_26: u32;
-    var local_27: u32;
-    var local_28: i32;
-    var local_29: i32;
-    var local_30: i32;
-    var local_31: i32;
-    var local_32: i32;
+    var local_15: i32;
+    var local_16: i32;
+    var local_17: i32;
+    var local_18: i32;
+    var local_19: i32;
 
     let _e1 = -(3i);
     local_13 = u32(0u);
     let _e7 = local_13;
     loop {
         let _e10 = atomicCompareExchangeWeak((&output[_e7]), _e1, i32(7.75f));
-        local_28 = _e10.old_value;
+        local_15 = _e10.old_value;
         if (_e10.exchanged || (_e10.old_value != _e1)) {
             break;
         }
     }
-    let _e17 = local_28;
+    let _e17 = local_15;
     local = u32(8i);
     let _e21 = local;
-    local_14 = u32(_e21);
-    let _e24 = local_14;
-    atomicStore((&output[_e24]), _e17);
-    let _e27 = -(3i);
-    local_15 = u32(0u);
-    let _e31 = local_15;
+    atomicStore((&output[_e21]), _e17);
+    let _e24 = -(3i);
+    local_14 = u32(0u);
+    let _e28 = local_14;
     loop {
-        let _e34 = atomicCompareExchangeWeak((&output[_e31]), _e27, 11i);
-        local_29 = _e34.old_value;
-        if (_e34.exchanged || (_e34.old_value != _e27)) {
+        let _e31 = atomicCompareExchangeWeak((&output[_e28]), _e24, 11i);
+        local_16 = _e31.old_value;
+        if (_e31.exchanged || (_e31.old_value != _e24)) {
             break;
         }
     }
-    let _e41 = local_29;
+    let _e38 = local_16;
     local_1 = u32(9i);
-    let _e45 = local_1;
-    local_16 = u32(_e45);
-    let _e48 = local_16;
-    atomicStore((&output[_e48]), _e41);
+    let _e42 = local_1;
+    atomicStore((&output[_e42]), _e38);
     local_3 = u32(1i);
-    let _e56 = (-(2147483647i) - 1i);
-    let _e59 = local_3;
-    local_17 = u32(_e59);
-    let _e62 = local_17;
+    let _e50 = (-(2147483647i) - 1i);
+    let _e53 = local_3;
     loop {
-        let _e64 = atomicCompareExchangeWeak((&output[_e62]), _e56, -(7i));
-        local_30 = _e64.old_value;
-        if (_e64.exchanged || (_e64.old_value != _e56)) {
+        let _e55 = atomicCompareExchangeWeak((&output[_e53]), _e50, -(7i));
+        local_17 = _e55.old_value;
+        if (_e55.exchanged || (_e55.old_value != _e50)) {
             break;
         }
     }
-    let _e71 = local_30;
+    let _e62 = local_17;
     local_2 = u32(10i);
-    let _e75 = local_2;
-    local_18 = u32(_e75);
-    let _e78 = local_18;
-    atomicStore((&output[_e78]), _e71);
+    let _e66 = local_2;
+    atomicStore((&output[_e66]), _e62);
     local_4 = u32(2i);
-    let _e85 = local_4;
-    local_19 = u32(_e85);
-    let _e88 = local_19;
+    let _e73 = local_4;
     loop {
-        let _e91 = atomicCompareExchangeWeak((&output[_e88]), 5i, -(4i));
-        local_31 = _e91.old_value;
-        if (_e91.exchanged || (_e91.old_value != 5i)) {
+        let _e76 = atomicCompareExchangeWeak((&output[_e73]), 5i, -(4i));
+        local_18 = _e76.old_value;
+        if (_e76.exchanged || (_e76.old_value != 5i)) {
             break;
         }
     }
     local_6 = u32(2i);
-    let _e102 = i32(-(4.75f));
-    let _e105 = local_6;
-    local_20 = u32(_e105);
-    let _e108 = local_20;
+    let _e87 = i32(-(4.75f));
+    let _e90 = local_6;
     loop {
-        let _e110 = atomicCompareExchangeWeak((&output[_e108]), _e102, i32(9.75f));
-        local_32 = _e110.old_value;
-        if (_e110.exchanged || (_e110.old_value != _e102)) {
+        let _e92 = atomicCompareExchangeWeak((&output[_e90]), _e87, i32(9.75f));
+        local_19 = _e92.old_value;
+        if (_e92.exchanged || (_e92.old_value != _e87)) {
             break;
         }
     }
-    let _e117 = local_32;
+    let _e99 = local_19;
     local_5 = u32(11i);
-    let _e121 = local_5;
-    local_21 = u32(_e121);
-    let _e124 = local_21;
-    atomicStore((&output[_e124]), _e117);
+    let _e103 = local_5;
+    atomicStore((&output[_e103]), _e99);
     local_8 = u32(0i);
-    let _e129 = local_8;
-    local_22 = u32(_e129);
-    let _e132 = local_22;
-    let _e134 = atomicLoad((&output[_e132]));
+    let _e108 = local_8;
+    let _e110 = atomicLoad((&output[_e108]));
     local_7 = u32(12i);
-    let _e138 = local_7;
-    local_23 = u32(_e138);
-    let _e141 = local_23;
-    atomicStore((&output[_e141]), _e134);
+    let _e114 = local_7;
+    atomicStore((&output[_e114]), _e110);
     local_10 = u32(1i);
-    let _e146 = local_10;
-    local_24 = u32(_e146);
-    let _e149 = local_24;
-    let _e151 = atomicLoad((&output[_e149]));
+    let _e119 = local_10;
+    let _e121 = atomicLoad((&output[_e119]));
     local_9 = u32(13i);
-    let _e155 = local_9;
-    local_25 = u32(_e155);
-    let _e158 = local_25;
-    atomicStore((&output[_e158]), _e151);
+    let _e125 = local_9;
+    atomicStore((&output[_e125]), _e121);
     local_12 = u32(2i);
-    let _e163 = local_12;
-    local_26 = u32(_e163);
-    let _e166 = local_26;
-    let _e168 = atomicLoad((&output[_e166]));
+    let _e130 = local_12;
+    let _e132 = atomicLoad((&output[_e130]));
     local_11 = u32(14i);
-    let _e172 = local_11;
-    local_27 = u32(_e172);
-    let _e175 = local_27;
-    atomicStore((&output[_e175]), _e168);
+    let _e136 = local_11;
+    atomicStore((&output[_e136]), _e132);
 }

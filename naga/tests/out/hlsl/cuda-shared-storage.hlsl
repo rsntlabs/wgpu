@@ -25,7 +25,6 @@ void shared_storage(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_Grou
     uint local_2 = (uint)0;
     uint local_3 = (uint)0;
     uint local_4 = (uint)0;
-    uint local_5 = (uint)0;
 
     uint lane = threadIdx.x;
     uint base = (blockIdx.x * 128u);
@@ -33,23 +32,21 @@ void shared_storage(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_Grou
     uint _e15 = values[min(uint(lane), 63u)];
     local = uint((base + lane));
     uint _e19 = local;
-    local_3 = uint(_e19);
-    uint _e22 = local_3;
-    out_.Store(_e22*4, asuint(_e15));
+    out_.Store(_e19*4, asuint(_e15));
     if ((lane == 0u)) {
         signed_value = naga_neg(int(7));
         float_value = 3.5;
-        int _e32 = signed_value;
+        int _e29 = signed_value;
         local_1 = uint((base + 64u));
-        uint _e40 = local_1;
-        local_4 = uint(_e40);
-        uint _e43 = local_4;
-        out_.Store(_e43*4, asuint(uint(asint(asuint(_e32) + asuint(int(10))))));
-        float _e45 = float_value;
+        uint _e37 = local_1;
+        local_3 = _e37;
+        uint _e39 = local_3;
+        out_.Store(_e39*4, asuint(uint(asint(asuint(_e29) + asuint(int(10))))));
+        float _e41 = float_value;
         local_2 = uint((base + 65u));
-        uint _e53 = local_2;
-        local_5 = uint(_e53);
-        uint _e56 = local_5;
-        out_.Store(_e56*4, asuint(naga_f2u32((_e45 * 2.0))));
+        uint _e49 = local_2;
+        local_4 = _e49;
+        uint _e51 = local_4;
+        out_.Store(_e51*4, asuint(naga_f2u32((_e41 * 2.0))));
     }
 }

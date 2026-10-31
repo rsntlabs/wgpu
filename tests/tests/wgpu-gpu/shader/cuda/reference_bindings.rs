@@ -3,7 +3,51 @@ use super::{module_case, ShaderBuffer, ShaderTest};
 const SENTINEL: u32 = 0xdead_beef;
 
 pub(super) fn cases() -> Vec<ShaderTest> {
-    vec![live_aliases(), frozen_addresses(), workgroup_records()]
+    let mut tests = vec![live_aliases(), frozen_addresses(), workgroup_records()];
+    tests.extend(unsigned_index_snapshots());
+    tests
+}
+
+fn unsigned_index_snapshots() -> Vec<ShaderTest> {
+    let mut tests = Vec::new();
+    for choose in [0, 1] {
+        let mut initial = [SENTINEL; 32];
+        initial[15] = choose;
+        let mut expected = initial;
+        let values = if choose == 0 {
+            [14, 26, 2, 14, 26, 30, 40]
+        } else {
+            [14, 32, 2, 14, 24, 32, 40]
+        };
+        expected[..7].copy_from_slice(&values);
+        tests.push(module_case(
+            &format!("unsigned index snapshots preserve saved references, branch selection and loop iterations {choose}"),
+            "__global__ void kernel(unsigned *output) {
+                unsigned values[4]{10u, 20u, 30u, 40u};
+                unsigned index = 0u;
+                unsigned &saved = values[index++];
+                index = 2u; saved += 1u;
+                unsigned &selected = output[15] ? values[index++] : values[--index];
+                index = 0u; selected += 2u;
+                for (unsigned iteration = 0u; iteration < 2u; ++iteration) {
+                    unsigned &current = values[index++];
+                    unsigned next = index; index = 3u;
+                    current += iteration + 3u; index = next;
+                }
+                output[0] = saved; output[1] = selected; output[2] = index;
+                output[3] = values[0]; output[4] = values[1];
+                output[5] = values[2]; output[6] = values[3];
+            }",
+            [1, 1, 1],
+            &expected,
+        ).module_buffers(
+            vec![ShaderBuffer::new(
+                0, wgpu::BufferBindingType::Storage { read_only: false }, &initial,
+            )],
+            0, [1, 1, 1],
+        ));
+    }
+    tests
 }
 
 fn live_aliases() -> ShaderTest {

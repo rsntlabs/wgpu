@@ -113,181 +113,181 @@ fn uninitialized(@builtin(workgroup_id) blockIdx: vec3<u32>, @builtin(local_invo
     let i_1 = ((blockIdx.x * 64u) + threadIdx.x);
     if (i_1 < n_1) {
         base = (i_1 * 12u);
-        local = u32(i_1);
-        let _e16 = local;
-        local_14 = u32(_e16);
-        let _e19 = local_14;
-        let _e22 = input[_e19];
-        local_15 = _e22;
-        let _e24 = local_15;
-        local_13 = _e24;
-        let _e26 = local_13;
-        value = _e26;
+        local = i_1;
+        let _e15 = local;
+        local_14 = _e15;
+        let _e17 = local_14;
+        let _e20 = input[_e17];
+        local_15 = _e20;
+        let _e22 = local_15;
+        local_13 = _e22;
+        let _e24 = local_13;
+        value = _e24;
         if ((i_1 % 2u) == 0u) {
-            let _e32 = value;
-            chosen = (_e32 + 7i);
+            let _e30 = value;
+            chosen = (_e30 + 7i);
         } else {
-            let _e36 = value;
-            chosen = (_e36 - 4i);
+            let _e34 = value;
+            chosen = (_e34 - 4i);
         }
-        let _e41 = chosen;
-        let _e42 = base;
-        local_1 = u32(_e42);
-        let _e45 = local_1;
-        local_16 = u32(_e45);
-        let _e48 = local_16;
-        out[_e48] = _e41;
-        let _e51 = value;
-        let _e56 = select_value(_e51, ((i_1 % 3u) == 0u));
-        let _e57 = base;
-        local_2 = u32((_e57 + 1u));
-        let _e62 = local_2;
-        local_17 = u32(_e62);
-        let _e65 = local_17;
-        out[_e65] = _e56;
-        let _e67 = value;
-        weighted = ((f32(_e67) * 1.5f) + 2f);
-        let _e74 = weighted;
-        let _e76 = base;
-        local_3 = u32((_e76 + 2u));
-        let _e81 = local_3;
-        local_18 = u32(_e81);
-        let _e84 = local_18;
-        out[_e84] = i32(_e74);
-        let _e86 = value;
-        negative = (_e86 < 0i);
-        let _e90 = negative;
-        let _e91 = base;
-        local_4 = u32((_e91 + 3u));
-        let _e97 = local_4;
-        local_19 = u32(_e97);
-        let _e100 = local_19;
-        out[_e100] = i32(_e90);
-        let _e102 = value;
-        magnitude = u32((_e102 + 5i));
-        let _e107 = magnitude;
-        let _e110 = base;
-        local_5 = u32((_e110 + 4u));
-        let _e116 = local_5;
-        local_20 = u32(_e116);
-        let _e119 = local_20;
-        out[_e119] = i32((_e107 * 3u));
-        let _e123 = accumulate((i_1 % 5u));
-        let _e124 = base;
-        local_6 = u32((_e124 + 5u));
-        let _e130 = local_6;
-        local_21 = u32(_e130);
-        let _e133 = local_21;
-        out[_e133] = i32(_e123);
+        let _e39 = chosen;
+        let _e40 = base;
+        local_1 = _e40;
+        let _e42 = local_1;
+        local_16 = _e42;
+        let _e44 = local_16;
+        out[_e44] = _e39;
+        let _e47 = value;
+        let _e52 = select_value(_e47, ((i_1 % 3u) == 0u));
+        let _e53 = base;
+        local_2 = u32((_e53 + 1u));
+        let _e58 = local_2;
+        local_17 = _e58;
+        let _e60 = local_17;
+        out[_e60] = _e52;
+        let _e62 = value;
+        weighted = ((f32(_e62) * 1.5f) + 2f);
+        let _e69 = weighted;
+        let _e71 = base;
+        local_3 = u32((_e71 + 2u));
+        let _e76 = local_3;
+        local_18 = _e76;
+        let _e78 = local_18;
+        out[_e78] = i32(_e69);
+        let _e80 = value;
+        negative = (_e80 < 0i);
+        let _e84 = negative;
+        let _e85 = base;
+        local_4 = u32((_e85 + 3u));
+        let _e91 = local_4;
+        local_19 = _e91;
+        let _e93 = local_19;
+        out[_e93] = i32(_e84);
+        let _e95 = value;
+        magnitude = u32((_e95 + 5i));
+        let _e100 = magnitude;
+        let _e103 = base;
+        local_5 = u32((_e103 + 4u));
+        let _e109 = local_5;
+        local_20 = _e109;
+        let _e111 = local_20;
+        out[_e111] = i32((_e100 * 3u));
+        let _e115 = accumulate((i_1 % 5u));
+        let _e116 = base;
+        local_6 = u32((_e116 + 5u));
+        let _e122 = local_6;
+        local_21 = _e122;
+        let _e124 = local_21;
+        out[_e124] = i32(_e115);
         total = 0i;
         {
             iteration = 0i;
             loop {
-                let _e139 = iteration;
-                if (_e139 < 3i) {
+                let _e130 = iteration;
+                if (_e130 < 3i) {
                 } else {
                     break;
                 }
-                let _e142 = value;
-                let _e143 = iteration;
-                copied = (_e142 + _e143);
-                let _e146 = copied;
-                let _e147 = total;
-                total = (_e147 + _e146);
+                let _e133 = value;
+                let _e134 = iteration;
+                copied = (_e133 + _e134);
+                let _e137 = copied;
+                let _e138 = total;
+                total = (_e138 + _e137);
                 continuing {
-                    let _e149 = iteration;
-                    iteration = (_e149 + 1i);
+                    let _e140 = iteration;
+                    iteration = (_e140 + 1i);
                 }
             }
         }
-        let _e152 = total;
-        let _e153 = base;
-        local_7 = u32((_e153 + 6u));
-        let _e158 = local_7;
-        local_22 = u32(_e158);
-        let _e161 = local_22;
-        out[_e161] = _e152;
+        let _e143 = total;
+        let _e144 = base;
+        local_7 = u32((_e144 + 6u));
+        let _e149 = local_7;
+        local_22 = _e149;
+        let _e151 = local_22;
+        out[_e151] = _e143;
         descending = 0i;
         iteration_1 = 0i;
         {
             loop {
-                let _e167 = iteration_1;
-                if (_e167 < 3i) {
+                let _e157 = iteration_1;
+                if (_e157 < 3i) {
                 } else {
                     break;
                 }
-                let _e170 = value;
-                let _e171 = iteration_1;
-                staged = (_e170 - _e171);
-                let _e174 = staged;
-                let _e175 = descending;
-                descending = (_e175 + _e174);
+                let _e160 = value;
+                let _e161 = iteration_1;
+                staged = (_e160 - _e161);
+                let _e164 = staged;
+                let _e165 = descending;
+                descending = (_e165 + _e164);
                 continuing {
-                    let _e177 = iteration_1;
-                    iteration_1 = (_e177 + 1i);
+                    let _e167 = iteration_1;
+                    iteration_1 = (_e167 + 1i);
                 }
             }
         }
-        let _e180 = descending;
-        let _e181 = base;
-        local_8 = u32((_e181 + 7u));
-        let _e186 = local_8;
-        local_23 = u32(_e186);
-        let _e189 = local_23;
-        out[_e189] = _e180;
+        let _e170 = descending;
+        let _e171 = base;
+        local_8 = u32((_e171 + 7u));
+        let _e176 = local_8;
+        local_23 = _e176;
+        let _e178 = local_23;
+        out[_e178] = _e170;
         remaining = 2i;
-        let _e193 = value;
-        partial = _e193;
+        let _e182 = value;
+        partial = _e182;
         loop {
-            let _e195 = remaining;
-            if (_e195 > 0i) {
+            let _e184 = remaining;
+            if (_e184 > 0i) {
             } else {
                 break;
             }
             {
-                let _e198 = partial;
-                let _e199 = remaining;
-                next = (_e198 + _e199);
-                let _e202 = next;
-                partial = _e202;
-                let _e203 = remaining;
-                remaining = (_e203 - 1i);
+                let _e187 = partial;
+                let _e188 = remaining;
+                next = (_e187 + _e188);
+                let _e191 = next;
+                partial = _e191;
+                let _e192 = remaining;
+                remaining = (_e192 - 1i);
             }
         }
-        let _e206 = partial;
-        let _e207 = base;
-        local_9 = u32((_e207 + 8u));
-        let _e212 = local_9;
-        local_24 = u32(_e212);
-        let _e215 = local_24;
-        out[_e215] = _e206;
-        let _e217 = value;
-        shadow = _e217;
+        let _e195 = partial;
+        let _e196 = base;
+        local_9 = u32((_e196 + 8u));
+        let _e201 = local_9;
+        local_24 = _e201;
+        let _e203 = local_24;
+        out[_e203] = _e195;
+        let _e205 = value;
+        shadow = _e205;
         {
-            let _e219 = value;
-            shadow_1 = (_e219 + 10i);
-            let _e223 = shadow_1;
-            let _e224 = base;
-            local_10 = u32((_e224 + 9u));
-            let _e229 = local_10;
-            local_25 = u32(_e229);
-            let _e232 = local_25;
-            out[_e232] = _e223;
+            let _e207 = value;
+            shadow_1 = (_e207 + 10i);
+            let _e211 = shadow_1;
+            let _e212 = base;
+            local_10 = u32((_e212 + 9u));
+            let _e217 = local_10;
+            local_25 = _e217;
+            let _e219 = local_25;
+            out[_e219] = _e211;
         }
-        let _e234 = shadow;
-        let _e235 = base;
-        local_11 = u32((_e235 + 10u));
-        let _e240 = local_11;
-        local_26 = u32(_e240);
-        let _e243 = local_26;
-        out[_e243] = _e234;
-        let _e245 = value;
-        let _e247 = scaled(f32(_e245));
-        let _e248 = base;
-        local_12 = u32((_e248 + 11u));
-        let _e254 = local_12;
-        local_27 = u32(_e254);
-        let _e257 = local_27;
-        out[_e257] = i32(_e247);
+        let _e221 = shadow;
+        let _e222 = base;
+        local_11 = u32((_e222 + 10u));
+        let _e227 = local_11;
+        local_26 = _e227;
+        let _e229 = local_26;
+        out[_e229] = _e221;
+        let _e231 = value;
+        let _e233 = scaled(f32(_e231));
+        let _e234 = base;
+        local_12 = u32((_e234 + 11u));
+        let _e240 = local_12;
+        local_27 = _e240;
+        let _e242 = local_27;
+        out[_e242] = i32(_e233);
     }
 }

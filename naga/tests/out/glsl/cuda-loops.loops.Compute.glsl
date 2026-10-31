@@ -19,7 +19,6 @@ void main() {
     int i = 0;
     int i_1 = 0;
     uint local = 0u;
-    uint local_1 = 0u;
     int n_1 = _group_0_binding_1_cs.value;
     sum = 0;
     {
@@ -86,8 +85,6 @@ void main() {
     int _e46 = sum;
     local = uint(threadIdx.x);
     uint _e50 = local;
-    local_1 = uint(_e50);
-    uint _e53 = local_1;
-    _group_0_binding_0_cs[_e53] = _e46;
+    _group_0_binding_0_cs[_e50] = _e46;
 }
 

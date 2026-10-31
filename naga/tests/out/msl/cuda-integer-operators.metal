@@ -42,7 +42,6 @@ kernel void integer_ops(
 ) {
     uint bits = {};
     uint local = {};
-    uint local_1 = {};
     int value_1 = value.value;
     uint amount_1 = amount.value;
     int remainder = naga_mod(value_1, naga_neg(3));
@@ -62,7 +61,5 @@ kernel void integer_ops(
     uint _e31 = bits;
     local = static_cast<uint>(threadIdx.x);
     uint _e36 = local;
-    local_1 = static_cast<uint>(_e36);
-    uint _e39 = local_1;
-    out[_e39] = ~(_e31);
+    out[_e36] = ~(_e31);
 }
