@@ -969,7 +969,10 @@ impl<W: Write> Writer<W> {
             } => {
                 write!(self.out, "{level}")?;
                 if let Some(result) = result {
-                    let res_name = Baked(result).to_string();
+                    let res_name = match func_ctx.named_expressions.get(&result) {
+                        Some(name) => self.namer.call(name),
+                        None => Baked(result).to_string(),
+                    };
                     self.start_named_expr(module, result, func_ctx, &res_name)?;
                     self.named_expressions.insert(result, res_name);
                 }

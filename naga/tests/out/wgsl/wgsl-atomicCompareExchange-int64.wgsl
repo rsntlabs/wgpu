@@ -33,9 +33,9 @@ fn test_atomic_compare_exchange_i64_() {
                     let new_ = bitcast<i64>((_e14 + 10li));
                     let _e19 = i;
                     let _e21 = old;
-                    let _e22 = atomicCompareExchangeWeak((&arr_i64_[_e19]), _e21, new_);
-                    old = _e22.old_value;
-                    exchanged = _e22.exchanged;
+                    let result = atomicCompareExchangeWeak((&arr_i64_[_e19]), _e21, new_);
+                    old = result.old_value;
+                    exchanged = result.exchanged;
                 }
             }
         }
@@ -75,9 +75,9 @@ fn test_atomic_compare_exchange_u64_() {
                     let new_1 = bitcast<u64>((_e14 + 10lu));
                     let _e19 = i_1;
                     let _e21 = old_1;
-                    let _e22 = atomicCompareExchangeWeak((&arr_u64_[_e19]), _e21, new_1);
-                    old_1 = _e22.old_value;
-                    exchanged_1 = _e22.exchanged;
+                    let result_1 = atomicCompareExchangeWeak((&arr_u64_[_e19]), _e21, new_1);
+                    old_1 = result_1.old_value;
+                    exchanged_1 = result_1.exchanged;
                 }
             }
         }
