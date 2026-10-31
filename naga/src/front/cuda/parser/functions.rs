@@ -1,5 +1,6 @@
 use super::*;
 
+use super::atomics::INTEGER_ATOMICS;
 use super::function_declarations::Inlining;
 use super::types::{IntegerSpecifiers, VECTOR_TYPES};
 use crate::MathFunction;
@@ -124,10 +125,11 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             "sqrtf",
             GlobalDeclaration::Functions(Vec::new()),
         )))
-        .chain(core::iter::once((
-            "atomicAdd",
-            GlobalDeclaration::Functions(Vec::new()),
-        )))
+        .chain(
+            INTEGER_ATOMICS
+                .into_iter()
+                .map(|(name, _)| (name, GlobalDeclaration::Functions(Vec::new()))),
+        )
         .chain(
             VECTOR_TYPES
                 .into_iter()
@@ -171,7 +173,10 @@ pub(super) enum FunctionCandidate {
     Current,
     Builtin(MathBuiltin),
     Multiply24(Scalar),
-    AtomicAdd(Scalar),
+    Atomic {
+        function: crate::AtomicFunction,
+        scalar: Scalar,
+    },
     Bitcast {
         source: Scalar,
         result: Scalar,
@@ -499,7 +504,7 @@ impl<'a> Parser<'a> {
                 candidate,
                 FunctionCandidate::Builtin(_)
                     | FunctionCandidate::Multiply24(_)
-                    | FunctionCandidate::AtomicAdd(_)
+                    | FunctionCandidate::Atomic { .. }
                     | FunctionCandidate::Bitcast { .. }
                     | FunctionCandidate::Unary { .. }
                     | FunctionCandidate::Sqrt
@@ -716,7 +721,7 @@ impl<'a> Parser<'a> {
             }
             FunctionCandidate::Builtin(builtin) => TypeSpecifier::Scalar(builtin.result),
             FunctionCandidate::Multiply24(result)
-            | FunctionCandidate::AtomicAdd(result)
+            | FunctionCandidate::Atomic { scalar: result, .. }
             | FunctionCandidate::Bitcast { result, .. }
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
             FunctionCandidate::IntegralFabs(_) => unreachable!(),
@@ -1268,7 +1273,11 @@ impl<'a> Parser<'a> {
             self.global_declarations.get(name),
             Some(&GlobalDeclaration::Functions(_))
         );
-        let atomic_add_visible = builtin_visible && name == "atomicAdd";
+        let atomic_function = INTEGER_ATOMICS
+            .into_iter()
+            .find_map(|(candidate, function)| {
+                (builtin_visible && name == candidate).then_some(function)
+            });
         functions
             .iter()
             .copied()
@@ -1306,12 +1315,10 @@ impl<'a> Parser<'a> {
                     }),
             )
             .chain((builtin_visible && name == "sqrtf").then_some(FunctionCandidate::Sqrt))
-            .chain(
+            .chain(atomic_function.into_iter().flat_map(|function| {
                 [Scalar::I32, Scalar::U32]
-                    .into_iter()
-                    .filter(move |_| atomic_add_visible)
-                    .map(FunctionCandidate::AtomicAdd),
-            )
+                    .map(|scalar| FunctionCandidate::Atomic { function, scalar })
+            }))
             .chain(
                 vector_constructor(name)
                     .filter(move |_| builtin_visible)
@@ -1324,7 +1331,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Defined(handle) => self.module.functions[handle].arguments.len(),
             FunctionCandidate::Current => self.function.ir.arguments.len(),
             FunctionCandidate::Builtin(builtin) => builtin.parameters.len(),
-            FunctionCandidate::Multiply24(_) | FunctionCandidate::AtomicAdd(_) => 2,
+            FunctionCandidate::Multiply24(_) | FunctionCandidate::Atomic { .. } => 2,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::IntegralFabs(_)
@@ -1361,7 +1368,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::IntegralFabs(source) => return scalar_resolution(source),
             FunctionCandidate::Sqrt => return scalar_resolution(Scalar::F32),
             FunctionCandidate::Constructor { scalar, .. } => return scalar_resolution(scalar),
-            FunctionCandidate::AtomicAdd(scalar) => {
+            FunctionCandidate::Atomic { scalar, .. } => {
                 return if index == 0 {
                     TypeResolution::Value(TypeInner::ValuePointer {
                         size: None,
@@ -1389,7 +1396,7 @@ impl<'a> Parser<'a> {
                     declaration.parameters[index].mode
                 }),
             FunctionCandidate::Current => self.function.parameters[index].mode,
-            FunctionCandidate::AtomicAdd(_) if index == 0 => {
+            FunctionCandidate::Atomic { .. } if index == 0 => {
                 ParameterMode::Pointer { is_const: false }
             }
             _ => ParameterMode::Value,
@@ -1402,7 +1409,7 @@ impl<'a> Parser<'a> {
         index: usize,
         argument: &impl CallArgument,
     ) -> Option<u8> {
-        if let FunctionCandidate::AtomicAdd(scalar) = candidate {
+        if let FunctionCandidate::Atomic { scalar, .. } = candidate {
             if index == 0 {
                 let pointer = argument.pointer_type(&self.module)?;
                 return (!pointer.is_const
