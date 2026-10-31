@@ -86,7 +86,7 @@ impl Parser<'_> {
                             } => scalar,
                             _ => return Err(expansion_error(span)),
                         };
-                        if fun != crate::AtomicFunction::Add
+                        if !super::super::atomics::supports_integer_atomic(fun)
                             || !matches!(scalar, Scalar::I32 | Scalar::U32)
                             || *types.get(value, &validation.types) != TypeInner::Scalar(scalar)
                         {

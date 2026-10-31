@@ -1,7 +1,25 @@
 use super::*;
 use crate::front::atomic_upgrade::{StorageViews, Upgrades};
+use crate::AtomicFunction;
 
 mod storage;
+
+pub(super) const INTEGER_ATOMICS: [(&str, AtomicFunction); 8] = [
+    ("atomicAdd", AtomicFunction::Add),
+    ("atomicSub", AtomicFunction::Subtract),
+    ("atomicMin", AtomicFunction::Min),
+    ("atomicMax", AtomicFunction::Max),
+    ("atomicAnd", AtomicFunction::And),
+    ("atomicOr", AtomicFunction::InclusiveOr),
+    ("atomicXor", AtomicFunction::ExclusiveOr),
+    ("atomicExch", AtomicFunction::Exchange { compare: None }),
+];
+
+pub(super) fn supports_integer_atomic(function: AtomicFunction) -> bool {
+    INTEGER_ATOMICS
+        .into_iter()
+        .any(|(_, supported)| supported == function)
+}
 
 pub(super) struct AtomicStorage {
     original_globals: FastHashMap<Handle<GlobalVariable>, Handle<Type>>,
@@ -10,15 +28,18 @@ pub(super) struct AtomicStorage {
 
 pub(super) fn atomic_error(span: Span) -> ParseError {
     ParseError {
-        message: String::from("atomicAdd requires a writable storage or shared 32-bit integer"),
+        message: String::from(
+            "integer atomic operation requires a writable storage or shared 32-bit integer",
+        ),
         span,
     }
 }
 
 impl Parser<'_> {
-    pub(super) fn atomic_add(
+    pub(super) fn atomic_binary(
         &mut self,
         arguments: Vec<CapturedArgument>,
+        function: AtomicFunction,
         scalar: Scalar,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
@@ -31,9 +52,9 @@ impl Parser<'_> {
             return Err(atomic_error(span));
         }
         let mut reference = self.pointer_reference(pointer)?;
-        let increment = arguments.next().ok_or_else(|| atomic_error(span))?;
-        self.append_block(increment.body);
-        let value = self.convert_scalar(increment.value, scalar)?;
+        let operand = arguments.next().ok_or_else(|| atomic_error(span))?;
+        self.append_block(operand.body);
+        let value = self.convert_scalar(operand.value, scalar)?;
         let ty = self.scalar_handle(scalar, span);
         let result_pointer = self.temporary_pointer(&scalar_resolution(scalar), span)?;
         self.decorate_reference(&mut reference, &mut |parser, pointer, _, span| {
@@ -41,7 +62,7 @@ impl Parser<'_> {
             parser.push_statement(
                 Statement::Atomic {
                     pointer,
-                    fun: crate::AtomicFunction::Add,
+                    fun: function,
                     value: value.handle,
                     result: Some(result),
                 },
@@ -189,11 +210,7 @@ impl Parser<'_> {
                         child(body)?;
                         child(continuing)?;
                     }
-                    Statement::Atomic {
-                        pointer,
-                        fun: crate::AtomicFunction::Add,
-                        ..
-                    } => {
+                    Statement::Atomic { pointer, fun, .. } if supports_integer_atomic(fun) => {
                         let ty = self.record_atomic_storage(
                             function,
                             pointer,

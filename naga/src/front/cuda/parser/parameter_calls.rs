@@ -204,8 +204,8 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
         let candidate = self.resolve_overload(name, &arguments, name_span)?;
-        if let functions::FunctionCandidate::AtomicAdd(scalar) = candidate {
-            return self.atomic_add(arguments, scalar, span);
+        if let functions::FunctionCandidate::Atomic { function, scalar } = candidate {
+            return self.atomic_binary(arguments, function, scalar, span);
         }
         let has_indirect_parameters =
             (0..arguments.len()).any(|index| self.candidate_mode(candidate, index).is_indirect());
