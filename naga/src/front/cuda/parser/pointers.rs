@@ -2,9 +2,15 @@ use super::parameter_calls::MappedExpression;
 use super::reference_bindings::{AddressProjection, BoundTarget};
 use super::*;
 
+mod origins;
 mod remapping;
 mod updates;
 mod validation;
+
+use origins::PointerOrigin;
+
+#[cfg(test)]
+mod origins_tests;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) enum PointerValueCategory {
@@ -1085,56 +1091,41 @@ impl<'a> Parser<'a> {
                         .charge_work(count + 1, span)?;
                     self.parameter_expansion_budget
                         .charge_slice::<AddressProjection>(count + 1, span)?;
-                    let mut address = self.function.bound_addresses[target.address].clone();
-                    let mut parent_ty =
-                        self.address_root_type(address.root)
-                            .ok_or_else(|| ParseError {
-                                message: String::from("unknown CUDA pointer origin"),
-                                span,
-                            })?;
-                    let mut last_parent = None;
-                    for projection in &address.projections {
-                        last_parent = Some(parent_ty);
-                        parent_ty = self.projected_address_type(parent_ty, projection, span)?;
-                    }
-                    let mut initial = None;
-                    let has_array_origin = if is_array {
-                        true
-                    } else if last_parent.is_some_and(|parent| {
-                        matches!(self.module.types[parent].inner, TypeInner::Array { .. })
-                    }) {
-                        initial = address.projections.pop();
-                        true
-                    } else {
-                        false
+                    let address = self.function.bound_addresses[target.address].clone();
+                    let address = match self.analyze_pointer_origin(address, is_array, span)? {
+                        PointerOrigin::Array {
+                            mut address,
+                            initial_index,
+                        } => {
+                            let initial = match initial_index {
+                                Some(AddressProjection::Index(pointer)) => {
+                                    Some(self.append(Expression::Load { pointer }, span)?)
+                                }
+                                Some(AddressProjection::Field(index)) => Some(
+                                    self.append(Expression::Literal(Literal::U32(index)), span)?,
+                                ),
+                                None => None,
+                            };
+                            let index = match (initial, offset) {
+                                (Some(left), Some(right)) => self.append(
+                                    Expression::Binary {
+                                        op: BinaryOperator::Add,
+                                        left,
+                                        right,
+                                    },
+                                    span,
+                                )?,
+                                (Some(value), None) | (None, Some(value)) => value,
+                                (None, None) => {
+                                    self.append(Expression::Literal(Literal::U32(0)), span)?
+                                }
+                            };
+                            let index = self.freeze_reference_index(index, span)?;
+                            address.projections.push(AddressProjection::Index(index));
+                            address
+                        }
+                        PointerOrigin::Object(address) => address,
                     };
-                    if has_array_origin {
-                        let initial = match initial {
-                            Some(AddressProjection::Index(pointer)) => {
-                                Some(self.append(Expression::Load { pointer }, span)?)
-                            }
-                            Some(AddressProjection::Field(index)) => {
-                                Some(self.append(Expression::Literal(Literal::U32(index)), span)?)
-                            }
-                            None => None,
-                        };
-                        let index = match (initial, offset) {
-                            (Some(left), Some(right)) => self.append(
-                                Expression::Binary {
-                                    op: BinaryOperator::Add,
-                                    left,
-                                    right,
-                                },
-                                span,
-                            )?,
-                            (Some(value), None) | (None, Some(value)) => value,
-                            (None, None) => {
-                                self.append(Expression::Literal(Literal::U32(0)), span)?
-                            }
-                        };
-                        let index = self.freeze_reference_index(index, span)?;
-                        address.projections.push(AddressProjection::Index(index));
-                    }
                     let address = self.retain_bound_address(address, span)?;
                     targets.push(BoundTarget {
                         selector: target.selector,
