@@ -16,14 +16,7 @@ int naga_f2i32(float value) {
 
 int signed_conversion(float first_1, float second_1)
 {
-    float first_2 = (float)0;
-    float second_2 = (float)0;
-
-    first_2 = first_1;
-    second_2 = second_1;
-    float _e4 = first_2;
-    float _e5 = second_2;
-    return asint((asuint(naga_extractBits(naga_f2i32(_e4), 0u, 24u)) * asuint(naga_extractBits(naga_f2i32(_e5), 0u, 24u))));
+    return asint((asuint(naga_extractBits(naga_f2i32(first_1), 0u, 24u)) * asuint(naga_extractBits(naga_f2i32(second_1), 0u, 24u))));
 }
 
 uint naga_extractBits(
@@ -40,37 +33,24 @@ uint naga_f2u32(float value) {
     return uint(clamp(value, 0.0, 4294967000.0));
 }
 
-uint unsigned_conversion(float first_3, float second_3)
+uint unsigned_conversion(float first_2, float second_2)
 {
-    float first_4 = (float)0;
-    float second_4 = (float)0;
-
-    first_4 = first_3;
-    second_4 = second_3;
-    float _e4 = first_4;
-    float _e5 = second_4;
-    return (naga_extractBits(naga_f2u32(_e4), 0u, 24u) * naga_extractBits(naga_f2u32(_e5), 0u, 24u));
+    return (naga_extractBits(naga_f2u32(first_2), 0u, 24u) * naga_extractBits(naga_f2u32(second_2), 0u, 24u));
 }
 
-int _mul24_(bool first_5, bool second_5)
+int _mul24_(bool first_3, bool second_3)
 {
-    bool first_6 = (bool)0;
-    bool second_6 = (bool)0;
     int local_162 = (int)0;
     int local_163 = (int)0;
 
-    first_6 = first_5;
-    second_6 = second_5;
-    bool _e4 = first_6;
-    if (_e4) {
-        bool _e5 = second_6;
-        if (_e5) {
+    if (first_3) {
+        if (second_3) {
             local_162 = int(71);
         } else {
             local_162 = int(73);
         }
-        int _e9 = local_162;
-        local_163 = _e9;
+        int _e7 = local_162;
+        local_163 = _e7;
     } else {
         local_163 = int(79);
     }
@@ -78,40 +58,19 @@ int _mul24_(bool first_5, bool second_5)
     return _e12;
 }
 
-int _mul24_1(float first_7, float second_7)
+int _mul24_1(float first_4, float second_4)
 {
-    float first_8 = (float)0;
-    float second_8 = (float)0;
-
-    first_8 = first_7;
-    second_8 = second_7;
-    float _e5 = first_8;
-    float _e7 = second_8;
-    return naga_f2i32(((_e5 * 10.0) + _e7));
+    return naga_f2i32(((first_4 * 10.0) + second_4));
 }
 
-uint _umul24_(int first_9, int second_9)
+uint _umul24_(int first_5, int second_5)
 {
-    int first_10 = (int)0;
-    int second_10 = (int)0;
-
-    first_10 = first_9;
-    second_10 = second_9;
-    int _e4 = first_10;
-    int _e5 = second_10;
-    return uint(asint(asuint(asint(asuint(_e4) + asuint(_e5))) + asuint(int(100))));
+    return uint(asint(asuint(asint(asuint(first_5) + asuint(second_5))) + asuint(int(100))));
 }
 
-int signed_pair(int first_11, int second_11)
+int signed_pair(int first_6, int second_6)
 {
-    int first_12 = (int)0;
-    int second_12 = (int)0;
-
-    first_12 = first_11;
-    second_12 = second_11;
-    int _e4 = first_12;
-    int _e5 = second_12;
-    return asint((asuint(naga_extractBits(_e4, 0u, 24u)) * asuint(naga_extractBits(_e5, 0u, 24u))));
+    return asint((asuint(naga_extractBits(first_6, 0u, 24u)) * asuint(naga_extractBits(second_6, 0u, 24u))));
 }
 
 int naga_neg(int val) {

@@ -2,32 +2,17 @@ RWByteAddressBuffer out_1 : register(u0);
 
 int count(uint value)
 {
-    uint value_1 = (uint)0;
-
-    value_1 = value;
-    uint _e2 = value_1;
-    return int(countbits(_e2));
+    return int(countbits(value));
 }
 
-int scan(int value_2)
+int scan(int value_1)
 {
-    int value_3 = (int)0;
-
-    value_3 = value_2;
-    int _e2 = value_3;
-    return asint(asuint(asint(firstbitlow(_e2))) + asuint(int(1)));
+    return asint(asuint(asint(firstbitlow(value_1))) + asuint(int(1)));
 }
 
 int _clz(int first, int second)
 {
-    int first_1 = (int)0;
-    int second_1 = (int)0;
-
-    first_1 = first;
-    second_1 = second;
-    int _e4 = first_1;
-    int _e5 = second_1;
-    return asint(asuint(_e4) + asuint(_e5));
+    return asint(asuint(first) + asuint(second));
 }
 
 int naga_neg(int val) {

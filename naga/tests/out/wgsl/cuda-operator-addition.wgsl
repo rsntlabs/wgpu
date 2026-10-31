@@ -34,213 +34,204 @@ fn operator_u002b(left: vec2<f32>, right: vec2<f32>) -> vec2<f32> {
 
 fn operator_u002b_1(left_2: vec2<f32>, right_2: f32) -> vec2<f32> {
     var left_3: vec2<f32>;
-    var right_3: f32;
 
     left_3 = left_2;
-    right_3 = right_2;
-    let _e5 = left_3.x;
-    let _e6 = right_3;
-    let _e9 = left_3.y;
-    let _e10 = right_3;
-    return vec2<f32>((_e5 + _e6), (_e9 + _e10));
+    let _e4 = left_3.x;
+    let _e7 = left_3.y;
+    return vec2<f32>((_e4 + right_2), (_e7 + right_2));
 }
 
-fn operator_u002b_2(left_4: f32, right_4: vec2<f32>) -> vec2<f32> {
-    var left_5: f32;
-    var right_5: vec2<f32>;
+fn operator_u002b_2(left_4: f32, right_3: vec2<f32>) -> vec2<f32> {
+    var right_4: vec2<f32>;
 
-    left_5 = left_4;
-    right_5 = right_4;
-    let _e5 = left_5;
-    let _e6 = right_5.x;
-    let _e9 = left_5;
-    let _e10 = right_5.y;
-    return vec2<f32>((_e5 + _e6), (_e9 + _e10));
+    right_4 = right_3;
+    let _e4 = right_4.x;
+    let _e7 = right_4.y;
+    return vec2<f32>((left_4 + _e4), (left_4 + _e7));
 }
 
-fn operator_u002b_3(left_6: float3_, right_6: float3_) -> float3_ {
-    var left_7: float3_;
-    var right_7: float3_;
+fn operator_u002b_3(left_5: float3_, right_5: float3_) -> float3_ {
+    var left_6: float3_;
+    var right_6: float3_;
 
-    left_7 = left_6;
-    right_7 = right_6;
-    let _e6 = left_7.x;
-    let _e7 = right_7.x;
-    let _e11 = left_7.y;
-    let _e12 = right_7.y;
-    let _e16 = left_7.z;
-    let _e17 = right_7.z;
+    left_6 = left_5;
+    right_6 = right_5;
+    let _e6 = left_6.x;
+    let _e7 = right_6.x;
+    let _e11 = left_6.y;
+    let _e12 = right_6.y;
+    let _e16 = left_6.z;
+    let _e17 = right_6.z;
     return float3_((_e6 + _e7), (_e11 + _e12), (_e16 + _e17));
 }
 
-fn operator_u002b_4(left_8: float3_, right_8: f32) -> float3_ {
-    var left_9: float3_;
-    var right_9: f32;
+fn operator_u002b_4(left_7: float3_, right_7: f32) -> float3_ {
+    var left_8: float3_;
 
-    left_9 = left_8;
-    right_9 = right_8;
-    let _e5 = left_9.x;
-    let _e6 = right_9;
-    let _e9 = left_9.y;
-    let _e10 = right_9;
-    let _e13 = left_9.z;
-    let _e14 = right_9;
-    return float3_((_e5 + _e6), (_e9 + _e10), (_e13 + _e14));
+    left_8 = left_7;
+    let _e4 = left_8.x;
+    let _e7 = left_8.y;
+    let _e10 = left_8.z;
+    return float3_((_e4 + right_7), (_e7 + right_7), (_e10 + right_7));
 }
 
-fn operator_u002b_5(left_10: f32, right_10: float3_) -> float3_ {
-    var left_11: f32;
-    var right_11: float3_;
+fn operator_u002b_5(left_9: f32, right_8: float3_) -> float3_ {
+    var right_9: float3_;
+
+    right_9 = right_8;
+    let _e4 = right_9.x;
+    let _e7 = right_9.y;
+    let _e10 = right_9.z;
+    return float3_((left_9 + _e4), (left_9 + _e7), (left_9 + _e10));
+}
+
+fn operator_u002b_6(left_10: vec4<f32>, right_10: vec4<f32>) -> vec4<f32> {
+    var left_11: vec4<f32>;
+    var right_11: vec4<f32>;
 
     left_11 = left_10;
     right_11 = right_10;
-    let _e5 = left_11;
-    let _e6 = right_11.x;
-    let _e9 = left_11;
-    let _e10 = right_11.y;
-    let _e13 = left_11;
-    let _e14 = right_11.z;
-    return float3_((_e5 + _e6), (_e9 + _e10), (_e13 + _e14));
-}
-
-fn operator_u002b_6(left_12: vec4<f32>, right_12: vec4<f32>) -> vec4<f32> {
-    var left_13: vec4<f32>;
-    var right_13: vec4<f32>;
-
-    left_13 = left_12;
-    right_13 = right_12;
-    let _e6 = left_13.x;
-    let _e7 = right_13.x;
-    let _e11 = left_13.y;
-    let _e12 = right_13.y;
-    let _e16 = left_13.z;
-    let _e17 = right_13.z;
-    let _e21 = left_13.w;
-    let _e22 = right_13.w;
+    let _e6 = left_11.x;
+    let _e7 = right_11.x;
+    let _e11 = left_11.y;
+    let _e12 = right_11.y;
+    let _e16 = left_11.z;
+    let _e17 = right_11.z;
+    let _e21 = left_11.w;
+    let _e22 = right_11.w;
     return vec4<f32>((_e6 + _e7), (_e11 + _e12), (_e16 + _e17), (_e21 + _e22));
 }
 
-fn operator_u002b_7(left_14: vec4<f32>, right_14: f32) -> vec4<f32> {
-    var left_15: vec4<f32>;
-    var right_15: f32;
+fn operator_u002b_7(left_12: vec4<f32>, right_12: f32) -> vec4<f32> {
+    var left_13: vec4<f32>;
 
-    left_15 = left_14;
-    right_15 = right_14;
-    let _e5 = left_15.x;
-    let _e6 = right_15;
-    let _e9 = left_15.y;
-    let _e10 = right_15;
-    let _e13 = left_15.z;
-    let _e14 = right_15;
-    let _e17 = left_15.w;
-    let _e18 = right_15;
-    return vec4<f32>((_e5 + _e6), (_e9 + _e10), (_e13 + _e14), (_e17 + _e18));
+    left_13 = left_12;
+    let _e4 = left_13.x;
+    let _e7 = left_13.y;
+    let _e10 = left_13.z;
+    let _e13 = left_13.w;
+    return vec4<f32>((_e4 + right_12), (_e7 + right_12), (_e10 + right_12), (_e13 + right_12));
 }
 
-fn operator_u002b_8(left_16: f32, right_16: vec4<f32>) -> vec4<f32> {
-    var left_17: f32;
-    var right_17: vec4<f32>;
+fn operator_u002b_8(left_14: f32, right_13: vec4<f32>) -> vec4<f32> {
+    var right_14: vec4<f32>;
 
-    left_17 = left_16;
-    right_17 = right_16;
-    let _e5 = left_17;
-    let _e6 = right_17.x;
-    let _e9 = left_17;
-    let _e10 = right_17.y;
-    let _e13 = left_17;
-    let _e14 = right_17.z;
-    let _e17 = left_17;
-    let _e18 = right_17.w;
-    return vec4<f32>((_e5 + _e6), (_e9 + _e10), (_e13 + _e14), (_e17 + _e18));
+    right_14 = right_13;
+    let _e4 = right_14.x;
+    let _e7 = right_14.y;
+    let _e10 = right_14.z;
+    let _e13 = right_14.w;
+    return vec4<f32>((left_14 + _e4), (left_14 + _e7), (left_14 + _e10), (left_14 + _e13));
 }
 
-fn operator_u002b_9(left_18: vec2<i32>, right_18: vec2<i32>) -> vec2<i32> {
-    var left_19: vec2<i32>;
-    var right_19: vec2<i32>;
+fn operator_u002b_9(left_15: vec2<i32>, right_15: vec2<i32>) -> vec2<i32> {
+    var left_16: vec2<i32>;
+    var right_16: vec2<i32>;
 
-    left_19 = left_18;
-    right_19 = right_18;
-    let _e6 = left_19.x;
-    let _e7 = right_19.x;
-    let _e11 = left_19.y;
-    let _e12 = right_19.y;
+    left_16 = left_15;
+    right_16 = right_15;
+    let _e6 = left_16.x;
+    let _e7 = right_16.x;
+    let _e11 = left_16.y;
+    let _e12 = right_16.y;
     return vec2<i32>((_e6 + _e7), (_e11 + _e12));
 }
 
-fn operator_u002b_10(left_20: vec2<i32>, right_20: i32) -> vec2<i32> {
-    var left_21: vec2<i32>;
-    var right_21: i32;
+fn operator_u002b_10(left_17: vec2<i32>, right_17: i32) -> vec2<i32> {
+    var left_18: vec2<i32>;
+
+    left_18 = left_17;
+    let _e4 = left_18.x;
+    let _e7 = left_18.y;
+    return vec2<i32>((_e4 + right_17), (_e7 + right_17));
+}
+
+fn operator_u002b_11(left_19: i32, right_18: vec2<i32>) -> vec2<i32> {
+    var right_19: vec2<i32>;
+
+    right_19 = right_18;
+    let _e4 = right_19.x;
+    let _e7 = right_19.y;
+    return vec2<i32>((left_19 + _e4), (left_19 + _e7));
+}
+
+fn operator_u002b_12(left_20: int3_, right_20: int3_) -> int3_ {
+    var left_21: int3_;
+    var right_21: int3_;
 
     left_21 = left_20;
     right_21 = right_20;
-    let _e5 = left_21.x;
-    let _e6 = right_21;
-    let _e9 = left_21.y;
-    let _e10 = right_21;
-    return vec2<i32>((_e5 + _e6), (_e9 + _e10));
-}
-
-fn operator_u002b_11(left_22: i32, right_22: vec2<i32>) -> vec2<i32> {
-    var left_23: i32;
-    var right_23: vec2<i32>;
-
-    left_23 = left_22;
-    right_23 = right_22;
-    let _e5 = left_23;
-    let _e6 = right_23.x;
-    let _e9 = left_23;
-    let _e10 = right_23.y;
-    return vec2<i32>((_e5 + _e6), (_e9 + _e10));
-}
-
-fn operator_u002b_12(left_24: int3_, right_24: int3_) -> int3_ {
-    var left_25: int3_;
-    var right_25: int3_;
-
-    left_25 = left_24;
-    right_25 = right_24;
-    let _e6 = left_25.x;
-    let _e7 = right_25.x;
-    let _e11 = left_25.y;
-    let _e12 = right_25.y;
-    let _e16 = left_25.z;
-    let _e17 = right_25.z;
+    let _e6 = left_21.x;
+    let _e7 = right_21.x;
+    let _e11 = left_21.y;
+    let _e12 = right_21.y;
+    let _e16 = left_21.z;
+    let _e17 = right_21.z;
     return int3_((_e6 + _e7), (_e11 + _e12), (_e16 + _e17));
 }
 
-fn operator_u002b_13(left_26: int3_, right_26: i32) -> int3_ {
-    var left_27: int3_;
-    var right_27: i32;
+fn operator_u002b_13(left_22: int3_, right_22: i32) -> int3_ {
+    var left_23: int3_;
 
-    left_27 = left_26;
-    right_27 = right_26;
-    let _e5 = left_27.x;
-    let _e6 = right_27;
-    let _e9 = left_27.y;
-    let _e10 = right_27;
-    let _e13 = left_27.z;
-    let _e14 = right_27;
-    return int3_((_e5 + _e6), (_e9 + _e10), (_e13 + _e14));
+    left_23 = left_22;
+    let _e4 = left_23.x;
+    let _e7 = left_23.y;
+    let _e10 = left_23.z;
+    return int3_((_e4 + right_22), (_e7 + right_22), (_e10 + right_22));
 }
 
-fn operator_u002b_14(left_28: i32, right_28: int3_) -> int3_ {
-    var left_29: i32;
-    var right_29: int3_;
+fn operator_u002b_14(left_24: i32, right_23: int3_) -> int3_ {
+    var right_24: int3_;
 
-    left_29 = left_28;
+    right_24 = right_23;
+    let _e4 = right_24.x;
+    let _e7 = right_24.y;
+    let _e10 = right_24.z;
+    return int3_((left_24 + _e4), (left_24 + _e7), (left_24 + _e10));
+}
+
+fn operator_u002b_15(left_25: vec4<i32>, right_25: vec4<i32>) -> vec4<i32> {
+    var left_26: vec4<i32>;
+    var right_26: vec4<i32>;
+
+    left_26 = left_25;
+    right_26 = right_25;
+    let _e6 = left_26.x;
+    let _e7 = right_26.x;
+    let _e11 = left_26.y;
+    let _e12 = right_26.y;
+    let _e16 = left_26.z;
+    let _e17 = right_26.z;
+    let _e21 = left_26.w;
+    let _e22 = right_26.w;
+    return vec4<i32>((_e6 + _e7), (_e11 + _e12), (_e16 + _e17), (_e21 + _e22));
+}
+
+fn operator_u002b_16(left_27: vec4<i32>, right_27: i32) -> vec4<i32> {
+    var left_28: vec4<i32>;
+
+    left_28 = left_27;
+    let _e4 = left_28.x;
+    let _e7 = left_28.y;
+    let _e10 = left_28.z;
+    let _e13 = left_28.w;
+    return vec4<i32>((_e4 + right_27), (_e7 + right_27), (_e10 + right_27), (_e13 + right_27));
+}
+
+fn operator_u002b_17(left_29: i32, right_28: vec4<i32>) -> vec4<i32> {
+    var right_29: vec4<i32>;
+
     right_29 = right_28;
-    let _e5 = left_29;
-    let _e6 = right_29.x;
-    let _e9 = left_29;
-    let _e10 = right_29.y;
-    let _e13 = left_29;
-    let _e14 = right_29.z;
-    return int3_((_e5 + _e6), (_e9 + _e10), (_e13 + _e14));
+    let _e4 = right_29.x;
+    let _e7 = right_29.y;
+    let _e10 = right_29.z;
+    let _e13 = right_29.w;
+    return vec4<i32>((left_29 + _e4), (left_29 + _e7), (left_29 + _e10), (left_29 + _e13));
 }
 
-fn operator_u002b_15(left_30: vec4<i32>, right_30: vec4<i32>) -> vec4<i32> {
-    var left_31: vec4<i32>;
-    var right_31: vec4<i32>;
+fn operator_u002b_18(left_30: vec2<u32>, right_30: vec2<u32>) -> vec2<u32> {
+    var left_31: vec2<u32>;
+    var right_31: vec2<u32>;
 
     left_31 = left_30;
     right_31 = right_30;
@@ -248,180 +239,99 @@ fn operator_u002b_15(left_30: vec4<i32>, right_30: vec4<i32>) -> vec4<i32> {
     let _e7 = right_31.x;
     let _e11 = left_31.y;
     let _e12 = right_31.y;
-    let _e16 = left_31.z;
-    let _e17 = right_31.z;
-    let _e21 = left_31.w;
-    let _e22 = right_31.w;
-    return vec4<i32>((_e6 + _e7), (_e11 + _e12), (_e16 + _e17), (_e21 + _e22));
-}
-
-fn operator_u002b_16(left_32: vec4<i32>, right_32: i32) -> vec4<i32> {
-    var left_33: vec4<i32>;
-    var right_33: i32;
-
-    left_33 = left_32;
-    right_33 = right_32;
-    let _e5 = left_33.x;
-    let _e6 = right_33;
-    let _e9 = left_33.y;
-    let _e10 = right_33;
-    let _e13 = left_33.z;
-    let _e14 = right_33;
-    let _e17 = left_33.w;
-    let _e18 = right_33;
-    return vec4<i32>((_e5 + _e6), (_e9 + _e10), (_e13 + _e14), (_e17 + _e18));
-}
-
-fn operator_u002b_17(left_34: i32, right_34: vec4<i32>) -> vec4<i32> {
-    var left_35: i32;
-    var right_35: vec4<i32>;
-
-    left_35 = left_34;
-    right_35 = right_34;
-    let _e5 = left_35;
-    let _e6 = right_35.x;
-    let _e9 = left_35;
-    let _e10 = right_35.y;
-    let _e13 = left_35;
-    let _e14 = right_35.z;
-    let _e17 = left_35;
-    let _e18 = right_35.w;
-    return vec4<i32>((_e5 + _e6), (_e9 + _e10), (_e13 + _e14), (_e17 + _e18));
-}
-
-fn operator_u002b_18(left_36: vec2<u32>, right_36: vec2<u32>) -> vec2<u32> {
-    var left_37: vec2<u32>;
-    var right_37: vec2<u32>;
-
-    left_37 = left_36;
-    right_37 = right_36;
-    let _e6 = left_37.x;
-    let _e7 = right_37.x;
-    let _e11 = left_37.y;
-    let _e12 = right_37.y;
     return vec2<u32>((_e6 + _e7), (_e11 + _e12));
 }
 
-fn operator_u002b_19(left_38: vec2<u32>, right_38: u32) -> vec2<u32> {
-    var left_39: vec2<u32>;
-    var right_39: u32;
+fn operator_u002b_19(left_32: vec2<u32>, right_32: u32) -> vec2<u32> {
+    var left_33: vec2<u32>;
 
-    left_39 = left_38;
-    right_39 = right_38;
-    let _e5 = left_39.x;
-    let _e6 = right_39;
-    let _e9 = left_39.y;
-    let _e10 = right_39;
-    return vec2<u32>((_e5 + _e6), (_e9 + _e10));
+    left_33 = left_32;
+    let _e4 = left_33.x;
+    let _e7 = left_33.y;
+    return vec2<u32>((_e4 + right_32), (_e7 + right_32));
 }
 
-fn operator_u002b_20(left_40: u32, right_40: vec2<u32>) -> vec2<u32> {
-    var left_41: u32;
-    var right_41: vec2<u32>;
+fn operator_u002b_20(left_34: u32, right_33: vec2<u32>) -> vec2<u32> {
+    var right_34: vec2<u32>;
 
-    left_41 = left_40;
-    right_41 = right_40;
-    let _e5 = left_41;
-    let _e6 = right_41.x;
-    let _e9 = left_41;
-    let _e10 = right_41.y;
-    return vec2<u32>((_e5 + _e6), (_e9 + _e10));
+    right_34 = right_33;
+    let _e4 = right_34.x;
+    let _e7 = right_34.y;
+    return vec2<u32>((left_34 + _e4), (left_34 + _e7));
 }
 
-fn operator_u002b_21(left_42: uint3_, right_42: uint3_) -> uint3_ {
-    var left_43: uint3_;
-    var right_43: uint3_;
+fn operator_u002b_21(left_35: uint3_, right_35: uint3_) -> uint3_ {
+    var left_36: uint3_;
+    var right_36: uint3_;
 
-    left_43 = left_42;
-    right_43 = right_42;
-    let _e6 = left_43.x;
-    let _e7 = right_43.x;
-    let _e11 = left_43.y;
-    let _e12 = right_43.y;
-    let _e16 = left_43.z;
-    let _e17 = right_43.z;
+    left_36 = left_35;
+    right_36 = right_35;
+    let _e6 = left_36.x;
+    let _e7 = right_36.x;
+    let _e11 = left_36.y;
+    let _e12 = right_36.y;
+    let _e16 = left_36.z;
+    let _e17 = right_36.z;
     return uint3_((_e6 + _e7), (_e11 + _e12), (_e16 + _e17));
 }
 
-fn operator_u002b_22(left_44: uint3_, right_44: u32) -> uint3_ {
-    var left_45: uint3_;
-    var right_45: u32;
+fn operator_u002b_22(left_37: uint3_, right_37: u32) -> uint3_ {
+    var left_38: uint3_;
 
-    left_45 = left_44;
-    right_45 = right_44;
-    let _e5 = left_45.x;
-    let _e6 = right_45;
-    let _e9 = left_45.y;
-    let _e10 = right_45;
-    let _e13 = left_45.z;
-    let _e14 = right_45;
-    return uint3_((_e5 + _e6), (_e9 + _e10), (_e13 + _e14));
+    left_38 = left_37;
+    let _e4 = left_38.x;
+    let _e7 = left_38.y;
+    let _e10 = left_38.z;
+    return uint3_((_e4 + right_37), (_e7 + right_37), (_e10 + right_37));
 }
 
-fn operator_u002b_23(left_46: u32, right_46: uint3_) -> uint3_ {
-    var left_47: u32;
-    var right_47: uint3_;
+fn operator_u002b_23(left_39: u32, right_38: uint3_) -> uint3_ {
+    var right_39: uint3_;
 
-    left_47 = left_46;
-    right_47 = right_46;
-    let _e5 = left_47;
-    let _e6 = right_47.x;
-    let _e9 = left_47;
-    let _e10 = right_47.y;
-    let _e13 = left_47;
-    let _e14 = right_47.z;
-    return uint3_((_e5 + _e6), (_e9 + _e10), (_e13 + _e14));
+    right_39 = right_38;
+    let _e4 = right_39.x;
+    let _e7 = right_39.y;
+    let _e10 = right_39.z;
+    return uint3_((left_39 + _e4), (left_39 + _e7), (left_39 + _e10));
 }
 
-fn operator_u002b_24(left_48: vec4<u32>, right_48: vec4<u32>) -> vec4<u32> {
-    var left_49: vec4<u32>;
-    var right_49: vec4<u32>;
+fn operator_u002b_24(left_40: vec4<u32>, right_40: vec4<u32>) -> vec4<u32> {
+    var left_41: vec4<u32>;
+    var right_41: vec4<u32>;
 
-    left_49 = left_48;
-    right_49 = right_48;
-    let _e6 = left_49.x;
-    let _e7 = right_49.x;
-    let _e11 = left_49.y;
-    let _e12 = right_49.y;
-    let _e16 = left_49.z;
-    let _e17 = right_49.z;
-    let _e21 = left_49.w;
-    let _e22 = right_49.w;
+    left_41 = left_40;
+    right_41 = right_40;
+    let _e6 = left_41.x;
+    let _e7 = right_41.x;
+    let _e11 = left_41.y;
+    let _e12 = right_41.y;
+    let _e16 = left_41.z;
+    let _e17 = right_41.z;
+    let _e21 = left_41.w;
+    let _e22 = right_41.w;
     return vec4<u32>((_e6 + _e7), (_e11 + _e12), (_e16 + _e17), (_e21 + _e22));
 }
 
-fn operator_u002b_25(left_50: vec4<u32>, right_50: u32) -> vec4<u32> {
-    var left_51: vec4<u32>;
-    var right_51: u32;
+fn operator_u002b_25(left_42: vec4<u32>, right_42: u32) -> vec4<u32> {
+    var left_43: vec4<u32>;
 
-    left_51 = left_50;
-    right_51 = right_50;
-    let _e5 = left_51.x;
-    let _e6 = right_51;
-    let _e9 = left_51.y;
-    let _e10 = right_51;
-    let _e13 = left_51.z;
-    let _e14 = right_51;
-    let _e17 = left_51.w;
-    let _e18 = right_51;
-    return vec4<u32>((_e5 + _e6), (_e9 + _e10), (_e13 + _e14), (_e17 + _e18));
+    left_43 = left_42;
+    let _e4 = left_43.x;
+    let _e7 = left_43.y;
+    let _e10 = left_43.z;
+    let _e13 = left_43.w;
+    return vec4<u32>((_e4 + right_42), (_e7 + right_42), (_e10 + right_42), (_e13 + right_42));
 }
 
-fn operator_u002b_26(left_52: u32, right_52: vec4<u32>) -> vec4<u32> {
-    var left_53: u32;
-    var right_53: vec4<u32>;
+fn operator_u002b_26(left_44: u32, right_43: vec4<u32>) -> vec4<u32> {
+    var right_44: vec4<u32>;
 
-    left_53 = left_52;
-    right_53 = right_52;
-    let _e5 = left_53;
-    let _e6 = right_53.x;
-    let _e9 = left_53;
-    let _e10 = right_53.y;
-    let _e13 = left_53;
-    let _e14 = right_53.z;
-    let _e17 = left_53;
-    let _e18 = right_53.w;
-    return vec4<u32>((_e5 + _e6), (_e9 + _e10), (_e13 + _e14), (_e17 + _e18));
+    right_44 = right_43;
+    let _e4 = right_44.x;
+    let _e7 = right_44.y;
+    let _e10 = right_44.z;
+    let _e13 = right_44.w;
+    return vec4<u32>((left_44 + _e4), (left_44 + _e7), (left_44 + _e10), (left_44 + _e13));
 }
 
 @compute @workgroup_size(1, 1, 1)

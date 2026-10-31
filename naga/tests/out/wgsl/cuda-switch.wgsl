@@ -2,87 +2,70 @@
 var<storage, read_write> out_1: array<i32>;
 
 fn case_chain(selector: i32) -> i32 {
-    var selector_1: i32;
     var result: i32;
 
-    selector_1 = selector;
     result = 0i;
-    let _e4 = selector_1;
-    switch _e4 {
+    switch selector {
         case -1: {
-            {
-                let _e6 = result;
-                result = (_e6 + 1i);
-            }
-            {
-                let _e9 = result;
-                result = (_e9 + 10i);
-            }
-            {
-                let _e12 = result;
-                result = (_e12 + 100i);
-                break;
-            }
+            let _e3 = result;
+            result = (_e3 + 1i);
+            let _e6 = result;
+            result = (_e6 + 10i);
+            let _e9 = result;
+            result = (_e9 + 100i);
+            break;
         }
         case 0: {
-            {
-                let _e9 = result;
-                result = (_e9 + 10i);
-            }
-            {
-                let _e12 = result;
-                result = (_e12 + 100i);
-                break;
-            }
+            let _e12 = result;
+            result = (_e12 + 10i);
+            let _e15 = result;
+            result = (_e15 + 100i);
+            break;
         }
         case 1: {
-            let _e12 = result;
-            result = (_e12 + 100i);
+            let _e18 = result;
+            result = (_e18 + 100i);
             break;
         }
         default: {
-            {
-                let _e15 = result;
-                result = (_e15 + 1000i);
-            }
-            {
-                let _e18 = result;
-                result = (_e18 + 10000i);
-                break;
-            }
+            let _e21 = result;
+            result = (_e21 + 1000i);
+            let _e24 = result;
+            result = (_e24 + 10000i);
+            break;
         }
         case 2: {
-            let _e18 = result;
-            result = (_e18 + 10000i);
+            let _e27 = result;
+            result = (_e27 + 10000i);
             break;
         }
     }
-    let _e20 = result;
-    return _e20;
+    let _e30 = result;
+    return _e30;
 }
 
-fn grouped_labels(selector_2: u32) -> i32 {
-    var selector_3: u32;
+fn grouped_labels(selector_1: u32) -> i32 {
     var result_1: i32;
 
-    selector_3 = selector_2;
     result_1 = 0i;
-    let _e4 = selector_3;
-    switch _e4 {
-        case 0u, 1u: {
-            {
-                let _e6 = result_1;
-                result_1 = (_e6 + 3i);
-            }
-            {
-                let _e9 = result_1;
-                result_1 = (_e9 + 5i);
-                break;
-            }
+    switch selector_1 {
+        case 0u: {
+            let _e3 = result_1;
+            result_1 = (_e3 + 3i);
+            let _e6 = result_1;
+            result_1 = (_e6 + 5i);
+            break;
+        }
+        case 1u: {
+            let _e9 = result_1;
+            result_1 = (_e9 + 3i);
+            let _e12 = result_1;
+            result_1 = (_e12 + 5i);
+            break;
         }
         case 2u: {
-            let _e9 = result_1;
-            result_1 = (_e9 + 5i);
+            let _e15 = result_1;
+            result_1 = (_e15 + 5i);
             break;
         }
         default: {
@@ -90,53 +73,39 @@ fn grouped_labels(selector_2: u32) -> i32 {
             break;
         }
     }
-    let _e12 = result_1;
-    return _e12;
+    let _e19 = result_1;
+    return _e19;
 }
 
 fn nested_switches(outer: i32, inner: i32) -> i32 {
-    var outer_1: i32;
-    var inner_1: i32;
     var result_2: i32;
 
-    outer_1 = outer;
-    inner_1 = inner;
     result_2 = 0i;
-    let _e6 = outer_1;
-    switch _e6 {
+    switch outer {
         case 0: {
-            {
-                let _e8 = result_2;
-                result_2 = (_e8 + 1i);
-                let _e10 = inner_1;
-                switch _e10 {
-                    case 0: {
-                        {
-                            let _e12 = result_2;
-                            result_2 = (_e12 + 10i);
-                        }
-                        {
-                            let _e15 = result_2;
-                            result_2 = (_e15 + 20i);
-                            break;
-                        }
-                    }
-                    default: {
-                        let _e15 = result_2;
-                        result_2 = (_e15 + 20i);
-                        break;
-                    }
+            let _e4 = result_2;
+            result_2 = (_e4 + 1i);
+            switch inner {
+                case 0: {
+                    let _e7 = result_2;
+                    result_2 = (_e7 + 10i);
+                    let _e10 = result_2;
+                    result_2 = (_e10 + 20i);
+                    break;
+                }
+                default: {
+                    let _e13 = result_2;
+                    result_2 = (_e13 + 20i);
+                    break;
                 }
             }
-            {
-                let _e18 = result_2;
-                result_2 = (_e18 + 100i);
-                break;
-            }
+            let _e16 = result_2;
+            result_2 = (_e16 + 100i);
+            break;
         }
         case 1: {
-            let _e18 = result_2;
-            result_2 = (_e18 + 100i);
+            let _e19 = result_2;
+            result_2 = (_e19 + 100i);
             break;
         }
         default: {
@@ -144,46 +113,39 @@ fn nested_switches(outer: i32, inner: i32) -> i32 {
             break;
         }
     }
-    let _e21 = result_2;
-    return _e21;
+    let _e23 = result_2;
+    return _e23;
 }
 
-fn loop_jumps(selector_4: i32) -> i32 {
-    var selector_5: i32;
+fn loop_jumps(selector_2: i32) -> i32 {
     var result_3: i32;
     var iteration: i32;
 
-    selector_5 = selector_4;
     result_3 = 0i;
     {
         iteration = 0i;
         loop {
-            let _e7 = iteration;
-            if (_e7 < 4i) {
+            let _e5 = iteration;
+            if (_e5 < 4i) {
             } else {
                 break;
             }
-            let _e12 = selector_5;
-            switch _e12 {
+            switch selector_2 {
                 case 0: {
-                    {
-                        let _e14 = iteration;
-                        if (_e14 == 1i) {
-                            continue;
-                        }
-                        let _e17 = iteration;
-                        let _e19 = result_3;
-                        result_3 = (_e19 + (_e17 + 1i));
+                    let _e8 = iteration;
+                    if (_e8 == 1i) {
+                        continue;
                     }
-                    {
-                        let _e22 = iteration;
-                        if (_e22 == 2i) {
-                            break;
-                        }
-                        let _e25 = result_3;
-                        result_3 = (_e25 + 10i);
+                    let _e11 = iteration;
+                    let _e14 = result_3;
+                    result_3 = (_e14 + (_e11 + 1i));
+                    let _e16 = iteration;
+                    if (_e16 == 2i) {
                         break;
                     }
+                    let _e19 = result_3;
+                    result_3 = (_e19 + 10i);
+                    break;
                 }
                 case 1: {
                     let _e22 = iteration;
@@ -203,176 +165,142 @@ fn loop_jumps(selector_4: i32) -> i32 {
             let _e31 = result_3;
             result_3 = (_e31 + 1000i);
             continuing {
-                let _e9 = iteration;
-                iteration = (_e9 + 1i);
+                let _e34 = iteration;
+                iteration = (_e34 + 1i);
             }
         }
     }
-    let _e33 = result_3;
-    return _e33;
+    let _e37 = result_3;
+    return _e37;
 }
 
-fn terminal_paths(selector_6: i32, flag: i32) -> i32 {
-    var selector_7: i32;
-    var flag_1: i32;
+fn terminal_paths(selector_3: i32, flag: i32) -> i32 {
     var result_4: i32;
 
-    selector_7 = selector_6;
-    flag_1 = flag;
     result_4 = 0i;
-    let _e6 = selector_7;
-    switch _e6 {
+    switch selector_3 {
         case 0: {
-            {
-                let _e8 = flag_1;
-                if (_e8 != 0i) {
-                    return 3i;
-                }
-                let _e12 = result_4;
-                result_4 = (_e12 + 1i);
+            if (flag != 0i) {
+                return 3i;
             }
-            {
-                let _e15 = result_4;
-                return (_e15 + 5i);
-            }
+            let _e7 = result_4;
+            result_4 = (_e7 + 1i);
+            let _e10 = result_4;
+            return (_e10 + 5i);
         }
         case 1: {
-            let _e15 = result_4;
-            return (_e15 + 5i);
+            let _e13 = result_4;
+            return (_e13 + 5i);
         }
         default: {
+            result_4 = 9i;
             {
-                result_4 = 9i;
-            }
-            {
-                {
-                    let _e19 = result_4;
-                    return (_e19 + 10i);
-                }
+                let _e17 = result_4;
+                return (_e17 + 10i);
             }
         }
         case 2: {
             {
-                let _e19 = result_4;
-                return (_e19 + 10i);
+                let _e20 = result_4;
+                return (_e20 + 10i);
             }
         }
     }
 }
 
 fn update_value(value: i32, token: i32) -> i32 {
-    var value_1: i32;
-    var token_1: i32;
-
-    value_1 = value;
-    token_1 = token;
-    let _e4 = value_1;
-    let _e5 = token_1;
-    return (_e4 + _e5);
+    return (value + token);
 }
 
-fn call_results(selector_8: i32, counter_1: i32) -> vec2<i32> {
-    var selector_9: i32;
+fn call_results(selector_4: i32, counter_1: i32) -> vec2<i32> {
     var counter_2: i32;
     var result_5: i32;
     var named_value: i32;
     var named_value_1: i32;
     var named_value_2: i32;
 
-    selector_9 = selector_8;
     counter_2 = counter_1;
     result_5 = 2i;
-    let _e6 = selector_9;
-    switch _e6 {
+    switch selector_4 {
         case 0: {
             {
-                {
-                    let _e8 = result_5;
-                    let _e9 = counter_2;
-                    counter_2 = (_e9 + 1i);
-                    let _e12 = counter_2;
-                    let _e13 = update_value(_e8, _e12);
-                    named_value = _e13;
-                    let _e14 = named_value;
-                    let _e15 = named_value;
-                    result_5 = (_e14 + _e15);
-                }
+                let _e5 = result_5;
+                let _e6 = counter_2;
+                counter_2 = (_e6 + 1i);
+                let _e9 = counter_2;
+                let _e10 = update_value(_e5, _e9);
+                named_value = _e10;
+                let _e12 = named_value;
+                let _e13 = named_value;
+                result_5 = (_e12 + _e13);
             }
             {
-                {
-                    let _e18 = result_5;
-                    let _e19 = counter_2;
-                    counter_2 = (_e19 + 1i);
-                    let _e22 = counter_2;
-                    let _e23 = update_value(_e18, _e22);
-                    named_value_1 = _e23;
-                    let _e24 = named_value_1;
-                    let _e25 = named_value_1;
-                    result_5 = (_e24 * _e25);
-                }
+                let _e15 = result_5;
+                let _e16 = counter_2;
+                counter_2 = (_e16 + 1i);
+                let _e19 = counter_2;
+                let _e20 = update_value(_e15, _e19);
+                named_value_1 = _e20;
+                let _e22 = named_value_1;
+                let _e23 = named_value_1;
+                result_5 = (_e22 * _e23);
             }
             {
-                {
-                    let _e28 = result_5;
-                    let _e29 = counter_2;
-                    counter_2 = (_e29 + 1i);
-                    let _e32 = counter_2;
-                    let _e33 = update_value(_e28, _e32);
-                    named_value_2 = _e33;
-                    let _e34 = named_value_2;
-                    let _e35 = named_value_2;
-                    result_5 = (_e34 + _e35);
-                    break;
-                }
+                let _e25 = result_5;
+                let _e26 = counter_2;
+                counter_2 = (_e26 + 1i);
+                let _e29 = counter_2;
+                let _e30 = update_value(_e25, _e29);
+                named_value_2 = _e30;
+                let _e32 = named_value_2;
+                let _e33 = named_value_2;
+                result_5 = (_e32 + _e33);
+                break;
             }
         }
         case 1: {
             {
-                {
-                    let _e18 = result_5;
-                    let _e19 = counter_2;
-                    counter_2 = (_e19 + 1i);
-                    let _e22 = counter_2;
-                    let _e23 = update_value(_e18, _e22);
-                    named_value_1 = _e23;
-                    let _e24 = named_value_1;
-                    let _e25 = named_value_1;
-                    result_5 = (_e24 * _e25);
-                }
+                let _e35 = result_5;
+                let _e36 = counter_2;
+                counter_2 = (_e36 + 1i);
+                let _e39 = counter_2;
+                let _e40 = update_value(_e35, _e39);
+                named_value_1 = _e40;
+                let _e42 = named_value_1;
+                let _e43 = named_value_1;
+                result_5 = (_e42 * _e43);
             }
             {
-                {
-                    let _e28 = result_5;
-                    let _e29 = counter_2;
-                    counter_2 = (_e29 + 1i);
-                    let _e32 = counter_2;
-                    let _e33 = update_value(_e28, _e32);
-                    named_value_2 = _e33;
-                    let _e34 = named_value_2;
-                    let _e35 = named_value_2;
-                    result_5 = (_e34 + _e35);
-                    break;
-                }
+                let _e45 = result_5;
+                let _e46 = counter_2;
+                counter_2 = (_e46 + 1i);
+                let _e49 = counter_2;
+                let _e50 = update_value(_e45, _e49);
+                named_value_2 = _e50;
+                let _e52 = named_value_2;
+                let _e53 = named_value_2;
+                result_5 = (_e52 + _e53);
+                break;
             }
         }
         default: {
             {
-                let _e28 = result_5;
-                let _e29 = counter_2;
-                counter_2 = (_e29 + 1i);
-                let _e32 = counter_2;
-                let _e33 = update_value(_e28, _e32);
-                named_value_2 = _e33;
-                let _e34 = named_value_2;
-                let _e35 = named_value_2;
-                result_5 = (_e34 + _e35);
+                let _e55 = result_5;
+                let _e56 = counter_2;
+                counter_2 = (_e56 + 1i);
+                let _e59 = counter_2;
+                let _e60 = update_value(_e55, _e59);
+                named_value_2 = _e60;
+                let _e62 = named_value_2;
+                let _e63 = named_value_2;
+                result_5 = (_e62 + _e63);
                 break;
             }
         }
     }
-    let _e37 = result_5;
-    let _e38 = counter_2;
-    return vec2<i32>(_e37, _e38);
+    let _e65 = result_5;
+    let _e66 = counter_2;
+    return vec2<i32>(_e65, _e66);
 }
 
 @compute @workgroup_size(1, 1, 1)

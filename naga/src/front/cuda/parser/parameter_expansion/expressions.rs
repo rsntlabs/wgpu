@@ -210,6 +210,21 @@ impl Parser<'_> {
                 }
             }
             Expression::Load { pointer } => {
+                let initializer = invocation.promotions.and_then(|promotions| {
+                    if let Expression::LocalVariable(local) = source.expressions[pointer] {
+                        promotions.initializer(local)
+                    } else {
+                        None
+                    }
+                });
+                if let Some(initializer) = initializer {
+                    let value = self.invocation_value(invocation, initializer)?;
+                    return self.cache_invocation_expression(
+                        invocation,
+                        handle,
+                        MappedExpression::Value(value),
+                    );
+                }
                 match self.invocation_expression(invocation, pointer)? {
                     MappedExpression::Reference { binding, ty } => {
                         let reference = ReferenceValue {

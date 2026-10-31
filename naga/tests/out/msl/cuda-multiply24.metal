@@ -24,13 +24,7 @@ int signed_conversion(
     float first_1,
     float second_1
 ) {
-    float first_2 = {};
-    float second_2 = {};
-    first_2 = first_1;
-    second_2 = second_1;
-    float _e4 = first_2;
-    float _e5 = second_2;
-    return as_type<int>(as_type<uint>(metal::extract_bits(naga_f2i32(_e4), metal::min(0u, 32u), metal::min(24u, 32u - metal::min(0u, 32u)))) * as_type<uint>(metal::extract_bits(naga_f2i32(_e5), metal::min(0u, 32u), metal::min(24u, 32u - metal::min(0u, 32u)))));
+    return as_type<int>(as_type<uint>(metal::extract_bits(naga_f2i32(first_1), metal::min(0u, 32u), metal::min(24u, 32u - metal::min(0u, 32u)))) * as_type<uint>(metal::extract_bits(naga_f2i32(second_1), metal::min(0u, 32u), metal::min(24u, 32u - metal::min(0u, 32u)))));
 }
 
 uint naga_f2u32(float value) {
@@ -38,38 +32,26 @@ uint naga_f2u32(float value) {
 }
 
 uint unsigned_conversion(
-    float first_3,
-    float second_3
+    float first_2,
+    float second_2
 ) {
-    float first_4 = {};
-    float second_4 = {};
-    first_4 = first_3;
-    second_4 = second_3;
-    float _e4 = first_4;
-    float _e5 = second_4;
-    return metal::extract_bits(naga_f2u32(_e4), metal::min(0u, 32u), metal::min(24u, 32u - metal::min(0u, 32u))) * metal::extract_bits(naga_f2u32(_e5), metal::min(0u, 32u), metal::min(24u, 32u - metal::min(0u, 32u)));
+    return metal::extract_bits(naga_f2u32(first_2), metal::min(0u, 32u), metal::min(24u, 32u - metal::min(0u, 32u))) * metal::extract_bits(naga_f2u32(second_2), metal::min(0u, 32u), metal::min(24u, 32u - metal::min(0u, 32u)));
 }
 
 int _mul24_(
-    bool first_5,
-    bool second_5
+    bool first_3,
+    bool second_3
 ) {
-    bool first_6 = {};
-    bool second_6 = {};
     int local_162 = {};
     int local_163 = {};
-    first_6 = first_5;
-    second_6 = second_5;
-    bool _e4 = first_6;
-    if (_e4) {
-        bool _e5 = second_6;
-        if (_e5) {
+    if (first_3) {
+        if (second_3) {
             local_162 = 71;
         } else {
             local_162 = 73;
         }
-        int _e9 = local_162;
-        local_163 = _e9;
+        int _e7 = local_162;
+        local_163 = _e7;
     } else {
         local_163 = 79;
     }
@@ -78,42 +60,24 @@ int _mul24_(
 }
 
 int _mul24_1(
-    float first_7,
-    float second_7
+    float first_4,
+    float second_4
 ) {
-    float first_8 = {};
-    float second_8 = {};
-    first_8 = first_7;
-    second_8 = second_7;
-    float _e5 = first_8;
-    float _e7 = second_8;
-    return naga_f2i32((_e5 * 10.0) + _e7);
+    return naga_f2i32((first_4 * 10.0) + second_4);
 }
 
 uint _umul24_(
-    int first_9,
-    int second_9
+    int first_5,
+    int second_5
 ) {
-    int first_10 = {};
-    int second_10 = {};
-    first_10 = first_9;
-    second_10 = second_9;
-    int _e4 = first_10;
-    int _e5 = second_10;
-    return static_cast<uint>(as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e4) + as_type<uint>(_e5))) + as_type<uint>(100)));
+    return static_cast<uint>(as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(first_5) + as_type<uint>(second_5))) + as_type<uint>(100)));
 }
 
 int signed_pair(
-    int first_11,
-    int second_11
+    int first_6,
+    int second_6
 ) {
-    int first_12 = {};
-    int second_12 = {};
-    first_12 = first_11;
-    second_12 = second_11;
-    int _e4 = first_12;
-    int _e5 = second_12;
-    return as_type<int>(as_type<uint>(metal::extract_bits(_e4, metal::min(0u, 32u), metal::min(24u, 32u - metal::min(0u, 32u)))) * as_type<uint>(metal::extract_bits(_e5, metal::min(0u, 32u), metal::min(24u, 32u - metal::min(0u, 32u)))));
+    return as_type<int>(as_type<uint>(metal::extract_bits(first_6, metal::min(0u, 32u), metal::min(24u, 32u - metal::min(0u, 32u)))) * as_type<uint>(metal::extract_bits(second_6, metal::min(0u, 32u), metal::min(24u, 32u - metal::min(0u, 32u)))));
 }
 int naga_neg(int val) {
     return as_type<int>(-as_type<uint>(val));

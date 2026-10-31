@@ -62,48 +62,29 @@ fn gen__naga_sqrtf(input_bits: u32) -> u32 {
 }
 
 fn root_1(value_1: f32) -> f32 {
-    var value_2: f32;
-
-    value_2 = value_1;
-    let _e2 = value_2;
-    let _e4 = gen__naga_sqrtf(bitcast<u32>(_e2));
-    return bitcast<f32>(_e4);
+    let _e2 = gen__naga_sqrtf(bitcast<u32>(value_1));
+    return bitcast<f32>(_e2);
 }
 
-fn root_2(value_3: i32) -> f32 {
-    var value_4: i32;
-
-    value_4 = value_3;
-    let _e2 = value_4;
-    let _e5 = gen__naga_sqrtf(bitcast<u32>(f32(_e2)));
-    return bitcast<f32>(_e5);
+fn root_2(value_2: i32) -> f32 {
+    let _e3 = gen__naga_sqrtf(bitcast<u32>(f32(value_2)));
+    return bitcast<f32>(_e3);
 }
 
-fn root_3(value_5: u32) -> f32 {
-    var value_6: u32;
-
-    value_6 = value_5;
-    let _e2 = value_6;
-    let _e5 = gen__naga_sqrtf(bitcast<u32>(f32(_e2)));
-    return bitcast<f32>(_e5);
+fn root_3(value_3: u32) -> f32 {
+    let _e3 = gen__naga_sqrtf(bitcast<u32>(f32(value_3)));
+    return bitcast<f32>(_e3);
 }
 
-fn root_4(value_7: bool) -> f32 {
-    var value_8: bool;
-
-    value_8 = value_7;
-    let _e2 = value_8;
-    let _e5 = gen__naga_sqrtf(bitcast<u32>(f32(_e2)));
-    return bitcast<f32>(_e5);
+fn root_4(value_4: bool) -> f32 {
+    let _e3 = gen__naga_sqrtf(bitcast<u32>(f32(value_4)));
+    return bitcast<f32>(_e3);
 }
 
-fn sqrtf(value_9: bool) -> i32 {
-    var value_10: bool;
+fn sqrtf(value_5: bool) -> i32 {
     var local_160: i32;
 
-    value_10 = value_9;
-    let _e2 = value_10;
-    if _e2 {
+    if value_5 {
         local_160 = 7i;
     } else {
         local_160 = 9i;
@@ -113,14 +94,7 @@ fn sqrtf(value_9: bool) -> i32 {
 }
 
 fn sqrtf_1(first: f32, second: f32) -> f32 {
-    var first_1: f32;
-    var second_1: f32;
-
-    first_1 = first;
-    second_1 = second;
-    let _e4 = first_1;
-    let _e5 = second_1;
-    return (_e4 + _e5);
+    return (first + second);
 }
 
 @compute @workgroup_size(1, 1, 1)

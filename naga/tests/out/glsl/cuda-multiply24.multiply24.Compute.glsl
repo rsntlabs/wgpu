@@ -9,42 +9,24 @@ layout(std430) buffer type_4_block_0Compute { uint _group_0_binding_0_cs[]; };
 
 
 int signed_conversion(float first_1, float second_1) {
-    float first_2 = 0.0;
-    float second_2 = 0.0;
-    first_2 = first_1;
-    second_2 = second_1;
-    float _e4 = first_2;
-    float _e5 = second_2;
-    return int((uint(bitfieldExtract(int(_e4), int(min(0u, 32u)), int(min(24u, 32u - min(0u, 32u))))) * uint(bitfieldExtract(int(_e5), int(min(0u, 32u)), int(min(24u, 32u - min(0u, 32u)))))));
+    return int((uint(bitfieldExtract(int(first_1), int(min(0u, 32u)), int(min(24u, 32u - min(0u, 32u))))) * uint(bitfieldExtract(int(second_1), int(min(0u, 32u)), int(min(24u, 32u - min(0u, 32u)))))));
 }
 
-uint unsigned_conversion(float first_3, float second_3) {
-    float first_4 = 0.0;
-    float second_4 = 0.0;
-    first_4 = first_3;
-    second_4 = second_3;
-    float _e4 = first_4;
-    float _e5 = second_4;
-    return (bitfieldExtract(uint(_e4), int(min(0u, 32u)), int(min(24u, 32u - min(0u, 32u)))) * bitfieldExtract(uint(_e5), int(min(0u, 32u)), int(min(24u, 32u - min(0u, 32u)))));
+uint unsigned_conversion(float first_2, float second_2) {
+    return (bitfieldExtract(uint(first_2), int(min(0u, 32u)), int(min(24u, 32u - min(0u, 32u)))) * bitfieldExtract(uint(second_2), int(min(0u, 32u)), int(min(24u, 32u - min(0u, 32u)))));
 }
 
-int _mul24_(bool first_5, bool second_5) {
-    bool first_6 = false;
-    bool second_6 = false;
+int _mul24_(bool first_3, bool second_3) {
     int local_162 = 0;
     int local_163 = 0;
-    first_6 = first_5;
-    second_6 = second_5;
-    bool _e4 = first_6;
-    if (_e4) {
-        bool _e5 = second_6;
-        if (_e5) {
+    if (first_3) {
+        if (second_3) {
             local_162 = 71;
         } else {
             local_162 = 73;
         }
-        int _e9 = local_162;
-        local_163 = _e9;
+        int _e7 = local_162;
+        local_163 = _e7;
     } else {
         local_163 = 79;
     }
@@ -52,34 +34,16 @@ int _mul24_(bool first_5, bool second_5) {
     return _e12;
 }
 
-int _mul24_1(float first_7, float second_7) {
-    float first_8 = 0.0;
-    float second_8 = 0.0;
-    first_8 = first_7;
-    second_8 = second_7;
-    float _e5 = first_8;
-    float _e7 = second_8;
-    return int(((_e5 * 10.0) + _e7));
+int _mul24_1(float first_4, float second_4) {
+    return int(((first_4 * 10.0) + second_4));
 }
 
-uint _umul24_(int first_9, int second_9) {
-    int first_10 = 0;
-    int second_10 = 0;
-    first_10 = first_9;
-    second_10 = second_9;
-    int _e4 = first_10;
-    int _e5 = second_10;
-    return uint(((_e4 + _e5) + 100));
+uint _umul24_(int first_5, int second_5) {
+    return uint(((first_5 + second_5) + 100));
 }
 
-int signed_pair(int first_11, int second_11) {
-    int first_12 = 0;
-    int second_12 = 0;
-    first_12 = first_11;
-    second_12 = second_11;
-    int _e4 = first_12;
-    int _e5 = second_12;
-    return int((uint(bitfieldExtract(_e4, int(min(0u, 32u)), int(min(24u, 32u - min(0u, 32u))))) * uint(bitfieldExtract(_e5, int(min(0u, 32u)), int(min(24u, 32u - min(0u, 32u)))))));
+int signed_pair(int first_6, int second_6) {
+    return int((uint(bitfieldExtract(first_6, int(min(0u, 32u)), int(min(24u, 32u - min(0u, 32u))))) * uint(bitfieldExtract(second_6, int(min(0u, 32u)), int(min(24u, 32u - min(0u, 32u)))))));
 }
 
 void main() {

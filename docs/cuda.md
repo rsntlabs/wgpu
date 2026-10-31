@@ -27,6 +27,16 @@ product must fit in `u32`. Validate the returned module with
 `naga::valid::Validator` before passing it to a backend, as with other frontends.
 Device and backend resource limits still apply.
 
+## Generated code
+
+Scalar locals assigned once at function scope can become named values, emitted
+as `let` bindings in WGSL. The frontend preserves their evaluation order and
+keeps storage when mutation, aliases, control flow, or expression limits require
+it. Backend naming rules can sanitize identifiers or add suffixes.
+
+CUDA math compatibility implementations can still produce helper functions and
+temporary expressions to preserve their numerical behavior.
+
 ## Kernel interface
 
 Each source contains one `__global__ void` kernel, optionally preceded by
@@ -61,8 +71,8 @@ stride. Copies preserve field values; padding bytes are unspecified.
 Vector elements support whole-value copies and scalar field access, including
 assignments and updates to writable fields. Vector parameters require pointers.
 Scalar parameters use 16-byte uniform buffers containing the
-32-bit value at byte offset 0. Each invocation copies the value into a local
-variable; assigning to a non-`const` parameter changes only that invocation's copy.
+32-bit value at byte offset 0. Each invocation receives its own parameter value;
+assigning to a non-`const` parameter changes only that invocation's copy.
 
 The frontend maps CUDA's built-in variables as follows:
 

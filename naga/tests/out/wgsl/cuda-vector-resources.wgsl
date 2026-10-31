@@ -24,13 +24,10 @@ fn shift(value: float3_) -> float3_ {
 
 fn pair(value_2: float3_, digit: i32) -> f32 {
     var value_3: float3_;
-    var digit_1: i32;
 
     value_3 = value_2;
-    digit_1 = digit;
-    let _e6 = value_3.x;
-    let _e8 = digit_1;
-    return ((_e6 * 10f) + f32(_e8));
+    let _e4 = value_3.x;
+    return ((_e4 * 10f) + f32(digit));
 }
 
 @compute @workgroup_size(1, 1, 1)

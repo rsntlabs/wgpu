@@ -2,45 +2,25 @@
 var<storage, read_write> out_1: array<u32>;
 
 fn signed_conversion(first_1: f32, second_1: f32) -> i32 {
-    var first_2: f32;
-    var second_2: f32;
-
-    first_2 = first_1;
-    second_2 = second_1;
-    let _e4 = first_2;
-    let _e5 = second_2;
-    return bitcast<i32>((bitcast<u32>(extractBits(i32(_e4), 0u, 24u)) * bitcast<u32>(extractBits(i32(_e5), 0u, 24u))));
+    return bitcast<i32>((bitcast<u32>(extractBits(i32(first_1), 0u, 24u)) * bitcast<u32>(extractBits(i32(second_1), 0u, 24u))));
 }
 
-fn unsigned_conversion(first_3: f32, second_3: f32) -> u32 {
-    var first_4: f32;
-    var second_4: f32;
-
-    first_4 = first_3;
-    second_4 = second_3;
-    let _e4 = first_4;
-    let _e5 = second_4;
-    return (extractBits(u32(_e4), 0u, 24u) * extractBits(u32(_e5), 0u, 24u));
+fn unsigned_conversion(first_2: f32, second_2: f32) -> u32 {
+    return (extractBits(u32(first_2), 0u, 24u) * extractBits(u32(second_2), 0u, 24u));
 }
 
-fn _mul24_(first_5: bool, second_5: bool) -> i32 {
-    var first_6: bool;
-    var second_6: bool;
+fn _mul24_(first_3: bool, second_3: bool) -> i32 {
     var local_162: i32;
     var local_163: i32;
 
-    first_6 = first_5;
-    second_6 = second_5;
-    let _e4 = first_6;
-    if _e4 {
-        let _e5 = second_6;
-        if _e5 {
+    if first_3 {
+        if second_3 {
             local_162 = 71i;
         } else {
             local_162 = 73i;
         }
-        let _e9 = local_162;
-        local_163 = _e9;
+        let _e7 = local_162;
+        local_163 = _e7;
     } else {
         local_163 = 79i;
     }
@@ -48,37 +28,16 @@ fn _mul24_(first_5: bool, second_5: bool) -> i32 {
     return _e12;
 }
 
-fn _mul24_1(first_7: f32, second_7: f32) -> i32 {
-    var first_8: f32;
-    var second_8: f32;
-
-    first_8 = first_7;
-    second_8 = second_7;
-    let _e5 = first_8;
-    let _e7 = second_8;
-    return i32(((_e5 * 10f) + _e7));
+fn _mul24_1(first_4: f32, second_4: f32) -> i32 {
+    return i32(((first_4 * 10f) + second_4));
 }
 
-fn _umul24_(first_9: i32, second_9: i32) -> u32 {
-    var first_10: i32;
-    var second_10: i32;
-
-    first_10 = first_9;
-    second_10 = second_9;
-    let _e4 = first_10;
-    let _e5 = second_10;
-    return u32(((_e4 + _e5) + 100i));
+fn _umul24_(first_5: i32, second_5: i32) -> u32 {
+    return u32(((first_5 + second_5) + 100i));
 }
 
-fn signed_pair(first_11: i32, second_11: i32) -> i32 {
-    var first_12: i32;
-    var second_12: i32;
-
-    first_12 = first_11;
-    second_12 = second_11;
-    let _e4 = first_12;
-    let _e5 = second_12;
-    return bitcast<i32>((bitcast<u32>(extractBits(_e4, 0u, 24u)) * bitcast<u32>(extractBits(_e5, 0u, 24u))));
+fn signed_pair(first_6: i32, second_6: i32) -> i32 {
+    return bitcast<i32>((bitcast<u32>(extractBits(first_6, 0u, 24u)) * bitcast<u32>(extractBits(second_6, 0u, 24u))));
 }
 
 @compute @workgroup_size(1, 1, 1)

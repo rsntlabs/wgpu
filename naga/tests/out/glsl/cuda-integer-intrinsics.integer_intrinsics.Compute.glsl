@@ -9,27 +9,15 @@ layout(std430) buffer type_2_block_0Compute { uint _group_0_binding_0_cs[]; };
 
 
 int count(uint value) {
-    uint value_1 = 0u;
-    value_1 = value;
-    uint _e2 = value_1;
-    return int(uint(bitCount(_e2)));
+    return int(uint(bitCount(value)));
 }
 
-int scan(int value_2) {
-    int value_3 = 0;
-    value_3 = value_2;
-    int _e2 = value_3;
-    return (findLSB(_e2) + 1);
+int scan(int value_1) {
+    return (findLSB(value_1) + 1);
 }
 
 int _clz(int first, int second) {
-    int first_1 = 0;
-    int second_1 = 0;
-    first_1 = first;
-    second_1 = second;
-    int _e4 = first_1;
-    int _e5 = second_1;
-    return (_e4 + _e5);
+    return (first + second);
 }
 
 void main() {

@@ -48,6 +48,7 @@ mod prototypes;
 mod reference_bindings;
 mod reference_categories;
 mod saturate;
+mod scalar_promotion;
 mod shared;
 mod shared_vectors;
 mod specifiers;

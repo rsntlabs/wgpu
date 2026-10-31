@@ -39,6 +39,47 @@ pub(crate) fn root_expression(
     }
 }
 
+#[track_caller]
+pub(crate) fn source_binding_initializer(
+    function: &naga::Function,
+    name: &str,
+) -> naga::Handle<naga::Expression> {
+    let named: Vec<_> = function
+        .named_expressions
+        .iter()
+        .filter_map(|(&handle, actual)| (actual == name).then_some(handle))
+        .collect();
+    let locals: Vec<_> = function
+        .local_variables
+        .iter()
+        .filter_map(|(handle, variable)| (variable.name.as_deref() == Some(name)).then_some(handle))
+        .collect();
+    assert_eq!(
+        named.len() + locals.len(),
+        1,
+        "expected one source binding {name}"
+    );
+    if let Some(&value) = named.first() {
+        return value;
+    }
+    let mut values = Vec::new();
+    naga::proc::any_statement(&function.body, &mut |statement| {
+        if let naga::Statement::Store { pointer, value } = *statement {
+            if matches!(function.expressions[pointer], naga::Expression::LocalVariable(local) if local == locals[0])
+            {
+                values.push(value);
+            }
+        }
+        false
+    });
+    assert_eq!(
+        values.len(),
+        1,
+        "expected one initializer for source binding {name}"
+    );
+    values[0]
+}
+
 #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
 #[track_caller]
 pub(crate) fn wgsl_roundtrip(

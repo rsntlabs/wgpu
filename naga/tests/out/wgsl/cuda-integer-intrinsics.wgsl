@@ -2,30 +2,15 @@
 var<storage, read_write> out_1: array<u32>;
 
 fn count(value: u32) -> i32 {
-    var value_1: u32;
-
-    value_1 = value;
-    let _e2 = value_1;
-    return i32(countOneBits(_e2));
+    return i32(countOneBits(value));
 }
 
-fn scan(value_2: i32) -> i32 {
-    var value_3: i32;
-
-    value_3 = value_2;
-    let _e2 = value_3;
-    return (firstTrailingBit(_e2) + 1i);
+fn scan(value_1: i32) -> i32 {
+    return (firstTrailingBit(value_1) + 1i);
 }
 
 fn _clz(first: i32, second: i32) -> i32 {
-    var first_1: i32;
-    var second_1: i32;
-
-    first_1 = first;
-    second_1 = second;
-    let _e4 = first_1;
-    let _e5 = second_1;
-    return (_e4 + _e5);
+    return (first + second);
 }
 
 @compute @workgroup_size(1, 1, 1)

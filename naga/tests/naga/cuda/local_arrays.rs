@@ -1,6 +1,6 @@
 use naga::front::cuda::{parse_str, Options};
 
-use super::helpers::{root_expression, validate};
+use super::helpers::{root_expression, source_binding_initializer, validate};
 
 fn rejected(source: &str) -> naga::front::cuda::ParseError {
     let error = parse_str(source, &Options::default()).unwrap_err();
@@ -124,7 +124,7 @@ fn cuda_const_local_arrays_require_an_initializer() {
 
 #[test]
 fn cuda_local_array_lists_cache_the_declared_type_and_preserve_source_order() {
-    let (module, _) = validate(
+    let (module, info) = validate(
         "using Item = int;
         __global__ void kernel(int *out) {
             Item Item = 3, values[2]{}, last = Item + 1;
@@ -135,7 +135,7 @@ fn cuda_local_array_lists_cache_the_declared_type_and_preserve_source_order() {
     let variables: Vec<_> = function
         .local_variables
         .iter()
-        .filter(|(_, value)| matches!(value.name.as_deref(), Some("Item" | "values" | "last")))
+        .filter(|(_, value)| matches!(value.name.as_deref(), Some("Item" | "values")))
         .map(|(_, value)| value)
         .collect();
     assert_eq!(
@@ -143,7 +143,7 @@ fn cuda_local_array_lists_cache_the_declared_type_and_preserve_source_order() {
             .iter()
             .map(|value| value.name.as_deref())
             .collect::<Vec<_>>(),
-        [Some("Item"), Some("values"), Some("last")]
+        [Some("Item"), Some("values")]
     );
     assert_eq!(
         module.types[variables[0].ty].inner,
@@ -153,10 +153,27 @@ fn cuda_local_array_lists_cache_the_declared_type_and_preserve_source_order() {
         module.types[variables[1].ty].inner,
         naga::TypeInner::Array { .. }
     ));
+    let last = source_binding_initializer(function, "last");
     assert_eq!(
-        module.types[variables[2].ty].inner,
-        naga::TypeInner::Scalar(naga::Scalar::I32)
+        info.get_entry_point(0)[last].ty.inner_with(&module.types),
+        &naga::TypeInner::Scalar(naga::Scalar::I32)
     );
+    let stored_at = |name| {
+        function
+            .body
+            .iter()
+            .position(|statement| {
+                matches!(*statement, naga::Statement::Store { pointer, .. }
+                if matches!(function.expressions[pointer], naga::Expression::LocalVariable(local)
+                    if function.local_variables[local].name.as_deref() == Some(name)))
+            })
+            .unwrap()
+    };
+    let last_emitted_at = function.body.iter().position(|statement| {
+        matches!(*statement, naga::Statement::Emit(ref range) if range.clone().any(|handle| handle == last))
+    }).unwrap();
+    assert!(stored_at("Item") < stored_at("values"));
+    assert!(stored_at("values") < last_emitted_at);
     validate("__global__ void kernel() { int value[2]; }");
     validate("__global__ void kernel() { int first = 1, second[2]; }");
 }

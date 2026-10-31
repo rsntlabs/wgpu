@@ -68,52 +68,33 @@ uint _naga_sqrtf(uint input_bits)
 
 float root_1(float value_1)
 {
-    float value_2 = (float)0;
-
-    value_2 = value_1;
-    float _e2 = value_2;
-    const uint _e4 = _naga_sqrtf(asuint(_e2));
-    return asfloat(_e4);
+    const uint _e2 = _naga_sqrtf(asuint(value_1));
+    return asfloat(_e2);
 }
 
-float root_2(int value_3)
+float root_2(int value_2)
 {
-    int value_4 = (int)0;
-
-    value_4 = value_3;
-    int _e2 = value_4;
-    const uint _e5 = _naga_sqrtf(asuint(float(_e2)));
-    return asfloat(_e5);
+    const uint _e3 = _naga_sqrtf(asuint(float(value_2)));
+    return asfloat(_e3);
 }
 
-float root_3(uint value_5)
+float root_3(uint value_3)
 {
-    uint value_6 = (uint)0;
-
-    value_6 = value_5;
-    uint _e2 = value_6;
-    const uint _e5 = _naga_sqrtf(asuint(float(_e2)));
-    return asfloat(_e5);
+    const uint _e3 = _naga_sqrtf(asuint(float(value_3)));
+    return asfloat(_e3);
 }
 
-float root_4(bool value_7)
+float root_4(bool value_4)
 {
-    bool value_8 = (bool)0;
-
-    value_8 = value_7;
-    bool _e2 = value_8;
-    const uint _e5 = _naga_sqrtf(asuint(float(_e2)));
-    return asfloat(_e5);
+    const uint _e3 = _naga_sqrtf(asuint(float(value_4)));
+    return asfloat(_e3);
 }
 
-int sqrtf(bool value_9)
+int sqrtf(bool value_5)
 {
-    bool value_10 = (bool)0;
     int local_160 = (int)0;
 
-    value_10 = value_9;
-    bool _e2 = value_10;
-    if (_e2) {
+    if (value_5) {
         local_160 = int(7);
     } else {
         local_160 = int(9);
@@ -124,14 +105,7 @@ int sqrtf(bool value_9)
 
 float sqrtf_1(float first, float second)
 {
-    float first_1 = (float)0;
-    float second_1 = (float)0;
-
-    first_1 = first;
-    second_1 = second;
-    float _e4 = first_1;
-    float _e5 = second_1;
-    return (_e4 + _e5);
+    return (first + second);
 }
 
 int naga_neg(int val) {
