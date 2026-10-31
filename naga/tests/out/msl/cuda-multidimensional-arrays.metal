@@ -201,9 +201,6 @@ kernel void multidimensional_arrays(
     uint local_66 = {};
     uint local_67 = {};
     uint local_68 = {};
-    uint local_69 = {};
-    uint local_70 = {};
-    uint local_71 = {};
     {
         original.x = 1;
         original.y = 2;
@@ -216,272 +213,272 @@ kernel void multidimensional_arrays(
         points.inner[1].inner[1].y = int {};
         int _e24 = points.inner[0].inner[0].y;
         local = static_cast<uint>(0);
-        uint _e29 = local;
-        local_42 = static_cast<uint>(_e29);
-        uint _e32 = local_42;
-        out[_e32] = _e24;
-        int _e39 = points.inner[1].inner[1].x;
+        uint _e28 = local;
+        local_42 = _e28;
+        uint _e30 = local_42;
+        out[_e30] = _e24;
+        int _e38 = points.inner[1].inner[1].x;
         local_1 = static_cast<uint>(1);
-        uint _e43 = local_1;
-        local_43 = static_cast<uint>(_e43);
-        uint _e46 = local_43;
-        out[_e46] = _e39;
-        int _e53 = points.inner[1].inner[1].y;
+        uint _e42 = local_1;
+        local_43 = _e42;
+        uint _e44 = local_43;
+        out[_e44] = _e38;
+        int _e51 = points.inner[1].inner[1].y;
         local_2 = static_cast<uint>(2);
-        uint _e57 = local_2;
-        local_44 = static_cast<uint>(_e57);
-        uint _e60 = local_44;
-        out[_e60] = _e53;
+        uint _e55 = local_2;
+        local_44 = _e55;
+        uint _e57 = local_44;
+        out[_e57] = _e51;
     }
     {
         original_1.x = 1;
         original_1.y = 2;
         original_1.z = 3;
-        int3_ _e72 = original_1;
-        points_1.inner[0].inner[0] = _e72;
+        int3_ _e69 = original_1;
+        points_1.inner[0].inner[0] = _e69;
         points_1.inner[0].inner[1] = int3_ {};
-        int3_ _e77 = original_1;
-        points_1.inner[1].inner[0] = _e77;
+        int3_ _e74 = original_1;
+        points_1.inner[1].inner[0] = _e74;
         points_1.inner[1].inner[1].x = 5;
         points_1.inner[1].inner[1].y = int {};
         points_1.inner[1].inner[1].z = int {};
-        int _e90 = points_1.inner[0].inner[0].z;
+        int _e87 = points_1.inner[0].inner[0].z;
         local_3 = static_cast<uint>(3);
-        uint _e94 = local_3;
-        local_45 = static_cast<uint>(_e94);
-        uint _e97 = local_45;
-        out[_e97] = _e90;
-        int _e104 = points_1.inner[1].inner[1].x;
+        uint _e91 = local_3;
+        local_45 = _e91;
+        uint _e93 = local_45;
+        out[_e93] = _e87;
+        int _e100 = points_1.inner[1].inner[1].x;
         local_4 = static_cast<uint>(4);
-        uint _e108 = local_4;
-        local_46 = static_cast<uint>(_e108);
-        uint _e111 = local_46;
-        out[_e111] = _e104;
-        int _e118 = points_1.inner[1].inner[1].z;
+        uint _e104 = local_4;
+        local_46 = _e104;
+        uint _e106 = local_46;
+        out[_e106] = _e100;
+        int _e113 = points_1.inner[1].inner[1].z;
         local_5 = static_cast<uint>(5);
-        uint _e122 = local_5;
-        local_47 = static_cast<uint>(_e122);
-        uint _e125 = local_47;
-        out[_e125] = _e118;
+        uint _e117 = local_5;
+        local_47 = _e117;
+        uint _e119 = local_47;
+        out[_e119] = _e113;
     }
     {
         original_2.x = 1;
         original_2.y = 2;
         original_2.z = 3;
         original_2.w = 4;
-        metal::int4 _e139 = original_2;
-        points_2.inner[0].inner[0] = _e139;
+        metal::int4 _e133 = original_2;
+        points_2.inner[0].inner[0] = _e133;
         points_2.inner[0].inner[1] = metal::int4 {};
-        metal::int4 _e144 = original_2;
-        points_2.inner[1].inner[0] = _e144;
+        metal::int4 _e138 = original_2;
+        points_2.inner[1].inner[0] = _e138;
         points_2.inner[1].inner[1].x = 5;
         points_2.inner[1].inner[1].y = int {};
         points_2.inner[1].inner[1].z = int {};
         points_2.inner[1].inner[1].w = int {};
-        int _e159 = points_2.inner[0].inner[0].w;
+        int _e153 = points_2.inner[0].inner[0].w;
         local_6 = static_cast<uint>(6);
-        uint _e163 = local_6;
-        local_48 = static_cast<uint>(_e163);
-        uint _e166 = local_48;
-        out[_e166] = _e159;
-        int _e173 = points_2.inner[1].inner[1].x;
+        uint _e157 = local_6;
+        local_48 = _e157;
+        uint _e159 = local_48;
+        out[_e159] = _e153;
+        int _e166 = points_2.inner[1].inner[1].x;
         local_7 = static_cast<uint>(7);
-        uint _e177 = local_7;
-        local_49 = static_cast<uint>(_e177);
-        uint _e180 = local_49;
-        out[_e180] = _e173;
-        int _e187 = points_2.inner[1].inner[1].w;
+        uint _e170 = local_7;
+        local_49 = _e170;
+        uint _e172 = local_49;
+        out[_e172] = _e166;
+        int _e179 = points_2.inner[1].inner[1].w;
         local_8 = static_cast<uint>(8);
-        uint _e191 = local_8;
-        local_50 = static_cast<uint>(_e191);
-        uint _e194 = local_50;
-        out[_e194] = _e187;
+        uint _e183 = local_8;
+        local_50 = _e183;
+        uint _e185 = local_50;
+        out[_e185] = _e179;
     }
     {
         original_3.x = static_cast<uint>(1);
         original_3.y = static_cast<uint>(2);
-        metal::uint2 _e206 = original_3;
-        points_3.inner[0].inner[0] = _e206;
+        metal::uint2 _e197 = original_3;
+        points_3.inner[0].inner[0] = _e197;
         points_3.inner[0].inner[1] = metal::uint2 {};
-        metal::uint2 _e211 = original_3;
-        points_3.inner[1].inner[0] = _e211;
+        metal::uint2 _e202 = original_3;
+        points_3.inner[1].inner[0] = _e202;
         points_3.inner[1].inner[1].x = static_cast<uint>(5);
         points_3.inner[1].inner[1].y = uint {};
-        uint _e223 = points_3.inner[0].inner[0].y;
+        uint _e214 = points_3.inner[0].inner[0].y;
         local_9 = static_cast<uint>(9);
-        uint _e228 = local_9;
-        local_51 = static_cast<uint>(_e228);
-        uint _e231 = local_51;
-        out[_e231] = static_cast<int>(_e223);
-        uint _e238 = points_3.inner[1].inner[1].x;
+        uint _e219 = local_9;
+        local_51 = _e219;
+        uint _e221 = local_51;
+        out[_e221] = static_cast<int>(_e214);
+        uint _e228 = points_3.inner[1].inner[1].x;
         local_10 = static_cast<uint>(10);
-        uint _e243 = local_10;
-        local_52 = static_cast<uint>(_e243);
-        uint _e246 = local_52;
-        out[_e246] = static_cast<int>(_e238);
-        uint _e253 = points_3.inner[1].inner[1].y;
+        uint _e233 = local_10;
+        local_52 = _e233;
+        uint _e235 = local_52;
+        out[_e235] = static_cast<int>(_e228);
+        uint _e242 = points_3.inner[1].inner[1].y;
         local_11 = static_cast<uint>(11);
-        uint _e258 = local_11;
-        local_53 = static_cast<uint>(_e258);
-        uint _e261 = local_53;
-        out[_e261] = static_cast<int>(_e253);
+        uint _e247 = local_11;
+        local_53 = _e247;
+        uint _e249 = local_53;
+        out[_e249] = static_cast<int>(_e242);
     }
     {
         original_4.x = static_cast<uint>(1);
         original_4.y = static_cast<uint>(2);
         original_4.z = static_cast<uint>(3);
-        uint3_ _e276 = original_4;
-        points_4.inner[0].inner[0] = _e276;
+        uint3_ _e264 = original_4;
+        points_4.inner[0].inner[0] = _e264;
         points_4.inner[0].inner[1] = uint3_ {};
-        uint3_ _e281 = original_4;
-        points_4.inner[1].inner[0] = _e281;
+        uint3_ _e269 = original_4;
+        points_4.inner[1].inner[0] = _e269;
         points_4.inner[1].inner[1].x = static_cast<uint>(5);
         points_4.inner[1].inner[1].y = uint {};
         points_4.inner[1].inner[1].z = uint {};
-        uint _e295 = points_4.inner[0].inner[0].z;
+        uint _e283 = points_4.inner[0].inner[0].z;
         local_12 = static_cast<uint>(12);
-        uint _e300 = local_12;
-        local_54 = static_cast<uint>(_e300);
-        uint _e303 = local_54;
-        out[_e303] = static_cast<int>(_e295);
-        uint _e310 = points_4.inner[1].inner[1].x;
+        uint _e288 = local_12;
+        local_54 = _e288;
+        uint _e290 = local_54;
+        out[_e290] = static_cast<int>(_e283);
+        uint _e297 = points_4.inner[1].inner[1].x;
         local_13 = static_cast<uint>(13);
-        uint _e315 = local_13;
-        local_55 = static_cast<uint>(_e315);
-        uint _e318 = local_55;
-        out[_e318] = static_cast<int>(_e310);
-        uint _e325 = points_4.inner[1].inner[1].z;
+        uint _e302 = local_13;
+        local_55 = _e302;
+        uint _e304 = local_55;
+        out[_e304] = static_cast<int>(_e297);
+        uint _e311 = points_4.inner[1].inner[1].z;
         local_14 = static_cast<uint>(14);
-        uint _e330 = local_14;
-        local_56 = static_cast<uint>(_e330);
-        uint _e333 = local_56;
-        out[_e333] = static_cast<int>(_e325);
+        uint _e316 = local_14;
+        local_56 = _e316;
+        uint _e318 = local_56;
+        out[_e318] = static_cast<int>(_e311);
     }
     {
         original_5.x = static_cast<uint>(1);
         original_5.y = static_cast<uint>(2);
         original_5.z = static_cast<uint>(3);
         original_5.w = static_cast<uint>(4);
-        metal::uint4 _e351 = original_5;
-        points_5.inner[0].inner[0] = _e351;
+        metal::uint4 _e336 = original_5;
+        points_5.inner[0].inner[0] = _e336;
         points_5.inner[0].inner[1] = metal::uint4 {};
-        metal::uint4 _e356 = original_5;
-        points_5.inner[1].inner[0] = _e356;
+        metal::uint4 _e341 = original_5;
+        points_5.inner[1].inner[0] = _e341;
         points_5.inner[1].inner[1].x = static_cast<uint>(5);
         points_5.inner[1].inner[1].y = uint {};
         points_5.inner[1].inner[1].z = uint {};
         points_5.inner[1].inner[1].w = uint {};
-        uint _e372 = points_5.inner[0].inner[0].w;
+        uint _e357 = points_5.inner[0].inner[0].w;
         local_15 = static_cast<uint>(15);
-        uint _e377 = local_15;
-        local_57 = static_cast<uint>(_e377);
-        uint _e380 = local_57;
-        out[_e380] = static_cast<int>(_e372);
-        uint _e387 = points_5.inner[1].inner[1].x;
+        uint _e362 = local_15;
+        local_57 = _e362;
+        uint _e364 = local_57;
+        out[_e364] = static_cast<int>(_e357);
+        uint _e371 = points_5.inner[1].inner[1].x;
         local_16 = static_cast<uint>(16);
-        uint _e392 = local_16;
-        local_58 = static_cast<uint>(_e392);
-        uint _e395 = local_58;
-        out[_e395] = static_cast<int>(_e387);
-        uint _e402 = points_5.inner[1].inner[1].w;
+        uint _e376 = local_16;
+        local_58 = _e376;
+        uint _e378 = local_58;
+        out[_e378] = static_cast<int>(_e371);
+        uint _e385 = points_5.inner[1].inner[1].w;
         local_17 = static_cast<uint>(17);
-        uint _e407 = local_17;
-        local_59 = static_cast<uint>(_e407);
-        uint _e410 = local_59;
-        out[_e410] = static_cast<int>(_e402);
+        uint _e390 = local_17;
+        local_59 = _e390;
+        uint _e392 = local_59;
+        out[_e392] = static_cast<int>(_e385);
     }
     {
         original_6.x = static_cast<float>(1);
         original_6.y = static_cast<float>(2);
-        metal::float2 _e422 = original_6;
-        points_6.inner[0].inner[0] = _e422;
+        metal::float2 _e404 = original_6;
+        points_6.inner[0].inner[0] = _e404;
         points_6.inner[0].inner[1] = metal::float2 {};
-        metal::float2 _e427 = original_6;
-        points_6.inner[1].inner[0] = _e427;
+        metal::float2 _e409 = original_6;
+        points_6.inner[1].inner[0] = _e409;
         points_6.inner[1].inner[1].x = static_cast<float>(5);
         points_6.inner[1].inner[1].y = float {};
-        float _e439 = points_6.inner[0].inner[0].y;
+        float _e421 = points_6.inner[0].inner[0].y;
         local_18 = static_cast<uint>(18);
-        uint _e444 = local_18;
-        local_60 = static_cast<uint>(_e444);
-        uint _e447 = local_60;
-        out[_e447] = naga_f2i32(_e439);
-        float _e454 = points_6.inner[1].inner[1].x;
+        uint _e426 = local_18;
+        local_60 = _e426;
+        uint _e428 = local_60;
+        out[_e428] = naga_f2i32(_e421);
+        float _e435 = points_6.inner[1].inner[1].x;
         local_19 = static_cast<uint>(19);
-        uint _e459 = local_19;
-        local_61 = static_cast<uint>(_e459);
-        uint _e462 = local_61;
-        out[_e462] = naga_f2i32(_e454);
-        float _e469 = points_6.inner[1].inner[1].y;
+        uint _e440 = local_19;
+        local_61 = _e440;
+        uint _e442 = local_61;
+        out[_e442] = naga_f2i32(_e435);
+        float _e449 = points_6.inner[1].inner[1].y;
         local_20 = static_cast<uint>(20);
-        uint _e474 = local_20;
-        local_62 = static_cast<uint>(_e474);
-        uint _e477 = local_62;
-        out[_e477] = naga_f2i32(_e469);
+        uint _e454 = local_20;
+        local_62 = _e454;
+        uint _e456 = local_62;
+        out[_e456] = naga_f2i32(_e449);
     }
     {
         original_7.x = static_cast<float>(1);
         original_7.y = static_cast<float>(2);
         original_7.z = static_cast<float>(3);
-        float3_ _e492 = original_7;
-        points_7.inner[0].inner[0] = _e492;
+        float3_ _e471 = original_7;
+        points_7.inner[0].inner[0] = _e471;
         points_7.inner[0].inner[1] = float3_ {};
-        float3_ _e497 = original_7;
-        points_7.inner[1].inner[0] = _e497;
+        float3_ _e476 = original_7;
+        points_7.inner[1].inner[0] = _e476;
         points_7.inner[1].inner[1].x = static_cast<float>(5);
         points_7.inner[1].inner[1].y = float {};
         points_7.inner[1].inner[1].z = float {};
-        float _e511 = points_7.inner[0].inner[0].z;
+        float _e490 = points_7.inner[0].inner[0].z;
         local_21 = static_cast<uint>(21);
-        uint _e516 = local_21;
-        local_63 = static_cast<uint>(_e516);
-        uint _e519 = local_63;
-        out[_e519] = naga_f2i32(_e511);
-        float _e526 = points_7.inner[1].inner[1].x;
+        uint _e495 = local_21;
+        local_63 = _e495;
+        uint _e497 = local_63;
+        out[_e497] = naga_f2i32(_e490);
+        float _e504 = points_7.inner[1].inner[1].x;
         local_22 = static_cast<uint>(22);
-        uint _e531 = local_22;
-        local_64 = static_cast<uint>(_e531);
-        uint _e534 = local_64;
-        out[_e534] = naga_f2i32(_e526);
-        float _e541 = points_7.inner[1].inner[1].z;
+        uint _e509 = local_22;
+        local_64 = _e509;
+        uint _e511 = local_64;
+        out[_e511] = naga_f2i32(_e504);
+        float _e518 = points_7.inner[1].inner[1].z;
         local_23 = static_cast<uint>(23);
-        uint _e546 = local_23;
-        local_65 = static_cast<uint>(_e546);
-        uint _e549 = local_65;
-        out[_e549] = naga_f2i32(_e541);
+        uint _e523 = local_23;
+        local_65 = _e523;
+        uint _e525 = local_65;
+        out[_e525] = naga_f2i32(_e518);
     }
     {
         original_8.x = static_cast<float>(1);
         original_8.y = static_cast<float>(2);
         original_8.z = static_cast<float>(3);
         original_8.w = static_cast<float>(4);
-        metal::float4 _e567 = original_8;
-        points_8.inner[0].inner[0] = _e567;
+        metal::float4 _e543 = original_8;
+        points_8.inner[0].inner[0] = _e543;
         points_8.inner[0].inner[1] = metal::float4 {};
-        metal::float4 _e572 = original_8;
-        points_8.inner[1].inner[0] = _e572;
+        metal::float4 _e548 = original_8;
+        points_8.inner[1].inner[0] = _e548;
         points_8.inner[1].inner[1].x = static_cast<float>(5);
         points_8.inner[1].inner[1].y = float {};
         points_8.inner[1].inner[1].z = float {};
         points_8.inner[1].inner[1].w = float {};
-        float _e588 = points_8.inner[0].inner[0].w;
+        float _e564 = points_8.inner[0].inner[0].w;
         local_24 = static_cast<uint>(24);
-        uint _e593 = local_24;
-        local_66 = static_cast<uint>(_e593);
-        uint _e596 = local_66;
-        out[_e596] = naga_f2i32(_e588);
-        float _e603 = points_8.inner[1].inner[1].x;
+        uint _e569 = local_24;
+        local_66 = _e569;
+        uint _e571 = local_66;
+        out[_e571] = naga_f2i32(_e564);
+        float _e578 = points_8.inner[1].inner[1].x;
         local_25 = static_cast<uint>(25);
-        uint _e608 = local_25;
-        local_67 = static_cast<uint>(_e608);
-        uint _e611 = local_67;
-        out[_e611] = naga_f2i32(_e603);
-        float _e618 = points_8.inner[1].inner[1].w;
+        uint _e583 = local_25;
+        local_67 = _e583;
+        uint _e585 = local_67;
+        out[_e585] = naga_f2i32(_e578);
+        float _e592 = points_8.inner[1].inner[1].w;
         local_26 = static_cast<uint>(26);
-        uint _e623 = local_26;
-        local_68 = static_cast<uint>(_e623);
-        uint _e626 = local_68;
-        out[_e626] = naga_f2i32(_e618);
+        uint _e597 = local_26;
+        local_68 = _e597;
+        uint _e599 = local_68;
+        out[_e599] = naga_f2i32(_e592);
     }
     changed.inner[0].inner[0] = 1;
     local_27 = 1u;
@@ -491,15 +488,15 @@ kernel void multidimensional_arrays(
         if (metal::all(loop_bound == uint2(0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
         if (!loop_init) {
-            uint _e639 = local_27;
-            local_27 = _e639 + 1u;
+            uint _e612 = local_27;
+            local_27 = _e612 + 1u;
         }
         loop_init = false;
-        uint _e634 = local_27;
-        if (_e634 >= 2u) {
+        uint _e607 = local_27;
+        if (_e607 >= 2u) {
             break;
         }
-        changed.inner[0].inner[_e634] = int {};
+        changed.inner[0].inner[_e607] = int {};
     }
     changed.inner[0].inner[1] = 9;
     changed.inner[1].inner[0] = 2;
@@ -511,12 +508,12 @@ kernel void multidimensional_arrays(
         if (metal::all(loop_bound_1 == uint2(0u))) { break; }
         loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
         if (!loop_init_1) {
-            uint _e669 = local_28;
-            local_28 = _e669 + 1u;
+            uint _e642 = local_28;
+            local_28 = _e642 + 1u;
         }
         loop_init_1 = false;
-        uint _e654 = local_28;
-        if (_e654 >= 2u) {
+        uint _e627 = local_28;
+        if (_e627 >= 2u) {
             break;
         }
         local_29 = 0u;
@@ -526,15 +523,15 @@ kernel void multidimensional_arrays(
             if (metal::all(loop_bound_2 == uint2(0u))) { break; }
             loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
             if (!loop_init_2) {
-                uint _e666 = local_29;
-                local_29 = _e666 + 1u;
+                uint _e639 = local_29;
+                local_29 = _e639 + 1u;
             }
             loop_init_2 = false;
-            uint _e661 = local_29;
-            if (_e661 >= 3u) {
+            uint _e634 = local_29;
+            if (_e634 >= 3u) {
                 break;
             }
-            nested_empty.inner[_e654].inner[_e661] = int {};
+            nested_empty.inner[_e627].inner[_e634] = int {};
         }
     }
     partial.inner[0].inner[0] = 1;
@@ -545,15 +542,15 @@ kernel void multidimensional_arrays(
         if (metal::all(loop_bound_3 == uint2(0u))) { break; }
         loop_bound_3 -= uint2(loop_bound_3.y == 0u, 1u);
         if (!loop_init_3) {
-            uint _e683 = local_30;
-            local_30 = _e683 + 1u;
+            uint _e656 = local_30;
+            local_30 = _e656 + 1u;
         }
         loop_init_3 = false;
-        uint _e678 = local_30;
-        if (_e678 >= 3u) {
+        uint _e651 = local_30;
+        if (_e651 >= 3u) {
             break;
         }
-        partial.inner[0].inner[_e678] = int {};
+        partial.inner[0].inner[_e651] = int {};
     }
     local_31 = 1u;
     uint2 loop_bound_4 = uint2(4294967295u);
@@ -562,12 +559,12 @@ kernel void multidimensional_arrays(
         if (metal::all(loop_bound_4 == uint2(0u))) { break; }
         loop_bound_4 -= uint2(loop_bound_4.y == 0u, 1u);
         if (!loop_init_4) {
-            uint _e702 = local_31;
-            local_31 = _e702 + 1u;
+            uint _e675 = local_31;
+            local_31 = _e675 + 1u;
         }
         loop_init_4 = false;
-        uint _e688 = local_31;
-        if (_e688 >= 2u) {
+        uint _e661 = local_31;
+        if (_e661 >= 2u) {
             break;
         }
         local_32 = 0u;
@@ -577,15 +574,15 @@ kernel void multidimensional_arrays(
             if (metal::all(loop_bound_5 == uint2(0u))) { break; }
             loop_bound_5 -= uint2(loop_bound_5.y == 0u, 1u);
             if (!loop_init_5) {
-                uint _e699 = local_32;
-                local_32 = _e699 + 1u;
+                uint _e672 = local_32;
+                local_32 = _e672 + 1u;
             }
             loop_init_5 = false;
-            uint _e694 = local_32;
-            if (_e694 >= 3u) {
+            uint _e667 = local_32;
+            if (_e667 >= 3u) {
                 break;
             }
-            partial.inner[_e688].inner[_e694] = int {};
+            partial.inner[_e661].inner[_e667] = int {};
         }
     }
     volume.inner[0].inner[0].inner[0] = 1;
@@ -596,15 +593,15 @@ kernel void multidimensional_arrays(
         if (metal::all(loop_bound_6 == uint2(0u))) { break; }
         loop_bound_6 -= uint2(loop_bound_6.y == 0u, 1u);
         if (!loop_init_6) {
-            uint _e717 = local_33;
-            local_33 = _e717 + 1u;
+            uint _e690 = local_33;
+            local_33 = _e690 + 1u;
         }
         loop_init_6 = false;
-        uint _e712 = local_33;
-        if (_e712 >= 3u) {
+        uint _e685 = local_33;
+        if (_e685 >= 3u) {
             break;
         }
-        volume.inner[0].inner[0].inner[_e712] = int {};
+        volume.inner[0].inner[0].inner[_e685] = int {};
     }
     local_34 = 1u;
     uint2 loop_bound_7 = uint2(4294967295u);
@@ -613,12 +610,12 @@ kernel void multidimensional_arrays(
         if (metal::all(loop_bound_7 == uint2(0u))) { break; }
         loop_bound_7 -= uint2(loop_bound_7.y == 0u, 1u);
         if (!loop_init_7) {
-            uint _e736 = local_34;
-            local_34 = _e736 + 1u;
+            uint _e709 = local_34;
+            local_34 = _e709 + 1u;
         }
         loop_init_7 = false;
-        uint _e722 = local_34;
-        if (_e722 >= 2u) {
+        uint _e695 = local_34;
+        if (_e695 >= 2u) {
             break;
         }
         local_35 = 0u;
@@ -628,15 +625,15 @@ kernel void multidimensional_arrays(
             if (metal::all(loop_bound_8 == uint2(0u))) { break; }
             loop_bound_8 -= uint2(loop_bound_8.y == 0u, 1u);
             if (!loop_init_8) {
-                uint _e733 = local_35;
-                local_35 = _e733 + 1u;
+                uint _e706 = local_35;
+                local_35 = _e706 + 1u;
             }
             loop_init_8 = false;
-            uint _e728 = local_35;
-            if (_e728 >= 3u) {
+            uint _e701 = local_35;
+            if (_e701 >= 3u) {
                 break;
             }
-            volume.inner[0].inner[_e722].inner[_e728] = int {};
+            volume.inner[0].inner[_e695].inner[_e701] = int {};
         }
     }
     local_36 = 1u;
@@ -646,12 +643,12 @@ kernel void multidimensional_arrays(
         if (metal::all(loop_bound_9 == uint2(0u))) { break; }
         loop_bound_9 -= uint2(loop_bound_9.y == 0u, 1u);
         if (!loop_init_9) {
-            uint _e764 = local_36;
-            local_36 = _e764 + 1u;
+            uint _e737 = local_36;
+            local_36 = _e737 + 1u;
         }
         loop_init_9 = false;
-        uint _e741 = local_36;
-        if (_e741 >= 2u) {
+        uint _e714 = local_36;
+        if (_e714 >= 2u) {
             break;
         }
         local_37 = 0u;
@@ -661,12 +658,12 @@ kernel void multidimensional_arrays(
             if (metal::all(loop_bound_10 == uint2(0u))) { break; }
             loop_bound_10 -= uint2(loop_bound_10.y == 0u, 1u);
             if (!loop_init_10) {
-                uint _e761 = local_37;
-                local_37 = _e761 + 1u;
+                uint _e734 = local_37;
+                local_37 = _e734 + 1u;
             }
             loop_init_10 = false;
-            uint _e747 = local_37;
-            if (_e747 >= 2u) {
+            uint _e720 = local_37;
+            if (_e720 >= 2u) {
                 break;
             }
             local_38 = 0u;
@@ -676,44 +673,38 @@ kernel void multidimensional_arrays(
                 if (metal::all(loop_bound_11 == uint2(0u))) { break; }
                 loop_bound_11 -= uint2(loop_bound_11.y == 0u, 1u);
                 if (!loop_init_11) {
-                    uint _e758 = local_38;
-                    local_38 = _e758 + 1u;
+                    uint _e731 = local_38;
+                    local_38 = _e731 + 1u;
                 }
                 loop_init_11 = false;
-                uint _e753 = local_38;
-                if (_e753 >= 3u) {
+                uint _e726 = local_38;
+                if (_e726 >= 3u) {
                     break;
                 }
-                volume.inner[_e741].inner[_e747].inner[_e753] = int {};
+                volume.inner[_e714].inner[_e720].inner[_e726] = int {};
             }
         }
     }
-    int _e771 = changed.inner[0].inner[1];
-    shared_values.inner[1].inner[2] = _e771;
-    int _e781 = changed.inner[1].inner[0];
-    int _e786 = changed.inner[1].inner[1];
-    shared_points.inner[1].inner[0] = float3_ {static_cast<float>(_e781), static_cast<float>(_e786), static_cast<float>(4)};
+    int _e744 = changed.inner[0].inner[1];
+    shared_values.inner[1].inner[2] = _e744;
+    int _e754 = changed.inner[1].inner[0];
+    int _e759 = changed.inner[1].inner[1];
+    shared_points.inner[1].inner[0] = float3_ {static_cast<float>(_e754), static_cast<float>(_e759), static_cast<float>(4)};
     metal::threadgroup_barrier(metal::mem_flags::mem_device);
     metal::threadgroup_barrier(metal::mem_flags::mem_threadgroup);
-    int _e806 = shared_values.inner[1].inner[2];
-    int _e807 = nested_empty.inner[1].inner[2];
-    int _e813 = partial.inner[1].inner[2];
-    int _e821 = volume.inner[1].inner[1].inner[2];
+    int _e779 = shared_values.inner[1].inner[2];
+    int _e780 = nested_empty.inner[1].inner[2];
+    int _e786 = partial.inner[1].inner[2];
+    int _e794 = volume.inner[1].inner[1].inner[2];
     local_39 = static_cast<uint>(27);
-    uint _e826 = local_39;
-    local_69 = static_cast<uint>(_e826);
-    uint _e829 = local_69;
-    out[_e829] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e806) + as_type<uint>(_e807))) + as_type<uint>(_e813))) + as_type<uint>(_e821));
-    float _e836 = shared_points.inner[1].inner[0].x;
+    uint _e799 = local_39;
+    out[_e799] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e779) + as_type<uint>(_e780))) + as_type<uint>(_e786))) + as_type<uint>(_e794));
+    float _e806 = shared_points.inner[1].inner[0].x;
     local_40 = static_cast<uint>(28);
-    uint _e841 = local_40;
-    local_70 = static_cast<uint>(_e841);
-    uint _e844 = local_70;
-    out[_e844] = naga_f2i32(_e836);
-    float _e851 = shared_points.inner[1].inner[0].y;
+    uint _e811 = local_40;
+    out[_e811] = naga_f2i32(_e806);
+    float _e818 = shared_points.inner[1].inner[0].y;
     local_41 = static_cast<uint>(29);
-    uint _e856 = local_41;
-    local_71 = static_cast<uint>(_e856);
-    uint _e859 = local_71;
-    out[_e859] = naga_f2i32(_e851);
+    uint _e823 = local_41;
+    out[_e823] = naga_f2i32(_e818);
 }

@@ -33,29 +33,29 @@ void main() {
     uint n_1 = _group_0_binding_3_cs.value;
     uint i = ((blockIdx.x * 64u) + threadIdx.x);
     if ((i < n_1)) {
-        local_1 = uint(i);
-        local_2 = uint(i);
-        uint _e15 = local_2;
-        local_5 = uint(_e15);
-        uint _e18 = local_5;
-        float _e21 = _group_0_binding_1_cs[_e18];
-        local_6 = _e21;
-        float _e23 = local_6;
-        local_3 = _e23;
-        float _e25 = local_3;
-        uint _e28 = local_1;
-        local_7 = uint(_e28);
-        uint _e31 = local_7;
-        float _e34 = _group_0_binding_0_cs[_e31];
-        local_8 = _e34;
-        float _e36 = local_8;
-        local_4 = _e36;
-        float _e38 = local_4;
-        local = uint(i);
-        uint _e42 = local;
-        local_9 = uint(_e42);
-        uint _e45 = local_9;
-        _group_0_binding_2_cs[_e45] = (_e38 + (_e25 * 2.0));
+        local_1 = i;
+        local_2 = i;
+        uint _e13 = local_2;
+        local_5 = _e13;
+        uint _e15 = local_5;
+        float _e18 = _group_0_binding_1_cs[_e15];
+        local_6 = _e18;
+        float _e20 = local_6;
+        local_3 = _e20;
+        float _e22 = local_3;
+        uint _e25 = local_1;
+        local_7 = _e25;
+        uint _e27 = local_7;
+        float _e30 = _group_0_binding_0_cs[_e27];
+        local_8 = _e30;
+        float _e32 = local_8;
+        local_4 = _e32;
+        float _e34 = local_4;
+        local = i;
+        uint _e37 = local;
+        local_9 = _e37;
+        uint _e39 = local_9;
+        _group_0_binding_2_cs[_e39] = (_e34 + (_e22 * 2.0));
     }
 }
 

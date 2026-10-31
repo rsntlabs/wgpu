@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.1
 ; Generator: rspirv
-; Bound: 60
+; Bound: 54
 OpCapability Shader
 OpExtension "SPV_KHR_storage_buffer_storage_class"
 %1 = OpExtInstImport "GLSL.std.450"
@@ -51,44 +51,36 @@ OpDecorate %18 BuiltIn LocalInvocationId
 %34 = OpTypePointer Function %6
 %35 = OpConstantNull  %6
 %37 = OpConstantNull  %6
-%39 = OpConstantNull  %6
-%41 = OpConstantNull  %6
-%43 = OpTypePointer Uniform %3
-%51 = OpTypePointer StorageBuffer %3
+%39 = OpTypePointer Uniform %3
+%46 = OpTypePointer StorageBuffer %3
 %21 = OpFunction  %2  None %22
 %17 = OpLabel
-%40 = OpVariable  %34  Function %41
-%33 = OpVariable  %34  Function %35
-%38 = OpVariable  %34  Function %39
 %30 = OpVariable  %31  Function %32
+%33 = OpVariable  %34  Function %35
 %36 = OpVariable  %34  Function %37
 %20 = OpLoad  %7  %18
 %25 = OpAccessChain  %23  %8 %24
 %27 = OpAccessChain  %26  %11 %24
 %28 = OpAccessChain  %26  %14 %24
-OpBranch %42
-%42 = OpLabel
-%44 = OpAccessChain  %43  %25 %24
-%45 = OpLoad  %3  %44
-OpStore %30 %45
-%46 = OpLoad  %3  %30
-%47 = OpFMul  %3  %46 %29
-OpStore %30 %47
-%48 = OpCompositeExtract  %6  %20 0
-OpStore %36 %48
-%49 = OpLoad  %6  %36
-OpStore %38 %49
-%50 = OpLoad  %6  %38
-%52 = OpAccessChain  %51  %27 %50
-%53 = OpLoad  %3  %52
-%54 = OpLoad  %3  %30
-%55 = OpFMul  %3  %53 %54
-%56 = OpCompositeExtract  %6  %20 0
-OpStore %33 %56
-%57 = OpLoad  %6  %33
-OpStore %40 %57
-%58 = OpLoad  %6  %40
-%59 = OpAccessChain  %51  %28 %58
-OpStore %59 %55
+OpBranch %38
+%38 = OpLabel
+%40 = OpAccessChain  %39  %25 %24
+%41 = OpLoad  %3  %40
+OpStore %30 %41
+%42 = OpLoad  %3  %30
+%43 = OpFMul  %3  %42 %29
+OpStore %30 %43
+%44 = OpCompositeExtract  %6  %20 0
+OpStore %36 %44
+%45 = OpLoad  %6  %36
+%47 = OpAccessChain  %46  %27 %45
+%48 = OpLoad  %3  %47
+%49 = OpLoad  %3  %30
+%50 = OpFMul  %3  %48 %49
+%51 = OpCompositeExtract  %6  %20 0
+OpStore %33 %51
+%52 = OpLoad  %6  %33
+%53 = OpAccessChain  %46  %28 %52
+OpStore %53 %50
 OpReturn
 OpFunctionEnd

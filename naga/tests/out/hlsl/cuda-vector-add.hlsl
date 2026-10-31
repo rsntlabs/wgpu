@@ -5,27 +5,8 @@ RWByteAddressBuffer out_ : register(u2);
 [numthreads(64, 1, 1)]
 void add(uint3 blockIdx : SV_GroupID, uint3 threadIdx : SV_GroupThreadID)
 {
-    uint local = (uint)0;
-    uint local_1 = (uint)0;
-    uint local_2 = (uint)0;
-    uint local_3 = (uint)0;
-    uint local_4 = (uint)0;
-    uint local_5 = (uint)0;
-
     uint i = ((blockIdx.x * 64u) + threadIdx.x);
-    local_1 = uint(i);
-    local_2 = uint(i);
-    uint _e11 = local_2;
-    local_3 = uint(_e11);
-    uint _e14 = local_3;
-    float _e17 = asfloat(b.Load(_e14*4));
-    uint _e20 = local_1;
-    local_4 = uint(_e20);
-    uint _e23 = local_4;
-    float _e26 = asfloat(a.Load(_e23*4));
-    local = uint(i);
-    uint _e30 = local;
-    local_5 = uint(_e30);
-    uint _e33 = local_5;
-    out_.Store(_e33*4, asuint((_e26 + (_e17 * 2.0))));
+    float _e9 = asfloat(b.Load(i*4));
+    float _e14 = asfloat(a.Load(i*4));
+    out_.Store(i*4, asuint((_e14 + (_e9 * 2.0))));
 }

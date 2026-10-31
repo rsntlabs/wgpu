@@ -61,147 +61,123 @@ fn operator_u002b(left: Packet_cuda_record_1_, right: Packet_cuda_record_1_) -> 
 @compute @workgroup_size(2, 1, 1)
 fn structures(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
     var original: Packet_cuda_record_1_;
-    var local: u32;
     var changed: Packet_cuda_record_1_;
-    var local_1: Packet_cuda_record_2_;
+    var local: Packet_cuda_record_2_;
     var combined: Packet_cuda_record_1_;
-    var local_2: u32;
-    var local_3: u32;
     var sample: i32;
-    var local_4: u32;
-    var local_5: u32;
+    var local_1: u32;
+    var local_2: u32;
     var row: i32;
     var column: i32;
-    var local_6: u32;
-    var local_7: u32;
+    var local_3: u32;
+    var local_4: u32;
+    var local_5: u32;
+    var local_6: Packet_cuda_record_1_;
+    var local_7: Packet_cuda_record_1_;
     var local_8: u32;
     var local_9: u32;
-    var local_10: Packet_cuda_record_1_;
-    var local_11: u32;
-    var local_12: Packet_cuda_record_1_;
-    var local_13: u32;
-    var local_14: u32;
-    var local_15: u32;
-    var local_16: u32;
-    var local_17: u32;
 
     let lane = threadIdx.x;
     if (lane >= 2u) {
         return;
     }
-    local = u32(lane);
-    let _e6 = local;
-    local_11 = u32(_e6);
-    let _e9 = local_11;
-    let _e12 = input[_e9];
-    local_12 = _e12;
-    let _e14 = local_12;
-    local_10 = _e14;
-    let _e16 = local_10;
-    original = _e16;
-    let _e18 = original;
-    let _e22 = adjust(_e18, (3i + i32(lane)));
-    changed = _e22;
+    let _e6 = input[lane];
+    local_7 = _e6;
+    let _e8 = local_7;
+    local_6 = _e8;
+    let _e10 = local_6;
+    original = _e10;
+    let _e12 = original;
+    let _e16 = adjust(_e12, (3i + i32(lane)));
+    changed = _e16;
     {
-        local_1.w = 7i;
-        local_1.x = 11i;
-        let _e31 = local_1.w;
-        let _e32 = local_1.x;
-        let _e39 = changed.samples[0i].tag;
-        changed.samples[0i].tag = (_e39 + u32((_e31 + _e32)));
+        local.w = 7i;
+        local.x = 11i;
+        let _e25 = local.w;
+        let _e26 = local.x;
+        let _e33 = changed.samples[0i].tag;
+        changed.samples[0i].tag = (_e33 + u32((_e25 + _e26)));
     }
-    let _e41 = changed;
-    let _e42 = original;
-    let _e43 = operator_u002b(_e41, _e42);
-    combined = _e43;
-    let _e46 = original.serial;
-    let _e53 = combined.weights[0i][0i];
-    combined.weights[0i][0i] = (_e53 + f32(_e46));
-    let _e56 = combined.serial;
-    combined.colour.w = f32(_e56);
+    let _e35 = changed;
+    let _e36 = original;
+    let _e37 = operator_u002b(_e35, _e36);
+    combined = _e37;
+    let _e40 = original.serial;
+    let _e47 = combined.weights[0i][0i];
+    combined.weights[0i][0i] = (_e47 + f32(_e40));
+    let _e50 = combined.serial;
+    combined.colour.w = f32(_e50);
     let slot = (lane + 1u);
-    let _e63 = combined.serial;
-    local_2 = u32(slot);
-    let _e66 = local_2;
-    local_13 = u32(_e66);
-    let _e69 = local_13;
-    output[_e69].serial = _e63;
-    let _e74 = combined.uv;
-    local_3 = u32(slot);
-    let _e77 = local_3;
-    local_14 = u32(_e77);
-    let _e80 = local_14;
-    output[_e80].uv = _e74;
+    let _e57 = combined.serial;
+    output[slot].serial = _e57;
+    let _e62 = combined.uv;
+    output[slot].uv = _e62;
     {
         sample = 0i;
         loop {
-            let _e85 = sample;
-            if (_e85 < 2i) {
+            let _e67 = sample;
+            if (_e67 < 2i) {
             } else {
                 break;
             }
-            let _e89 = sample;
-            let _e91 = combined.samples[_e89];
-            local_4 = u32(slot);
-            let _e94 = sample;
-            local_5 = u32(_e94);
-            let _e97 = local_4;
-            local_15 = u32(_e97);
-            let _e100 = local_15;
-            let _e103 = local_5;
-            output[_e100].samples[_e103] = _e91;
+            let _e71 = sample;
+            let _e73 = combined.samples[_e71];
+            local_1 = slot;
+            let _e75 = sample;
+            local_2 = u32(_e75);
+            let _e78 = local_1;
+            local_8 = _e78;
+            let _e80 = local_8;
+            let _e83 = local_2;
+            output[_e80].samples[_e83] = _e73;
             continuing {
-                let _e105 = sample;
-                sample = (_e105 + 1i);
+                let _e85 = sample;
+                sample = (_e85 + 1i);
             }
         }
     }
     {
         row = 0i;
         loop {
-            let _e110 = row;
-            if (_e110 < 2i) {
+            let _e90 = row;
+            if (_e90 < 2i) {
             } else {
                 break;
             }
             {
                 column = 0i;
                 loop {
-                    let _e115 = column;
-                    if (_e115 < 2i) {
+                    let _e95 = column;
+                    if (_e95 < 2i) {
                     } else {
                         break;
                     }
-                    let _e119 = row;
-                    let _e121 = column;
-                    let _e123 = combined.weights[_e119][_e121];
-                    local_6 = u32(slot);
-                    let _e126 = row;
-                    local_7 = u32(_e126);
-                    let _e129 = column;
-                    local_8 = u32(_e129);
-                    let _e132 = local_6;
-                    local_16 = u32(_e132);
-                    let _e135 = local_16;
-                    let _e138 = local_7;
-                    let _e140 = local_8;
-                    output[_e135].weights[_e138][_e140] = _e123;
+                    let _e99 = row;
+                    let _e101 = column;
+                    let _e103 = combined.weights[_e99][_e101];
+                    local_3 = slot;
+                    let _e105 = row;
+                    local_4 = u32(_e105);
+                    let _e108 = column;
+                    local_5 = u32(_e108);
+                    let _e111 = local_3;
+                    local_9 = _e111;
+                    let _e113 = local_9;
+                    let _e116 = local_4;
+                    let _e118 = local_5;
+                    output[_e113].weights[_e116][_e118] = _e103;
                     continuing {
-                        let _e142 = column;
-                        column = (_e142 + 1i);
+                        let _e120 = column;
+                        column = (_e120 + 1i);
                     }
                 }
             }
             continuing {
-                let _e145 = row;
-                row = (_e145 + 1i);
+                let _e123 = row;
+                row = (_e123 + 1i);
             }
         }
     }
-    let _e149 = combined.colour;
-    local_9 = u32(slot);
-    let _e152 = local_9;
-    local_17 = u32(_e152);
-    let _e155 = local_17;
-    output[_e155].colour = _e149;
+    let _e127 = combined.colour;
+    output[slot].colour = _e127;
 }

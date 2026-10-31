@@ -89,83 +89,83 @@ kernel void void_functions(
         consume(false, _e16, 1u, 1.5);
         int _e22 = value;
         uint _e23 = base;
-        local = static_cast<uint>(_e23);
-        uint _e26 = local;
-        local_6 = static_cast<uint>(_e26);
-        uint _e29 = local_6;
-        out[_e29] = _e22;
-        int _e32 = value;
-        value = as_type<int>(as_type<uint>(_e32) + as_type<uint>(1));
-        int _e35 = next_value(_e32);
-        consume(true, _e35, 2u, 0.5);
-        int _e39 = value;
-        uint _e40 = base;
-        local_1 = static_cast<uint>(_e40 + 1u);
-        uint _e45 = local_1;
-        local_7 = static_cast<uint>(_e45);
-        uint _e48 = local_7;
-        out[_e48] = _e39;
+        local = _e23;
+        uint _e25 = local;
+        local_6 = _e25;
+        uint _e27 = local_6;
+        out[_e27] = _e22;
+        int _e30 = value;
+        value = as_type<int>(as_type<uint>(_e30) + as_type<uint>(1));
+        int _e33 = next_value(_e30);
+        consume(true, _e33, 2u, 0.5);
+        int _e37 = value;
+        uint _e38 = base;
+        local_1 = static_cast<uint>(_e38 + 1u);
+        uint _e43 = local_1;
+        local_7 = _e43;
+        uint _e45 = local_7;
+        out[_e45] = _e37;
+        int _e51 = value;
+        value = as_type<int>(as_type<uint>(_e51) + as_type<uint>(1));
+        forward(naga_mod(i, 2u) == 0u, _e51);
         int _e54 = value;
-        value = as_type<int>(as_type<uint>(_e54) + as_type<uint>(1));
-        forward(naga_mod(i, 2u) == 0u, _e54);
-        int _e57 = value;
-        uint _e58 = base;
-        local_2 = static_cast<uint>(_e58 + 2u);
-        uint _e63 = local_2;
-        local_8 = static_cast<uint>(_e63);
-        uint _e66 = local_8;
-        out[_e66] = _e57;
+        uint _e55 = base;
+        local_2 = static_cast<uint>(_e55 + 2u);
+        uint _e60 = local_2;
+        local_8 = _e60;
+        uint _e62 = local_8;
+        out[_e62] = _e54;
         iterations = 0;
         {
-            int _e70 = value;
-            value = as_type<int>(as_type<uint>(_e70) + as_type<uint>(1));
-            consume(0 != 0, _e70, static_cast<uint>(0), static_cast<float>(1u));
+            int _e66 = value;
+            value = as_type<int>(as_type<uint>(_e66) + as_type<uint>(1));
+            consume(0 != 0, _e66, static_cast<uint>(0), static_cast<float>(1u));
             uint2 loop_bound = uint2(4294967295u);
             bool loop_init = true;
             while(true) {
                 if (metal::all(loop_bound == uint2(0u))) { break; }
                 loop_bound -= uint2(loop_bound.y == 0u, 1u);
                 if (!loop_init) {
-                    int _e89 = value;
-                    value = as_type<int>(as_type<uint>(_e89) + as_type<uint>(1));
-                    int _e92 = value;
-                    consume(false, _e92, 0u, 1.0);
+                    int _e85 = value;
+                    value = as_type<int>(as_type<uint>(_e85) + as_type<uint>(1));
+                    int _e88 = value;
+                    consume(false, _e88, 0u, 1.0);
                 }
                 loop_init = false;
-                int _e80 = iterations;
-                if (_e80 < 3) {
+                int _e76 = iterations;
+                if (_e76 < 3) {
                 } else {
                     break;
                 }
-                int _e83 = iterations;
-                iterations = as_type<int>(as_type<uint>(_e83) + as_type<uint>(1));
-                int _e86 = iterations;
-                if (_e86 == 1) {
+                int _e79 = iterations;
+                iterations = as_type<int>(as_type<uint>(_e79) + as_type<uint>(1));
+                int _e82 = iterations;
+                if (_e82 == 1) {
                     continue;
                 }
             }
         }
-        int _e96 = value;
-        uint _e97 = base;
-        local_3 = static_cast<uint>(_e97 + 3u);
-        uint _e102 = local_3;
-        local_9 = static_cast<uint>(_e102);
-        uint _e105 = local_9;
-        out[_e105] = _e96;
-        int _e107 = iterations;
-        uint _e108 = base;
-        local_4 = static_cast<uint>(_e108 + 4u);
-        uint _e113 = local_4;
-        local_10 = static_cast<uint>(_e113);
-        uint _e116 = local_10;
-        out[_e116] = _e107;
-        int _e118 = value;
-        int _e119 = next_value(_e118);
-        uint _e120 = base;
-        local_5 = static_cast<uint>(_e120 + 5u);
-        uint _e125 = local_5;
-        local_11 = static_cast<uint>(_e125);
-        uint _e128 = local_11;
-        out[_e128] = _e119;
+        int _e92 = value;
+        uint _e93 = base;
+        local_3 = static_cast<uint>(_e93 + 3u);
+        uint _e98 = local_3;
+        local_9 = _e98;
+        uint _e100 = local_9;
+        out[_e100] = _e92;
+        int _e102 = iterations;
+        uint _e103 = base;
+        local_4 = static_cast<uint>(_e103 + 4u);
+        uint _e108 = local_4;
+        local_10 = _e108;
+        uint _e110 = local_10;
+        out[_e110] = _e102;
+        int _e112 = value;
+        int _e113 = next_value(_e112);
+        uint _e114 = base;
+        local_5 = static_cast<uint>(_e114 + 5u);
+        uint _e119 = local_5;
+        local_11 = _e119;
+        uint _e121 = local_11;
+        out[_e121] = _e113;
     }
 }

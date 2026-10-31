@@ -26,7 +26,6 @@ kernel void loops(
     int i = {};
     int i_1 = {};
     uint local = {};
-    uint local_1 = {};
     int n_1 = n.value;
     sum = 0;
     {
@@ -102,7 +101,5 @@ kernel void loops(
     int _e46 = sum;
     local = static_cast<uint>(threadIdx.x);
     uint _e50 = local;
-    local_1 = static_cast<uint>(_e50);
-    uint _e53 = local_1;
-    out[_e53] = _e46;
+    out[_e50] = _e46;
 }

@@ -13,7 +13,6 @@ fn loops(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
     var i: i32;
     var i_1: i32;
     var local: u32;
-    var local_1: u32;
 
     let n_1 = n.value;
     sum = 0i;
@@ -75,7 +74,5 @@ fn loops(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
     let _e46 = sum;
     local = u32(threadIdx.x);
     let _e50 = local;
-    local_1 = u32(_e50);
-    let _e53 = local_1;
-    out[_e53] = _e46;
+    out[_e50] = _e46;
 }

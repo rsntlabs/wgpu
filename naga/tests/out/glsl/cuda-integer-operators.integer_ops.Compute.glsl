@@ -22,7 +22,6 @@ void main() {
     uvec3 threadIdx = gl_LocalInvocationID;
     uint bits = 0u;
     uint local = 0u;
-    uint local_1 = 0u;
     int value_1 = _group_0_binding_1_cs.value;
     uint amount_1 = _group_0_binding_2_cs.value;
     int _e8 = -(3);
@@ -43,8 +42,6 @@ void main() {
     uint _e31 = bits;
     local = uint(threadIdx.x);
     uint _e36 = local;
-    local_1 = uint(_e36);
-    uint _e39 = local_1;
-    _group_0_binding_0_cs[_e39] = ~(_e31);
+    _group_0_binding_0_cs[_e36] = ~(_e31);
 }
 

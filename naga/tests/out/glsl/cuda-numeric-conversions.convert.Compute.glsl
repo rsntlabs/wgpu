@@ -31,19 +31,19 @@ void main() {
         offset = float(i);
         local_1 = uint(i);
         uint _e17 = local_1;
-        local_3 = uint(_e17);
-        uint _e20 = local_3;
-        float _e23 = _group_0_binding_0_cs[_e20];
-        local_4 = _e23;
-        float _e25 = local_4;
-        local_2 = _e25;
-        float _e27 = local_2;
-        float _e28 = offset;
+        local_3 = _e17;
+        uint _e19 = local_3;
+        float _e22 = _group_0_binding_0_cs[_e19];
+        local_4 = _e22;
+        float _e24 = local_4;
+        local_2 = _e24;
+        float _e26 = local_2;
+        float _e27 = offset;
         local = uint(i);
-        uint _e32 = local;
-        local_5 = uint(_e32);
-        uint _e35 = local_5;
-        _group_0_binding_1_cs[_e35] = (_e27 + _e28);
+        uint _e31 = local;
+        local_5 = _e31;
+        uint _e33 = local_5;
+        _group_0_binding_1_cs[_e33] = (_e26 + _e27);
     }
 }
 

@@ -4,9 +4,9 @@ var<storage, read_write> points: array<vec4<f32>>;
 var<storage> params: array<f32>;
 
 fn wave(angle: f32) -> f32 {
-    var local_12: u32;
-    var local_13: u32;
-    var local_14: u32;
+    var local_2: u32;
+    var local_3: u32;
+    var local_4: u32;
 
     let _e5 = bitcast<u32>(((angle / 6.2831855f) + 0.5f));
     let _e7 = (_e5 & 2147483647u);
@@ -14,16 +14,16 @@ fn wave(angle: f32) -> f32 {
     let _e19 = (1u << ((150u - (_e7 >> 23u)) & 31u));
     let _e20 = (_e19 - 1u);
     let _e24 = (_e5 & ~(_e20));
-    local_12 = select(select(select(select(_e24, (_e24 + _e19), (_e11 && ((_e5 & _e20) != 0u))), select(select(0u, 3212836864u, _e11), _e5, (_e7 == 0u)), (_e7 < 1065353216u)), _e5, (_e7 >= 1258291200u)), 2143289344u, (_e7 > 2139095040u));
-    let _e43 = local_12;
+    local_2 = select(select(select(select(_e24, (_e24 + _e19), (_e11 && ((_e5 & _e20) != 0u))), select(select(0u, 3212836864u, _e11), _e5, (_e7 == 0u)), (_e7 < 1065353216u)), _e5, (_e7 >= 1258291200u)), 2143289344u, (_e7 > 2139095040u));
+    let _e43 = local_2;
     let x = (angle - (bitcast<f32>(_e43) * 6.2831855f));
     let _e54 = (bitcast<u32>(x) & 2147483647u);
-    local_13 = select(_e54, 2143289344u, (_e54 > 2139095040u));
-    let _e60 = local_13;
+    local_3 = select(_e54, 2143289344u, (_e54 > 2139095040u));
+    let _e60 = local_3;
     let y = ((1.2732395f * x) - ((0.4052847f * x) * bitcast<f32>(_e60)));
     let _e66 = (bitcast<u32>(y) & 2147483647u);
-    local_14 = select(_e66, 2143289344u, (_e66 > 2139095040u));
-    let _e72 = local_14;
+    local_4 = select(_e66, 2143289344u, (_e66 > 2139095040u));
+    let _e72 = local_4;
     return (y + (0.225f * ((y * bitcast<f32>(_e72)) - y)));
 }
 
@@ -91,57 +91,27 @@ fn gen__naga_sqrtf(input_bits: u32) -> u32 {
 fn particles(@builtin(workgroup_id) blockIdx: vec3<u32>, @builtin(local_invocation_id) threadIdx: vec3<u32>) {
     var local: u32;
     var local_1: u32;
-    var local_2: u32;
-    var local_3: u32;
-    var local_4: u32;
-    var local_5: u32;
-    var local_6: u32;
-    var local_7: u32;
-    var local_8: u32;
-    var local_9: u32;
-    var local_10: u32;
-    var local_11: u32;
 
     let i = ((blockIdx.x * 64u) + threadIdx.x);
     local = u32(1i);
     let _e10 = local;
-    local_6 = u32(_e10);
-    let _e13 = local_6;
-    let _e16 = params[_e13];
-    let count = u32(_e16);
+    let _e13 = params[_e10];
+    let count = u32(_e13);
     if (i >= count) {
         return;
     }
     local_1 = u32(0i);
-    let _e22 = local_1;
-    local_7 = u32(_e22);
-    let _e25 = local_7;
-    let time = params[_e25];
-    let _e30 = gen__naga_sqrtf(bitcast<u32>(f32(count)));
-    let side = u32(bitcast<f32>(_e30));
+    let _e19 = local_1;
+    let time = params[_e19];
+    let _e24 = gen__naga_sqrtf(bitcast<u32>(f32(count)));
+    let side = u32(bitcast<f32>(_e24));
     let x_1 = (((f32((i % side)) / f32(side)) * 2f) - 1f);
     let y_1 = (((f32((i / side)) / f32(side)) * 2f) - 1f);
-    let _e53 = gen__naga_sqrtf(bitcast<u32>(((x_1 * x_1) + (y_1 * y_1))));
-    let distance_ = bitcast<f32>(_e53);
+    let _e47 = gen__naga_sqrtf(bitcast<u32>(((x_1 * x_1) + (y_1 * y_1))));
+    let distance_ = bitcast<f32>(_e47);
     let ripple = wave(((distance_ * 14f) - (time * 2f)));
-    local_2 = u32(i);
-    let _e65 = local_2;
-    local_8 = u32(_e65);
-    let _e68 = local_8;
-    points[_e68].x = (x_1 * 0.84f);
-    local_3 = u32(i);
-    let _e79 = local_3;
-    local_9 = u32(_e79);
-    let _e82 = local_9;
-    points[_e82].y = ((y_1 * 0.72f) + (ripple * 0.13f));
-    local_4 = u32(i);
-    let _e89 = local_4;
-    local_10 = u32(_e89);
-    let _e92 = local_10;
-    points[_e92].z = (distance_ * 0.65f);
-    local_5 = u32(i);
-    let _e103 = local_5;
-    local_11 = u32(_e103);
-    let _e106 = local_11;
-    points[_e106].w = (0.3f + ((ripple + 1f) * 0.25f));
+    points[i].x = (x_1 * 0.84f);
+    points[i].y = ((y_1 * 0.72f) + (ripple * 0.13f));
+    points[i].z = (distance_ * 0.65f);
+    points[i].w = (0.3f + ((ripple + 1f) * 0.25f));
 }

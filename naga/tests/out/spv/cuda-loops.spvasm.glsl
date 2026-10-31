@@ -18,30 +18,29 @@ layout(set = 0, binding = 1, std140) uniform _12_11
 
 void main()
 {
-    uint _44 = 0u;
     uint _41 = 0u;
     int _34 = 0;
     int _39 = 0;
-    uvec2 _64 = uvec2(4294967295u);
-    uvec2 _96 = uvec2(4294967295u);
-    uvec2 _125 = uvec2(4294967295u);
+    uvec2 _62 = uvec2(4294967295u);
+    uvec2 _94 = uvec2(4294967295u);
+    uvec2 _123 = uvec2(4294967295u);
     _34 = 0;
     int _37 = 0;
     for (;;)
     {
-        if (all(equal(uvec2(0u), _64)))
+        if (all(equal(uvec2(0u), _62)))
         {
             break;
         }
-        _64 -= uvec2(uint(_64.y == 0u), 1u);
+        _62 -= uvec2(uint(_62.y == 0u), 1u);
         if (!(_37 < _11._m0._m0))
         {
             break;
         }
         if (_37 == 2)
         {
-            int _90 = _37;
-            _37 = _90 + 1;
+            int _88 = _37;
+            _37 = _88 + 1;
             continue;
         }
         if (_37 == 7)
@@ -49,18 +48,18 @@ void main()
             break;
         }
         _34 += _37;
-        int _90 = _37;
-        _37 = _90 + 1;
+        int _88 = _37;
+        _37 = _88 + 1;
         continue;
     }
     _39 = 0;
     for (;;)
     {
-        if (all(equal(uvec2(0u), _96)))
+        if (all(equal(uvec2(0u), _94)))
         {
             break;
         }
-        _96 -= uvec2(uint(_96.y == 0u), 1u);
+        _94 -= uvec2(uint(_94.y == 0u), 1u);
         if (!(_39 < 3))
         {
             break;
@@ -75,11 +74,11 @@ void main()
     }
     do
     {
-        if (all(equal(uvec2(0u), _125)))
+        if (all(equal(uvec2(0u), _123)))
         {
             break;
         }
-        _125 -= uvec2(uint(_125.y == 0u), 1u);
+        _123 -= uvec2(uint(_123.y == 0u), 1u);
         _34 += 100;
         if (_34 > 200)
         {
@@ -87,7 +86,6 @@ void main()
         }
     } while (!(!(_34 < 150)));
     _41 = gl_LocalInvocationID.x;
-    _44 = _41;
-    _8._m0[_44] = _34;
+    _8._m0[_41] = _34;
 }
 

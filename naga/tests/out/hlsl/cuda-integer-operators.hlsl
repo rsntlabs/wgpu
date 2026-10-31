@@ -34,7 +34,6 @@ void integer_ops(uint3 threadIdx : SV_GroupThreadID)
 {
     uint bits = (uint)0;
     uint local = (uint)0;
-    uint local_1 = (uint)0;
 
     int value_1 = value.value;
     uint amount_1 = amount.value;
@@ -55,7 +54,5 @@ void integer_ops(uint3 threadIdx : SV_GroupThreadID)
     uint _e31 = bits;
     local = uint(threadIdx.x);
     uint _e36 = local;
-    local_1 = uint(_e36);
-    uint _e39 = local_1;
-    out_.Store(_e39*4, asuint(~(_e31)));
+    out_.Store(_e36*4, asuint(~(_e31)));
 }

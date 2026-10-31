@@ -36,7 +36,6 @@ void main()
     uint _200 = 0u;
     _29 _185[2][2] = _29[][](_29[](_29(0.0, 0.0, 0.0), _29(0.0, 0.0, 0.0)), _29[](_29(0.0, 0.0, 0.0), _29(0.0, 0.0, 0.0)));
     vec2 _170 = vec2(0.0);
-    uint _301 = 0u;
     uint _156 = 0u;
     uint _289 = 0u;
     uint _142 = 0u;
@@ -50,7 +49,6 @@ void main()
     uint _202 = 0u;
     uint _188 = 0u;
     vec2 _173[2][2] = vec2[][](vec2[](vec2(0.0), vec2(0.0)), vec2[](vec2(0.0), vec2(0.0)));
-    uint _303 = 0u;
     uvec4 _158 = uvec4(0u);
     uint _291 = 0u;
     uint _144 = 0u;
@@ -65,7 +63,6 @@ void main()
     uint _204 = 0u;
     uint _190 = 0u;
     uint _176 = 0u;
-    uint _305 = 0u;
     uvec4 _161[2][2] = uvec4[][](uvec4[](uvec4(0u), uvec4(0u)), uvec4[](uvec4(0u), uvec4(0u)));
     uint _293 = 0u;
     _19 _146 = _19(0u, 0u, 0u);
@@ -114,18 +111,18 @@ void main()
     uint _263 = 0u;
     _10 _110 = _10(0, 0, 0);
     uint _251 = 0u;
-    uvec2 _673 = uvec2(4294967295u);
-    uvec2 _698 = uvec2(4294967295u);
-    uvec2 _718 = uvec2(4294967295u);
-    uvec2 _743 = uvec2(4294967295u);
-    uvec2 _765 = uvec2(4294967295u);
-    uvec2 _784 = uvec2(4294967295u);
-    uvec2 _809 = uvec2(4294967295u);
-    uvec2 _831 = uvec2(4294967295u);
-    uvec2 _850 = uvec2(4294967295u);
-    uvec2 _874 = uvec2(4294967295u);
-    uvec2 _893 = uvec2(4294967295u);
-    uvec2 _912 = uvec2(4294967295u);
+    uvec2 _667 = uvec2(4294967295u);
+    uvec2 _692 = uvec2(4294967295u);
+    uvec2 _712 = uvec2(4294967295u);
+    uvec2 _737 = uvec2(4294967295u);
+    uvec2 _759 = uvec2(4294967295u);
+    uvec2 _778 = uvec2(4294967295u);
+    uvec2 _803 = uvec2(4294967295u);
+    uvec2 _825 = uvec2(4294967295u);
+    uvec2 _844 = uvec2(4294967295u);
+    uvec2 _868 = uvec2(4294967295u);
+    uvec2 _887 = uvec2(4294967295u);
+    uvec2 _906 = uvec2(4294967295u);
     if (gl_LocalInvocationIndex == 0u)
     {
         _44 = int[][](int[](0, 0, 0), int[](0, 0, 0));
@@ -240,15 +237,15 @@ void main()
     _168 = uint(17);
     _281 = _168;
     _41._m0[_281] = int(_161[1u][1u].w);
-    float _536 = float(1);
-    _170.x = _536;
-    float _539 = float(2);
-    _170.y = _539;
+    float _530 = float(1);
+    _170.x = _530;
+    float _533 = float(2);
+    _170.y = _533;
     _173[0u][0u] = _170;
     _173[0u][1u] = vec2(0.0);
     _173[1u][0u] = _170;
-    float _547 = float(5);
-    _173[1u][1u].x = _547;
+    float _541 = float(5);
+    _173[1u][1u].x = _541;
     _173[1u][1u].y = 0.0;
     _176 = uint(18);
     _283 = _176;
@@ -259,17 +256,17 @@ void main()
     _180 = uint(20);
     _287 = _180;
     _41._m0[_287] = int(clamp(_173[1u][1u].y, -2147483648.0, 2147483520.0));
-    float _578 = float(1);
-    _182._m0 = _578;
-    float _580 = float(2);
-    _182._m1 = _580;
-    float _582 = float(3);
-    _182._m2 = _582;
+    float _572 = float(1);
+    _182._m0 = _572;
+    float _574 = float(2);
+    _182._m1 = _574;
+    float _576 = float(3);
+    _182._m2 = _576;
     _185[0u][0u] = _182;
     _185[0u][1u] = _29(0.0, 0.0, 0.0);
     _185[1u][0u] = _182;
-    float _590 = float(5);
-    _185[1u][1u]._m0 = _590;
+    float _584 = float(5);
+    _185[1u][1u]._m0 = _584;
     _185[1u][1u]._m1 = 0.0;
     _185[1u][1u]._m2 = 0.0;
     _188 = uint(21);
@@ -281,19 +278,19 @@ void main()
     _192 = uint(23);
     _293 = _192;
     _41._m0[_293] = int(clamp(_185[1u][1u]._m2, -2147483648.0, 2147483520.0));
-    float _620 = float(1);
-    _194.x = _620;
-    float _622 = float(2);
-    _194.y = _622;
-    float _624 = float(3);
-    _194.z = _624;
-    float _626 = float(4);
-    _194.w = _626;
+    float _614 = float(1);
+    _194.x = _614;
+    float _616 = float(2);
+    _194.y = _616;
+    float _618 = float(3);
+    _194.z = _618;
+    float _620 = float(4);
+    _194.w = _620;
     _197[0u][0u] = _194;
     _197[0u][1u] = vec4(0.0);
     _197[1u][0u] = _194;
-    float _634 = float(5);
-    _197[1u][1u].x = _634;
+    float _628 = float(5);
+    _197[1u][1u].x = _628;
     _197[1u][1u].y = 0.0;
     _197[1u][1u].z = 0.0;
     _197[1u][1u].w = 0.0;
@@ -310,11 +307,11 @@ void main()
     uint _209 = 1u;
     for (;;)
     {
-        if (all(equal(uvec2(0u), _673)))
+        if (all(equal(uvec2(0u), _667)))
         {
             break;
         }
-        _673 -= uvec2(uint(_673.y == 0u), 1u);
+        _667 -= uvec2(uint(_667.y == 0u), 1u);
         if (_209 >= 2u)
         {
             break;
@@ -329,11 +326,11 @@ void main()
     uint _214 = 0u;
     for (;;)
     {
-        if (all(equal(uvec2(0u), _698)))
+        if (all(equal(uvec2(0u), _692)))
         {
             break;
         }
-        _698 -= uvec2(uint(_698.y == 0u), 1u);
+        _692 -= uvec2(uint(_692.y == 0u), 1u);
         if (_214 >= 2u)
         {
             break;
@@ -341,11 +338,11 @@ void main()
         uint _216 = 0u;
         for (;;)
         {
-            if (all(equal(uvec2(0u), _718)))
+            if (all(equal(uvec2(0u), _712)))
             {
                 break;
             }
-            _718 -= uvec2(uint(_718.y == 0u), 1u);
+            _712 -= uvec2(uint(_712.y == 0u), 1u);
             if (_216 >= 3u)
             {
                 break;
@@ -361,11 +358,11 @@ void main()
     uint _220 = 1u;
     for (;;)
     {
-        if (all(equal(uvec2(0u), _743)))
+        if (all(equal(uvec2(0u), _737)))
         {
             break;
         }
-        _743 -= uvec2(uint(_743.y == 0u), 1u);
+        _737 -= uvec2(uint(_737.y == 0u), 1u);
         if (_220 >= 3u)
         {
             break;
@@ -377,11 +374,11 @@ void main()
     uint _222 = 1u;
     for (;;)
     {
-        if (all(equal(uvec2(0u), _765)))
+        if (all(equal(uvec2(0u), _759)))
         {
             break;
         }
-        _765 -= uvec2(uint(_765.y == 0u), 1u);
+        _759 -= uvec2(uint(_759.y == 0u), 1u);
         if (_222 >= 2u)
         {
             break;
@@ -389,11 +386,11 @@ void main()
         uint _224 = 0u;
         for (;;)
         {
-            if (all(equal(uvec2(0u), _784)))
+            if (all(equal(uvec2(0u), _778)))
             {
                 break;
             }
-            _784 -= uvec2(uint(_784.y == 0u), 1u);
+            _778 -= uvec2(uint(_778.y == 0u), 1u);
             if (_224 >= 3u)
             {
                 break;
@@ -409,11 +406,11 @@ void main()
     uint _229 = 1u;
     for (;;)
     {
-        if (all(equal(uvec2(0u), _809)))
+        if (all(equal(uvec2(0u), _803)))
         {
             break;
         }
-        _809 -= uvec2(uint(_809.y == 0u), 1u);
+        _803 -= uvec2(uint(_803.y == 0u), 1u);
         if (_229 >= 3u)
         {
             break;
@@ -425,11 +422,11 @@ void main()
     uint _231 = 1u;
     for (;;)
     {
-        if (all(equal(uvec2(0u), _831)))
+        if (all(equal(uvec2(0u), _825)))
         {
             break;
         }
-        _831 -= uvec2(uint(_831.y == 0u), 1u);
+        _825 -= uvec2(uint(_825.y == 0u), 1u);
         if (_231 >= 2u)
         {
             break;
@@ -437,11 +434,11 @@ void main()
         uint _233 = 0u;
         for (;;)
         {
-            if (all(equal(uvec2(0u), _850)))
+            if (all(equal(uvec2(0u), _844)))
             {
                 break;
             }
-            _850 -= uvec2(uint(_850.y == 0u), 1u);
+            _844 -= uvec2(uint(_844.y == 0u), 1u);
             if (_233 >= 3u)
             {
                 break;
@@ -456,11 +453,11 @@ void main()
     uint _235 = 1u;
     for (;;)
     {
-        if (all(equal(uvec2(0u), _874)))
+        if (all(equal(uvec2(0u), _868)))
         {
             break;
         }
-        _874 -= uvec2(uint(_874.y == 0u), 1u);
+        _868 -= uvec2(uint(_868.y == 0u), 1u);
         if (_235 >= 2u)
         {
             break;
@@ -468,11 +465,11 @@ void main()
         uint _237 = 0u;
         for (;;)
         {
-            if (all(equal(uvec2(0u), _893)))
+            if (all(equal(uvec2(0u), _887)))
             {
                 break;
             }
-            _893 -= uvec2(uint(_893.y == 0u), 1u);
+            _887 -= uvec2(uint(_887.y == 0u), 1u);
             if (_237 >= 2u)
             {
                 break;
@@ -480,11 +477,11 @@ void main()
             uint _239 = 0u;
             for (;;)
             {
-                if (all(equal(uvec2(0u), _912)))
+                if (all(equal(uvec2(0u), _906)))
                 {
                     break;
                 }
-                _912 -= uvec2(uint(_912.y == 0u), 1u);
+                _906 -= uvec2(uint(_906.y == 0u), 1u);
                 if (_239 >= 3u)
                 {
                     break;
@@ -500,19 +497,16 @@ void main()
         continue;
     }
     _44[1u][2u] = _206[0u][1u];
-    float _945 = float(4);
-    _46[1u][0u] = _29(float(_206[1u][0u]), float(_206[1u][1u]), _945);
+    float _939 = float(4);
+    _46[1u][0u] = _29(float(_206[1u][0u]), float(_206[1u][1u]), _939);
     memoryBarrierShared();
     memoryBarrierBuffer();
     barrier();
     _241 = uint(27);
-    _301 = _241;
-    _41._m0[_301] = ((_44[1u][2u] + _211[1u][2u]) + _218[1u][2u]) + _226[1u][1u][2u];
+    _41._m0[_241] = ((_44[1u][2u] + _211[1u][2u]) + _218[1u][2u]) + _226[1u][1u][2u];
     _243 = uint(28);
-    _303 = _243;
-    _41._m0[_303] = int(clamp(_46[1u][0u]._m0, -2147483648.0, 2147483520.0));
+    _41._m0[_243] = int(clamp(_46[1u][0u]._m0, -2147483648.0, 2147483520.0));
     _245 = uint(29);
-    _305 = _245;
-    _41._m0[_305] = int(clamp(_46[1u][0u]._m1, -2147483648.0, 2147483520.0));
+    _41._m0[_245] = int(clamp(_46[1u][0u]._m1, -2147483648.0, 2147483520.0));
 }
 

@@ -130,72 +130,72 @@ void uninitialized(uint3 blockIdx : SV_GroupID, uint3 threadIdx : SV_GroupThread
     uint i_1 = ((blockIdx.x * 64u) + threadIdx.x);
     if ((i_1 < n_1)) {
         base = (i_1 * 12u);
-        local = uint(i_1);
-        uint _e16 = local;
-        local_14 = uint(_e16);
-        uint _e19 = local_14;
-        int _e22 = asint(input.Load(_e19*4));
-        local_15 = _e22;
-        int _e24 = local_15;
-        local_13 = _e24;
-        int _e26 = local_13;
-        value = _e26;
+        local = i_1;
+        uint _e15 = local;
+        local_14 = _e15;
+        uint _e17 = local_14;
+        int _e20 = asint(input.Load(_e17*4));
+        local_15 = _e20;
+        int _e22 = local_15;
+        local_13 = _e22;
+        int _e24 = local_13;
+        value = _e24;
         if ((naga_mod(i_1, 2u) == 0u)) {
-            int _e32 = value;
-            chosen = asint(asuint(_e32) + asuint(int(7)));
+            int _e30 = value;
+            chosen = asint(asuint(_e30) + asuint(int(7)));
         } else {
-            int _e36 = value;
-            chosen = asint(asuint(_e36) - asuint(int(4)));
+            int _e34 = value;
+            chosen = asint(asuint(_e34) - asuint(int(4)));
         }
-        int _e41 = chosen;
-        uint _e42 = base;
-        local_1 = uint(_e42);
-        uint _e45 = local_1;
-        local_16 = uint(_e45);
-        uint _e48 = local_16;
-        out_.Store(_e48*4, asuint(_e41));
-        int _e51 = value;
-        const int _e56 = select_value(_e51, (naga_mod(i_1, 3u) == 0u));
-        uint _e57 = base;
-        local_2 = uint((_e57 + 1u));
-        uint _e62 = local_2;
-        local_17 = uint(_e62);
-        uint _e65 = local_17;
-        out_.Store(_e65*4, asuint(_e56));
-        int _e67 = value;
-        weighted = ((float(_e67) * 1.5) + 2.0);
-        float _e74 = weighted;
-        uint _e76 = base;
-        local_3 = uint((_e76 + 2u));
-        uint _e81 = local_3;
-        local_18 = uint(_e81);
-        uint _e84 = local_18;
-        out_.Store(_e84*4, asuint(naga_f2i32(_e74)));
-        int _e86 = value;
-        negative = (_e86 < int(0));
-        bool _e90 = negative;
-        uint _e91 = base;
-        local_4 = uint((_e91 + 3u));
-        uint _e97 = local_4;
-        local_19 = uint(_e97);
-        uint _e100 = local_19;
-        out_.Store(_e100*4, asuint(int(_e90)));
-        int _e102 = value;
-        magnitude = uint(asint(asuint(_e102) + asuint(int(5))));
-        uint _e107 = magnitude;
-        uint _e110 = base;
-        local_5 = uint((_e110 + 4u));
-        uint _e116 = local_5;
-        local_20 = uint(_e116);
-        uint _e119 = local_20;
-        out_.Store(_e119*4, asuint(int((_e107 * 3u))));
-        const uint _e123 = accumulate(naga_mod(i_1, 5u));
-        uint _e124 = base;
-        local_6 = uint((_e124 + 5u));
-        uint _e130 = local_6;
-        local_21 = uint(_e130);
-        uint _e133 = local_21;
-        out_.Store(_e133*4, asuint(int(_e123)));
+        int _e39 = chosen;
+        uint _e40 = base;
+        local_1 = _e40;
+        uint _e42 = local_1;
+        local_16 = _e42;
+        uint _e44 = local_16;
+        out_.Store(_e44*4, asuint(_e39));
+        int _e47 = value;
+        const int _e52 = select_value(_e47, (naga_mod(i_1, 3u) == 0u));
+        uint _e53 = base;
+        local_2 = uint((_e53 + 1u));
+        uint _e58 = local_2;
+        local_17 = _e58;
+        uint _e60 = local_17;
+        out_.Store(_e60*4, asuint(_e52));
+        int _e62 = value;
+        weighted = ((float(_e62) * 1.5) + 2.0);
+        float _e69 = weighted;
+        uint _e71 = base;
+        local_3 = uint((_e71 + 2u));
+        uint _e76 = local_3;
+        local_18 = _e76;
+        uint _e78 = local_18;
+        out_.Store(_e78*4, asuint(naga_f2i32(_e69)));
+        int _e80 = value;
+        negative = (_e80 < int(0));
+        bool _e84 = negative;
+        uint _e85 = base;
+        local_4 = uint((_e85 + 3u));
+        uint _e91 = local_4;
+        local_19 = _e91;
+        uint _e93 = local_19;
+        out_.Store(_e93*4, asuint(int(_e84)));
+        int _e95 = value;
+        magnitude = uint(asint(asuint(_e95) + asuint(int(5))));
+        uint _e100 = magnitude;
+        uint _e103 = base;
+        local_5 = uint((_e103 + 4u));
+        uint _e109 = local_5;
+        local_20 = _e109;
+        uint _e111 = local_20;
+        out_.Store(_e111*4, asuint(int((_e100 * 3u))));
+        const uint _e115 = accumulate(naga_mod(i_1, 5u));
+        uint _e116 = base;
+        local_6 = uint((_e116 + 5u));
+        uint _e122 = local_6;
+        local_21 = _e122;
+        uint _e124 = local_21;
+        out_.Store(_e124*4, asuint(int(_e115)));
         total = int(0);
         {
             iteration = int(0);
@@ -205,30 +205,30 @@ void uninitialized(uint3 blockIdx : SV_GroupID, uint3 threadIdx : SV_GroupThread
                 if (all(loop_bound_1 == uint2(0u, 0u))) { break; }
                 loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
                 if (!loop_init_1) {
-                    int _e149 = iteration;
-                    iteration = asint(asuint(_e149) + asuint(int(1)));
+                    int _e140 = iteration;
+                    iteration = asint(asuint(_e140) + asuint(int(1)));
                 }
                 loop_init_1 = false;
-                int _e139 = iteration;
-                if ((_e139 < int(3))) {
+                int _e130 = iteration;
+                if ((_e130 < int(3))) {
                 } else {
                     break;
                 }
-                int _e142 = value;
-                int _e143 = iteration;
-                copied = asint(asuint(_e142) + asuint(_e143));
-                int _e146 = copied;
-                int _e147 = total;
-                total = asint(asuint(_e147) + asuint(_e146));
+                int _e133 = value;
+                int _e134 = iteration;
+                copied = asint(asuint(_e133) + asuint(_e134));
+                int _e137 = copied;
+                int _e138 = total;
+                total = asint(asuint(_e138) + asuint(_e137));
             }
         }
-        int _e152 = total;
-        uint _e153 = base;
-        local_7 = uint((_e153 + 6u));
-        uint _e158 = local_7;
-        local_22 = uint(_e158);
-        uint _e161 = local_22;
-        out_.Store(_e161*4, asuint(_e152));
+        int _e143 = total;
+        uint _e144 = base;
+        local_7 = uint((_e144 + 6u));
+        uint _e149 = local_7;
+        local_22 = _e149;
+        uint _e151 = local_22;
+        out_.Store(_e151*4, asuint(_e143));
         descending = int(0);
         iteration_1 = int(0);
         {
@@ -238,86 +238,86 @@ void uninitialized(uint3 blockIdx : SV_GroupID, uint3 threadIdx : SV_GroupThread
                 if (all(loop_bound_2 == uint2(0u, 0u))) { break; }
                 loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
                 if (!loop_init_2) {
-                    int _e177 = iteration_1;
-                    iteration_1 = asint(asuint(_e177) + asuint(int(1)));
+                    int _e167 = iteration_1;
+                    iteration_1 = asint(asuint(_e167) + asuint(int(1)));
                 }
                 loop_init_2 = false;
-                int _e167 = iteration_1;
-                if ((_e167 < int(3))) {
+                int _e157 = iteration_1;
+                if ((_e157 < int(3))) {
                 } else {
                     break;
                 }
-                int _e170 = value;
-                int _e171 = iteration_1;
-                staged = asint(asuint(_e170) - asuint(_e171));
-                int _e174 = staged;
-                int _e175 = descending;
-                descending = asint(asuint(_e175) + asuint(_e174));
+                int _e160 = value;
+                int _e161 = iteration_1;
+                staged = asint(asuint(_e160) - asuint(_e161));
+                int _e164 = staged;
+                int _e165 = descending;
+                descending = asint(asuint(_e165) + asuint(_e164));
             }
         }
-        int _e180 = descending;
-        uint _e181 = base;
-        local_8 = uint((_e181 + 7u));
-        uint _e186 = local_8;
-        local_23 = uint(_e186);
-        uint _e189 = local_23;
-        out_.Store(_e189*4, asuint(_e180));
+        int _e170 = descending;
+        uint _e171 = base;
+        local_8 = uint((_e171 + 7u));
+        uint _e176 = local_8;
+        local_23 = _e176;
+        uint _e178 = local_23;
+        out_.Store(_e178*4, asuint(_e170));
         remaining = int(2);
-        int _e193 = value;
-        partial = _e193;
+        int _e182 = value;
+        partial = _e182;
         uint2 loop_bound_3 = uint2(4294967295u, 4294967295u);
         while(true) {
             if (all(loop_bound_3 == uint2(0u, 0u))) { break; }
             loop_bound_3 -= uint2(loop_bound_3.y == 0u, 1u);
-            int _e195 = remaining;
-            if ((_e195 > int(0))) {
+            int _e184 = remaining;
+            if ((_e184 > int(0))) {
             } else {
                 break;
             }
             {
-                int _e198 = partial;
-                int _e199 = remaining;
-                next = asint(asuint(_e198) + asuint(_e199));
-                int _e202 = next;
-                partial = _e202;
-                int _e203 = remaining;
-                remaining = asint(asuint(_e203) - asuint(int(1)));
+                int _e187 = partial;
+                int _e188 = remaining;
+                next = asint(asuint(_e187) + asuint(_e188));
+                int _e191 = next;
+                partial = _e191;
+                int _e192 = remaining;
+                remaining = asint(asuint(_e192) - asuint(int(1)));
             }
         }
-        int _e206 = partial;
-        uint _e207 = base;
-        local_9 = uint((_e207 + 8u));
-        uint _e212 = local_9;
-        local_24 = uint(_e212);
-        uint _e215 = local_24;
-        out_.Store(_e215*4, asuint(_e206));
-        int _e217 = value;
-        shadow = _e217;
+        int _e195 = partial;
+        uint _e196 = base;
+        local_9 = uint((_e196 + 8u));
+        uint _e201 = local_9;
+        local_24 = _e201;
+        uint _e203 = local_24;
+        out_.Store(_e203*4, asuint(_e195));
+        int _e205 = value;
+        shadow = _e205;
         {
-            int _e219 = value;
-            shadow_1 = asint(asuint(_e219) + asuint(int(10)));
-            int _e223 = shadow_1;
-            uint _e224 = base;
-            local_10 = uint((_e224 + 9u));
-            uint _e229 = local_10;
-            local_25 = uint(_e229);
-            uint _e232 = local_25;
-            out_.Store(_e232*4, asuint(_e223));
+            int _e207 = value;
+            shadow_1 = asint(asuint(_e207) + asuint(int(10)));
+            int _e211 = shadow_1;
+            uint _e212 = base;
+            local_10 = uint((_e212 + 9u));
+            uint _e217 = local_10;
+            local_25 = _e217;
+            uint _e219 = local_25;
+            out_.Store(_e219*4, asuint(_e211));
         }
-        int _e234 = shadow;
-        uint _e235 = base;
-        local_11 = uint((_e235 + 10u));
-        uint _e240 = local_11;
-        local_26 = uint(_e240);
-        uint _e243 = local_26;
-        out_.Store(_e243*4, asuint(_e234));
-        int _e245 = value;
-        const float _e247 = scaled(float(_e245));
-        uint _e248 = base;
-        local_12 = uint((_e248 + 11u));
-        uint _e254 = local_12;
-        local_27 = uint(_e254);
-        uint _e257 = local_27;
-        out_.Store(_e257*4, asuint(naga_f2i32(_e247)));
+        int _e221 = shadow;
+        uint _e222 = base;
+        local_11 = uint((_e222 + 10u));
+        uint _e227 = local_11;
+        local_26 = _e227;
+        uint _e229 = local_26;
+        out_.Store(_e229*4, asuint(_e221));
+        int _e231 = value;
+        const float _e233 = scaled(float(_e231));
+        uint _e234 = base;
+        local_12 = uint((_e234 + 11u));
+        uint _e240 = local_12;
+        local_27 = _e240;
+        uint _e242 = local_27;
+        out_.Store(_e242*4, asuint(naga_f2i32(_e233)));
     }
 }

@@ -25,18 +25,18 @@ fn convert(@builtin(workgroup_id) blockIdx: vec3<u32>, @builtin(local_invocation
         offset = f32(i);
         local_1 = u32(i);
         let _e17 = local_1;
-        local_3 = u32(_e17);
-        let _e20 = local_3;
-        let _e23 = input[_e20];
-        local_4 = _e23;
-        let _e25 = local_4;
-        local_2 = _e25;
-        let _e27 = local_2;
-        let _e28 = offset;
+        local_3 = _e17;
+        let _e19 = local_3;
+        let _e22 = input[_e19];
+        local_4 = _e22;
+        let _e24 = local_4;
+        local_2 = _e24;
+        let _e26 = local_2;
+        let _e27 = offset;
         local = u32(i);
-        let _e32 = local;
-        local_5 = u32(_e32);
-        let _e35 = local_5;
-        output[_e35] = (_e27 + _e28);
+        let _e31 = local;
+        local_5 = _e31;
+        let _e33 = local_5;
+        output[_e33] = (_e26 + _e27);
     }
 }

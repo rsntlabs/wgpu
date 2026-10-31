@@ -26,18 +26,18 @@ void convert(uint3 blockIdx : SV_GroupID, uint3 threadIdx : SV_GroupThreadID)
         offset = float(i);
         local_1 = uint(i);
         uint _e17 = local_1;
-        local_3 = uint(_e17);
-        uint _e20 = local_3;
-        float _e23 = asfloat(input.Load(_e20*4));
-        local_4 = _e23;
-        float _e25 = local_4;
-        local_2 = _e25;
-        float _e27 = local_2;
-        float _e28 = offset;
+        local_3 = _e17;
+        uint _e19 = local_3;
+        float _e22 = asfloat(input.Load(_e19*4));
+        local_4 = _e22;
+        float _e24 = local_4;
+        local_2 = _e24;
+        float _e26 = local_2;
+        float _e27 = offset;
         local = uint(i);
-        uint _e32 = local;
-        local_5 = uint(_e32);
-        uint _e35 = local_5;
-        output.Store(_e35*4, asuint((_e27 + _e28)));
+        uint _e31 = local;
+        local_5 = _e31;
+        uint _e33 = local_5;
+        output.Store(_e33*4, asuint((_e26 + _e27)));
     }
 }

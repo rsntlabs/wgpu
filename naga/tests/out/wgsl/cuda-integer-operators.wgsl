@@ -17,7 +17,6 @@ var<uniform> amount: type_4;
 fn integer_ops(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
     var bits: u32;
     var local: u32;
-    var local_1: u32;
 
     let value_1 = value.value;
     let amount_1 = amount.value;
@@ -38,7 +37,5 @@ fn integer_ops(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
     let _e31 = bits;
     local = u32(threadIdx.x);
     let _e36 = local;
-    local_1 = u32(_e36);
-    let _e39 = local_1;
-    out[_e39] = ~(_e31);
+    out[_e36] = ~(_e31);
 }
