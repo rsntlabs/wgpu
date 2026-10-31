@@ -510,14 +510,22 @@ These functions accept `int *address, int value` or
 | `atomicExch` | Store `value`. |
 
 Arguments are evaluated once, and `value` uses the usual scalar argument conversions.
+
+`atomicCAS(int *address, int compare, int value)` and its `unsigned int`
+overload return the previous value at `address`, replacing it with `value` only
+when it equals `compare`. Both scalar operands use the usual argument conversions.
+The operation is strong: a target's weak compare-exchange failure retries when
+the observed value still equals `compare`. The address, comparison, and replacement
+are each evaluated once before any retries.
+
 The address can pass through local aliases and device helpers, including struct
 fields and individual integer vector components. Ordinary accesses and aggregate
 copies retain their source value types and byte layouts.
 
 These unsuffixed operations have relaxed device-scope semantics. They do not
 provide a memory fence or replace synchronization between threads; shared storage
-remains local to its thread block. Floating-point and 64-bit overloads,
-block- and system-scope variants, `atomicCAS`, `atomicInc`, and `atomicDec` remain
+remains local to its thread block. Floating-point, 16-bit, 64-bit, and 128-bit overloads,
+block- and system-scope variants, `atomicInc`, and `atomicDec` remain
 unsupported.
 
 ## Constant expressions

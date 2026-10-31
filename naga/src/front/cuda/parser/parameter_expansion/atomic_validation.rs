@@ -92,6 +92,18 @@ impl Parser<'_> {
                         {
                             return Err(expansion_error(span));
                         }
+                        if let crate::AtomicFunction::Exchange {
+                            compare: Some(compare),
+                        } = fun
+                        {
+                            function
+                                .expressions
+                                .check_contains_handle(compare)
+                                .map_err(|_| expansion_error(span))?;
+                            if *types.get(compare, &validation.types) != TypeInner::Scalar(scalar) {
+                                return Err(expansion_error(span));
+                            }
+                        }
                         if let Some(result) = result {
                             let expression = function
                                 .expressions

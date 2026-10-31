@@ -5,6 +5,7 @@ use super::*;
 mod atomic_validation;
 mod atomics;
 mod budget;
+mod compare_exchange;
 mod expressions;
 mod promotions;
 mod statements;

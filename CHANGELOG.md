@@ -193,6 +193,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 - Support CUDA signed and unsigned 24-bit multiply intrinsics.
 - Support CUDA 32-bit integer `atomicAdd` on writable global and shared storage.
 - Support CUDA 32-bit integer atomic subtraction, min/max, bitwise operations, and exchange.
+- Support strong CUDA 32-bit integer `atomicCAS`, preserving old values and evaluating operands once.
 - Support CUDA scalar constants and constant-expression local and shared array bounds.
 - Support CUDA scalar and aggregate list initialization with narrowing checks and ordered element initialization.
 - Infer CUDA local array bounds from nonempty initializer lists.

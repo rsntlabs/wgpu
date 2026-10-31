@@ -130,6 +130,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
                 .into_iter()
                 .map(|(name, _)| (name, GlobalDeclaration::Functions(Vec::new()))),
         )
+        .chain(core::iter::once((
+            "atomicCAS",
+            GlobalDeclaration::Functions(Vec::new()),
+        )))
         .chain(
             VECTOR_TYPES
                 .into_iter()
@@ -177,6 +181,7 @@ pub(super) enum FunctionCandidate {
         function: crate::AtomicFunction,
         scalar: Scalar,
     },
+    AtomicCompareExchange(Scalar),
     Bitcast {
         source: Scalar,
         result: Scalar,
@@ -505,6 +510,7 @@ impl<'a> Parser<'a> {
                 FunctionCandidate::Builtin(_)
                     | FunctionCandidate::Multiply24(_)
                     | FunctionCandidate::Atomic { .. }
+                    | FunctionCandidate::AtomicCompareExchange(_)
                     | FunctionCandidate::Bitcast { .. }
                     | FunctionCandidate::Unary { .. }
                     | FunctionCandidate::Sqrt
@@ -722,6 +728,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Builtin(builtin) => TypeSpecifier::Scalar(builtin.result),
             FunctionCandidate::Multiply24(result)
             | FunctionCandidate::Atomic { scalar: result, .. }
+            | FunctionCandidate::AtomicCompareExchange(result)
             | FunctionCandidate::Bitcast { result, .. }
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
             FunctionCandidate::IntegralFabs(_) => unreachable!(),
@@ -1278,6 +1285,7 @@ impl<'a> Parser<'a> {
             .find_map(|(candidate, function)| {
                 (builtin_visible && name == candidate).then_some(function)
             });
+        let compare_exchange_visible = builtin_visible && name == "atomicCAS";
         functions
             .iter()
             .copied()
@@ -1320,6 +1328,12 @@ impl<'a> Parser<'a> {
                     .map(|scalar| FunctionCandidate::Atomic { function, scalar })
             }))
             .chain(
+                [Scalar::I32, Scalar::U32]
+                    .into_iter()
+                    .filter(move |_| compare_exchange_visible)
+                    .map(FunctionCandidate::AtomicCompareExchange),
+            )
+            .chain(
                 vector_constructor(name)
                     .filter(move |_| builtin_visible)
                     .map(|(size, scalar)| FunctionCandidate::Constructor { size, scalar }),
@@ -1332,6 +1346,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Current => self.function.ir.arguments.len(),
             FunctionCandidate::Builtin(builtin) => builtin.parameters.len(),
             FunctionCandidate::Multiply24(_) | FunctionCandidate::Atomic { .. } => 2,
+            FunctionCandidate::AtomicCompareExchange(_) => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::IntegralFabs(_)
@@ -1368,7 +1383,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::IntegralFabs(source) => return scalar_resolution(source),
             FunctionCandidate::Sqrt => return scalar_resolution(Scalar::F32),
             FunctionCandidate::Constructor { scalar, .. } => return scalar_resolution(scalar),
-            FunctionCandidate::Atomic { scalar, .. } => {
+            FunctionCandidate::Atomic { scalar, .. }
+            | FunctionCandidate::AtomicCompareExchange(scalar) => {
                 return if index == 0 {
                     TypeResolution::Value(TypeInner::ValuePointer {
                         size: None,
@@ -1396,7 +1412,9 @@ impl<'a> Parser<'a> {
                     declaration.parameters[index].mode
                 }),
             FunctionCandidate::Current => self.function.parameters[index].mode,
-            FunctionCandidate::Atomic { .. } if index == 0 => {
+            FunctionCandidate::Atomic { .. } | FunctionCandidate::AtomicCompareExchange(_)
+                if index == 0 =>
+            {
                 ParameterMode::Pointer { is_const: false }
             }
             _ => ParameterMode::Value,
@@ -1409,7 +1427,9 @@ impl<'a> Parser<'a> {
         index: usize,
         argument: &impl CallArgument,
     ) -> Option<u8> {
-        if let FunctionCandidate::Atomic { scalar, .. } = candidate {
+        if let FunctionCandidate::Atomic { scalar, .. }
+        | FunctionCandidate::AtomicCompareExchange(scalar) = candidate
+        {
             if index == 0 {
                 let pointer = argument.pointer_type(&self.module)?;
                 return (!pointer.is_const
