@@ -64,6 +64,27 @@ fn type_name(
     })
 }
 
+pub(super) fn pointer_qualifiers(lexer: &mut Lexer<'_>) -> Result<bool, ParseError> {
+    let mut is_const = false;
+    loop {
+        let token = lexer.peek()?;
+        match token.0 {
+            Token::Word("const") => {
+                if is_const {
+                    return Err(ParseError {
+                        message: String::from("duplicate const qualifier"),
+                        span: token.1,
+                    });
+                }
+                is_const = true;
+            }
+            Token::Word("__restrict__" | "__restrict") => {}
+            _ => return Ok(is_const),
+        }
+        lexer.next()?;
+    }
+}
+
 fn parse_type(
     lexer: &mut Lexer<'_>,
     symbols: &SymbolTable<&str, Symbol>,

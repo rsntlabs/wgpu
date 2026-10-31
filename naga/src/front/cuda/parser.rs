@@ -311,7 +311,7 @@ impl<'a> Parser<'a> {
         }
         let pointer_span = self.lexer.peek()?.1;
         let is_pointer = self.lexer.next_if(Token::Operation('*'))?;
-        let pointer_const = is_pointer && self.take_ident("const")?;
+        let pointer_const = is_pointer && types::pointer_qualifiers(&mut self.lexer)?;
         if self.function.kind == FunctionKind::Device && is_pointer {
             if matches!(
                 self.lexer.peek()?.0,
@@ -881,6 +881,7 @@ impl<'a> Parser<'a> {
             "__shared__",
             "__constant__",
             "__managed__",
+            "__restrict",
             "__restrict__",
             "__launch_bounds__",
         ]

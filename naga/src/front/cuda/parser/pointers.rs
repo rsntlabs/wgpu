@@ -129,7 +129,7 @@ impl<'a> Parser<'a> {
         specifier: TypeSpecifier,
         is_const: bool,
     ) -> Result<(Span, bool), ParseError> {
-        let pointer_const = self.take_ident("const")?;
+        let pointer_const = types::pointer_qualifiers(&mut self.lexer)?;
         let (name, span) = self.identifier()?;
         self.check_name(name, span)?;
         self.insert_symbol(name, Symbol::PendingPointer, span)?;
