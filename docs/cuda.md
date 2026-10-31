@@ -250,8 +250,11 @@ pointee `const` remains effective throughout the member chain. An array of
 structs or vectors can decay to its first element for member access.
 Overloaded `operator->` and pointer-to-member operators remain unsupported.
 
-Local pointer declarations require an initializer: `T *value = source`,
-`T *value{source}`, or `T *value = {source}`. They accept the same array decays,
+Local pointers can be declared without an initializer, `T *value;`, and assigned
+later. Assign a value before using the pointer; the declaration does not provide
+a null pointer. Top-level `const` pointers require an initializer.
+Initialized forms are `T *value = source`, `T *value{source}`, and
+`T *value = {source}`. They accept the same array decays,
 object addresses, pointer expressions, and pointee qualifications as helper
 arguments. Initializers evaluate once, so later changes to an index or condition
 do not retarget a pointer. Locals preserve live aliases in kernels and helpers,

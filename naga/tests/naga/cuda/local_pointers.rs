@@ -476,10 +476,6 @@ __global__ void kernel() {
 }
 "#,
         r#"__global__ void kernel() {
-    int *pointer;
-}
-"#,
-        r#"__global__ void kernel() {
     int *const pointer;
 }
 "#,
@@ -727,7 +723,7 @@ __global__ void kernel() {}
     for source in [
         r#"__global__ void kernel() {
     return;
-    int *pointer;
+    int *const pointer;
 }
 "#,
         r#"__global__ void kernel() {

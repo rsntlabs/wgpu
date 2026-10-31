@@ -128,7 +128,7 @@ impl<'a> Parser<'a> {
         &mut self,
         specifier: TypeSpecifier,
         is_const: bool,
-    ) -> Result<Span, ParseError> {
+    ) -> Result<(Span, bool), ParseError> {
         let pointer_const = self.take_ident("const")?;
         let (name, span) = self.identifier()?;
         self.check_name(name, span)?;
@@ -138,22 +138,27 @@ impl<'a> Parser<'a> {
         let ty = self.pointer_type(pointee, span);
         let has_equals = self.lexer.next_if(Token::Operation('='))?;
         let has_braces = self.lexer.next_if(Token::Paren('{'))?;
-        if !has_equals && !has_braces {
-            return self.fail("pointer declaration requires an initializer");
-        }
-        let value = self.expression(0)?;
-        if has_braces {
-            self.lexer.next_if(Token::Separator(','))?;
-            self.lexer.expect_span(Token::Paren('}'))?;
-        }
-        let value_span = value.span();
-        let pointer = self.convert_pointer(value, &ty, is_const, value_span)?;
-        let pointer = self.source_pointer_variable(name, pointer, pointer_const, span)?;
+        let has_initializer = has_equals || has_braces;
+        let pointer = if has_initializer {
+            let value = self.expression(0)?;
+            if has_braces {
+                self.lexer.next_if(Token::Separator(','))?;
+                self.lexer.expect_span(Token::Paren('}'))?;
+            }
+            let value_span = value.span();
+            let pointer = self.convert_pointer(value, &ty, is_const, value_span)?;
+            self.source_pointer_variable(name, pointer, pointer_const, span)?
+        } else {
+            if pointer_const {
+                return self.fail("pointer declaration requires an initializer");
+            }
+            self.uninitialized_pointer_variable(name, &ty, is_const, span)?
+        };
         let pointer = self.retain_pointer_symbol(pointer)?;
         self.function
             .symbol_table
             .add(name, Symbol::Pointer(pointer));
-        Ok(span)
+        Ok((span, has_initializer))
     }
 
     pub(super) fn boxed_pointer_value(

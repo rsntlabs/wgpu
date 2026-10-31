@@ -60,6 +60,7 @@ mod switches;
 mod trigonometry;
 mod type_aliases;
 mod uninitialized;
+mod uninitialized_pointers;
 mod updates;
 mod vector_resources;
 mod vector_values;

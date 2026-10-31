@@ -58,6 +58,7 @@ mod switches;
 mod trigonometry;
 mod type_aliases;
 mod uninitialized;
+mod uninitialized_pointers;
 mod updates;
 mod vector_resources;
 mod vector_values;
@@ -115,6 +116,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_TRIGONOMETRY,
         CUDA_TYPE_ALIASES,
         CUDA_UNINITIALIZED,
+        CUDA_UNINITIALIZED_POINTERS,
         CUDA_UPDATES,
         CUDA_VECTOR_RESOURCES,
         CUDA_VECTOR_VALUES,
@@ -353,6 +355,9 @@ static CUDA_TRIGONOMETRY: GpuTestConfiguration = configuration(trigonometry::cas
 static CUDA_TYPE_ALIASES: GpuTestConfiguration = configuration(type_aliases::cases);
 #[apply(gpu_test!)]
 static CUDA_UNINITIALIZED: GpuTestConfiguration = configuration(uninitialized::cases);
+#[apply(gpu_test!)]
+static CUDA_UNINITIALIZED_POINTERS: GpuTestConfiguration =
+    configuration(uninitialized_pointers::cases);
 #[apply(gpu_test!)]
 static CUDA_UPDATES: GpuTestConfiguration = configuration(updates::cases);
 
