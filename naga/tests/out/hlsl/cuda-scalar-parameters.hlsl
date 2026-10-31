@@ -15,28 +15,22 @@ void scale(uint3 threadIdx : SV_GroupThreadID)
     float factor = (float)0;
     uint local = (uint)0;
     uint local_1 = (uint)0;
-    float local_2 = (float)0;
+    uint local_2 = (uint)0;
     uint local_3 = (uint)0;
-    float local_4 = (float)0;
-    uint local_5 = (uint)0;
 
     float _e3 = factor_1.value;
     factor = _e3;
     float _e5 = factor;
     factor = (_e5 * 2.0);
     local_1 = uint(threadIdx.x);
-    uint _e12 = local_1;
-    local_3 = uint(_e12);
-    uint _e16 = local_3;
-    float _e18 = asfloat(input.Load(_e16*4));
-    local_4 = _e18;
-    float _e19 = local_4;
-    local_2 = _e19;
-    float _e21 = local_2;
-    float _e22 = factor;
+    uint _e11 = local_1;
+    local_2 = uint(_e11);
+    uint _e14 = local_2;
+    float _e17 = asfloat(input.Load(_e14*4));
+    float _e18 = factor;
     local = uint(threadIdx.x);
-    uint _e28 = local;
-    local_5 = uint(_e28);
-    uint _e31 = local_5;
-    output.Store(_e31*4, asuint((_e21 * _e22)));
+    uint _e23 = local;
+    local_3 = uint(_e23);
+    uint _e26 = local_3;
+    output.Store(_e26*4, asuint((_e17 * _e18)));
 }

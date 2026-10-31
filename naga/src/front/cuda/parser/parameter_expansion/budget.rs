@@ -7,6 +7,7 @@ const BYTE_LIMIT: usize = 67_108_864;
 #[derive(Default)]
 pub(in super::super) struct ExpansionBudget {
     active: bool,
+    exhausted: bool,
     nodes: usize,
     work: usize,
     bytes: usize,
@@ -19,8 +20,13 @@ impl ExpansionBudget {
         newly_active
     }
 
+    pub(in super::super) const fn is_exhausted(&self) -> bool {
+        self.exhausted
+    }
+
     fn charge(
         active: bool,
+        exhausted: &mut bool,
         used: &mut usize,
         count: usize,
         limit: usize,
@@ -28,6 +34,7 @@ impl ExpansionBudget {
     ) -> Result<(), ParseError> {
         if active {
             if count > limit - *used {
+                *exhausted = true;
                 return Err(limit_error(span));
             }
             *used += count;
@@ -40,7 +47,14 @@ impl ExpansionBudget {
         count: usize,
         span: Span,
     ) -> Result<(), ParseError> {
-        Self::charge(self.active, &mut self.nodes, count, NODE_LIMIT, span)
+        Self::charge(
+            self.active,
+            &mut self.exhausted,
+            &mut self.nodes,
+            count,
+            NODE_LIMIT,
+            span,
+        )
     }
 
     pub(in super::super) fn charge_work(
@@ -48,7 +62,14 @@ impl ExpansionBudget {
         count: usize,
         span: Span,
     ) -> Result<(), ParseError> {
-        Self::charge(self.active, &mut self.work, count, WORK_LIMIT, span)
+        Self::charge(
+            self.active,
+            &mut self.exhausted,
+            &mut self.work,
+            count,
+            WORK_LIMIT,
+            span,
+        )
     }
 
     pub(in super::super) fn charge_bytes(
@@ -56,7 +77,14 @@ impl ExpansionBudget {
         count: usize,
         span: Span,
     ) -> Result<(), ParseError> {
-        Self::charge(self.active, &mut self.bytes, count, BYTE_LIMIT, span)
+        Self::charge(
+            self.active,
+            &mut self.exhausted,
+            &mut self.bytes,
+            count,
+            BYTE_LIMIT,
+            span,
+        )
     }
 
     pub(in super::super) fn charge_slice<T>(

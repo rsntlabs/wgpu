@@ -1,6 +1,7 @@
 use super::helpers::{root_expression, validate, validate_with_options};
 
 const PARTICLES: &str = include_str!("../../in/cuda/particles.cu");
+const COPY_SNAPSHOTS: &str = include_str!("../../in/cuda/scalar-copy-snapshots.cu");
 
 fn local(function: &naga::Function, name: &str) -> naga::Handle<naga::LocalVariable> {
     function
@@ -116,6 +117,17 @@ fn cuda_scalar_promotion_names_the_complete_particles_shader() {
         },
     );
     assert_particle_values(&module, &info);
+    assert!(
+        module.entry_points[0]
+            .function
+            .local_variables
+            .iter()
+            .all(|(_, local)| {
+                local.name.is_some()
+                    || module.types[local.ty].inner != naga::TypeInner::Scalar(naga::Scalar::F32)
+            }),
+        "particle buffer reads retain redundant float copy storage"
+    );
     #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
     {
         let (_, reparsed) = super::helpers::wgsl_roundtrip(
@@ -397,6 +409,170 @@ fn cuda_scalar_promotion_keeps_valid_shallow_storage_when_merged_depth_would_gro
         naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
     );
     let _ = info;
+}
+
+#[test]
+fn cuda_scalar_promotion_keeps_nonfinite_math_at_runtime() {
+    let (module, info) = validate(
+        "__global__ void kernel(unsigned *output) {
+            float nan_value = __uint_as_float(0x7f800000u + 1u);
+            float infinity = __uint_as_float(0x7f800000u);
+            output[0] = __float_as_uint(fabsf(nan_value));
+            output[1] = __float_as_uint(floorf(nan_value));
+            output[2] = __float_as_uint(sqrtf(nan_value));
+            output[3] = __float_as_uint(floorf(infinity));
+            output[4] = __float_as_uint(fabsf(infinity));
+        }",
+    );
+    #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+    super::helpers::wgsl_roundtrip(
+        &module,
+        &info,
+        naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+    );
+    let _ = (module, info);
+}
+
+#[test]
+fn cuda_scalar_promotion_removes_runtime_copy_chains_and_keeps_named_values() {
+    for scalar_type in ["int", "unsigned", "float"] {
+        let (module, info) = validate(&format!(
+            "__global__ void kernel({scalar_type} *output) {{ output[1] = output[0]; }}"
+        ));
+        let function = &module.entry_points[0].function;
+        let values: Vec<_> = function
+            .body
+            .iter()
+            .filter_map(|statement| {
+                let naga::Statement::Store { pointer, value } = *statement else {
+                    return None;
+                };
+                matches!(
+                    function.expressions[root_expression(function, pointer)],
+                    naga::Expression::GlobalVariable(_)
+                )
+                .then_some(value)
+            })
+            .collect();
+        assert_eq!(values.len(), 1, "{scalar_type}");
+        assert!(
+            matches!(function.expressions[values[0]], naga::Expression::Load { pointer }
+            if matches!(function.expressions[root_expression(function, pointer)],
+                naga::Expression::GlobalVariable(_))),
+            "{scalar_type}: redundant scalar copy remains"
+        );
+        #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+        super::helpers::wgsl_roundtrip(
+            &module,
+            &info,
+            naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+        );
+        let _ = info;
+    }
+    let (module, info) = validate(
+        "__global__ void kernel(int *output) {
+            int captured = output[0];
+            int copied = captured;
+            int result = copied + 1;
+            output[1] = result;
+            output[2] = captured;
+        }",
+    );
+    let function = &module.entry_points[0].function;
+    let captured = named_scalar(
+        &module,
+        function,
+        info.get_entry_point(0),
+        "captured",
+        naga::Scalar::I32,
+    );
+    named_scalar(
+        &module,
+        function,
+        info.get_entry_point(0),
+        "result",
+        naga::Scalar::I32,
+    );
+    assert!(
+        matches!(function.expressions[captured], naga::Expression::Load { pointer }
+        if matches!(function.expressions[root_expression(function, pointer)], naga::Expression::GlobalVariable(_)))
+    );
+    assert!(function.local_variables.iter().all(|(_, local)| {
+        local.name.is_some()
+            || module.types[local.ty].inner != naga::TypeInner::Scalar(naga::Scalar::I32)
+    }));
+    #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+    {
+        let (_, reparsed) = super::helpers::wgsl_roundtrip(
+            &module,
+            &info,
+            naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+        );
+        assert_emitted_values(&reparsed.entry_points[0].function, &["captured", "result"]);
+    }
+}
+
+#[test]
+fn cuda_scalar_promotion_keeps_resource_snapshot_emission_before_mutation() {
+    let (module, info) = validate(COPY_SNAPSHOTS);
+    let function = &module.entry_points[0].function;
+    let mut snapshots = Vec::new();
+    for name in [
+        "direct_snapshot",
+        "helper_snapshot",
+        "branch_snapshot",
+        "loop_snapshot",
+        "atomic_snapshot",
+    ] {
+        let snapshot = named_scalar(
+            &module,
+            function,
+            info.get_entry_point(0),
+            name,
+            naga::Scalar::I32,
+        );
+        assert!(
+            matches!(function.expressions[snapshot], naga::Expression::Load { pointer }
+            if matches!(function.expressions[root_expression(function, pointer)], naga::Expression::GlobalVariable(_))),
+            "{name}"
+        );
+        snapshots.push(snapshot);
+    }
+    local(function, "changed");
+    let mut event = 0;
+    let mut direct_emits = Vec::new();
+    let mut first_mutation = None;
+    naga::proc::any_statement(&function.body, &mut |statement| {
+        match *statement {
+            naga::Statement::Emit(ref range)
+                if range.clone().any(|handle| handle == snapshots[0]) =>
+            {
+                direct_emits.push(event)
+            }
+            naga::Statement::Store { pointer, .. } | naga::Statement::Atomic { pointer, .. }
+                if matches!(
+                    function.expressions[root_expression(function, pointer)],
+                    naga::Expression::GlobalVariable(_)
+                ) =>
+            {
+                first_mutation.get_or_insert(event);
+            }
+            _ => {}
+        }
+        event += 1;
+        false
+    });
+    assert_eq!(direct_emits.len(), 1);
+    assert!(direct_emits[0] < first_mutation.unwrap());
+    #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+    {
+        let (_, reparsed) = super::helpers::wgsl_roundtrip(
+            &module,
+            &info,
+            naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+        );
+        assert_emitted_values(&reparsed.entry_points[0].function, &["previous"]);
+    }
 }
 
 #[test]

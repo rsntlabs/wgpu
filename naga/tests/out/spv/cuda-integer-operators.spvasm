@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.1
 ; Generator: rspirv
-; Bound: 104
+; Bound: 101
 OpCapability Shader
 OpExtension "SPV_KHR_storage_buffer_storage_class"
 %1 = OpExtInstImport "GLSL.std.450"
@@ -64,10 +64,9 @@ OpDecorate %48 BuiltIn LocalInvocationId
 %66 = OpConstantNull  %3
 %68 = OpConstantNull  %3
 %70 = OpConstantNull  %3
-%72 = OpConstantNull  %3
-%74 = OpTypePointer Uniform %5
-%77 = OpTypePointer Uniform %3
-%102 = OpTypePointer StorageBuffer %3
+%72 = OpTypePointer Uniform %5
+%75 = OpTypePointer Uniform %3
+%99 = OpTypePointer StorageBuffer %3
 %18 = OpFunction  %5  None %19
 %20 = OpFunctionParameter  %5
 %21 = OpFunctionParameter  %5
@@ -94,53 +93,50 @@ OpReturnValue %46
 OpFunctionEnd
 %51 = OpFunction  %2  None %52
 %47 = OpLabel
-%67 = OpVariable  %65  Function %68
-%71 = OpVariable  %65  Function %72
 %64 = OpVariable  %65  Function %66
+%67 = OpVariable  %65  Function %68
 %69 = OpVariable  %65  Function %70
 %50 = OpLoad  %8  %48
 %54 = OpAccessChain  %53  %9 %42
 %56 = OpAccessChain  %55  %12 %42
 %58 = OpAccessChain  %57  %15 %42
-OpBranch %73
-%73 = OpLabel
-%75 = OpAccessChain  %74  %56 %42
-%76 = OpLoad  %5  %75
-%78 = OpAccessChain  %77  %58 %42
-%79 = OpLoad  %3  %78
-%80 = OpSNegate  %5  %59
-%81 = OpFunctionCall  %5  %18 %76 %80
-%82 = OpBitcast  %3  %81
-%83 = OpBitwiseAnd  %3  %82 %60
+OpBranch %71
+%71 = OpLabel
+%73 = OpAccessChain  %72  %56 %42
+%74 = OpLoad  %5  %73
+%76 = OpAccessChain  %75  %58 %42
+%77 = OpLoad  %3  %76
+%78 = OpSNegate  %5  %59
+%79 = OpFunctionCall  %5  %18 %74 %78
+%80 = OpBitcast  %3  %79
+%81 = OpBitwiseAnd  %3  %80 %60
+OpStore %64 %81
+%82 = OpLoad  %3  %64
+%83 = OpBitwiseOr  %3  %82 %61
 OpStore %64 %83
 %84 = OpLoad  %3  %64
-%85 = OpBitwiseOr  %3  %84 %61
+%85 = OpBitwiseXor  %3  %84 %44
 OpStore %64 %85
 %86 = OpLoad  %3  %64
-%87 = OpBitwiseXor  %3  %86 %44
+%87 = OpShiftLeftLogical  %3  %86 %77
 OpStore %64 %87
 %88 = OpLoad  %3  %64
-OpStore %67 %79
-%89 = OpLoad  %3  %67
-%90 = OpShiftLeftLogical  %3  %88 %89
-OpStore %64 %90
-%91 = OpLoad  %3  %64
-%92 = OpShiftRightLogical  %3  %91 %44
-OpStore %64 %92
-%93 = OpLoad  %3  %64
-%94 = OpFunctionCall  %3  %37 %93 %62
-OpStore %64 %94
-%95 = OpLoad  %3  %64
-%96 = OpBitwiseAnd  %3  %95 %63
-OpStore %64 %96
-%97 = OpLoad  %3  %64
-%98 = OpNot  %3  %97
-%99 = OpCompositeExtract  %3  %50 0
-OpStore %69 %99
-%100 = OpLoad  %3  %69
-OpStore %71 %100
-%101 = OpLoad  %3  %71
-%103 = OpAccessChain  %102  %54 %101
-OpStore %103 %98
+%89 = OpShiftRightLogical  %3  %88 %44
+OpStore %64 %89
+%90 = OpLoad  %3  %64
+%91 = OpFunctionCall  %3  %37 %90 %62
+OpStore %64 %91
+%92 = OpLoad  %3  %64
+%93 = OpBitwiseAnd  %3  %92 %63
+OpStore %64 %93
+%94 = OpLoad  %3  %64
+%95 = OpNot  %3  %94
+%96 = OpCompositeExtract  %3  %50 0
+OpStore %67 %96
+%97 = OpLoad  %3  %67
+OpStore %69 %97
+%98 = OpLoad  %3  %69
+%100 = OpAccessChain  %99  %54 %98
+OpStore %100 %95
 OpReturn
 OpFunctionEnd

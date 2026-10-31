@@ -14,10 +14,8 @@ void updates(uint3 threadIdx : SV_GroupThreadID)
     int value = (int)0;
     uint local = (uint)0;
     uint local_1 = (uint)0;
-    int local_2 = (int)0;
+    uint local_2 = (uint)0;
     uint local_3 = (uint)0;
-    int local_4 = (int)0;
-    uint local_5 = (uint)0;
 
     int _e3 = value_1.value;
     value = _e3;
@@ -25,21 +23,17 @@ void updates(uint3 threadIdx : SV_GroupThreadID)
     value = asint(asuint(previous) + asuint(int(1)));
     local = uint(threadIdx.x);
     uint _e11 = local;
-    local_3 = uint(_e11);
-    uint _e14 = local_3;
+    local_2 = uint(_e11);
+    uint _e14 = local_2;
     int _e17 = asint(out_.Load(_e14*4));
-    local_4 = _e17;
-    int _e19 = local_4;
-    local_2 = _e19;
-    int _e21 = local_2;
-    uint _e23 = local_3;
-    out_.Store(_e23*4, asuint(asint(asuint(_e21) + asuint(previous))));
-    int _e25 = value;
-    value = asint(asuint(_e25) + asuint(int(1)));
-    int _e28 = value;
+    uint _e19 = local_2;
+    out_.Store(_e19*4, asuint(asint(asuint(_e17) + asuint(previous))));
+    int _e21 = value;
+    value = asint(asuint(_e21) + asuint(int(1)));
+    int _e24 = value;
     local_1 = uint(threadIdx.x);
-    uint _e32 = local_1;
-    local_5 = uint(_e32);
-    uint _e35 = local_5;
-    out_.Store(_e35*4, asuint(_e28));
+    uint _e28 = local_1;
+    local_3 = uint(_e28);
+    uint _e31 = local_3;
+    out_.Store(_e31*4, asuint(_e24));
 }

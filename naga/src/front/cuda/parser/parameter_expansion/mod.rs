@@ -176,7 +176,7 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<(), ParseError> {
         if !state.pointers.is_empty() {
-            return self.clone_parameter_function(function, state, parameters, None, span);
+            return self.clone_parameter_function(&function, state, parameters, None, span);
         }
         let body = core::mem::take(&mut function.body);
         self.function = FunctionContext::new(FunctionKind::Device);
@@ -196,7 +196,7 @@ impl Parser<'_> {
 
     pub(super) fn clone_parameter_function(
         &mut self,
-        source: Function,
+        source: &Function,
         state: FunctionParameterState,
         parameters: Vec<SourceParameter>,
         promotions: Option<&ScalarPromotions>,
@@ -238,11 +238,11 @@ impl Parser<'_> {
             };
             arguments.push(mapped);
         }
-        let locals = self.clone_invocation_locals(&source, Some(&state), promotions, span)?;
+        let locals = self.clone_invocation_locals(source, Some(&state), promotions, span)?;
         self.parameter_expansion_budget
             .charge_slice::<Option<CachedExpression>>(source.expressions.len(), span)?;
         let mut invocation = Invocation {
-            source: &source,
+            source,
             source_state: Some(&state),
             promotions,
             arguments,
@@ -293,7 +293,7 @@ impl Parser<'_> {
                 .charge_bytes(size_of::<ImmutablePointers>(), span)?;
             state.pointers.immutable = Some(Box::new(immutable));
         }
-        self.clone_parameter_function(function, state, parameters, None, span)
+        self.clone_parameter_function(&function, state, parameters, None, span)
     }
 
     fn clone_invocation_locals(

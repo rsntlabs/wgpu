@@ -176,7 +176,7 @@ impl Parser<'_> {
             return Ok(function);
         }
         self.clone_parameter_function(
-            function,
+            &function,
             FunctionParameterState::default(),
             Vec::new(),
             None,

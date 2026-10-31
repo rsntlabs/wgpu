@@ -23,7 +23,6 @@ void main() {
     uint bits = 0u;
     uint local = 0u;
     uint local_1 = 0u;
-    uint local_2 = 0u;
     int value_1 = _group_0_binding_1_cs.value;
     uint amount_1 = _group_0_binding_2_cs.value;
     int _e8 = -(3);
@@ -34,20 +33,18 @@ void main() {
     uint _e17 = bits;
     bits = (_e17 ^ 1u);
     uint _e20 = bits;
-    local = amount_1;
-    uint _e22 = local;
-    bits = (_e20 << _e22);
-    uint _e24 = bits;
-    bits = (_e24 >> 1u);
-    uint _e27 = bits;
-    bits = (_e27 - 97u * (_e27 / 97u));
-    uint _e30 = bits;
-    bits = (_e30 & 255u);
-    uint _e33 = bits;
-    local_1 = uint(threadIdx.x);
-    uint _e38 = local_1;
-    local_2 = uint(_e38);
-    uint _e41 = local_2;
-    _group_0_binding_0_cs[_e41] = ~(_e33);
+    bits = (_e20 << amount_1);
+    uint _e22 = bits;
+    bits = (_e22 >> 1u);
+    uint _e25 = bits;
+    bits = (_e25 - 97u * (_e25 / 97u));
+    uint _e28 = bits;
+    bits = (_e28 & 255u);
+    uint _e31 = bits;
+    local = uint(threadIdx.x);
+    uint _e36 = local;
+    local_1 = uint(_e36);
+    uint _e39 = local_1;
+    _group_0_binding_0_cs[_e39] = ~(_e31);
 }
 

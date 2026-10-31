@@ -30,8 +30,9 @@ Device and backend resource limits still apply.
 ## Generated code
 
 Scalar locals assigned once at function scope can become named values, emitted
-as `let` bindings in WGSL. The frontend preserves their evaluation order and
-keeps storage when mutation, aliases, control flow, or expression limits require
+as `let` bindings in WGSL. The frontend also removes redundant scalar copy
+temporaries while retaining named values and the original timing of memory reads.
+It keeps storage when mutation, aliases, control flow, or expression limits require
 it. Backend naming rules can sanitize identifiers or add suffixes.
 
 Unchanged kernel buffer pointers can use direct resource accesses. Pointers that

@@ -18,7 +18,6 @@ fn integer_ops(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
     var bits: u32;
     var local: u32;
     var local_1: u32;
-    var local_2: u32;
 
     let value_1 = value.value;
     let amount_1 = amount.value;
@@ -29,19 +28,17 @@ fn integer_ops(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
     let _e17 = bits;
     bits = (_e17 ^ 1u);
     let _e20 = bits;
-    local = amount_1;
-    let _e22 = local;
-    bits = (_e20 << _e22);
-    let _e24 = bits;
-    bits = (_e24 >> 1u);
-    let _e27 = bits;
-    bits = (_e27 % 97u);
-    let _e30 = bits;
-    bits = (_e30 & 255u);
-    let _e33 = bits;
-    local_1 = u32(threadIdx.x);
-    let _e38 = local_1;
-    local_2 = u32(_e38);
-    let _e41 = local_2;
-    out[_e41] = ~(_e33);
+    bits = (_e20 << amount_1);
+    let _e22 = bits;
+    bits = (_e22 >> 1u);
+    let _e25 = bits;
+    bits = (_e25 % 97u);
+    let _e28 = bits;
+    bits = (_e28 & 255u);
+    let _e31 = bits;
+    local = u32(threadIdx.x);
+    let _e36 = local;
+    local_1 = u32(_e36);
+    let _e39 = local_1;
+    out[_e39] = ~(_e31);
 }
