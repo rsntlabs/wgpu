@@ -2,6 +2,8 @@ use super::parameter_calls::{DeferredArgument, DeferredCall, MappedExpression};
 use super::pointers::{ImmutablePointers, PointerCell, PointerRemapper, PointerValue};
 use super::*;
 
+mod atomic_validation;
+mod atomics;
 mod budget;
 mod expressions;
 mod promotions;
@@ -191,7 +193,7 @@ impl Parser<'_> {
         Ok(())
     }
 
-    fn clone_parameter_function(
+    pub(super) fn clone_parameter_function(
         &mut self,
         source: Function,
         state: FunctionParameterState,
@@ -352,7 +354,11 @@ impl Parser<'_> {
         Ok(locals)
     }
 
-    fn generated_statement(&mut self, statement: Statement, span: Span) -> Result<(), ParseError> {
+    pub(super) fn generated_statement(
+        &mut self,
+        statement: Statement,
+        span: Span,
+    ) -> Result<(), ParseError> {
         self.parameter_expansion_budget.charge_nodes(1, span)?;
         self.parameter_expansion_budget
             .charge_slice::<(Statement, Span)>(1, span)?;

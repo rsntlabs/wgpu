@@ -492,6 +492,21 @@ and predefined-signature restrictions as the bit reinterpretation functions
 above. The 64-bit `ll` variants and other integer intrinsics remain unsupported.
 Metal output for `__brev` requires MSL version 1.2 or newer.
 
+## Atomic addition
+
+`atomicAdd(int *address, int value)` and
+`atomicAdd(unsigned int *address, unsigned int value)` update writable global
+buffer or `__shared__` storage and return its previous value. Arguments are
+evaluated once, and the increment uses the usual scalar argument conversions.
+The address can pass through local aliases and device helpers, including struct
+fields and individual integer vector components. Ordinary accesses and aggregate
+copies retain their source value types and byte layouts.
+
+These unsuffixed operations have relaxed device-scope semantics. They do not
+provide a memory fence or replace synchronization between threads; shared storage
+remains local to its thread block. Floating-point and 64-bit overloads,
+`atomicAdd_block`, and `atomicAdd_system` remain unsupported.
+
 ## Constant expressions
 
 Scalar `constexpr` variables support `bool`, `int`, `unsigned int`, `float`,
@@ -969,7 +984,8 @@ allowed. Synchronization does not extend across workgroups.
 Unsupported syntax produces a parse error with a source span. This includes
 includes and other preprocessing forms outside the subset above, host code and launch syntax,
 pointer operations outside the borrowed subset above,
-dynamic shared memory, atomics, other synchronization primitives, templates,
+dynamic shared memory, atomic operations other than the supported `atomicAdd`
+overloads, other synchronization primitives, templates,
 double precision, and inline PTX. No CUDA runtime ABI or NVIDIA device code is
 generated.
 

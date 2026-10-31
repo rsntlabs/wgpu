@@ -446,11 +446,26 @@ impl Parser<'_> {
                     if self.remove_promoted_store(invocation, pointer, value, span)? {
                         continue;
                     }
+                    let source_pointer = pointer;
                     let pointer = self.invocation_expression(invocation, pointer)?;
                     let value = self.invocation_value(invocation, value)?;
                     match pointer {
-                        MappedExpression::Value(pointer) => {
-                            self.generated_statement(Statement::Store { pointer, value }, span)?
+                        MappedExpression::Value(mapped) => {
+                            if !self.store_atomic_storage(
+                                invocation.source,
+                                source_pointer,
+                                mapped,
+                                value,
+                                span,
+                            )? {
+                                self.generated_statement(
+                                    Statement::Store {
+                                        pointer: mapped,
+                                        value,
+                                    },
+                                    span,
+                                )?;
+                            }
                         }
                         MappedExpression::Reference { binding, ty } => {
                             let mut reference = ReferenceValue {
@@ -472,6 +487,14 @@ impl Parser<'_> {
                         }
                         MappedExpression::Pointer(_) => return Err(expansion_error(span)),
                     }
+                }
+                Statement::Atomic {
+                    pointer,
+                    fun,
+                    value,
+                    result,
+                } => {
+                    self.clone_parameter_atomic(invocation, pointer, fun, value, result, span)?;
                 }
                 Statement::Call {
                     function,

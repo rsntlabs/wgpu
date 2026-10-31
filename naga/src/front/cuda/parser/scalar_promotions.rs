@@ -121,7 +121,8 @@ impl<'a> Analysis<'a> {
                 | Expression::ZeroValue(_)
                 | Expression::FunctionArgument(_)
                 | Expression::GlobalVariable(_)
-                | Expression::CallResult(_) => true,
+                | Expression::CallResult(_)
+                | Expression::AtomicResult { .. } => true,
                 Expression::LocalVariable(local) => local.index() < function.local_variables.len(),
                 Expression::Load { pointer } => operand(pointer, true)?,
                 Expression::Unary { expr, .. }
@@ -291,6 +292,23 @@ impl<'a> Analysis<'a> {
                         }
                         self.push_block(&mut pending, body, position, false)?;
                         self.push_block(&mut pending, continuing, position, false)?;
+                    }
+                    Statement::Atomic {
+                        pointer,
+                        value,
+                        result,
+                        ..
+                    } => {
+                        if !self.operand(None, pointer, false)?
+                            || !self.operand(None, value, false)?
+                        {
+                            return Ok(false);
+                        }
+                        if let Some(result) = result {
+                            if !self.operand(None, result, false)? {
+                                return Ok(false);
+                            }
+                        }
                     }
                     Statement::Call {
                         ref arguments,

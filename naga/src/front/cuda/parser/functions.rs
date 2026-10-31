@@ -124,6 +124,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             "sqrtf",
             GlobalDeclaration::Functions(Vec::new()),
         )))
+        .chain(core::iter::once((
+            "atomicAdd",
+            GlobalDeclaration::Functions(Vec::new()),
+        )))
         .chain(
             VECTOR_TYPES
                 .into_iter()
@@ -167,6 +171,7 @@ pub(super) enum FunctionCandidate {
     Current,
     Builtin(MathBuiltin),
     Multiply24(Scalar),
+    AtomicAdd(Scalar),
     Bitcast {
         source: Scalar,
         result: Scalar,
@@ -494,21 +499,18 @@ impl<'a> Parser<'a> {
                 candidate,
                 FunctionCandidate::Builtin(_)
                     | FunctionCandidate::Multiply24(_)
+                    | FunctionCandidate::AtomicAdd(_)
                     | FunctionCandidate::Bitcast { .. }
                     | FunctionCandidate::Unary { .. }
                     | FunctionCandidate::Sqrt
                     | FunctionCandidate::Constructor { .. }
-            ) && self
-                .function
-                .parameters
-                .iter()
-                .all(|parameter| parameter.mode == ParameterMode::Value)
-                && self.function.ir.arguments.len() == self.candidate_arity(candidate)
+            ) && self.function.ir.arguments.len() == self.candidate_arity(candidate)
                 && (0..self.candidate_arity(candidate)).all(|index| {
-                    self.module.compare_types(
-                        &self.candidate_type(FunctionCandidate::Current, index),
-                        &self.candidate_type(candidate, index),
-                    )
+                    self.function.parameters[index].mode == self.candidate_mode(candidate, index)
+                        && self.module.compare_types(
+                            &self.candidate_type(FunctionCandidate::Current, index),
+                            &self.candidate_type(candidate, index),
+                        )
                 })
         });
         if let Some(candidate) = intrinsic {
@@ -714,6 +716,7 @@ impl<'a> Parser<'a> {
             }
             FunctionCandidate::Builtin(builtin) => TypeSpecifier::Scalar(builtin.result),
             FunctionCandidate::Multiply24(result)
+            | FunctionCandidate::AtomicAdd(result)
             | FunctionCandidate::Bitcast { result, .. }
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
             FunctionCandidate::IntegralFabs(_) => unreachable!(),
@@ -1265,6 +1268,7 @@ impl<'a> Parser<'a> {
             self.global_declarations.get(name),
             Some(&GlobalDeclaration::Functions(_))
         );
+        let atomic_add_visible = builtin_visible && name == "atomicAdd";
         functions
             .iter()
             .copied()
@@ -1303,6 +1307,12 @@ impl<'a> Parser<'a> {
             )
             .chain((builtin_visible && name == "sqrtf").then_some(FunctionCandidate::Sqrt))
             .chain(
+                [Scalar::I32, Scalar::U32]
+                    .into_iter()
+                    .filter(move |_| atomic_add_visible)
+                    .map(FunctionCandidate::AtomicAdd),
+            )
+            .chain(
                 vector_constructor(name)
                     .filter(move |_| builtin_visible)
                     .map(|(size, scalar)| FunctionCandidate::Constructor { size, scalar }),
@@ -1314,7 +1324,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Defined(handle) => self.module.functions[handle].arguments.len(),
             FunctionCandidate::Current => self.function.ir.arguments.len(),
             FunctionCandidate::Builtin(builtin) => builtin.parameters.len(),
-            FunctionCandidate::Multiply24(_) => 2,
+            FunctionCandidate::Multiply24(_) | FunctionCandidate::AtomicAdd(_) => 2,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::IntegralFabs(_)
@@ -1351,6 +1361,17 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::IntegralFabs(source) => return scalar_resolution(source),
             FunctionCandidate::Sqrt => return scalar_resolution(Scalar::F32),
             FunctionCandidate::Constructor { scalar, .. } => return scalar_resolution(scalar),
+            FunctionCandidate::AtomicAdd(scalar) => {
+                return if index == 0 {
+                    TypeResolution::Value(TypeInner::ValuePointer {
+                        size: None,
+                        scalar,
+                        space: AddressSpace::Function,
+                    })
+                } else {
+                    scalar_resolution(scalar)
+                }
+            }
         };
         TypeResolution::Handle(argument.ty)
     }
@@ -1368,6 +1389,9 @@ impl<'a> Parser<'a> {
                     declaration.parameters[index].mode
                 }),
             FunctionCandidate::Current => self.function.parameters[index].mode,
+            FunctionCandidate::AtomicAdd(_) if index == 0 => {
+                ParameterMode::Pointer { is_const: false }
+            }
             _ => ParameterMode::Value,
         }
     }
@@ -1378,6 +1402,14 @@ impl<'a> Parser<'a> {
         index: usize,
         argument: &impl CallArgument,
     ) -> Option<u8> {
+        if let FunctionCandidate::AtomicAdd(scalar) = candidate {
+            if index == 0 {
+                let pointer = argument.pointer_type(&self.module)?;
+                return (!pointer.is_const
+                    && self.module.types[pointer.pointee].inner == TypeInner::Scalar(scalar))
+                .then_some(0);
+            }
+        }
         let target = self.candidate_type(candidate, index);
         if let ParameterMode::Pointer { is_const } = self.candidate_mode(candidate, index) {
             let parameter_calls::SourcePointerType {

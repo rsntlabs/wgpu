@@ -1,6 +1,7 @@
 use alloc::{boxed::Box, format, string::String, vec::Vec};
 
 mod absolute_value;
+mod atomics;
 mod barriers;
 mod call_graph;
 mod conditionals;
@@ -238,6 +239,8 @@ pub(super) struct Parser<'a> {
     parameter_states: FastHashMap<Handle<Function>, FunctionParameterState>,
     kernel_parameter_state: Option<FunctionParameterState>,
     parameter_expansion_budget: parameter_expansion::ExpansionBudget,
+    atomic_storage: Option<atomics::AtomicStorage>,
+    has_atomics: bool,
     kernel_context: Option<FunctionContext<'a>>,
     kernel_calls: Vec<FunctionCall>,
     sqrtf_function: Option<Handle<Function>>,
@@ -261,6 +264,8 @@ impl<'a> Parser<'a> {
             parameter_states: FastHashMap::default(),
             kernel_parameter_state: None,
             parameter_expansion_budget: parameter_expansion::ExpansionBudget::default(),
+            atomic_storage: None,
+            has_atomics: false,
             kernel_context: None,
             kernel_calls: Vec::new(),
             sqrtf_function: None,
@@ -289,6 +294,7 @@ impl<'a> Parser<'a> {
         }
         self.finish_kernel()?;
         self.finish_functions()?;
+        self.upgrade_atomic_storage()?;
         self.promote_scalar_locals()?;
         // Remove call results from source statements discarded after a jump.
         crate::compact::compact(&mut self.module, crate::compact::KeepUnused::Yes);

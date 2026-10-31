@@ -36,6 +36,11 @@ use core::sync::atomic::AtomicUsize;
 
 use crate::{GlobalVariable, Handle, Module, Type, TypeInner};
 
+#[cfg(feature = "cuda-in")]
+mod storage;
+#[cfg(feature = "cuda-in")]
+pub(crate) use storage::StorageViews;
+
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum Error {
     #[error("encountered an unsupported expression")]
@@ -48,6 +53,8 @@ pub enum Error {
     GlobalVariableMissing,
     #[error("atomic compare exchange requires a scalar base type")]
     CompareExchangeNonScalarBaseType,
+    #[error("atomic storage view nesting limit exceeded")]
+    StorageViewNestingLimit,
 }
 
 #[derive(Clone, Default)]
@@ -107,6 +114,9 @@ pub struct Upgrades {
     ///
     /// [`Struct`]: crate::TypeInner::Struct
     fields: crate::FastHashMap<Handle<Type>, bit_set::BitSet>,
+
+    #[cfg(feature = "cuda-in")]
+    vector_components: crate::FastHashMap<Handle<Type>, bit_set::BitSet>,
 }
 
 impl Upgrades {
@@ -116,6 +126,14 @@ impl Upgrades {
 
     pub fn insert_field(&mut self, struct_type: Handle<Type>, field: usize) {
         self.fields.entry(struct_type).or_default().insert(field);
+    }
+
+    #[cfg(feature = "cuda-in")]
+    pub(crate) fn insert_vector_component(&mut self, vector_type: Handle<Type>, component: usize) {
+        self.vector_components
+            .entry(vector_type)
+            .or_default()
+            .insert(component);
     }
 
     pub fn is_empty(&self) -> bool {
@@ -131,9 +149,23 @@ struct UpgradeState<'a> {
     ///
     /// This ensures we never try to rebuild a type more than once.
     upgraded_types: crate::FastHashMap<Handle<Type>, Handle<Type>>,
+
+    #[cfg(feature = "cuda-in")]
+    storage_views: Option<StorageViews>,
 }
 
 impl UpgradeState<'_> {
+    const fn has_storage_views(&self) -> bool {
+        #[cfg(feature = "cuda-in")]
+        {
+            self.storage_views.is_some()
+        }
+        #[cfg(not(feature = "cuda-in"))]
+        {
+            false
+        }
+    }
+
     fn inc_padding(&self) -> Padding {
         self.padding.inc_padding()
     }
@@ -161,9 +193,22 @@ impl UpgradeState<'_> {
         &mut self,
         ty: Handle<Type>,
         upgrades: &Upgrades,
+        depth: u32,
     ) -> Result<Handle<Type>, Error> {
+        if self.has_storage_views() && depth > 64 {
+            return Err(Error::StorageViewNestingLimit);
+        }
+        #[cfg(feature = "cuda-in")]
+        if self.has_storage_views() {
+            self.module
+                .types
+                .check_contains_handle(ty)
+                .map_err(|_| Error::Unsupported)?;
+        }
         let padding = self.inc_padding();
-        padding.trace("visiting type: ", ty);
+        if !self.has_storage_views() {
+            padding.trace("visiting type: ", ty);
+        }
 
         // If we've already upgraded this type, return the handle we produced at
         // the time.
@@ -171,17 +216,25 @@ impl UpgradeState<'_> {
             return Ok(new);
         }
 
+        #[cfg(feature = "cuda-in")]
+        let mut field_indices = None;
         let inner = match self.module.types[ty].inner {
             TypeInner::Scalar(scalar) => {
+                #[cfg(feature = "cuda-in")]
+                if self.has_storage_views()
+                    && !matches!(scalar, crate::Scalar::I32 | crate::Scalar::U32)
+                {
+                    return Err(Error::Unsupported);
+                }
                 log::trace!("{padding}hit the scalar leaf, replacing with an atomic");
                 TypeInner::Atomic(scalar)
             }
             TypeInner::Pointer { base, space } => TypeInner::Pointer {
-                base: self.upgrade_type(base, upgrades)?,
+                base: self.upgrade_type(base, upgrades, depth + 1)?,
                 space,
             },
             TypeInner::Array { base, size, stride } => TypeInner::Array {
-                base: self.upgrade_type(base, upgrades)?,
+                base: self.upgrade_type(base, upgrades, depth + 1)?,
                 size,
                 stride,
             },
@@ -189,12 +242,28 @@ impl UpgradeState<'_> {
                 // If no field or subfield of this struct was ever accessed
                 // atomically, no change is needed. We should never have arrived here.
                 let Some(fields) = upgrades.fields.get(&ty) else {
+                    if self.has_storage_views() {
+                        return Err(Error::Unsupported);
+                    }
                     unreachable!("global or field incorrectly flagged as atomically accessed");
                 };
 
                 let mut new_members = members.clone();
                 for field in fields {
-                    new_members[field].ty = self.upgrade_type(new_members[field].ty, upgrades)?;
+                    if self.has_storage_views() && field >= new_members.len() {
+                        return Err(Error::Unsupported);
+                    }
+                    new_members[field].ty =
+                        self.upgrade_type(new_members[field].ty, upgrades, depth + 1)?;
+                }
+
+                #[cfg(feature = "cuda-in")]
+                if self.has_storage_views() {
+                    let type_span = self.module.types.get_span(ty);
+                    let (members, indices) =
+                        storage::padded_members(self.module, new_members, span, type_span)?;
+                    new_members = members;
+                    field_indices = Some(indices);
                 }
 
                 TypeInner::Struct {
@@ -202,8 +271,39 @@ impl UpgradeState<'_> {
                     span,
                 }
             }
+            #[cfg(feature = "cuda-in")]
+            TypeInner::Vector { size, scalar } if self.has_storage_views() => {
+                if !matches!(size, crate::VectorSize::Bi | crate::VectorSize::Quad)
+                    || !matches!(scalar, crate::Scalar::I32 | crate::Scalar::U32)
+                {
+                    return Err(Error::Unsupported);
+                }
+                let components = upgrades
+                    .vector_components
+                    .get(&ty)
+                    .ok_or(Error::Unsupported)?;
+                if components.is_empty() || components.iter().any(|index| index >= size as usize) {
+                    return Err(Error::Unsupported);
+                }
+                let span = self.module.types.get_span(ty);
+                let scalar_type = self.module.types.insert(
+                    Type {
+                        name: None,
+                        inner: TypeInner::Scalar(scalar),
+                    },
+                    span,
+                );
+                let atomic_type = self.upgrade_type(scalar_type, upgrades, depth + 1)?;
+                let (members, indices) =
+                    storage::vector_members(size, scalar_type, atomic_type, components);
+                field_indices = Some(indices);
+                TypeInner::Struct {
+                    members,
+                    span: size as u32 * scalar.width as u32,
+                }
+            }
             TypeInner::BindingArray { base, size } => TypeInner::BindingArray {
-                base: self.upgrade_type(base, upgrades)?,
+                base: self.upgrade_type(base, upgrades, depth + 1)?,
                 size,
             },
             _ => return Ok(ty),
@@ -218,11 +318,20 @@ impl UpgradeState<'_> {
             name: r#type.name.clone(),
             inner,
         };
-        padding.debug("ty: ", ty);
-        padding.debug("from: ", r#type);
-        padding.debug("to:   ", &new_type);
+        if !self.has_storage_views() {
+            padding.debug("ty: ", ty);
+            padding.debug("from: ", r#type);
+            padding.debug("to:   ", &new_type);
+        }
         let new_handle = self.module.types.insert(new_type, span);
         self.upgraded_types.insert(ty, new_handle);
+        #[cfg(feature = "cuda-in")]
+        if let Some(ref mut views) = self.storage_views {
+            views.source_types.insert(new_handle, ty);
+            if let Some(indices) = field_indices {
+                views.field_indices.insert(new_handle, indices);
+            }
+        }
         Ok(new_handle)
     }
 
@@ -230,20 +339,45 @@ impl UpgradeState<'_> {
         for handle in upgrades.globals.iter() {
             let padding = self.inc_padding();
 
-            let global = &self.module.global_variables[handle];
-            padding.trace("visiting global variable: ", handle);
-            padding.trace("var: ", global);
+            let global = if self.has_storage_views() {
+                self.module
+                    .global_variables
+                    .try_get(handle)
+                    .map_err(|_| Error::GlobalVariableMissing)?
+            } else {
+                &self.module.global_variables[handle]
+            };
+            if !self.has_storage_views() {
+                padding.trace("visiting global variable: ", handle);
+                padding.trace("var: ", global);
+            }
+
+            #[cfg(feature = "cuda-in")]
+            if self.has_storage_views() {
+                let supported = match global.space {
+                    crate::AddressSpace::WorkGroup => true,
+                    crate::AddressSpace::Storage { access } => {
+                        access.contains(crate::StorageAccess::LOAD | crate::StorageAccess::STORE)
+                    }
+                    _ => false,
+                };
+                if !supported {
+                    return Err(Error::Unsupported);
+                }
+            }
 
             if global.init.is_some() {
                 return Err(Error::GlobalInitUnsupported);
             }
 
             let var_ty = global.ty;
-            let new_ty = self.upgrade_type(var_ty, upgrades)?;
+            let new_ty = self.upgrade_type(var_ty, upgrades, 0)?;
             if new_ty != var_ty {
-                padding.debug("upgrading global variable: ", handle);
-                padding.debug("from ty: ", var_ty);
-                padding.debug("to ty:   ", new_ty);
+                if !self.has_storage_views() {
+                    padding.debug("upgrading global variable: ", handle);
+                    padding.debug("from ty: ", var_ty);
+                    padding.debug("to ty:   ", new_ty);
+                }
                 self.module.global_variables[handle].ty = new_ty;
             }
         }
@@ -256,6 +390,7 @@ impl Module {
     /// Upgrade `global_var_handles` to have [`Atomic`] leaf types.
     ///
     /// [`Atomic`]: TypeInner::Atomic
+    #[cfg(feature = "spv-in")]
     pub(crate) fn upgrade_atomics(&mut self, upgrades: &Upgrades) -> Result<(), Error> {
         let mut state = UpgradeState {
             padding: Default::default(),
@@ -264,10 +399,31 @@ impl Module {
                 upgrades.fields.len(),
                 Default::default(),
             ),
+            #[cfg(feature = "cuda-in")]
+            storage_views: None,
         };
 
         state.upgrade_all(upgrades)?;
 
         Ok(())
     }
+
+    #[cfg(feature = "cuda-in")]
+    /// The caller accounts for reachable source types and the generated storage views.
+    pub(crate) fn upgrade_atomics_with_storage_views(
+        &mut self,
+        upgrades: &Upgrades,
+    ) -> Result<StorageViews, Error> {
+        let mut state = UpgradeState {
+            padding: Default::default(),
+            module: self,
+            upgraded_types: crate::FastHashMap::default(),
+            storage_views: Some(StorageViews::default()),
+        };
+        state.upgrade_all(upgrades)?;
+        Ok(state.storage_views.unwrap())
+    }
 }
+
+#[cfg(all(test, feature = "cuda-in"))]
+mod tests;

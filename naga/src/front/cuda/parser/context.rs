@@ -84,6 +84,26 @@ impl FunctionContext<'_> {
 }
 
 impl Parser<'_> {
+    pub(super) fn append_atomic_result(
+        &mut self,
+        ty: Handle<Type>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.function
+            .ir
+            .body
+            .extend(self.function.emitter.finish(&self.function.ir.expressions));
+        let result = self.append(
+            Expression::AtomicResult {
+                ty,
+                comparison: false,
+            },
+            span,
+        )?;
+        self.function.emitter.start(&self.function.ir.expressions);
+        Ok(result)
+    }
+
     pub(super) fn append_call_result(
         &mut self,
         function: Handle<Function>,
