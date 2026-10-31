@@ -9,6 +9,7 @@ use super::{
 
 mod arithmetic;
 mod arrow_members;
+mod atomic_add;
 mod bitcasts;
 mod comma;
 mod conditionals;
@@ -70,6 +71,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
     tests.extend([
         CUDA_ARITHMETIC,
         CUDA_ARROW_MEMBERS,
+        CUDA_ATOMIC_ADD,
         CUDA_BITCASTS,
         CUDA_COMMA,
         CUDA_CONDITIONALS,
@@ -260,6 +262,8 @@ fn module_case<O: bytemuck::Pod + std::fmt::Debug + PartialEq>(
 static CUDA_ARITHMETIC: GpuTestConfiguration = configuration(arithmetic::cases);
 #[apply(gpu_test!)]
 static CUDA_ARROW_MEMBERS: GpuTestConfiguration = configuration(arrow_members::cases);
+#[apply(gpu_test!)]
+static CUDA_ATOMIC_ADD: GpuTestConfiguration = configuration(atomic_add::cases);
 #[apply(gpu_test!)]
 static CUDA_BITCASTS: GpuTestConfiguration = configuration(bitcasts::cases);
 #[apply(gpu_test!)]

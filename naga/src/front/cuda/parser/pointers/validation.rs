@@ -712,6 +712,18 @@ impl Parser<'_> {
                         mark_pointer_expression(&mut live, pointer, None, span)?;
                         mark_pointer_expression(&mut live, value, None, span)?;
                     }
+                    Statement::Atomic {
+                        pointer,
+                        value,
+                        result,
+                        ..
+                    } => {
+                        mark_pointer_expression(&mut live, pointer, None, span)?;
+                        mark_pointer_expression(&mut live, value, None, span)?;
+                        if let Some(result) = result {
+                            mark_pointer_expression(&mut live, result, None, span)?;
+                        }
+                    }
                     Statement::Call {
                         ref arguments,
                         result,
@@ -770,7 +782,8 @@ impl Parser<'_> {
                 | Expression::ZeroValue(_)
                 | Expression::FunctionArgument(_)
                 | Expression::GlobalVariable(_)
-                | Expression::CallResult(_) => {}
+                | Expression::CallResult(_)
+                | Expression::AtomicResult { .. } => {}
                 Expression::Compose { ref components, .. } => {
                     for &component in components {
                         operand(component)?;

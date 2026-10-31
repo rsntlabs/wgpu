@@ -291,6 +291,7 @@ impl Parser<'_> {
             .inventory_module(&self.module, span)?;
         let mut validation = self.module.clone();
         validation.entry_points.clear();
+        self.prepare_atomic_validation(&mut validation, order, span)?;
         call_graph::reorder_functions(
             &mut validation,
             order,

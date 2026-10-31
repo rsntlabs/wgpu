@@ -180,6 +180,7 @@ impl Parser<'_> {
                 }
             }
             Expression::AccessIndex { base, index } => {
+                let mapped_index = self.atomic_storage_field(source, base, index, span)?;
                 match self.invocation_expression(invocation, base)? {
                     MappedExpression::Reference { binding, ty } => {
                         let ty = self.projected_type(&ty, Some(index), span)?;
@@ -191,7 +192,10 @@ impl Parser<'_> {
                         let mapped = MappedExpression::Reference { binding, ty };
                         return self.cache_invocation_expression(invocation, handle, mapped);
                     }
-                    MappedExpression::Value(base) => Expression::AccessIndex { base, index },
+                    MappedExpression::Value(base) => Expression::AccessIndex {
+                        base,
+                        index: mapped_index,
+                    },
                     MappedExpression::Pointer(_) => return Err(expansion_error(span)),
                 }
             }
@@ -241,7 +245,22 @@ impl Parser<'_> {
                             MappedExpression::Value(value.handle),
                         );
                     }
-                    MappedExpression::Value(pointer) => Expression::Load { pointer },
+                    MappedExpression::Value(mapped_pointer) => {
+                        if let Some(value) =
+                            self.load_atomic_storage(source, pointer, mapped_pointer, span)?
+                        {
+                            self.cache_invocation_expression(
+                                invocation,
+                                handle,
+                                MappedExpression::Value(value),
+                            )?;
+                            self.name_invocation_expression(source, handle, value, span)?;
+                            return Ok(MappedExpression::Value(value));
+                        }
+                        Expression::Load {
+                            pointer: mapped_pointer,
+                        }
+                    }
                     MappedExpression::Pointer(_) => return Err(expansion_error(span)),
                 }
             }
@@ -308,7 +327,9 @@ impl Parser<'_> {
                 vector: self.invocation_value(invocation, vector)?,
                 pattern,
             },
-            Expression::CallResult(_) => return Err(expansion_error(span)),
+            Expression::CallResult(_) | Expression::AtomicResult { .. } => {
+                return Err(expansion_error(span))
+            }
             _ => return Err(expansion_error(span)),
         };
         let value = self.append(expression, span)?;

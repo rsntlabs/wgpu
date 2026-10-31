@@ -292,6 +292,7 @@ impl<'a> Analysis<'a> {
                     }
                     Statement::Emit(_)
                     | Statement::Store { .. }
+                    | Statement::Atomic { .. }
                     | Statement::Call { .. }
                     | Statement::Return { .. }
                     | Statement::Break

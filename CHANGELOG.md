@@ -191,6 +191,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 - Support CUDA scalar bit reinterpretation intrinsics.
 - Support CUDA 32-bit integer bit counting, reversal, and first-set-bit intrinsics.
 - Support CUDA signed and unsigned 24-bit multiply intrinsics.
+- Support CUDA 32-bit integer `atomicAdd` on writable global and shared storage.
 - Support CUDA scalar constants and constant-expression local and shared array bounds.
 - Support CUDA scalar and aggregate list initialization with narrowing checks and ordered element initialization.
 - Infer CUDA local array bounds from nonempty initializer lists.
