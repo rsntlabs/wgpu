@@ -22,6 +22,7 @@ mod pointers;
 mod reference_bindings;
 mod references;
 mod saturate;
+mod scalar_promotions;
 mod sqrtf;
 mod statements;
 mod structures;
@@ -39,6 +40,7 @@ use parameter_calls::{
 };
 use pointers::{PointerAccess, PointerState, PointerValue};
 use reference_bindings::{BoundAddress, BoundReference};
+use scalar_promotions::ScalarPromotions;
 use types::scalar_resolution;
 use types::{GlobalDeclaration, QualifiedType, TypeSpecifier};
 
@@ -287,6 +289,7 @@ impl<'a> Parser<'a> {
         }
         self.finish_kernel()?;
         self.finish_functions()?;
+        self.promote_scalar_locals()?;
         // Remove call results from source statements discarded after a jump.
         crate::compact::compact(&mut self.module, crate::compact::KeepUnused::Yes);
         Ok(self.module)
@@ -735,55 +738,7 @@ impl<'a> Parser<'a> {
             self.parameter_expansion_budget
                 .charge_slice::<u32>(1, span)?;
         }
-        let depth = match expression {
-            Expression::Unary { expr: operand, .. }
-            | Expression::As { expr: operand, .. }
-            | Expression::AccessIndex { base: operand, .. }
-            | Expression::Load { pointer: operand } => {
-                self.function.expression_graph_depths[operand.index()] + 1
-            }
-            Expression::Binary { left, right, .. }
-            | Expression::Access {
-                base: left,
-                index: right,
-            } => {
-                self.function.expression_graph_depths[left.index()]
-                    .max(self.function.expression_graph_depths[right.index()])
-                    + 1
-            }
-            Expression::Compose { ref components, .. } => {
-                components
-                    .iter()
-                    .map(|handle| self.function.expression_graph_depths[handle.index()])
-                    .max()
-                    .unwrap_or(0)
-                    + 1
-            }
-            Expression::Math {
-                arg,
-                arg1,
-                arg2,
-                arg3,
-                ..
-            } => {
-                let mut depth = self.function.expression_graph_depths[arg.index()];
-                for operand in [arg1, arg2, arg3].into_iter().flatten() {
-                    depth = depth.max(self.function.expression_graph_depths[operand.index()]);
-                }
-                depth + 1
-            }
-            Expression::Select {
-                condition,
-                accept,
-                reject,
-            } => {
-                self.function.expression_graph_depths[condition.index()]
-                    .max(self.function.expression_graph_depths[accept.index()])
-                    .max(self.function.expression_graph_depths[reject.index()])
-                    + 1
-            }
-            _ => 0,
-        };
+        let depth = expression_depth(&expression, &self.function.expression_graph_depths);
         if depth > 64 {
             return Err(ParseError {
                 message: String::from("CUDA expression graph depth limit exceeded"),
@@ -993,5 +948,51 @@ impl<'a> Parser<'a> {
             message: String::from(message),
             span: self.lexer.peek()?.1,
         })
+    }
+}
+
+pub(super) fn expression_depth(expression: &Expression, depths: &[u32]) -> u32 {
+    match *expression {
+        Expression::Unary { expr: operand, .. }
+        | Expression::As { expr: operand, .. }
+        | Expression::AccessIndex { base: operand, .. }
+        | Expression::Load { pointer: operand } => depths[operand.index()] + 1,
+        Expression::Binary { left, right, .. }
+        | Expression::Access {
+            base: left,
+            index: right,
+        } => depths[left.index()].max(depths[right.index()]) + 1,
+        Expression::Compose { ref components, .. } => {
+            components
+                .iter()
+                .map(|handle| depths[handle.index()])
+                .max()
+                .unwrap_or(0)
+                + 1
+        }
+        Expression::Math {
+            arg,
+            arg1,
+            arg2,
+            arg3,
+            ..
+        } => {
+            let mut depth = depths[arg.index()];
+            for operand in [arg1, arg2, arg3].into_iter().flatten() {
+                depth = depth.max(depths[operand.index()]);
+            }
+            depth + 1
+        }
+        Expression::Select {
+            condition,
+            accept,
+            reject,
+        } => {
+            depths[condition.index()]
+                .max(depths[accept.index()])
+                .max(depths[reject.index()])
+                + 1
+        }
+        _ => 0,
     }
 }

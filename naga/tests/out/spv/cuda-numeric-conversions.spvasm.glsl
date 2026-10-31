@@ -6,66 +6,63 @@ struct _6
     uint _m0;
 };
 
-layout(set = 0, binding = 0, std430) readonly buffer _12_11
+layout(set = 0, binding = 0, std430) readonly buffer _11_10
 {
     float _m0[];
-} _11;
+} _10;
 
-layout(set = 0, binding = 1, std430) buffer _15_14
+layout(set = 0, binding = 1, std430) buffer _14_13
 {
     float _m0[];
-} _14;
+} _13;
 
-layout(set = 0, binding = 2, std140) uniform _18_17
+layout(set = 0, binding = 2, std140) uniform _17_16
 {
     _6 _m0;
-} _17;
+} _16;
 
 void main()
 {
-    uint _72 = 0u;
-    float _66 = 0.0;
-    uint _60[2] = uint[](0u, 0u);
-    uint _54[2] = uint[](0u, 0u);
-    float _47 = 0.0;
-    uint _39[2] = uint[](0u, 0u);
-    uint _70 = 0u;
     uint _64 = 0u;
-    float _58 = 0.0;
-    uint _52 = 0u;
-    int _44 = 0;
-    uint _36[2] = uint[](0u, 0u);
-    uint _68[2] = uint[](0u, 0u);
-    uint _62 = 0u;
+    uint _58 = 0u;
+    float _52 = 0.0;
+    uint _45 = 0u;
+    uint _38[2] = uint[](0u, 0u);
+    uint _62[2] = uint[](0u, 0u);
     uint _56 = 0u;
-    uint _50[2] = uint[](0u, 0u);
-    uint _41 = 0u;
-    _36 = uint[](0u, 0u);
-    _36[0u] = 0u;
-    _36[1u] = 0u;
-    _39 = uint[](0u, 0u);
-    _39[0u] = 1u;
-    _39[1u] = 0u;
-    _41 = _17._m0._m0;
-    _44 = int((gl_WorkGroupID.x * 1u) + gl_LocalInvocationID.x);
-    if (uint(_44) < _41)
+    uint _50 = 0u;
+    uint _43[2] = uint[](0u, 0u);
+    uint _35[2] = uint[](0u, 0u);
+    uint _66 = 0u;
+    float _60 = 0.0;
+    uint _54[2] = uint[](0u, 0u);
+    uint _48[2] = uint[](0u, 0u);
+    float _40 = 0.0;
+    _35 = uint[](0u, 0u);
+    _35[0u] = 0u;
+    _35[1u] = 0u;
+    _38 = uint[](0u, 0u);
+    _38[0u] = 1u;
+    _38[1u] = 0u;
+    int _81 = int((gl_WorkGroupID.x * 1u) + gl_LocalInvocationID.x);
+    if (uint(_81) < _16._m0._m0)
     {
-        _47 = float(_44);
-        _54 = _36;
-        _56 = uint(_44);
-        _60 = _54;
-        _60[1u] += _56;
-        _62 = _60[0u];
-        _64 = _60[1u];
-        _66 = _11._m0[_64];
-        _58 = _66;
-        _50 = _39;
-        _52 = uint(_44);
-        _68 = _50;
-        _68[1u] += _52;
-        _70 = _68[0u];
-        _72 = _68[1u];
-        _14._m0[_72] = _58 + _47;
+        _40 = float(_81);
+        _48 = _35;
+        _50 = uint(_81);
+        _54 = _48;
+        _54[1u] += _50;
+        _56 = _54[0u];
+        _58 = _54[1u];
+        _60 = _10._m0[_58];
+        _52 = _60;
+        _43 = _38;
+        _45 = uint(_81);
+        _62 = _43;
+        _62[1u] += _45;
+        _64 = _62[0u];
+        _66 = _62[1u];
+        _13._m0[_66] = _52 + _40;
     }
 }
 

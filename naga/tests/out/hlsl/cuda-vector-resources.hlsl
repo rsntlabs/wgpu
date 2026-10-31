@@ -25,13 +25,10 @@ float3_ shift(float3_ value)
 float pair(float3_ value_2, int digit)
 {
     float3_ value_3 = (float3_)0;
-    int digit_1 = (int)0;
 
     value_3 = value_2;
-    digit_1 = digit;
-    float _e6 = value_3.x;
-    int _e8 = digit_1;
-    return ((_e6 * 10.0) + float(_e8));
+    float _e4 = value_3.x;
+    return ((_e4 * 10.0) + float(digit));
 }
 
 float3_ Constructfloat3_(float arg0, float arg1, float arg2) {

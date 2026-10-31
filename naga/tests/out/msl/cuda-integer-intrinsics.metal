@@ -16,32 +16,20 @@ struct type_3 {
 int count(
     uint value
 ) {
-    uint value_1 = {};
-    value_1 = value;
-    uint _e2 = value_1;
-    return static_cast<int>(metal::popcount(_e2));
+    return static_cast<int>(metal::popcount(value));
 }
 
 int scan(
-    int value_2
+    int value_1
 ) {
-    int value_3 = {};
-    value_3 = value_2;
-    int _e2 = value_3;
-    return as_type<int>(as_type<uint>((((metal::ctz(_e2) + 1) % 33) - 1)) + as_type<uint>(1));
+    return as_type<int>(as_type<uint>((((metal::ctz(value_1) + 1) % 33) - 1)) + as_type<uint>(1));
 }
 
 int _clz(
     int first,
     int second
 ) {
-    int first_1 = {};
-    int second_1 = {};
-    first_1 = first;
-    second_1 = second;
-    int _e4 = first_1;
-    int _e5 = second_1;
-    return as_type<int>(as_type<uint>(_e4) + as_type<uint>(_e5));
+    return as_type<int>(as_type<uint>(first) + as_type<uint>(second));
 }
 int naga_f2i32(float value) {
     return static_cast<int>(metal::clamp(value, -2147483600.0, 2147483500.0));

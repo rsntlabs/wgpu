@@ -7,140 +7,75 @@ var<storage, read_write> out_1: array<i32>;
 @group(0) @binding(1)
 var<storage> input_1: array<i32>;
 @group(0) @binding(2)
-var<uniform> n_1: type_5;
+var<uniform> n: type_5;
 
 fn classify(value_1: bool) -> bool {
-    var value_2: bool;
-
-    value_2 = value_1;
-    let _e2 = value_2;
-    return !(_e2);
+    return !(value_1);
 }
 
-fn classify_1(value_3: i32) -> i32 {
-    var value_4: i32;
-
-    value_4 = value_3;
-    let _e3 = value_4;
-    return (_e3 + 10i);
+fn classify_1(value_2: i32) -> i32 {
+    return (value_2 + 10i);
 }
 
-fn classify_2(value_5: u32) -> u32 {
-    var value_6: u32;
-
-    value_6 = value_5;
-    let _e3 = value_6;
-    return (_e3 + 20u);
+fn classify_2(value_3: u32) -> u32 {
+    return (value_3 + 20u);
 }
 
-fn classify_3(value_7: f32) -> f32 {
-    var value_8: f32;
-
-    value_8 = value_7;
-    let _e3 = value_8;
-    return ((_e3 * 1.5f) + 0.5f);
+fn classify_3(value_4: f32) -> f32 {
+    return ((value_4 * 1.5f) + 0.5f);
 }
 
 fn rank(left: i32, right: f32) -> i32 {
-    var left_1: i32;
-    var right_1: f32;
-
-    left_1 = left;
-    right_1 = right;
-    let _e5 = left_1;
-    let _e7 = right_1;
-    return ((_e5 * 10i) + i32(_e7));
+    return ((left * 10i) + i32(right));
 }
 
-fn rank_1(left_2: f32, right_2: i32) -> i32 {
-    var left_3: f32;
-    var right_3: i32;
-
-    left_3 = left_2;
-    right_3 = right_2;
-    let _e5 = left_3;
-    let _e10 = right_3;
-    return ((100i + (i32(_e5) * 10i)) + _e10);
+fn rank_1(left_1: f32, right_1: i32) -> i32 {
+    return ((100i + (i32(left_1) * 10i)) + right_1);
 }
 
-fn pair(left_4: f32, right_4: i32) -> i32 {
-    var left_5: f32;
-    var right_5: i32;
-
-    left_5 = left_4;
-    right_5 = right_4;
-    let _e4 = left_5;
-    let _e8 = right_5;
-    return ((i32(_e4) * 10i) + _e8);
+fn pair(left_2: f32, right_2: i32) -> i32 {
+    return ((i32(left_2) * 10i) + right_2);
 }
 
-fn promote(left_6: u32, right_6: f32) -> i32 {
-    var left_7: u32;
-    var right_7: f32;
-
-    left_7 = left_6;
-    right_7 = right_6;
-    let _e5 = left_7;
-    let _e8 = right_7;
-    return ((200i + i32(_e5)) + i32(_e8));
+fn promote(left_3: u32, right_3: f32) -> i32 {
+    return ((200i + i32(left_3)) + i32(right_3));
 }
 
-fn touch(stop: bool, value_9: i32) {
-    var stop_1: bool;
-    var value_10: i32;
+fn touch(stop: bool, value_5: i32) {
+    var value_6: i32;
 
-    stop_1 = stop;
-    value_10 = value_9;
-    let _e4 = stop_1;
-    if _e4 {
+    value_6 = value_5;
+    if stop {
         return;
     }
-    let _e5 = value_10;
-    let _e6 = classify_1(_e5);
-    value_10 = _e6;
+    let _e3 = value_6;
+    let _e4 = classify_1(_e3);
+    value_6 = _e4;
     return;
 }
 
-fn touch_1(value_11: i32) -> i32 {
-    var value_12: i32;
-
-    value_12 = value_11;
-    let _e2 = value_12;
-    let _e3 = classify_1(_e2);
-    return (_e3 + 3i);
+fn touch_1(value_7: i32) -> i32 {
+    let _e1 = classify_1(value_7);
+    return (_e1 + 3i);
 }
 
-fn stage(value_13: i32) -> i32 {
-    var value_14: i32;
-
-    value_14 = value_13;
-    let _e3 = value_14;
-    return (_e3 + 2i);
+fn stage(value_8: i32) -> i32 {
+    return (value_8 + 2i);
 }
 
-fn frozen(value_15: f32) -> i32 {
-    var value_16: f32;
-
-    value_16 = value_15;
-    let _e2 = value_16;
-    let _e4 = stage(i32(_e2));
-    return _e4;
+fn frozen(value_9: f32) -> i32 {
+    let _e2 = stage(i32(value_9));
+    return _e2;
 }
 
-fn stage_1(value_17: f32) -> i32 {
-    var value_18: f32;
-
-    value_18 = value_17;
-    let _e2 = value_18;
-    return (i32(_e2) + 100i);
+fn stage_1(value_10: f32) -> i32 {
+    return (i32(value_10) + 100i);
 }
 
 @compute @workgroup_size(64, 1, 1)
 fn scalar_overloads(@builtin(workgroup_id) blockIdx: vec3<u32>, @builtin(local_invocation_id) threadIdx: vec3<u32>) {
     var out: array<u32, 2>;
     var input: array<u32, 2>;
-    var n: u32;
-    var i: u32;
     var base: u32;
     var value: i32;
     var local: array<u32, 2>;
@@ -227,276 +162,270 @@ fn scalar_overloads(@builtin(workgroup_id) blockIdx: vec3<u32>, @builtin(local_i
     input = array<u32, 2>();
     input[0] = 1u;
     input[1] = 0u;
-    let _e18 = n_1.value;
-    n = _e18;
-    i = ((blockIdx.x * 64u) + threadIdx.x);
-    let _e26 = i;
-    let _e27 = n;
-    if (_e26 < _e27) {
-        let _e29 = i;
-        base = (_e29 * 13u);
-        let _e35 = input;
-        local = _e35;
-        let _e36 = i;
-        local_1 = u32(_e36);
-        let _e40 = local;
-        local_29 = _e40;
-        let _e41 = local_1;
+    let n_1 = n.value;
+    let i = ((blockIdx.x * 64u) + threadIdx.x);
+    if (i < n_1) {
+        base = (i * 13u);
+        let _e27 = input;
+        local = _e27;
+        local_1 = u32(i);
+        let _e31 = local;
+        local_29 = _e31;
+        let _e33 = local_1;
+        let _e35 = local_29[1];
+        local_29[1] = (_e35 + _e33);
+        let _e39 = local_29[0];
+        local_30 = u32(_e39);
         let _e43 = local_29[1];
-        local_29[1] = (_e43 + _e41);
-        let _e47 = local_29[0];
-        local_30 = u32(_e47);
-        let _e51 = local_29[1];
-        local_31 = u32(_e51);
-        let _e55 = local_31;
-        let _e57 = input_1[_e55];
-        local_32 = _e57;
-        let _e58 = local_32;
-        local_28 = _e58;
-        let _e60 = local_28;
-        value = _e60;
-        let _e62 = i;
-        choose = ((_e62 % 2u) == 0u);
-        let _e68 = choose;
-        let _e69 = classify(_e68);
-        let _e72 = out;
-        local_2 = _e72;
-        let _e73 = base;
-        local_3 = u32(_e73);
-        let _e78 = local_2;
-        local_33 = _e78;
-        let _e79 = local_3;
+        local_31 = u32(_e43);
+        let _e46 = local_31;
+        let _e49 = input_1[_e46];
+        local_32 = _e49;
+        let _e51 = local_32;
+        local_28 = _e51;
+        let _e53 = local_28;
+        value = _e53;
+        choose = ((i % 2u) == 0u);
+        let _e60 = choose;
+        let _e61 = classify(_e60);
+        let _e63 = out;
+        local_2 = _e63;
+        let _e65 = base;
+        local_3 = u32(_e65);
+        let _e69 = local_2;
+        local_33 = _e69;
+        let _e71 = local_3;
+        let _e73 = local_33[1];
+        local_33[1] = (_e73 + _e71);
+        let _e77 = local_33[0];
+        local_34 = u32(_e77);
         let _e81 = local_33[1];
-        local_33[1] = (_e81 + _e79);
-        let _e85 = local_33[0];
-        local_34 = u32(_e85);
-        let _e89 = local_33[1];
-        local_35 = u32(_e89);
-        let _e92 = local_35;
-        out_1[_e92] = i32(_e69);
-        let _e94 = value;
-        let _e95 = classify_1(_e94);
-        let _e97 = out;
-        local_4 = _e97;
-        let _e98 = base;
-        local_5 = u32((_e98 + 1u));
-        let _e104 = local_4;
-        local_36 = _e104;
-        let _e105 = local_5;
-        let _e107 = local_36[1];
-        local_36[1] = (_e107 + _e105);
-        let _e111 = local_36[0];
-        local_37 = u32(_e111);
-        let _e115 = local_36[1];
-        local_38 = u32(_e115);
-        let _e118 = local_38;
-        out_1[_e118] = _e95;
-        let _e120 = value;
-        let _e124 = classify_2(u32((_e120 + 16i)));
-        let _e126 = out;
-        local_6 = _e126;
-        let _e127 = base;
-        local_7 = u32((_e127 + 2u));
-        let _e134 = local_6;
-        local_39 = _e134;
-        let _e135 = local_7;
-        let _e137 = local_39[1];
-        local_39[1] = (_e137 + _e135);
-        let _e141 = local_39[0];
-        local_40 = u32(_e141);
-        let _e145 = local_39[1];
-        local_41 = u32(_e145);
-        let _e148 = local_41;
-        out_1[_e148] = i32(_e124);
-        let _e150 = value;
-        let _e152 = classify_3(f32(_e150));
-        let _e154 = out;
-        local_8 = _e154;
-        let _e155 = base;
-        local_9 = u32((_e155 + 3u));
-        let _e162 = local_8;
-        local_42 = _e162;
-        let _e163 = local_9;
-        let _e165 = local_42[1];
-        local_42[1] = (_e165 + _e163);
-        let _e169 = local_42[0];
-        local_43 = u32(_e169);
-        let _e173 = local_42[1];
-        local_44 = u32(_e173);
-        let _e176 = local_44;
-        out_1[_e176] = i32(_e152);
-        let _e178 = choose;
-        let _e179 = value;
-        let _e184 = rank(i32(_e178), (f32(_e179) + 0.5f));
-        let _e186 = out;
-        local_10 = _e186;
-        let _e187 = base;
-        local_11 = u32((_e187 + 4u));
-        let _e193 = local_10;
-        local_45 = _e193;
-        let _e194 = local_11;
-        let _e196 = local_45[1];
-        local_45[1] = (_e196 + _e194);
-        let _e200 = local_45[0];
-        local_46 = u32(_e200);
-        let _e204 = local_45[1];
-        local_47 = u32(_e204);
-        let _e207 = local_47;
-        out_1[_e207] = _e184;
-        let _e209 = value;
-        let _e213 = choose;
-        let _e215 = rank_1((f32(_e209) + 0.5f), i32(_e213));
-        let _e217 = out;
-        local_12 = _e217;
-        let _e218 = base;
-        local_13 = u32((_e218 + 5u));
-        let _e224 = local_12;
-        local_48 = _e224;
-        let _e225 = local_13;
-        let _e227 = local_48[1];
-        local_48[1] = (_e227 + _e225);
-        let _e231 = local_48[0];
-        local_49 = u32(_e231);
-        let _e235 = local_48[1];
-        local_50 = u32(_e235);
-        let _e238 = local_50;
-        out_1[_e238] = _e215;
-        let _e240 = value;
-        let _e244 = value;
-        let _e246 = promote(u32((_e240 + 16i)), f32(_e244));
-        let _e248 = out;
-        local_14 = _e248;
-        let _e249 = base;
-        local_15 = u32((_e249 + 6u));
-        let _e255 = local_14;
-        local_51 = _e255;
-        let _e256 = local_15;
-        let _e258 = local_51[1];
-        local_51[1] = (_e258 + _e256);
-        let _e262 = local_51[0];
-        local_52 = u32(_e262);
-        let _e266 = local_51[1];
-        local_53 = u32(_e266);
-        let _e269 = local_53;
-        out_1[_e269] = _e246;
-        let _e271 = value;
-        effect = _e271;
-        let _e273 = choose;
-        let _e274 = effect;
-        effect = (_e274 + 1i);
-        touch(_e273, _e274);
-        let _e277 = effect;
-        let _e279 = out;
-        local_16 = _e279;
-        let _e280 = base;
-        local_17 = u32((_e280 + 7u));
-        let _e286 = local_16;
-        local_54 = _e286;
-        let _e287 = local_17;
-        let _e289 = local_54[1];
-        local_54[1] = (_e289 + _e287);
-        let _e293 = local_54[0];
-        local_55 = u32(_e293);
-        let _e297 = local_54[1];
-        local_56 = u32(_e297);
-        let _e300 = local_56;
-        out_1[_e300] = _e277;
-        let _e302 = effect;
-        let _e303 = touch_1(_e302);
-        let _e305 = out;
-        local_18 = _e305;
-        let _e306 = base;
-        local_19 = u32((_e306 + 8u));
-        let _e312 = local_18;
-        local_57 = _e312;
-        let _e313 = local_19;
-        let _e315 = local_57[1];
-        local_57[1] = (_e315 + _e313);
-        let _e319 = local_57[0];
-        local_58 = u32(_e319);
-        let _e323 = local_57[1];
-        local_59 = u32(_e323);
-        let _e326 = local_59;
-        out_1[_e326] = _e303;
-        let _e328 = value;
-        let _e332 = frozen((f32(_e328) + 0.75f));
-        let _e334 = out;
-        local_20 = _e334;
-        let _e335 = base;
-        local_21 = u32((_e335 + 9u));
-        let _e341 = local_20;
-        local_60 = _e341;
-        let _e342 = local_21;
-        let _e344 = local_60[1];
-        local_60[1] = (_e344 + _e342);
-        let _e348 = local_60[0];
-        local_61 = u32(_e348);
-        let _e352 = local_60[1];
-        local_62 = u32(_e352);
-        let _e355 = local_62;
-        out_1[_e355] = _e332;
-        let _e357 = value;
-        let _e361 = stage_1((f32(_e357) + 0.75f));
-        let _e363 = out;
-        local_22 = _e363;
-        let _e364 = base;
-        local_23 = u32((_e364 + 10u));
-        let _e370 = local_22;
-        local_63 = _e370;
-        let _e371 = local_23;
-        let _e373 = local_63[1];
-        local_63[1] = (_e373 + _e371);
-        let _e377 = local_63[0];
-        local_64 = u32(_e377);
-        let _e381 = local_63[1];
-        local_65 = u32(_e381);
-        let _e384 = local_65;
-        out_1[_e384] = _e361;
-        let _e386 = effect;
-        effect = (_e386 + 1i);
-        let _e389 = classify_1(_e386);
-        let _e390 = touch_1(_e389);
-        nested = _e390;
-        let _e392 = nested;
-        let _e395 = effect;
-        let _e398 = out;
-        local_24 = _e398;
-        let _e399 = base;
-        local_25 = u32((_e399 + 11u));
-        let _e405 = local_24;
-        local_66 = _e405;
-        let _e406 = local_25;
-        let _e408 = local_66[1];
-        local_66[1] = (_e408 + _e406);
-        let _e412 = local_66[0];
-        local_67 = u32(_e412);
-        let _e416 = local_66[1];
-        local_68 = u32(_e416);
-        let _e419 = local_68;
-        out_1[_e419] = ((_e392 * 10i) + _e395);
-        let _e421 = value;
-        argument = (_e421 + 8i);
-        let _e425 = argument;
-        let _e426 = argument;
-        argument = (_e426 + 1i);
-        let _e430 = pair(f32(_e425), _e426);
-        captured = _e430;
-        let _e432 = captured;
-        let _e435 = argument;
-        let _e438 = out;
-        local_26 = _e438;
-        let _e439 = base;
-        local_27 = u32((_e439 + 12u));
-        let _e445 = local_26;
-        local_69 = _e445;
-        let _e446 = local_27;
-        let _e448 = local_69[1];
-        local_69[1] = (_e448 + _e446);
-        let _e452 = local_69[0];
-        local_70 = u32(_e452);
-        let _e456 = local_69[1];
-        local_71 = u32(_e456);
-        let _e459 = local_71;
-        out_1[_e459] = ((_e432 * 100i) + _e435);
+        local_35 = u32(_e81);
+        let _e84 = local_35;
+        out_1[_e84] = i32(_e61);
+        let _e87 = value;
+        let _e88 = classify_1(_e87);
+        let _e89 = out;
+        local_4 = _e89;
+        let _e91 = base;
+        local_5 = u32((_e91 + 1u));
+        let _e96 = local_4;
+        local_36 = _e96;
+        let _e98 = local_5;
+        let _e100 = local_36[1];
+        local_36[1] = (_e100 + _e98);
+        let _e104 = local_36[0];
+        local_37 = u32(_e104);
+        let _e108 = local_36[1];
+        local_38 = u32(_e108);
+        let _e111 = local_38;
+        out_1[_e111] = _e88;
+        let _e113 = value;
+        let _e117 = classify_2(u32((_e113 + 16i)));
+        let _e118 = out;
+        local_6 = _e118;
+        let _e120 = base;
+        local_7 = u32((_e120 + 2u));
+        let _e126 = local_6;
+        local_39 = _e126;
+        let _e128 = local_7;
+        let _e130 = local_39[1];
+        local_39[1] = (_e130 + _e128);
+        let _e134 = local_39[0];
+        local_40 = u32(_e134);
+        let _e138 = local_39[1];
+        local_41 = u32(_e138);
+        let _e141 = local_41;
+        out_1[_e141] = i32(_e117);
+        let _e143 = value;
+        let _e145 = classify_3(f32(_e143));
+        let _e146 = out;
+        local_8 = _e146;
+        let _e148 = base;
+        local_9 = u32((_e148 + 3u));
+        let _e154 = local_8;
+        local_42 = _e154;
+        let _e156 = local_9;
+        let _e158 = local_42[1];
+        local_42[1] = (_e158 + _e156);
+        let _e162 = local_42[0];
+        local_43 = u32(_e162);
+        let _e166 = local_42[1];
+        local_44 = u32(_e166);
+        let _e169 = local_44;
+        out_1[_e169] = i32(_e145);
+        let _e171 = choose;
+        let _e172 = value;
+        let _e177 = rank(i32(_e171), (f32(_e172) + 0.5f));
+        let _e178 = out;
+        local_10 = _e178;
+        let _e180 = base;
+        local_11 = u32((_e180 + 4u));
+        let _e185 = local_10;
+        local_45 = _e185;
+        let _e187 = local_11;
+        let _e189 = local_45[1];
+        local_45[1] = (_e189 + _e187);
+        let _e193 = local_45[0];
+        local_46 = u32(_e193);
+        let _e197 = local_45[1];
+        local_47 = u32(_e197);
+        let _e200 = local_47;
+        out_1[_e200] = _e177;
+        let _e202 = value;
+        let _e206 = choose;
+        let _e208 = rank_1((f32(_e202) + 0.5f), i32(_e206));
+        let _e209 = out;
+        local_12 = _e209;
+        let _e211 = base;
+        local_13 = u32((_e211 + 5u));
+        let _e216 = local_12;
+        local_48 = _e216;
+        let _e218 = local_13;
+        let _e220 = local_48[1];
+        local_48[1] = (_e220 + _e218);
+        let _e224 = local_48[0];
+        local_49 = u32(_e224);
+        let _e228 = local_48[1];
+        local_50 = u32(_e228);
+        let _e231 = local_50;
+        out_1[_e231] = _e208;
+        let _e233 = value;
+        let _e237 = value;
+        let _e239 = promote(u32((_e233 + 16i)), f32(_e237));
+        let _e240 = out;
+        local_14 = _e240;
+        let _e242 = base;
+        local_15 = u32((_e242 + 6u));
+        let _e247 = local_14;
+        local_51 = _e247;
+        let _e249 = local_15;
+        let _e251 = local_51[1];
+        local_51[1] = (_e251 + _e249);
+        let _e255 = local_51[0];
+        local_52 = u32(_e255);
+        let _e259 = local_51[1];
+        local_53 = u32(_e259);
+        let _e262 = local_53;
+        out_1[_e262] = _e239;
+        let _e264 = value;
+        effect = _e264;
+        let _e266 = choose;
+        let _e267 = effect;
+        effect = (_e267 + 1i);
+        touch(_e266, _e267);
+        let _e270 = effect;
+        let _e271 = out;
+        local_16 = _e271;
+        let _e273 = base;
+        local_17 = u32((_e273 + 7u));
+        let _e278 = local_16;
+        local_54 = _e278;
+        let _e280 = local_17;
+        let _e282 = local_54[1];
+        local_54[1] = (_e282 + _e280);
+        let _e286 = local_54[0];
+        local_55 = u32(_e286);
+        let _e290 = local_54[1];
+        local_56 = u32(_e290);
+        let _e293 = local_56;
+        out_1[_e293] = _e270;
+        let _e295 = effect;
+        let _e296 = touch_1(_e295);
+        let _e297 = out;
+        local_18 = _e297;
+        let _e299 = base;
+        local_19 = u32((_e299 + 8u));
+        let _e304 = local_18;
+        local_57 = _e304;
+        let _e306 = local_19;
+        let _e308 = local_57[1];
+        local_57[1] = (_e308 + _e306);
+        let _e312 = local_57[0];
+        local_58 = u32(_e312);
+        let _e316 = local_57[1];
+        local_59 = u32(_e316);
+        let _e319 = local_59;
+        out_1[_e319] = _e296;
+        let _e321 = value;
+        let _e325 = frozen((f32(_e321) + 0.75f));
+        let _e326 = out;
+        local_20 = _e326;
+        let _e328 = base;
+        local_21 = u32((_e328 + 9u));
+        let _e333 = local_20;
+        local_60 = _e333;
+        let _e335 = local_21;
+        let _e337 = local_60[1];
+        local_60[1] = (_e337 + _e335);
+        let _e341 = local_60[0];
+        local_61 = u32(_e341);
+        let _e345 = local_60[1];
+        local_62 = u32(_e345);
+        let _e348 = local_62;
+        out_1[_e348] = _e325;
+        let _e350 = value;
+        let _e354 = stage_1((f32(_e350) + 0.75f));
+        let _e355 = out;
+        local_22 = _e355;
+        let _e357 = base;
+        local_23 = u32((_e357 + 10u));
+        let _e362 = local_22;
+        local_63 = _e362;
+        let _e364 = local_23;
+        let _e366 = local_63[1];
+        local_63[1] = (_e366 + _e364);
+        let _e370 = local_63[0];
+        local_64 = u32(_e370);
+        let _e374 = local_63[1];
+        local_65 = u32(_e374);
+        let _e377 = local_65;
+        out_1[_e377] = _e354;
+        let _e379 = effect;
+        effect = (_e379 + 1i);
+        let _e382 = classify_1(_e379);
+        let _e383 = touch_1(_e382);
+        nested = _e383;
+        let _e385 = nested;
+        let _e388 = effect;
+        let _e390 = out;
+        local_24 = _e390;
+        let _e392 = base;
+        local_25 = u32((_e392 + 11u));
+        let _e397 = local_24;
+        local_66 = _e397;
+        let _e399 = local_25;
+        let _e401 = local_66[1];
+        local_66[1] = (_e401 + _e399);
+        let _e405 = local_66[0];
+        local_67 = u32(_e405);
+        let _e409 = local_66[1];
+        local_68 = u32(_e409);
+        let _e412 = local_68;
+        out_1[_e412] = ((_e385 * 10i) + _e388);
+        let _e414 = value;
+        argument = (_e414 + 8i);
+        let _e418 = argument;
+        let _e419 = argument;
+        argument = (_e419 + 1i);
+        let _e423 = pair(f32(_e418), _e419);
+        captured = _e423;
+        let _e425 = captured;
+        let _e428 = argument;
+        let _e430 = out;
+        local_26 = _e430;
+        let _e432 = base;
+        local_27 = u32((_e432 + 12u));
+        let _e437 = local_26;
+        local_69 = _e437;
+        let _e439 = local_27;
+        let _e441 = local_69[1];
+        local_69[1] = (_e441 + _e439);
+        let _e445 = local_69[0];
+        local_70 = u32(_e445);
+        let _e449 = local_69[1];
+        local_71 = u32(_e449);
+        let _e452 = local_71;
+        out_1[_e452] = ((_e425 * 100i) + _e428);
     }
 }

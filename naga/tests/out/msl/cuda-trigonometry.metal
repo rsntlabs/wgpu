@@ -496,31 +496,22 @@ uint _naga_trigonometry(
 float sine_value(
     float value_2
 ) {
-    float value_3 = {};
-    value_3 = value_2;
-    float _e2 = value_3;
-    uint _e5 = _naga_trigonometry(as_type<uint>(_e2), 0u);
-    return as_type<float>(_e5);
+    uint _e3 = _naga_trigonometry(as_type<uint>(value_2), 0u);
+    return as_type<float>(_e3);
 }
 
 float cosine_value(
-    float value_4
+    float value_3
 ) {
-    float value_5 = {};
-    value_5 = value_4;
-    float _e2 = value_5;
-    uint _e5 = _naga_trigonometry(as_type<uint>(_e2), 1u);
-    return as_type<float>(_e5);
+    uint _e3 = _naga_trigonometry(as_type<uint>(value_3), 1u);
+    return as_type<float>(_e3);
 }
 
 int sinf(
-    bool value_6
+    bool value_4
 ) {
-    bool value_7 = {};
     int local_149 = {};
-    value_7 = value_6;
-    bool _e2 = value_7;
-    if (_e2) {
+    if (value_4) {
         local_149 = 17;
     } else {
         local_149 = 19;
@@ -530,57 +521,39 @@ int sinf(
 }
 
 int cosf(
-    int value_8
+    int value_5
 ) {
-    int value_9 = {};
-    value_9 = value_8;
-    int _e3 = value_9;
-    return as_type<int>(as_type<uint>(_e3) + as_type<uint>(23));
+    return as_type<int>(as_type<uint>(value_5) + as_type<uint>(23));
 }
 
 float sinf_1(
     float first,
     float second
 ) {
-    float first_1 = {};
-    float second_1 = {};
-    first_1 = first;
-    second_1 = second;
-    float _e4 = first_1;
-    float _e5 = second_1;
-    return _e4 + _e5;
+    return first + second;
 }
 
 float cosf_1(
-    metal::float2 value_10
+    metal::float2 value_6
 ) {
-    metal::float2 value_11 = {};
-    value_11 = value_10;
-    float _e4 = value_11.x;
-    float _e5 = value_11.y;
+    metal::float2 value_7 = {};
+    value_7 = value_6;
+    float _e4 = value_7.x;
+    float _e5 = value_7.y;
     return _e4 + _e5;
 }
 
 float identity(
-    float value_12
+    float value_8
 ) {
-    float value_13 = {};
-    value_13 = value_12;
-    float _e2 = value_13;
-    return _e2;
+    return value_8;
 }
 
 float pair(
-    float first_2,
-    float second_2
+    float first_1,
+    float second_1
 ) {
-    float first_3 = {};
-    float second_3 = {};
-    first_3 = first_2;
-    second_3 = second_2;
-    float _e5 = first_3;
-    float _e7 = second_3;
-    return (_e5 * 10.0) + _e7;
+    return (first_1 * 10.0) + second_1;
 }
 uint naga_f2u32(float value) {
     return static_cast<uint>(metal::clamp(value, 0.0, 4294967000.0));

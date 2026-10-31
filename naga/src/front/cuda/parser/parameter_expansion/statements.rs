@@ -443,6 +443,9 @@ impl Parser<'_> {
                     has_return |= body_return || continuing_return;
                 }
                 Statement::Store { pointer, value } => {
+                    if self.remove_promoted_store(invocation, pointer, value, span)? {
+                        continue;
+                    }
                     let pointer = self.invocation_expression(invocation, pointer)?;
                     let value = self.invocation_value(invocation, value)?;
                     match pointer {

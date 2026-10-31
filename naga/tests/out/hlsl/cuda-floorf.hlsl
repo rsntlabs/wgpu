@@ -2,84 +2,69 @@ RWByteAddressBuffer out_1 : register(u0);
 
 float floor_value(float value_1)
 {
-    float value_2 = (float)0;
     uint local_181 = (uint)0;
 
-    value_2 = value_1;
-    float _e2 = value_2;
-    uint _e3 = asuint(_e2);
-    uint _e8 = (_e3 & 2147483647u);
-    bool _e10 = ((_e3 & 2147483648u) != 0u);
-    uint _e17 = (1u << ((150u - (_e8 >> 23u)) & 31u));
-    uint _e18 = (_e17 - 1u);
-    uint _e22 = (_e3 & ~(_e18));
-    local_181 = ((_e8 > 2139095040u) ? 2143289344u : ((_e8 >= 1258291200u) ? _e3 : ((_e8 < 1065353216u) ? ((_e8 == 0u) ? _e3 : (_e10 ? 3212836864u : 0u)) : ((_e10 && ((_e3 & _e18) != 0u)) ? (_e22 + _e17) : _e22))));
-    uint _e41 = local_181;
-    return asfloat(_e41);
+    uint _e1 = asuint(value_1);
+    uint _e3 = (_e1 & 2147483647u);
+    bool _e7 = ((_e1 & 2147483648u) != 0u);
+    uint _e15 = (1u << ((150u - (_e3 >> 23u)) & 31u));
+    uint _e16 = (_e15 - 1u);
+    uint _e20 = (_e1 & ~(_e16));
+    local_181 = ((_e3 > 2139095040u) ? 2143289344u : ((_e3 >= 1258291200u) ? _e1 : ((_e3 < 1065353216u) ? ((_e3 == 0u) ? _e1 : (_e7 ? 3212836864u : 0u)) : ((_e7 && ((_e1 & _e16) != 0u)) ? (_e20 + _e15) : _e20))));
+    uint _e39 = local_181;
+    return asfloat(_e39);
 }
 
-float floor_value_1(int value_3)
+float floor_value_1(int value_2)
 {
-    int value_4 = (int)0;
     uint local_182 = (uint)0;
 
-    value_4 = value_3;
-    int _e2 = value_4;
-    uint _e4 = asuint(float(_e2));
-    uint _e9 = (_e4 & 2147483647u);
-    bool _e11 = ((_e4 & 2147483648u) != 0u);
-    uint _e18 = (1u << ((150u - (_e9 >> 23u)) & 31u));
-    uint _e19 = (_e18 - 1u);
-    uint _e23 = (_e4 & ~(_e19));
-    local_182 = ((_e9 > 2139095040u) ? 2143289344u : ((_e9 >= 1258291200u) ? _e4 : ((_e9 < 1065353216u) ? ((_e9 == 0u) ? _e4 : (_e11 ? 3212836864u : 0u)) : ((_e11 && ((_e4 & _e19) != 0u)) ? (_e23 + _e18) : _e23))));
-    uint _e42 = local_182;
-    return asfloat(_e42);
+    uint _e2 = asuint(float(value_2));
+    uint _e4 = (_e2 & 2147483647u);
+    bool _e8 = ((_e2 & 2147483648u) != 0u);
+    uint _e16 = (1u << ((150u - (_e4 >> 23u)) & 31u));
+    uint _e17 = (_e16 - 1u);
+    uint _e21 = (_e2 & ~(_e17));
+    local_182 = ((_e4 > 2139095040u) ? 2143289344u : ((_e4 >= 1258291200u) ? _e2 : ((_e4 < 1065353216u) ? ((_e4 == 0u) ? _e2 : (_e8 ? 3212836864u : 0u)) : ((_e8 && ((_e2 & _e17) != 0u)) ? (_e21 + _e16) : _e21))));
+    uint _e40 = local_182;
+    return asfloat(_e40);
 }
 
-float floor_value_2(uint value_5)
+float floor_value_2(uint value_3)
 {
-    uint value_6 = (uint)0;
     uint local_183 = (uint)0;
 
-    value_6 = value_5;
-    uint _e2 = value_6;
-    uint _e4 = asuint(float(_e2));
-    uint _e9 = (_e4 & 2147483647u);
-    bool _e11 = ((_e4 & 2147483648u) != 0u);
-    uint _e18 = (1u << ((150u - (_e9 >> 23u)) & 31u));
-    uint _e19 = (_e18 - 1u);
-    uint _e23 = (_e4 & ~(_e19));
-    local_183 = ((_e9 > 2139095040u) ? 2143289344u : ((_e9 >= 1258291200u) ? _e4 : ((_e9 < 1065353216u) ? ((_e9 == 0u) ? _e4 : (_e11 ? 3212836864u : 0u)) : ((_e11 && ((_e4 & _e19) != 0u)) ? (_e23 + _e18) : _e23))));
-    uint _e42 = local_183;
-    return asfloat(_e42);
+    uint _e2 = asuint(float(value_3));
+    uint _e4 = (_e2 & 2147483647u);
+    bool _e8 = ((_e2 & 2147483648u) != 0u);
+    uint _e16 = (1u << ((150u - (_e4 >> 23u)) & 31u));
+    uint _e17 = (_e16 - 1u);
+    uint _e21 = (_e2 & ~(_e17));
+    local_183 = ((_e4 > 2139095040u) ? 2143289344u : ((_e4 >= 1258291200u) ? _e2 : ((_e4 < 1065353216u) ? ((_e4 == 0u) ? _e2 : (_e8 ? 3212836864u : 0u)) : ((_e8 && ((_e2 & _e17) != 0u)) ? (_e21 + _e16) : _e21))));
+    uint _e40 = local_183;
+    return asfloat(_e40);
 }
 
-float floor_value_3(bool value_7)
+float floor_value_3(bool value_4)
 {
-    bool value_8 = (bool)0;
     uint local_184 = (uint)0;
 
-    value_8 = value_7;
-    bool _e2 = value_8;
-    uint _e4 = asuint(float(_e2));
-    uint _e9 = (_e4 & 2147483647u);
-    bool _e11 = ((_e4 & 2147483648u) != 0u);
-    uint _e18 = (1u << ((150u - (_e9 >> 23u)) & 31u));
-    uint _e19 = (_e18 - 1u);
-    uint _e23 = (_e4 & ~(_e19));
-    local_184 = ((_e9 > 2139095040u) ? 2143289344u : ((_e9 >= 1258291200u) ? _e4 : ((_e9 < 1065353216u) ? ((_e9 == 0u) ? _e4 : (_e11 ? 3212836864u : 0u)) : ((_e11 && ((_e4 & _e19) != 0u)) ? (_e23 + _e18) : _e23))));
-    uint _e42 = local_184;
-    return asfloat(_e42);
+    uint _e2 = asuint(float(value_4));
+    uint _e4 = (_e2 & 2147483647u);
+    bool _e8 = ((_e2 & 2147483648u) != 0u);
+    uint _e16 = (1u << ((150u - (_e4 >> 23u)) & 31u));
+    uint _e17 = (_e16 - 1u);
+    uint _e21 = (_e2 & ~(_e17));
+    local_184 = ((_e4 > 2139095040u) ? 2143289344u : ((_e4 >= 1258291200u) ? _e2 : ((_e4 < 1065353216u) ? ((_e4 == 0u) ? _e2 : (_e8 ? 3212836864u : 0u)) : ((_e8 && ((_e2 & _e17) != 0u)) ? (_e21 + _e16) : _e21))));
+    uint _e40 = local_184;
+    return asfloat(_e40);
 }
 
-int floorf(bool value_9)
+int floorf(bool value_5)
 {
-    bool value_10 = (bool)0;
     int local_185 = (int)0;
 
-    value_10 = value_9;
-    bool _e2 = value_10;
-    if (_e2) {
+    if (value_5) {
         local_185 = int(7);
     } else {
         local_185 = int(9);
@@ -90,14 +75,7 @@ int floorf(bool value_9)
 
 float floorf_1(float first, float second)
 {
-    float first_1 = (float)0;
-    float second_1 = (float)0;
-
-    first_1 = first;
-    second_1 = second;
-    float _e4 = first_1;
-    float _e5 = second_1;
-    return (_e4 + _e5);
+    return (first + second);
 }
 
 int naga_neg(int val) {

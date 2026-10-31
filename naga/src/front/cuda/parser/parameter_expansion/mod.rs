@@ -4,6 +4,7 @@ use super::*;
 
 mod budget;
 mod expressions;
+mod promotions;
 mod statements;
 mod validation;
 
@@ -27,6 +28,7 @@ enum CachedExpression {
 struct Invocation<'a> {
     source: &'a Function,
     source_state: Option<&'a FunctionParameterState>,
+    promotions: Option<&'a ScalarPromotions>,
     arguments: Vec<MappedExpression>,
     expressions: Vec<Option<CachedExpression>>,
     mapped_handles: Vec<Handle<Expression>>,
@@ -171,7 +173,7 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<(), ParseError> {
         if !state.pointers.is_empty() {
-            return self.clone_parameter_function(function, state, parameters, span);
+            return self.clone_parameter_function(function, state, parameters, None, span);
         }
         let body = core::mem::take(&mut function.body);
         self.function = FunctionContext::new(FunctionKind::Device);
@@ -194,6 +196,7 @@ impl Parser<'_> {
         source: Function,
         state: FunctionParameterState,
         parameters: Vec<SourceParameter>,
+        promotions: Option<&ScalarPromotions>,
         span: Span,
     ) -> Result<(), ParseError> {
         self.parameter_expansion_budget
@@ -232,12 +235,13 @@ impl Parser<'_> {
             };
             arguments.push(mapped);
         }
-        let locals = self.clone_invocation_locals(&source, Some(&state), span)?;
+        let locals = self.clone_invocation_locals(&source, Some(&state), promotions, span)?;
         self.parameter_expansion_budget
             .charge_slice::<Option<CachedExpression>>(source.expressions.len(), span)?;
         let mut invocation = Invocation {
             source: &source,
             source_state: Some(&state),
+            promotions,
             arguments,
             expressions: alloc::vec![None; source.expressions.len()],
             mapped_handles: Vec::new(),
@@ -276,13 +280,14 @@ impl Parser<'_> {
         state.pointers.runtime = Some(Box::new(pointers::runtime::PointerRuntime::new(
             self, &function, &state, span,
         )?));
-        self.clone_parameter_function(function, state, parameters, span)
+        self.clone_parameter_function(function, state, parameters, None, span)
     }
 
     fn clone_invocation_locals(
         &mut self,
         source: &Function,
         state: Option<&FunctionParameterState>,
+        promotions: Option<&ScalarPromotions>,
         span: Span,
     ) -> Result<Vec<Option<Handle<LocalVariable>>>, ParseError> {
         self.parameter_expansion_budget
@@ -290,6 +295,7 @@ impl Parser<'_> {
         let mut locals = Vec::with_capacity(source.local_variables.len());
         for (handle, local) in source.local_variables.iter() {
             if state.is_some_and(|state| state.pointers.validation_addresses.contains_key(&handle))
+                || promotions.is_some_and(|promotions| promotions.initializer(handle).is_some())
             {
                 locals.push(None);
                 continue;
@@ -373,10 +379,12 @@ impl Parser<'_> {
                 DeferredArgument::Pointer(pointer) => MappedExpression::Pointer(pointer),
             });
         }
-        let locals = self.clone_invocation_locals(&source, source_state.as_ref(), call.span)?;
+        let locals =
+            self.clone_invocation_locals(&source, source_state.as_ref(), None, call.span)?;
         let mut invocation = Invocation {
             source: &source,
             source_state: source_state.as_ref(),
+            promotions: None,
             arguments,
             expressions: alloc::vec![None; source.expressions.len()],
             mapped_handles: Vec::new(),

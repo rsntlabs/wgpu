@@ -32,19 +32,16 @@ layout(std430) buffer type_8_block_1Compute { Packet_cuda_record_1_ _group_0_bin
 
 Packet_cuda_record_1_ adjust(Packet_cuda_record_1_ value, int bias) {
     Packet_cuda_record_1_ value_1 = Packet_cuda_record_1_(0u, vec2(0.0), Sample_cuda_record_0_[2](Sample_cuda_record_0_(float3_(0.0, 0.0, 0.0), 0u), Sample_cuda_record_0_(float3_(0.0, 0.0, 0.0), 0u)), float[2][2](float[2](0.0, 0.0), float[2](0.0, 0.0)), vec4(0.0));
-    int bias_1 = 0;
     value_1 = value;
-    bias_1 = bias;
-    int _e5 = bias_1;
-    uint _e7 = value_1.serial;
-    value_1.serial = (_e7 + uint(_e5));
-    float _e19 = value_1.weights[0][1];
-    float _e20 = value_1.samples[1].position.x;
-    value_1.samples[1].position.x = (_e20 + _e19);
-    uint _e31 = value_1.samples[0].tag;
-    value_1.weights[1][0] = float(_e31);
-    Packet_cuda_record_1_ _e33 = value_1;
-    return _e33;
+    uint _e5 = value_1.serial;
+    value_1.serial = (_e5 + uint(bias));
+    float _e12 = value_1.weights[0][1];
+    float _e18 = value_1.samples[1].position.x;
+    value_1.samples[1].position.x = (_e18 + _e12);
+    uint _e24 = value_1.samples[0].tag;
+    value_1.weights[1][0] = float(_e24);
+    Packet_cuda_record_1_ _e31 = value_1;
+    return _e31;
 }
 
 Packet_cuda_record_1_ operator_u002b(Packet_cuda_record_1_ left, Packet_cuda_record_1_ right) {
@@ -66,14 +63,12 @@ void main() {
     uvec3 threadIdx = gl_LocalInvocationID;
     uint input_[2] = uint[2](0u, 0u);
     uint output_[2] = uint[2](0u, 0u);
-    uint lane = 0u;
     Packet_cuda_record_1_ original = Packet_cuda_record_1_(0u, vec2(0.0), Sample_cuda_record_0_[2](Sample_cuda_record_0_(float3_(0.0, 0.0, 0.0), 0u), Sample_cuda_record_0_(float3_(0.0, 0.0, 0.0), 0u)), float[2][2](float[2](0.0, 0.0), float[2](0.0, 0.0)), vec4(0.0));
     uint local[2] = uint[2](0u, 0u);
     uint local_1 = 0u;
     Packet_cuda_record_1_ changed = Packet_cuda_record_1_(0u, vec2(0.0), Sample_cuda_record_0_[2](Sample_cuda_record_0_(float3_(0.0, 0.0, 0.0), 0u), Sample_cuda_record_0_(float3_(0.0, 0.0, 0.0), 0u)), float[2][2](float[2](0.0, 0.0), float[2](0.0, 0.0)), vec4(0.0));
     Packet_cuda_record_2_ local_2 = Packet_cuda_record_2_(0, 0);
     Packet_cuda_record_1_ combined = Packet_cuda_record_1_(0u, vec2(0.0), Sample_cuda_record_0_[2](Sample_cuda_record_0_(float3_(0.0, 0.0, 0.0), 0u), Sample_cuda_record_0_(float3_(0.0, 0.0, 0.0), 0u)), float[2][2](float[2](0.0, 0.0), float[2](0.0, 0.0)), vec4(0.0));
-    uint slot = 0u;
     uint local_3[2] = uint[2](0u, 0u);
     uint local_4 = 0u;
     uint local_5[2] = uint[2](0u, 0u);
@@ -116,120 +111,113 @@ void main() {
     output_ = uint[2](0u, 0u);
     output_[0] = 1u;
     output_[1] = 0u;
-    lane = threadIdx.x;
-    uint _e17 = lane;
-    if ((_e17 >= 2u)) {
+    uint lane = threadIdx.x;
+    if ((lane >= 2u)) {
         return;
     }
-    uint _e22[2] = input_;
-    local = _e22;
-    uint _e23 = lane;
-    local_1 = uint(_e23);
-    uint _e27[2] = local;
-    local_17 = _e27;
-    uint _e28 = local_1;
-    uint _e30 = local_17[1];
-    local_17[1] = (_e30 + _e28);
-    uint _e34 = local_17[0];
-    local_18 = uint(_e34);
-    uint _e38 = local_17[1];
-    local_19 = uint(_e38);
-    uint _e42 = local_19;
-    Packet_cuda_record_1_ _e44 = _group_0_binding_0_cs[_e42];
-    local_20 = _e44;
-    Packet_cuda_record_1_ _e45 = local_20;
-    local_16 = _e45;
-    Packet_cuda_record_1_ _e47 = local_16;
-    original = _e47;
-    Packet_cuda_record_1_ _e49 = original;
-    uint _e50 = lane;
-    Packet_cuda_record_1_ _e54 = adjust(_e49, (3 + int(_e50)));
-    changed = _e54;
+    uint _e17[2] = input_;
+    local = _e17;
+    local_1 = uint(lane);
+    uint _e21[2] = local;
+    local_17 = _e21;
+    uint _e23 = local_1;
+    uint _e25 = local_17[1];
+    local_17[1] = (_e25 + _e23);
+    uint _e29 = local_17[0];
+    local_18 = uint(_e29);
+    uint _e33 = local_17[1];
+    local_19 = uint(_e33);
+    uint _e36 = local_19;
+    Packet_cuda_record_1_ _e39 = _group_0_binding_0_cs[_e36];
+    local_20 = _e39;
+    Packet_cuda_record_1_ _e41 = local_20;
+    local_16 = _e41;
+    Packet_cuda_record_1_ _e43 = local_16;
+    original = _e43;
+    Packet_cuda_record_1_ _e45 = original;
+    Packet_cuda_record_1_ _e49 = adjust(_e45, (3 + int(lane)));
+    changed = _e49;
     {
         local_2.w = 7;
         local_2.x = 11;
-        int _e63 = local_2.w;
-        int _e64 = local_2.x;
-        uint _e71 = changed.samples[0].tag;
-        changed.samples[0].tag = (_e71 + uint((_e63 + _e64)));
+        int _e58 = local_2.w;
+        int _e59 = local_2.x;
+        uint _e66 = changed.samples[0].tag;
+        changed.samples[0].tag = (_e66 + uint((_e58 + _e59)));
     }
-    Packet_cuda_record_1_ _e73 = changed;
-    Packet_cuda_record_1_ _e74 = original;
-    Packet_cuda_record_1_ _e75 = operator_u002b(_e73, _e74);
-    combined = _e75;
-    uint _e78 = original.serial;
-    float _e85 = combined.weights[0][0];
-    combined.weights[0][0] = (_e85 + float(_e78));
-    uint _e88 = combined.serial;
-    combined.colour.w = float(_e88);
-    uint _e92 = lane;
-    slot = (_e92 + 1u);
-    uint _e97 = combined.serial;
-    uint _e100[2] = output_;
-    local_3 = _e100;
-    uint _e101 = slot;
-    local_4 = uint(_e101);
-    uint _e105[2] = local_3;
-    local_21 = _e105;
-    uint _e106 = local_4;
+    Packet_cuda_record_1_ _e68 = changed;
+    Packet_cuda_record_1_ _e69 = original;
+    Packet_cuda_record_1_ _e70 = operator_u002b(_e68, _e69);
+    combined = _e70;
+    uint _e73 = original.serial;
+    float _e80 = combined.weights[0][0];
+    combined.weights[0][0] = (_e80 + float(_e73));
+    uint _e83 = combined.serial;
+    combined.colour.w = float(_e83);
+    uint slot = (lane + 1u);
+    uint _e90 = combined.serial;
+    uint _e92[2] = output_;
+    local_3 = _e92;
+    local_4 = uint(slot);
+    uint _e96[2] = local_3;
+    local_21 = _e96;
+    uint _e98 = local_4;
+    uint _e100 = local_21[1];
+    local_21[1] = (_e100 + _e98);
+    uint _e104 = local_21[0];
+    local_22 = uint(_e104);
     uint _e108 = local_21[1];
-    local_21[1] = (_e108 + _e106);
-    uint _e112 = local_21[0];
-    local_22 = uint(_e112);
-    uint _e116 = local_21[1];
-    local_23 = uint(_e116);
-    uint _e119 = local_23;
-    _group_0_binding_1_cs[_e119].serial = _e97;
-    vec2 _e123 = combined.uv;
-    uint _e125[2] = output_;
-    local_5 = _e125;
-    uint _e126 = slot;
-    local_6 = uint(_e126);
-    uint _e130[2] = local_5;
-    local_24 = _e130;
-    uint _e131 = local_6;
+    local_23 = uint(_e108);
+    uint _e111 = local_23;
+    _group_0_binding_1_cs[_e111].serial = _e90;
+    vec2 _e116 = combined.uv;
+    uint _e117[2] = output_;
+    local_5 = _e117;
+    local_6 = uint(slot);
+    uint _e121[2] = local_5;
+    local_24 = _e121;
+    uint _e123 = local_6;
+    uint _e125 = local_24[1];
+    local_24[1] = (_e125 + _e123);
+    uint _e129 = local_24[0];
+    local_25 = uint(_e129);
     uint _e133 = local_24[1];
-    local_24[1] = (_e133 + _e131);
-    uint _e137 = local_24[0];
-    local_25 = uint(_e137);
-    uint _e141 = local_24[1];
-    local_26 = uint(_e141);
-    uint _e144 = local_26;
-    _group_0_binding_1_cs[_e144].uv = _e123;
+    local_26 = uint(_e133);
+    uint _e136 = local_26;
+    _group_0_binding_1_cs[_e136].uv = _e116;
     {
         sample_ = 0;
         bool loop_init = true;
         while(true) {
             if (!loop_init) {
-                int _e184 = sample_;
-                sample_ = (_e184 + 1);
+                int _e175 = sample_;
+                sample_ = (_e175 + 1);
             }
             loop_init = false;
-            int _e149 = sample_;
-            if ((_e149 < 2)) {
+            int _e141 = sample_;
+            if ((_e141 < 2)) {
             } else {
                 break;
             }
-            int _e153 = sample_;
-            Sample_cuda_record_0_ _e155 = combined.samples[_e153];
-            uint _e157[2] = output_;
-            local_7 = _e157;
-            uint _e158 = slot;
-            local_8 = uint(_e158);
-            int _e161 = sample_;
-            local_9 = uint(_e161);
-            uint _e165[2] = local_7;
-            local_27 = _e165;
-            uint _e166 = local_8;
-            uint _e168 = local_27[1];
-            local_27[1] = (_e168 + _e166);
-            uint _e172 = local_27[0];
-            local_28 = uint(_e172);
-            uint _e176 = local_27[1];
-            local_29 = uint(_e176);
-            uint _e179 = local_29;
-            uint _e182 = local_9;
-            _group_0_binding_1_cs[_e179].samples[_e182] = _e155;
+            int _e145 = sample_;
+            Sample_cuda_record_0_ _e147 = combined.samples[_e145];
+            uint _e148[2] = output_;
+            local_7 = _e148;
+            local_8 = uint(slot);
+            int _e152 = sample_;
+            local_9 = uint(_e152);
+            uint _e155[2] = local_7;
+            local_27 = _e155;
+            uint _e157 = local_8;
+            uint _e159 = local_27[1];
+            local_27[1] = (_e159 + _e157);
+            uint _e163 = local_27[0];
+            local_28 = uint(_e163);
+            uint _e167 = local_27[1];
+            local_29 = uint(_e167);
+            uint _e170 = local_29;
+            uint _e173 = local_9;
+            _group_0_binding_1_cs[_e170].samples[_e173] = _e147;
         }
     }
     {
@@ -237,12 +225,12 @@ void main() {
         bool loop_init_1 = true;
         while(true) {
             if (!loop_init_1) {
-                int _e239 = row;
-                row = (_e239 + 1);
+                int _e229 = row;
+                row = (_e229 + 1);
             }
             loop_init_1 = false;
-            int _e189 = row;
-            if ((_e189 < 2)) {
+            int _e180 = row;
+            if ((_e180 < 2)) {
             } else {
                 break;
             }
@@ -251,58 +239,56 @@ void main() {
                 bool loop_init_2 = true;
                 while(true) {
                     if (!loop_init_2) {
-                        int _e236 = column;
-                        column = (_e236 + 1);
+                        int _e226 = column;
+                        column = (_e226 + 1);
                     }
                     loop_init_2 = false;
-                    int _e194 = column;
-                    if ((_e194 < 2)) {
+                    int _e185 = column;
+                    if ((_e185 < 2)) {
                     } else {
                         break;
                     }
+                    int _e189 = row;
+                    int _e191 = column;
+                    float _e193 = combined.weights[_e189][_e191];
+                    uint _e194[2] = output_;
+                    local_10 = _e194;
+                    local_11 = uint(slot);
                     int _e198 = row;
-                    int _e200 = column;
-                    float _e202 = combined.weights[_e198][_e200];
-                    uint _e204[2] = output_;
-                    local_10 = _e204;
-                    uint _e205 = slot;
-                    local_11 = uint(_e205);
-                    int _e208 = row;
-                    local_12 = uint(_e208);
-                    int _e211 = column;
-                    local_13 = uint(_e211);
-                    uint _e215[2] = local_10;
-                    local_30 = _e215;
-                    uint _e216 = local_11;
-                    uint _e218 = local_30[1];
-                    local_30[1] = (_e218 + _e216);
-                    uint _e222 = local_30[0];
-                    local_31 = uint(_e222);
-                    uint _e226 = local_30[1];
-                    local_32 = uint(_e226);
-                    uint _e229 = local_32;
-                    uint _e232 = local_12;
-                    uint _e234 = local_13;
-                    _group_0_binding_1_cs[_e229].weights[_e232][_e234] = _e202;
+                    local_12 = uint(_e198);
+                    int _e201 = column;
+                    local_13 = uint(_e201);
+                    uint _e204[2] = local_10;
+                    local_30 = _e204;
+                    uint _e206 = local_11;
+                    uint _e208 = local_30[1];
+                    local_30[1] = (_e208 + _e206);
+                    uint _e212 = local_30[0];
+                    local_31 = uint(_e212);
+                    uint _e216 = local_30[1];
+                    local_32 = uint(_e216);
+                    uint _e219 = local_32;
+                    uint _e222 = local_12;
+                    uint _e224 = local_13;
+                    _group_0_binding_1_cs[_e219].weights[_e222][_e224] = _e193;
                 }
             }
         }
     }
-    vec4 _e243 = combined.colour;
-    uint _e245[2] = output_;
-    local_14 = _e245;
-    uint _e246 = slot;
-    local_15 = uint(_e246);
-    uint _e250[2] = local_14;
-    local_33 = _e250;
-    uint _e251 = local_15;
-    uint _e253 = local_33[1];
-    local_33[1] = (_e253 + _e251);
-    uint _e257 = local_33[0];
-    local_34 = uint(_e257);
-    uint _e261 = local_33[1];
-    local_35 = uint(_e261);
-    uint _e264 = local_35;
-    _group_0_binding_1_cs[_e264].colour = _e243;
+    vec4 _e233 = combined.colour;
+    uint _e234[2] = output_;
+    local_14 = _e234;
+    local_15 = uint(slot);
+    uint _e238[2] = local_14;
+    local_33 = _e238;
+    uint _e240 = local_15;
+    uint _e242 = local_33[1];
+    local_33[1] = (_e242 + _e240);
+    uint _e246 = local_33[0];
+    local_34 = uint(_e246);
+    uint _e250 = local_33[1];
+    local_35 = uint(_e250);
+    uint _e253 = local_35;
+    _group_0_binding_1_cs[_e253].colour = _e233;
 }
 

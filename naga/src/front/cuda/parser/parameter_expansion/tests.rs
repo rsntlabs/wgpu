@@ -65,11 +65,12 @@ fn branch_cache_rematerializes_values_and_deferred_references() {
     parser.function = FunctionContext::new(FunctionKind::Device);
     parser.prepare_parameter_bindings(span).unwrap();
     let locals = parser
-        .clone_invocation_locals(&function, Some(&state), span)
+        .clone_invocation_locals(&function, Some(&state), None, span)
         .unwrap();
     let mut invocation = Invocation {
         source: &function,
         source_state: Some(&state),
+        promotions: None,
         arguments: Vec::new(),
         expressions: alloc::vec![None; function.expressions.len()],
         mapped_handles: Vec::new(),

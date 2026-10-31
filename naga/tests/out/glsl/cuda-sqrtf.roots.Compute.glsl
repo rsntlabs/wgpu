@@ -70,43 +70,28 @@ uint _naga_sqrtf(uint input_bits) {
 }
 
 float root_1(float value_1) {
-    float value_2 = 0.0;
-    value_2 = value_1;
-    float _e2 = value_2;
-    uint _e4 = _naga_sqrtf(floatBitsToUint(_e2));
-    return uintBitsToFloat(_e4);
+    uint _e2 = _naga_sqrtf(floatBitsToUint(value_1));
+    return uintBitsToFloat(_e2);
 }
 
-float root_2(int value_3) {
-    int value_4 = 0;
-    value_4 = value_3;
-    int _e2 = value_4;
-    uint _e5 = _naga_sqrtf(floatBitsToUint(float(_e2)));
-    return uintBitsToFloat(_e5);
+float root_2(int value_2) {
+    uint _e3 = _naga_sqrtf(floatBitsToUint(float(value_2)));
+    return uintBitsToFloat(_e3);
 }
 
-float root_3(uint value_5) {
-    uint value_6 = 0u;
-    value_6 = value_5;
-    uint _e2 = value_6;
-    uint _e5 = _naga_sqrtf(floatBitsToUint(float(_e2)));
-    return uintBitsToFloat(_e5);
+float root_3(uint value_3) {
+    uint _e3 = _naga_sqrtf(floatBitsToUint(float(value_3)));
+    return uintBitsToFloat(_e3);
 }
 
-float root_4(bool value_7) {
-    bool value_8 = false;
-    value_8 = value_7;
-    bool _e2 = value_8;
-    uint _e5 = _naga_sqrtf(floatBitsToUint(float(_e2)));
-    return uintBitsToFloat(_e5);
+float root_4(bool value_4) {
+    uint _e3 = _naga_sqrtf(floatBitsToUint(float(value_4)));
+    return uintBitsToFloat(_e3);
 }
 
-int sqrtf(bool value_9) {
-    bool value_10 = false;
+int sqrtf(bool value_5) {
     int local_160 = 0;
-    value_10 = value_9;
-    bool _e2 = value_10;
-    if (_e2) {
+    if (value_5) {
         local_160 = 7;
     } else {
         local_160 = 9;
@@ -116,13 +101,7 @@ int sqrtf(bool value_9) {
 }
 
 float sqrtf_1(float first, float second) {
-    float first_1 = 0.0;
-    float second_1 = 0.0;
-    first_1 = first;
-    second_1 = second;
-    float _e4 = first_1;
-    float _e5 = second_1;
-    return (_e4 + _e5);
+    return (first + second);
 }
 
 void main() {

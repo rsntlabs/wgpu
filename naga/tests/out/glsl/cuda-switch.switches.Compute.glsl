@@ -9,54 +9,68 @@ layout(std430) buffer type_3_block_0Compute { int _group_0_binding_0_cs[]; };
 
 
 int case_chain(int selector) {
-    int selector_1 = 0;
     int result = 0;
-    selector_1 = selector;
     result = 0;
-    int _e4 = selector_1;
-    switch(_e4) {
+    switch(selector) {
         case -1: {
+            int _e3 = result;
+            result = (_e3 + 1);
             int _e6 = result;
-            result = (_e6 + 1);
+            result = (_e6 + 10);
+            int _e9 = result;
+            result = (_e9 + 100);
+            break;
         }
         case 0: {
-            int _e9 = result;
-            result = (_e9 + 10);
+            int _e12 = result;
+            result = (_e12 + 10);
+            int _e15 = result;
+            result = (_e15 + 100);
+            break;
         }
         case 1: {
-            int _e12 = result;
-            result = (_e12 + 100);
+            int _e18 = result;
+            result = (_e18 + 100);
             break;
         }
         default: {
-            int _e15 = result;
-            result = (_e15 + 1000);
+            int _e21 = result;
+            result = (_e21 + 1000);
+            int _e24 = result;
+            result = (_e24 + 10000);
+            break;
         }
         case 2: {
-            int _e18 = result;
-            result = (_e18 + 10000);
+            int _e27 = result;
+            result = (_e27 + 10000);
             break;
         }
     }
-    int _e20 = result;
-    return _e20;
+    int _e30 = result;
+    return _e30;
 }
 
-int grouped_labels(uint selector_2) {
-    uint selector_3 = 0u;
+int grouped_labels(uint selector_1) {
     int result_1 = 0;
-    selector_3 = selector_2;
     result_1 = 0;
-    uint _e4 = selector_3;
-    switch(_e4) {
-        case 0u:
-        case 1u: {
+    switch(selector_1) {
+        case 0u: {
+            int _e3 = result_1;
+            result_1 = (_e3 + 3);
             int _e6 = result_1;
-            result_1 = (_e6 + 3);
+            result_1 = (_e6 + 5);
+            break;
+        }
+        case 1u: {
+            int _e9 = result_1;
+            result_1 = (_e9 + 3);
+            int _e12 = result_1;
+            result_1 = (_e12 + 5);
+            break;
         }
         case 2u: {
-            int _e9 = result_1;
-            result_1 = (_e9 + 5);
+            int _e15 = result_1;
+            result_1 = (_e15 + 5);
             break;
         }
         default: {
@@ -64,38 +78,38 @@ int grouped_labels(uint selector_2) {
             break;
         }
     }
-    int _e12 = result_1;
-    return _e12;
+    int _e19 = result_1;
+    return _e19;
 }
 
 int nested_switches(int outer, int inner) {
-    int outer_1 = 0;
-    int inner_1 = 0;
     int result_2 = 0;
-    outer_1 = outer;
-    inner_1 = inner;
     result_2 = 0;
-    int _e6 = outer_1;
-    switch(_e6) {
+    switch(outer) {
         case 0: {
-            int _e8 = result_2;
-            result_2 = (_e8 + 1);
-            int _e10 = inner_1;
-            switch(_e10) {
+            int _e4 = result_2;
+            result_2 = (_e4 + 1);
+            switch(inner) {
                 case 0: {
-                    int _e12 = result_2;
-                    result_2 = (_e12 + 10);
+                    int _e7 = result_2;
+                    result_2 = (_e7 + 10);
+                    int _e10 = result_2;
+                    result_2 = (_e10 + 20);
+                    break;
                 }
                 default: {
-                    int _e15 = result_2;
-                    result_2 = (_e15 + 20);
+                    int _e13 = result_2;
+                    result_2 = (_e13 + 20);
                     break;
                 }
             }
+            int _e16 = result_2;
+            result_2 = (_e16 + 100);
+            break;
         }
         case 1: {
-            int _e18 = result_2;
-            result_2 = (_e18 + 100);
+            int _e19 = result_2;
+            result_2 = (_e19 + 100);
             break;
         }
         default: {
@@ -103,40 +117,44 @@ int nested_switches(int outer, int inner) {
             break;
         }
     }
-    int _e21 = result_2;
-    return _e21;
+    int _e23 = result_2;
+    return _e23;
 }
 
-int loop_jumps(int selector_4) {
-    int selector_5 = 0;
+int loop_jumps(int selector_2) {
     int result_3 = 0;
     int iteration = 0;
-    selector_5 = selector_4;
     result_3 = 0;
     {
         iteration = 0;
         bool loop_init = true;
         while(true) {
             if (!loop_init) {
-                int _e9 = iteration;
-                iteration = (_e9 + 1);
+                int _e34 = iteration;
+                iteration = (_e34 + 1);
             }
             loop_init = false;
-            int _e7 = iteration;
-            if ((_e7 < 4)) {
+            int _e5 = iteration;
+            if ((_e5 < 4)) {
             } else {
                 break;
             }
-            int _e12 = selector_5;
-            switch(_e12) {
+            switch(selector_2) {
                 case 0: {
-                    int _e14 = iteration;
-                    if ((_e14 == 1)) {
+                    int _e8 = iteration;
+                    if ((_e8 == 1)) {
                         continue;
                     }
-                    int _e17 = iteration;
+                    int _e11 = iteration;
+                    int _e14 = result_3;
+                    result_3 = (_e14 + (_e11 + 1));
+                    int _e16 = iteration;
+                    if ((_e16 == 2)) {
+                        break;
+                    }
                     int _e19 = result_3;
-                    result_3 = (_e19 + (_e17 + 1));
+                    result_3 = (_e19 + 10);
+                    break;
                 }
                 case 1: {
                     int _e22 = iteration;
@@ -157,38 +175,39 @@ int loop_jumps(int selector_4) {
             result_3 = (_e31 + 1000);
         }
     }
-    int _e33 = result_3;
-    return _e33;
+    int _e37 = result_3;
+    return _e37;
 }
 
-int terminal_paths(int selector_6, int flag) {
-    int selector_7 = 0;
-    int flag_1 = 0;
+int terminal_paths(int selector_3, int flag) {
     int result_4 = 0;
-    selector_7 = selector_6;
-    flag_1 = flag;
     result_4 = 0;
-    int _e6 = selector_7;
-    switch(_e6) {
+    switch(selector_3) {
         case 0: {
-            int _e8 = flag_1;
-            if ((_e8 != 0)) {
+            if ((flag != 0)) {
                 return 3;
             }
-            int _e12 = result_4;
-            result_4 = (_e12 + 1);
+            int _e7 = result_4;
+            result_4 = (_e7 + 1);
+            int _e10 = result_4;
+            return (_e10 + 5);
         }
         case 1: {
-            int _e15 = result_4;
-            return (_e15 + 5);
+            int _e13 = result_4;
+            return (_e13 + 5);
         }
         default: {
             result_4 = 9;
+            {
+                int _e17 = result_4;
+                return (_e17 + 10);
+            }
+            break;
         }
         case 2: {
             {
-                int _e19 = result_4;
-                return (_e19 + 10);
+                int _e20 = result_4;
+                return (_e20 + 10);
             }
             break;
         }
@@ -196,72 +215,100 @@ int terminal_paths(int selector_6, int flag) {
 }
 
 int update_value(int value, int token) {
-    int value_1 = 0;
-    int token_1 = 0;
-    value_1 = value;
-    token_1 = token;
-    int _e4 = value_1;
-    int _e5 = token_1;
-    return (_e4 + _e5);
+    return (value + token);
 }
 
-ivec2 call_results(int selector_8, int counter_1) {
-    int selector_9 = 0;
+ivec2 call_results(int selector_4, int counter_1) {
     int counter_2 = 0;
     int result_5 = 0;
     int named_value = 0;
     int named_value_1 = 0;
     int named_value_2 = 0;
-    selector_9 = selector_8;
     counter_2 = counter_1;
     result_5 = 2;
-    int _e6 = selector_9;
-    switch(_e6) {
+    switch(selector_4) {
         case 0: {
             {
-                int _e8 = result_5;
+                int _e5 = result_5;
+                int _e6 = counter_2;
+                counter_2 = (_e6 + 1);
                 int _e9 = counter_2;
-                counter_2 = (_e9 + 1);
-                int _e12 = counter_2;
-                int _e13 = update_value(_e8, _e12);
-                named_value = _e13;
-                int _e14 = named_value;
-                int _e15 = named_value;
-                result_5 = (_e14 + _e15);
+                int _e10 = update_value(_e5, _e9);
+                named_value = _e10;
+                int _e12 = named_value;
+                int _e13 = named_value;
+                result_5 = (_e12 + _e13);
             }
+            {
+                int _e15 = result_5;
+                int _e16 = counter_2;
+                counter_2 = (_e16 + 1);
+                int _e19 = counter_2;
+                int _e20 = update_value(_e15, _e19);
+                named_value_1 = _e20;
+                int _e22 = named_value_1;
+                int _e23 = named_value_1;
+                result_5 = (_e22 * _e23);
+            }
+            {
+                int _e25 = result_5;
+                int _e26 = counter_2;
+                counter_2 = (_e26 + 1);
+                int _e29 = counter_2;
+                int _e30 = update_value(_e25, _e29);
+                named_value_2 = _e30;
+                int _e32 = named_value_2;
+                int _e33 = named_value_2;
+                result_5 = (_e32 + _e33);
+                break;
+            }
+            break;
         }
         case 1: {
             {
-                int _e18 = result_5;
-                int _e19 = counter_2;
-                counter_2 = (_e19 + 1);
-                int _e22 = counter_2;
-                int _e23 = update_value(_e18, _e22);
-                named_value_1 = _e23;
-                int _e24 = named_value_1;
-                int _e25 = named_value_1;
-                result_5 = (_e24 * _e25);
+                int _e35 = result_5;
+                int _e36 = counter_2;
+                counter_2 = (_e36 + 1);
+                int _e39 = counter_2;
+                int _e40 = update_value(_e35, _e39);
+                named_value_1 = _e40;
+                int _e42 = named_value_1;
+                int _e43 = named_value_1;
+                result_5 = (_e42 * _e43);
             }
+            {
+                int _e45 = result_5;
+                int _e46 = counter_2;
+                counter_2 = (_e46 + 1);
+                int _e49 = counter_2;
+                int _e50 = update_value(_e45, _e49);
+                named_value_2 = _e50;
+                int _e52 = named_value_2;
+                int _e53 = named_value_2;
+                result_5 = (_e52 + _e53);
+                break;
+            }
+            break;
         }
         default: {
             {
-                int _e28 = result_5;
-                int _e29 = counter_2;
-                counter_2 = (_e29 + 1);
-                int _e32 = counter_2;
-                int _e33 = update_value(_e28, _e32);
-                named_value_2 = _e33;
-                int _e34 = named_value_2;
-                int _e35 = named_value_2;
-                result_5 = (_e34 + _e35);
+                int _e55 = result_5;
+                int _e56 = counter_2;
+                counter_2 = (_e56 + 1);
+                int _e59 = counter_2;
+                int _e60 = update_value(_e55, _e59);
+                named_value_2 = _e60;
+                int _e62 = named_value_2;
+                int _e63 = named_value_2;
+                result_5 = (_e62 + _e63);
                 break;
             }
             break;
         }
     }
-    int _e37 = result_5;
-    int _e38 = counter_2;
-    return ivec2(_e37, _e38);
+    int _e65 = result_5;
+    int _e66 = counter_2;
+    return ivec2(_e65, _e66);
 }
 
 void main() {

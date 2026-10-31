@@ -16,56 +16,70 @@ struct type_4 {
 int case_chain(
     int selector
 ) {
-    int selector_1 = {};
     int result = {};
-    selector_1 = selector;
     result = 0;
-    int _e4 = selector_1;
-    switch(_e4) {
+    switch(selector) {
         case -1: {
+            int _e3 = result;
+            result = as_type<int>(as_type<uint>(_e3) + as_type<uint>(1));
             int _e6 = result;
-            result = as_type<int>(as_type<uint>(_e6) + as_type<uint>(1));
+            result = as_type<int>(as_type<uint>(_e6) + as_type<uint>(10));
+            int _e9 = result;
+            result = as_type<int>(as_type<uint>(_e9) + as_type<uint>(100));
+            break;
         }
         case 0: {
-            int _e9 = result;
-            result = as_type<int>(as_type<uint>(_e9) + as_type<uint>(10));
+            int _e12 = result;
+            result = as_type<int>(as_type<uint>(_e12) + as_type<uint>(10));
+            int _e15 = result;
+            result = as_type<int>(as_type<uint>(_e15) + as_type<uint>(100));
+            break;
         }
         case 1: {
-            int _e12 = result;
-            result = as_type<int>(as_type<uint>(_e12) + as_type<uint>(100));
+            int _e18 = result;
+            result = as_type<int>(as_type<uint>(_e18) + as_type<uint>(100));
             break;
         }
         default: {
-            int _e15 = result;
-            result = as_type<int>(as_type<uint>(_e15) + as_type<uint>(1000));
+            int _e21 = result;
+            result = as_type<int>(as_type<uint>(_e21) + as_type<uint>(1000));
+            int _e24 = result;
+            result = as_type<int>(as_type<uint>(_e24) + as_type<uint>(10000));
+            break;
         }
         case 2: {
-            int _e18 = result;
-            result = as_type<int>(as_type<uint>(_e18) + as_type<uint>(10000));
+            int _e27 = result;
+            result = as_type<int>(as_type<uint>(_e27) + as_type<uint>(10000));
             break;
         }
     }
-    int _e20 = result;
-    return _e20;
+    int _e30 = result;
+    return _e30;
 }
 
 int grouped_labels(
-    uint selector_2
+    uint selector_1
 ) {
-    uint selector_3 = {};
     int result_1 = {};
-    selector_3 = selector_2;
     result_1 = 0;
-    uint _e4 = selector_3;
-    switch(_e4) {
-        case 0u:
-        case 1u: {
+    switch(selector_1) {
+        case 0u: {
+            int _e3 = result_1;
+            result_1 = as_type<int>(as_type<uint>(_e3) + as_type<uint>(3));
             int _e6 = result_1;
-            result_1 = as_type<int>(as_type<uint>(_e6) + as_type<uint>(3));
+            result_1 = as_type<int>(as_type<uint>(_e6) + as_type<uint>(5));
+            break;
+        }
+        case 1u: {
+            int _e9 = result_1;
+            result_1 = as_type<int>(as_type<uint>(_e9) + as_type<uint>(3));
+            int _e12 = result_1;
+            result_1 = as_type<int>(as_type<uint>(_e12) + as_type<uint>(5));
+            break;
         }
         case 2u: {
-            int _e9 = result_1;
-            result_1 = as_type<int>(as_type<uint>(_e9) + as_type<uint>(5));
+            int _e15 = result_1;
+            result_1 = as_type<int>(as_type<uint>(_e15) + as_type<uint>(5));
             break;
         }
         default: {
@@ -73,41 +87,41 @@ int grouped_labels(
             break;
         }
     }
-    int _e12 = result_1;
-    return _e12;
+    int _e19 = result_1;
+    return _e19;
 }
 
 int nested_switches(
     int outer,
     int inner
 ) {
-    int outer_1 = {};
-    int inner_1 = {};
     int result_2 = {};
-    outer_1 = outer;
-    inner_1 = inner;
     result_2 = 0;
-    int _e6 = outer_1;
-    switch(_e6) {
+    switch(outer) {
         case 0: {
-            int _e8 = result_2;
-            result_2 = as_type<int>(as_type<uint>(_e8) + as_type<uint>(1));
-            int _e10 = inner_1;
-            switch(_e10) {
+            int _e4 = result_2;
+            result_2 = as_type<int>(as_type<uint>(_e4) + as_type<uint>(1));
+            switch(inner) {
                 case 0: {
-                    int _e12 = result_2;
-                    result_2 = as_type<int>(as_type<uint>(_e12) + as_type<uint>(10));
+                    int _e7 = result_2;
+                    result_2 = as_type<int>(as_type<uint>(_e7) + as_type<uint>(10));
+                    int _e10 = result_2;
+                    result_2 = as_type<int>(as_type<uint>(_e10) + as_type<uint>(20));
+                    break;
                 }
                 default: {
-                    int _e15 = result_2;
-                    result_2 = as_type<int>(as_type<uint>(_e15) + as_type<uint>(20));
+                    int _e13 = result_2;
+                    result_2 = as_type<int>(as_type<uint>(_e13) + as_type<uint>(20));
                     break;
                 }
             }
+            int _e16 = result_2;
+            result_2 = as_type<int>(as_type<uint>(_e16) + as_type<uint>(100));
+            break;
         }
         case 1: {
-            int _e18 = result_2;
-            result_2 = as_type<int>(as_type<uint>(_e18) + as_type<uint>(100));
+            int _e19 = result_2;
+            result_2 = as_type<int>(as_type<uint>(_e19) + as_type<uint>(100));
             break;
         }
         default: {
@@ -115,17 +129,15 @@ int nested_switches(
             break;
         }
     }
-    int _e21 = result_2;
-    return _e21;
+    int _e23 = result_2;
+    return _e23;
 }
 
 int loop_jumps(
-    int selector_4
+    int selector_2
 ) {
-    int selector_5 = {};
     int result_3 = {};
     int iteration = {};
-    selector_5 = selector_4;
     result_3 = 0;
     {
         iteration = 0;
@@ -135,25 +147,31 @@ int loop_jumps(
             if (metal::all(loop_bound == uint2(0u))) { break; }
             loop_bound -= uint2(loop_bound.y == 0u, 1u);
             if (!loop_init) {
-                int _e9 = iteration;
-                iteration = as_type<int>(as_type<uint>(_e9) + as_type<uint>(1));
+                int _e34 = iteration;
+                iteration = as_type<int>(as_type<uint>(_e34) + as_type<uint>(1));
             }
             loop_init = false;
-            int _e7 = iteration;
-            if (_e7 < 4) {
+            int _e5 = iteration;
+            if (_e5 < 4) {
             } else {
                 break;
             }
-            int _e12 = selector_5;
-            switch(_e12) {
+            switch(selector_2) {
                 case 0: {
-                    int _e14 = iteration;
-                    if (_e14 == 1) {
+                    int _e8 = iteration;
+                    if (_e8 == 1) {
                         continue;
                     }
-                    int _e17 = iteration;
+                    int _e11 = iteration;
+                    int _e14 = result_3;
+                    result_3 = as_type<int>(as_type<uint>(_e14) + as_type<uint>(as_type<int>(as_type<uint>(_e11) + as_type<uint>(1))));
+                    int _e16 = iteration;
+                    if (_e16 == 2) {
+                        break;
+                    }
                     int _e19 = result_3;
-                    result_3 = as_type<int>(as_type<uint>(_e19) + as_type<uint>(as_type<int>(as_type<uint>(_e17) + as_type<uint>(1))));
+                    result_3 = as_type<int>(as_type<uint>(_e19) + as_type<uint>(10));
+                    break;
                 }
                 case 1: {
                     int _e22 = iteration;
@@ -174,41 +192,42 @@ int loop_jumps(
             result_3 = as_type<int>(as_type<uint>(_e31) + as_type<uint>(1000));
         }
     }
-    int _e33 = result_3;
-    return _e33;
+    int _e37 = result_3;
+    return _e37;
 }
 
 int terminal_paths(
-    int selector_6,
+    int selector_3,
     int flag
 ) {
-    int selector_7 = {};
-    int flag_1 = {};
     int result_4 = {};
-    selector_7 = selector_6;
-    flag_1 = flag;
     result_4 = 0;
-    int _e6 = selector_7;
-    switch(_e6) {
+    switch(selector_3) {
         case 0: {
-            int _e8 = flag_1;
-            if (_e8 != 0) {
+            if (flag != 0) {
                 return 3;
             }
-            int _e12 = result_4;
-            result_4 = as_type<int>(as_type<uint>(_e12) + as_type<uint>(1));
+            int _e7 = result_4;
+            result_4 = as_type<int>(as_type<uint>(_e7) + as_type<uint>(1));
+            int _e10 = result_4;
+            return as_type<int>(as_type<uint>(_e10) + as_type<uint>(5));
         }
         case 1: {
-            int _e15 = result_4;
-            return as_type<int>(as_type<uint>(_e15) + as_type<uint>(5));
+            int _e13 = result_4;
+            return as_type<int>(as_type<uint>(_e13) + as_type<uint>(5));
         }
         default: {
             result_4 = 9;
+            {
+                int _e17 = result_4;
+                return as_type<int>(as_type<uint>(_e17) + as_type<uint>(10));
+            }
+            break;
         }
         case 2: {
             {
-                int _e19 = result_4;
-                return as_type<int>(as_type<uint>(_e19) + as_type<uint>(10));
+                int _e20 = result_4;
+                return as_type<int>(as_type<uint>(_e20) + as_type<uint>(10));
             }
             break;
         }
@@ -219,75 +238,103 @@ int update_value(
     int value,
     int token
 ) {
-    int value_1 = {};
-    int token_1 = {};
-    value_1 = value;
-    token_1 = token;
-    int _e4 = value_1;
-    int _e5 = token_1;
-    return as_type<int>(as_type<uint>(_e4) + as_type<uint>(_e5));
+    return as_type<int>(as_type<uint>(value) + as_type<uint>(token));
 }
 
 metal::int2 call_results(
-    int selector_8,
+    int selector_4,
     int counter_1
 ) {
-    int selector_9 = {};
     int counter_2 = {};
     int result_5 = {};
     int named_value = {};
     int named_value_1 = {};
     int named_value_2 = {};
-    selector_9 = selector_8;
     counter_2 = counter_1;
     result_5 = 2;
-    int _e6 = selector_9;
-    switch(_e6) {
+    switch(selector_4) {
         case 0: {
             {
-                int _e8 = result_5;
+                int _e5 = result_5;
+                int _e6 = counter_2;
+                counter_2 = as_type<int>(as_type<uint>(_e6) + as_type<uint>(1));
                 int _e9 = counter_2;
-                counter_2 = as_type<int>(as_type<uint>(_e9) + as_type<uint>(1));
-                int _e12 = counter_2;
-                int _e13 = update_value(_e8, _e12);
-                named_value = _e13;
-                int _e14 = named_value;
-                int _e15 = named_value;
-                result_5 = as_type<int>(as_type<uint>(_e14) + as_type<uint>(_e15));
+                int _e10 = update_value(_e5, _e9);
+                named_value = _e10;
+                int _e12 = named_value;
+                int _e13 = named_value;
+                result_5 = as_type<int>(as_type<uint>(_e12) + as_type<uint>(_e13));
             }
+            {
+                int _e15 = result_5;
+                int _e16 = counter_2;
+                counter_2 = as_type<int>(as_type<uint>(_e16) + as_type<uint>(1));
+                int _e19 = counter_2;
+                int _e20 = update_value(_e15, _e19);
+                named_value_1 = _e20;
+                int _e22 = named_value_1;
+                int _e23 = named_value_1;
+                result_5 = as_type<int>(as_type<uint>(_e22) * as_type<uint>(_e23));
+            }
+            {
+                int _e25 = result_5;
+                int _e26 = counter_2;
+                counter_2 = as_type<int>(as_type<uint>(_e26) + as_type<uint>(1));
+                int _e29 = counter_2;
+                int _e30 = update_value(_e25, _e29);
+                named_value_2 = _e30;
+                int _e32 = named_value_2;
+                int _e33 = named_value_2;
+                result_5 = as_type<int>(as_type<uint>(_e32) + as_type<uint>(_e33));
+                break;
+            }
+            break;
         }
         case 1: {
             {
-                int _e18 = result_5;
-                int _e19 = counter_2;
-                counter_2 = as_type<int>(as_type<uint>(_e19) + as_type<uint>(1));
-                int _e22 = counter_2;
-                int _e23 = update_value(_e18, _e22);
-                named_value_1 = _e23;
-                int _e24 = named_value_1;
-                int _e25 = named_value_1;
-                result_5 = as_type<int>(as_type<uint>(_e24) * as_type<uint>(_e25));
+                int _e35 = result_5;
+                int _e36 = counter_2;
+                counter_2 = as_type<int>(as_type<uint>(_e36) + as_type<uint>(1));
+                int _e39 = counter_2;
+                int _e40 = update_value(_e35, _e39);
+                named_value_1 = _e40;
+                int _e42 = named_value_1;
+                int _e43 = named_value_1;
+                result_5 = as_type<int>(as_type<uint>(_e42) * as_type<uint>(_e43));
             }
+            {
+                int _e45 = result_5;
+                int _e46 = counter_2;
+                counter_2 = as_type<int>(as_type<uint>(_e46) + as_type<uint>(1));
+                int _e49 = counter_2;
+                int _e50 = update_value(_e45, _e49);
+                named_value_2 = _e50;
+                int _e52 = named_value_2;
+                int _e53 = named_value_2;
+                result_5 = as_type<int>(as_type<uint>(_e52) + as_type<uint>(_e53));
+                break;
+            }
+            break;
         }
         default: {
             {
-                int _e28 = result_5;
-                int _e29 = counter_2;
-                counter_2 = as_type<int>(as_type<uint>(_e29) + as_type<uint>(1));
-                int _e32 = counter_2;
-                int _e33 = update_value(_e28, _e32);
-                named_value_2 = _e33;
-                int _e34 = named_value_2;
-                int _e35 = named_value_2;
-                result_5 = as_type<int>(as_type<uint>(_e34) + as_type<uint>(_e35));
+                int _e55 = result_5;
+                int _e56 = counter_2;
+                counter_2 = as_type<int>(as_type<uint>(_e56) + as_type<uint>(1));
+                int _e59 = counter_2;
+                int _e60 = update_value(_e55, _e59);
+                named_value_2 = _e60;
+                int _e62 = named_value_2;
+                int _e63 = named_value_2;
+                result_5 = as_type<int>(as_type<uint>(_e62) + as_type<uint>(_e63));
                 break;
             }
             break;
         }
     }
-    int _e37 = result_5;
-    int _e38 = counter_2;
-    return metal::int2(_e37, _e38);
+    int _e65 = result_5;
+    int _e66 = counter_2;
+    return metal::int2(_e65, _e66);
 }
 int naga_neg(int val) {
     return as_type<int>(-as_type<uint>(val));

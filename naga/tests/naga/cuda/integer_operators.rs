@@ -4,7 +4,7 @@ use naga::front::cuda::{parse_str, Options};
 
 const INTEGER_KERNEL: &str = include_str!("../../in/cuda/integer-operators.cu");
 
-use super::helpers::validate;
+use super::helpers::{source_binding_initializer, validate};
 
 fn scalar(
     module: &naga::Module,
@@ -186,15 +186,7 @@ fn cuda_integer_precedence_matches_cpp() {
             "__global__ void precedence() {{ int result = {source}; }}"
         ));
         let function = &module.entry_points[0].function;
-        let value = function
-            .body
-            .iter()
-            .filter_map(|statement| match *statement {
-                naga::Statement::Store { value, .. } => Some(without_cast(function, value)),
-                _ => None,
-            })
-            .next_back()
-            .unwrap();
+        let value = without_cast(function, source_binding_initializer(function, "result"));
         let naga::Expression::Binary { op, left, right } = function.expressions[value] else {
             panic!("{source}")
         };

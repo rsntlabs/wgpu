@@ -4,7 +4,7 @@ use naga::front::cuda::{parse_str, Options};
 
 const SCALE: &str = include_str!("../../in/cuda/scalar-parameters.cu");
 
-use super::helpers::validate;
+use super::helpers::{source_binding_initializer, validate};
 
 fn uniform_scalar(module: &naga::Module, global: &naga::GlobalVariable) -> naga::Scalar {
     assert_eq!(global.space, naga::AddressSpace::Uniform);
@@ -23,14 +23,35 @@ fn uniform_scalar(module: &naga::Module, global: &naga::GlobalVariable) -> naga:
 
 #[test]
 fn cuda_scalar_parameters_use_padded_uniform_blocks() {
-    let (module, _) =
+    let (module, info) =
         validate("__global__ void parameters(float factor, int offset, unsigned int count) {}");
     assert_eq!(module.global_variables.len(), 3);
     let expected = [naga::Scalar::F32, naga::Scalar::I32, naga::Scalar::U32];
-    for ((_, global), scalar) in module.global_variables.iter().zip(expected) {
+    let function = &module.entry_points[0].function;
+    for (((global_handle, global), scalar), name) in module
+        .global_variables
+        .iter()
+        .zip(expected)
+        .zip(["factor", "offset", "count"])
+    {
         assert_eq!(uniform_scalar(&module, global), scalar);
+        let value = source_binding_initializer(function, name);
+        assert_eq!(function.named_expressions[&value], name);
+        assert_eq!(
+            info.get_entry_point(0)[value].ty.inner_with(&module.types),
+            &naga::TypeInner::Scalar(scalar)
+        );
+        let naga::Expression::Load { pointer } = function.expressions[value] else {
+            panic!("parameter {name} must read its uniform field");
+        };
+        let naga::Expression::AccessIndex { base, index: 0 } = function.expressions[pointer] else {
+            panic!("parameter {name} must read its scalar field");
+        };
+        assert_eq!(
+            function.expressions[base],
+            naga::Expression::GlobalVariable(global_handle)
+        );
     }
-    assert_eq!(module.entry_points[0].function.local_variables.len(), 3);
 }
 
 #[test]

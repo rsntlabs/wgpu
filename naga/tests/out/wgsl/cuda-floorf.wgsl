@@ -2,80 +2,65 @@
 var<storage, read_write> out_1: array<u32>;
 
 fn floor_value(value_1: f32) -> f32 {
-    var value_2: f32;
     var local_181: u32;
 
-    value_2 = value_1;
-    let _e2 = value_2;
-    let _e3 = bitcast<u32>(_e2);
-    let _e8 = (_e3 & 2147483647u);
-    let _e10 = ((_e3 & 2147483648u) != 0u);
-    let _e17 = (1u << ((150u - (_e8 >> 23u)) & 31u));
-    let _e18 = (_e17 - 1u);
-    let _e22 = (_e3 & ~(_e18));
-    local_181 = select(select(select(select(_e22, (_e22 + _e17), (_e10 && ((_e3 & _e18) != 0u))), select(select(0u, 3212836864u, _e10), _e3, (_e8 == 0u)), (_e8 < 1065353216u)), _e3, (_e8 >= 1258291200u)), 2143289344u, (_e8 > 2139095040u));
-    let _e41 = local_181;
-    return bitcast<f32>(_e41);
+    let _e1 = bitcast<u32>(value_1);
+    let _e3 = (_e1 & 2147483647u);
+    let _e7 = ((_e1 & 2147483648u) != 0u);
+    let _e15 = (1u << ((150u - (_e3 >> 23u)) & 31u));
+    let _e16 = (_e15 - 1u);
+    let _e20 = (_e1 & ~(_e16));
+    local_181 = select(select(select(select(_e20, (_e20 + _e15), (_e7 && ((_e1 & _e16) != 0u))), select(select(0u, 3212836864u, _e7), _e1, (_e3 == 0u)), (_e3 < 1065353216u)), _e1, (_e3 >= 1258291200u)), 2143289344u, (_e3 > 2139095040u));
+    let _e39 = local_181;
+    return bitcast<f32>(_e39);
 }
 
-fn floor_value_1(value_3: i32) -> f32 {
-    var value_4: i32;
+fn floor_value_1(value_2: i32) -> f32 {
     var local_182: u32;
 
-    value_4 = value_3;
-    let _e2 = value_4;
-    let _e4 = bitcast<u32>(f32(_e2));
-    let _e9 = (_e4 & 2147483647u);
-    let _e11 = ((_e4 & 2147483648u) != 0u);
-    let _e18 = (1u << ((150u - (_e9 >> 23u)) & 31u));
-    let _e19 = (_e18 - 1u);
-    let _e23 = (_e4 & ~(_e19));
-    local_182 = select(select(select(select(_e23, (_e23 + _e18), (_e11 && ((_e4 & _e19) != 0u))), select(select(0u, 3212836864u, _e11), _e4, (_e9 == 0u)), (_e9 < 1065353216u)), _e4, (_e9 >= 1258291200u)), 2143289344u, (_e9 > 2139095040u));
-    let _e42 = local_182;
-    return bitcast<f32>(_e42);
+    let _e2 = bitcast<u32>(f32(value_2));
+    let _e4 = (_e2 & 2147483647u);
+    let _e8 = ((_e2 & 2147483648u) != 0u);
+    let _e16 = (1u << ((150u - (_e4 >> 23u)) & 31u));
+    let _e17 = (_e16 - 1u);
+    let _e21 = (_e2 & ~(_e17));
+    local_182 = select(select(select(select(_e21, (_e21 + _e16), (_e8 && ((_e2 & _e17) != 0u))), select(select(0u, 3212836864u, _e8), _e2, (_e4 == 0u)), (_e4 < 1065353216u)), _e2, (_e4 >= 1258291200u)), 2143289344u, (_e4 > 2139095040u));
+    let _e40 = local_182;
+    return bitcast<f32>(_e40);
 }
 
-fn floor_value_2(value_5: u32) -> f32 {
-    var value_6: u32;
+fn floor_value_2(value_3: u32) -> f32 {
     var local_183: u32;
 
-    value_6 = value_5;
-    let _e2 = value_6;
-    let _e4 = bitcast<u32>(f32(_e2));
-    let _e9 = (_e4 & 2147483647u);
-    let _e11 = ((_e4 & 2147483648u) != 0u);
-    let _e18 = (1u << ((150u - (_e9 >> 23u)) & 31u));
-    let _e19 = (_e18 - 1u);
-    let _e23 = (_e4 & ~(_e19));
-    local_183 = select(select(select(select(_e23, (_e23 + _e18), (_e11 && ((_e4 & _e19) != 0u))), select(select(0u, 3212836864u, _e11), _e4, (_e9 == 0u)), (_e9 < 1065353216u)), _e4, (_e9 >= 1258291200u)), 2143289344u, (_e9 > 2139095040u));
-    let _e42 = local_183;
-    return bitcast<f32>(_e42);
+    let _e2 = bitcast<u32>(f32(value_3));
+    let _e4 = (_e2 & 2147483647u);
+    let _e8 = ((_e2 & 2147483648u) != 0u);
+    let _e16 = (1u << ((150u - (_e4 >> 23u)) & 31u));
+    let _e17 = (_e16 - 1u);
+    let _e21 = (_e2 & ~(_e17));
+    local_183 = select(select(select(select(_e21, (_e21 + _e16), (_e8 && ((_e2 & _e17) != 0u))), select(select(0u, 3212836864u, _e8), _e2, (_e4 == 0u)), (_e4 < 1065353216u)), _e2, (_e4 >= 1258291200u)), 2143289344u, (_e4 > 2139095040u));
+    let _e40 = local_183;
+    return bitcast<f32>(_e40);
 }
 
-fn floor_value_3(value_7: bool) -> f32 {
-    var value_8: bool;
+fn floor_value_3(value_4: bool) -> f32 {
     var local_184: u32;
 
-    value_8 = value_7;
-    let _e2 = value_8;
-    let _e4 = bitcast<u32>(f32(_e2));
-    let _e9 = (_e4 & 2147483647u);
-    let _e11 = ((_e4 & 2147483648u) != 0u);
-    let _e18 = (1u << ((150u - (_e9 >> 23u)) & 31u));
-    let _e19 = (_e18 - 1u);
-    let _e23 = (_e4 & ~(_e19));
-    local_184 = select(select(select(select(_e23, (_e23 + _e18), (_e11 && ((_e4 & _e19) != 0u))), select(select(0u, 3212836864u, _e11), _e4, (_e9 == 0u)), (_e9 < 1065353216u)), _e4, (_e9 >= 1258291200u)), 2143289344u, (_e9 > 2139095040u));
-    let _e42 = local_184;
-    return bitcast<f32>(_e42);
+    let _e2 = bitcast<u32>(f32(value_4));
+    let _e4 = (_e2 & 2147483647u);
+    let _e8 = ((_e2 & 2147483648u) != 0u);
+    let _e16 = (1u << ((150u - (_e4 >> 23u)) & 31u));
+    let _e17 = (_e16 - 1u);
+    let _e21 = (_e2 & ~(_e17));
+    local_184 = select(select(select(select(_e21, (_e21 + _e16), (_e8 && ((_e2 & _e17) != 0u))), select(select(0u, 3212836864u, _e8), _e2, (_e4 == 0u)), (_e4 < 1065353216u)), _e2, (_e4 >= 1258291200u)), 2143289344u, (_e4 > 2139095040u));
+    let _e40 = local_184;
+    return bitcast<f32>(_e40);
 }
 
-fn floorf(value_9: bool) -> i32 {
-    var value_10: bool;
+fn floorf(value_5: bool) -> i32 {
     var local_185: i32;
 
-    value_10 = value_9;
-    let _e2 = value_10;
-    if _e2 {
+    if value_5 {
         local_185 = 7i;
     } else {
         local_185 = 9i;
@@ -85,14 +70,7 @@ fn floorf(value_9: bool) -> i32 {
 }
 
 fn floorf_1(first: f32, second: f32) -> f32 {
-    var first_1: f32;
-    var second_1: f32;
-
-    first_1 = first;
-    second_1 = second;
-    let _e4 = first_1;
-    let _e5 = second_1;
-    return (_e4 + _e5);
+    return (first + second);
 }
 
 @compute @workgroup_size(1, 1, 1)

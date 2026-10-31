@@ -38,6 +38,7 @@ mod multidimensional_arrays;
 mod multiply24;
 mod operator_addition;
 mod operator_functions;
+mod particles;
 mod pointer_assignments;
 mod pointer_parameters;
 mod pointer_updates;
@@ -47,6 +48,7 @@ mod prototypes;
 mod reference_bindings;
 mod reference_categories;
 mod saturate;
+mod scalar_promotion;
 mod shared_vectors;
 mod specifiers;
 mod sqrtf;
@@ -92,6 +94,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_MULTIPLY24,
         CUDA_OPERATOR_ADDITION,
         CUDA_OPERATOR_FUNCTIONS,
+        CUDA_PARTICLES,
         CUDA_POINTER_ASSIGNMENTS,
         CUDA_POINTER_PARAMETERS,
         CUDA_POINTER_UPDATES,
@@ -101,6 +104,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_REFERENCE_BINDINGS,
         CUDA_REFERENCE_CATEGORIES,
         CUDA_SATURATE,
+        CUDA_SCALAR_PROMOTION,
         CUDA_SHARED_VECTORS,
         CUDA_SPECIFIERS,
         CUDA_SQRTF,
@@ -307,6 +311,8 @@ static CUDA_OPERATOR_ADDITION: GpuTestConfiguration = configuration(operator_add
 #[apply(gpu_test!)]
 static CUDA_OPERATOR_FUNCTIONS: GpuTestConfiguration = configuration(operator_functions::cases);
 #[apply(gpu_test!)]
+static CUDA_PARTICLES: GpuTestConfiguration = configuration(particles::cases);
+#[apply(gpu_test!)]
 static CUDA_PREPROCESSING: GpuTestConfiguration = configuration(preprocessing::cases);
 #[apply(gpu_test!)]
 static CUDA_PREPROCESSING_CONDITIONS: GpuTestConfiguration =
@@ -325,6 +331,8 @@ static CUDA_REFERENCE_BINDINGS: GpuTestConfiguration = configuration(reference_b
 static CUDA_REFERENCE_CATEGORIES: GpuTestConfiguration = configuration(reference_categories::cases);
 #[apply(gpu_test!)]
 static CUDA_SATURATE: GpuTestConfiguration = configuration(saturate::cases);
+#[apply(gpu_test!)]
+static CUDA_SCALAR_PROMOTION: GpuTestConfiguration = configuration(scalar_promotion::cases);
 #[apply(gpu_test!)]
 static CUDA_SHARED_VECTORS: GpuTestConfiguration = configuration(shared_vectors::cases);
 #[apply(gpu_test!)]

@@ -18,89 +18,87 @@ layout(set = 0, binding = 1, std140) uniform _14_13
 
 void main()
 {
-    uint _58 = 0u;
-    uint _51 = 0u;
+    uint _52[2] = uint[](0u, 0u);
+    int _45 = 0;
     uint _37[2] = uint[](0u, 0u);
-    uint _54[2] = uint[](0u, 0u);
-    int _47 = 0;
+    uint _54 = 0u;
+    uint _47[2] = uint[](0u, 0u);
     int _40 = 0;
     uint _56 = 0u;
-    uint _49[2] = uint[](0u, 0u);
-    int _43 = 0;
-    uvec2 _80 = uvec2(4294967295u);
-    uvec2 _113 = uvec2(4294967295u);
-    uvec2 _142 = uvec2(4294967295u);
+    uint _49 = 0u;
+    uvec2 _78 = uvec2(4294967295u);
+    uvec2 _110 = uvec2(4294967295u);
+    uvec2 _139 = uvec2(4294967295u);
     _37 = uint[](0u, 0u);
     _37[0u] = 0u;
     _37[1u] = 0u;
-    _40 = _13._m0._m0;
-    _43 = 0;
-    int _45 = 0;
+    _40 = 0;
+    int _43 = 0;
     for (;;)
     {
-        if (all(equal(uvec2(0u), _80)))
+        if (all(equal(uvec2(0u), _78)))
         {
             break;
         }
-        _80 -= uvec2(uint(_80.y == 0u), 1u);
-        if (!(_45 < _40))
+        _78 -= uvec2(uint(_78.y == 0u), 1u);
+        if (!(_43 < _13._m0._m0))
         {
             break;
         }
-        if (_45 == 2)
+        if (_43 == 2)
         {
-            int _107 = _45;
-            _45 = _107 + 1;
+            int _104 = _43;
+            _43 = _104 + 1;
             continue;
         }
-        if (_45 == 7)
+        if (_43 == 7)
         {
             break;
         }
-        _43 += _45;
-        int _107 = _45;
-        _45 = _107 + 1;
+        _40 += _43;
+        int _104 = _43;
+        _43 = _104 + 1;
         continue;
     }
-    _47 = 0;
+    _45 = 0;
     for (;;)
     {
-        if (all(equal(uvec2(0u), _113)))
+        if (all(equal(uvec2(0u), _110)))
         {
             break;
         }
-        _113 -= uvec2(uint(_113.y == 0u), 1u);
-        if (!(_47 < 3))
+        _110 -= uvec2(uint(_110.y == 0u), 1u);
+        if (!(_45 < 3))
         {
             break;
         }
-        _47++;
-        if (_47 == 2)
+        _45++;
+        if (_45 == 2)
         {
             continue;
         }
-        _43 += 10;
+        _40 += 10;
         continue;
     }
     do
     {
-        if (all(equal(uvec2(0u), _142)))
+        if (all(equal(uvec2(0u), _139)))
         {
             break;
         }
-        _142 -= uvec2(uint(_142.y == 0u), 1u);
-        _43 += 100;
-        if (_43 > 200)
+        _139 -= uvec2(uint(_139.y == 0u), 1u);
+        _40 += 100;
+        if (_40 > 200)
         {
             break;
         }
-    } while (!(!(_43 < 150)));
-    _49 = _37;
-    _51 = gl_LocalInvocationID.x;
-    _54 = _49;
-    _54[1u] += _51;
-    _56 = _54[0u];
-    _58 = _54[1u];
-    _10._m0[_58] = _43;
+    } while (!(!(_40 < 150)));
+    _47 = _37;
+    _49 = gl_LocalInvocationID.x;
+    _52 = _47;
+    _52[1u] += _49;
+    _54 = _52[0u];
+    _56 = _52[1u];
+    _10._m0[_56] = _40;
 }
 

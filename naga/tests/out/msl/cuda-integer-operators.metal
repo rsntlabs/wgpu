@@ -39,14 +39,11 @@ struct integer_opsInput {
 kernel void integer_ops(
   metal::uint3 threadIdx [[thread_position_in_threadgroup]]
 , device type_1& out_1 [[user(fake0)]]
-, constant type_3& value_1 [[user(fake0)]]
-, constant type_4& amount_1 [[user(fake0)]]
+, constant type_3& value [[user(fake0)]]
+, constant type_4& amount [[user(fake0)]]
 , constant _mslBufferSizes& _buffer_sizes [[user(fake0)]]
 ) {
     type_6 out = {};
-    int value = {};
-    uint amount = {};
-    int remainder = {};
     uint bits = {};
     uint local = {};
     type_6 local_1 = {};
@@ -57,42 +54,37 @@ kernel void integer_ops(
     out = type_6 {};
     out.inner[0] = 0u;
     out.inner[1] = 0u;
-    int _e10 = value_1.value;
-    value = _e10;
-    uint _e14 = amount_1.value;
-    amount = _e14;
-    int _e18 = value;
-    remainder = naga_mod(_e18, naga_neg(3));
-    int _e21 = remainder;
-    bits = static_cast<uint>(_e21) & 15u;
+    int value_1 = value.value;
+    uint amount_1 = amount.value;
+    int remainder = naga_mod(value_1, naga_neg(3));
+    bits = static_cast<uint>(remainder) & 15u;
+    uint _e20 = bits;
+    bits = _e20 | 8u;
+    uint _e23 = bits;
+    bits = _e23 ^ 1u;
     uint _e26 = bits;
-    bits = _e26 | 8u;
-    uint _e29 = bits;
-    bits = _e29 ^ 1u;
-    uint _e32 = amount;
+    local = amount_1;
+    uint _e28 = local;
+    bits = _e26 << _e28;
+    uint _e30 = bits;
+    bits = _e30 >> 1u;
     uint _e33 = bits;
-    local = _e32;
-    uint _e35 = local;
-    bits = _e33 << _e35;
-    uint _e37 = bits;
-    bits = _e37 >> 1u;
-    uint _e40 = bits;
-    bits = naga_mod(_e40, 97u);
-    uint _e43 = bits;
-    bits = _e43 & 255u;
-    uint _e46 = bits;
-    type_6 _e50 = out;
-    local_1 = _e50;
+    bits = naga_mod(_e33, 97u);
+    uint _e36 = bits;
+    bits = _e36 & 255u;
+    uint _e39 = bits;
+    type_6 _e42 = out;
+    local_1 = _e42;
     local_2 = static_cast<uint>(threadIdx.x);
-    type_6 _e55 = local_1;
-    local_3 = _e55;
-    uint _e56 = local_2;
-    uint _e58 = local_3.inner[1];
-    local_3.inner[1] = _e58 + _e56;
-    uint _e62 = local_3.inner[0];
-    local_4 = static_cast<uint>(_e62);
-    uint _e66 = local_3.inner[1];
-    local_5 = static_cast<uint>(_e66);
-    uint _e69 = local_5;
-    out_1[_e69] = ~(_e46);
+    type_6 _e47 = local_1;
+    local_3 = _e47;
+    uint _e49 = local_2;
+    uint _e51 = local_3.inner[1];
+    local_3.inner[1] = _e51 + _e49;
+    uint _e55 = local_3.inner[0];
+    local_4 = static_cast<uint>(_e55);
+    uint _e59 = local_3.inner[1];
+    local_5 = static_cast<uint>(_e59);
+    uint _e62 = local_5;
+    out_1[_e62] = ~(_e39);
 }

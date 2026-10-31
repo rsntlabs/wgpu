@@ -38,12 +38,9 @@ float pair(
     int digit
 ) {
     float3_ value_3 = {};
-    int digit_1 = {};
     value_3 = value_2;
-    digit_1 = digit;
-    float _e6 = value_3.x;
-    int _e8 = digit_1;
-    return (_e6 * 10.0) + static_cast<float>(_e8);
+    float _e4 = value_3.x;
+    return (_e4 * 10.0) + static_cast<float>(digit);
 }
 
 kernel void vector_resources(

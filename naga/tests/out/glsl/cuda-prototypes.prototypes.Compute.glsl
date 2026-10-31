@@ -17,59 +17,41 @@ uvec3 threadIdx_1 = uvec3(0u);
 
 
 int route(float value) {
-    float value_1 = 0.0;
-    value_1 = value;
-    float _e3 = value_1;
-    return (10 + int(_e3));
+    return (10 + int(value));
 }
 
-int earlier(int value_2) {
-    int value_3 = 0;
-    value_3 = value_2;
-    int _e2 = value_3;
-    int _e4 = route(float(_e2));
-    return _e4;
+int earlier(int value_1) {
+    int _e2 = route(float(value_1));
+    return _e2;
 }
 
-int route_1(int value_4) {
-    int value_5 = 0;
-    value_5 = value_4;
-    int _e3 = value_5;
-    return (20 + _e3);
+int route_1(int value_2) {
+    return (20 + value_2);
 }
 
-int forward(int value_6) {
-    int value_7 = 0;
-    value_7 = value_6;
-    int _e2 = value_7;
-    int _e3 = route_1(_e2);
-    int _e4 = value_7;
-    int _e5 = earlier(_e4);
-    return (_e3 + _e5);
+int forward(int value_3) {
+    int _e1 = route_1(value_3);
+    int _e2 = earlier(value_3);
+    return (_e1 + _e2);
 }
 
-Packet_cuda_record_0_ packet(int value_8) {
-    int value_9 = 0;
+Packet_cuda_record_0_ packet(int value_4) {
     Packet_cuda_record_0_ local_80 = Packet_cuda_record_0_(0, int[2](0, 0));
-    value_9 = value_8;
-    int _e3 = value_9;
-    local_80.key = _e3;
-    int _e7 = value_9;
-    local_80.values[0] = (_e7 + 1);
-    int _e12 = value_9;
-    local_80.values[1] = (_e12 + 2);
-    Packet_cuda_record_0_ _e14 = local_80;
-    return _e14;
+    local_80.key = value_4;
+    local_80.values[0] = (value_4 + 1);
+    local_80.values[1] = (value_4 + 2);
+    Packet_cuda_record_0_ _e10 = local_80;
+    return _e10;
 }
 
-Packet_cuda_record_0_ adjust(Packet_cuda_record_0_ value_10) {
-    Packet_cuda_record_0_ value_11 = Packet_cuda_record_0_(0, int[2](0, 0));
-    value_11 = value_10;
-    int _e4 = value_11.key;
-    value_11.key = (_e4 + 4);
-    int _e10 = value_11.values[1];
-    value_11.values[1] = (_e10 + 6);
-    Packet_cuda_record_0_ _e12 = value_11;
+Packet_cuda_record_0_ adjust(Packet_cuda_record_0_ value_5) {
+    Packet_cuda_record_0_ value_6 = Packet_cuda_record_0_(0, int[2](0, 0));
+    value_6 = value_5;
+    int _e4 = value_6.key;
+    value_6.key = (_e4 + 4);
+    int _e10 = value_6.values[1];
+    value_6.values[1] = (_e10 + 6);
+    Packet_cuda_record_0_ _e12 = value_6;
     return _e12;
 }
 
@@ -93,20 +75,11 @@ Packet_cuda_record_0_ operator_u002b(Packet_cuda_record_0_ left, Packet_cuda_rec
 }
 
 int pair(int first_1, int second_1) {
-    int first_2 = 0;
-    int second_2 = 0;
-    first_2 = first_1;
-    second_2 = second_1;
-    int _e5 = first_2;
-    int _e7 = second_2;
-    return ((_e5 * 10) + _e7);
+    return ((first_1 * 10) + second_1);
 }
 
-void consume(int value_12) {
-    int value_13 = 0;
-    value_13 = value_12;
-    int _e2 = value_13;
-    if ((_e2 != 0)) {
+void consume(int value_7) {
+    if ((value_7 != 0)) {
         return;
     } else {
         return;
@@ -330,12 +303,12 @@ uint[12] _naga_trig_multiply(uint left_3[12], uint right_3[12]) {
     return _e65;
 }
 
-uint[12] _naga_trig_divide(uint value_14[12], uint divisor) {
+uint[12] _naga_trig_divide(uint value_8[12], uint divisor) {
     uint source_1[12] = uint[12](0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
     uint result_2[12] = uint[12](0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
     uint remainder_1 = 0u;
     uint step_ = 0u;
-    source_1 = value_14;
+    source_1 = value_8;
     step_ = 0u;
     bool loop_init_7 = true;
     while(true) {
@@ -568,65 +541,58 @@ uint _naga_trigonometry(uint input_bits_1, uint cosine) {
     return (_e120 | ((((_e75 && _e115) ? 2147483648u : 0u) ^ (((_e8 ? (_e112 + 1u) : _e112) & 2u) << 30u)) ^ (_e8 ? 0u : (input_bits_1 & 2147483648u))));
 }
 
-float generated(float value_15) {
-    float value_16 = 0.0;
-    value_16 = value_15;
-    uint _e4 = _naga_sqrtf(floatBitsToUint(4.0));
-    float _e6 = value_16;
-    uint _e9 = _naga_trigonometry(floatBitsToUint(_e6), 0u);
-    float _e12 = value_16;
-    uint _e15 = _naga_trigonometry(floatBitsToUint(_e12), 1u);
-    return ((uintBitsToFloat(_e4) + uintBitsToFloat(_e9)) + uintBitsToFloat(_e15));
+float generated(float value_9) {
+    uint _e3 = _naga_sqrtf(floatBitsToUint(4.0));
+    uint _e7 = _naga_trigonometry(floatBitsToUint(value_9), 0u);
+    uint _e12 = _naga_trigonometry(floatBitsToUint(value_9), 1u);
+    return ((uintBitsToFloat(_e3) + uintBitsToFloat(_e7)) + uintBitsToFloat(_e12));
 }
 
 int control(int count) {
-    int count_1 = 0;
     int result_4 = 0;
     int index = 0;
-    count_1 = count;
     result_4 = 0;
     {
         index = 0;
         bool loop_init_13 = true;
         while(true) {
             if (!loop_init_13) {
-                int _e9 = index;
-                index = (_e9 + 1);
+                int _e22 = index;
+                index = (_e22 + 1);
             }
             loop_init_13 = false;
-            int _e6 = index;
-            int _e7 = count_1;
-            if ((_e6 < _e7)) {
+            int _e5 = index;
+            if ((_e5 < count)) {
             } else {
                 break;
             }
-            int _e13 = index;
-            if ((_e13 == 1)) {
+            int _e7 = index;
+            if ((_e7 == 1)) {
                 continue;
             }
-            int _e15 = index;
-            switch(_e15) {
+            int _e10 = index;
+            switch(_e10) {
                 case 0: {
-                    int _e16 = index;
-                    int _e17 = route_1(_e16);
-                    int _e18 = result_4;
-                    result_4 = (_e18 + _e17);
+                    int _e11 = index;
+                    int _e12 = route_1(_e11);
+                    int _e13 = result_4;
+                    result_4 = (_e13 + _e12);
                     break;
                 }
                 default: {
-                    int _e20 = index;
-                    int _e21 = forward(_e20);
-                    int _e22 = index;
-                    int _e23 = earlier(_e22);
-                    int _e25 = result_4;
-                    result_4 = (_e25 + (_e21 - _e23));
+                    int _e15 = index;
+                    int _e16 = forward(_e15);
+                    int _e17 = index;
+                    int _e18 = earlier(_e17);
+                    int _e20 = result_4;
+                    result_4 = (_e20 + (_e16 - _e18));
                     break;
                 }
             }
         }
     }
-    int _e27 = result_4;
-    return _e27;
+    int _e25 = result_4;
+    return _e25;
 }
 
 uint late_index() {
@@ -639,8 +605,6 @@ void main() {
     uvec3 threadIdx = gl_LocalInvocationID;
     uvec3 blockIdx = gl_WorkGroupID;
     uint out_[2] = uint[2](0u, 0u);
-    uint lane = 0u;
-    uint base = 0u;
     int counter = 0;
     Packet_cuda_record_0_ first = Packet_cuda_record_0_(0, int[2](0, 0));
     Packet_cuda_record_0_ second = Packet_cuda_record_0_(0, int[2](0, 0));
@@ -665,7 +629,6 @@ void main() {
     uint local_17 = 0u;
     uint local_18[2] = uint[2](0u, 0u);
     uint local_19 = 0u;
-    int first_argument = 0;
     uint local_20[2] = uint[2](0u, 0u);
     uint local_21 = 0u;
     uint local_22[2] = uint[2](0u, 0u);
@@ -731,289 +694,268 @@ void main() {
     out_ = uint[2](0u, 0u);
     out_[0] = 0u;
     out_[1] = 0u;
-    uint _e11 = late_index();
-    lane = _e11;
-    uint _e13 = lane;
-    base = (_e13 * 16u);
+    uint _e10 = late_index();
+    uint base = (_e10 * 16u);
     counter = 1;
-    int _e19 = counter;
-    counter = (_e19 + 1);
-    Packet_cuda_record_0_ _e22 = packet(_e19);
-    first = _e22;
-    Packet_cuda_record_0_ _e24 = first;
-    Packet_cuda_record_0_ _e25 = adjust(_e24);
-    second = _e25;
-    Packet_cuda_record_0_ _e27 = first;
-    Packet_cuda_record_0_ _e28 = second;
-    Packet_cuda_record_0_ _e29 = operator_u002b(_e27, _e28);
-    total = _e29;
-    int _e32 = earlier(3);
-    uint _e35[2] = out_;
-    local = _e35;
-    uint _e36 = base;
-    local_1 = uint(_e36);
-    uint _e41[2] = local;
-    local_32 = _e41;
-    uint _e42 = local_1;
-    uint _e44 = local_32[1];
-    local_32[1] = (_e44 + _e42);
-    uint _e48 = local_32[0];
-    local_33 = uint(_e48);
-    uint _e52 = local_32[1];
-    local_34 = uint(_e52);
-    uint _e55 = local_34;
-    _group_0_binding_0_cs[_e55] = uint(_e32);
-    int _e58 = route_1(3);
-    uint _e60[2] = out_;
-    local_2 = _e60;
-    uint _e61 = base;
-    local_3 = uint((_e61 + uint(1)));
-    uint _e69[2] = local_2;
-    local_35 = _e69;
-    uint _e70 = local_3;
-    uint _e72 = local_35[1];
-    local_35[1] = (_e72 + _e70);
-    uint _e76 = local_35[0];
-    local_36 = uint(_e76);
-    uint _e80 = local_35[1];
-    local_37 = uint(_e80);
-    uint _e83 = local_37;
-    _group_0_binding_0_cs[_e83] = uint(_e58);
-    int _e86 = forward(4);
-    uint _e88[2] = out_;
-    local_4 = _e88;
-    uint _e89 = base;
-    local_5 = uint((_e89 + uint(2)));
-    uint _e97[2] = local_4;
-    local_38 = _e97;
-    uint _e98 = local_5;
-    uint _e100 = local_38[1];
-    local_38[1] = (_e100 + _e98);
-    uint _e104 = local_38[0];
-    local_39 = uint(_e104);
-    uint _e108 = local_38[1];
-    local_40 = uint(_e108);
-    uint _e111 = local_40;
-    _group_0_binding_0_cs[_e111] = uint(_e86);
-    int _e114 = first.key;
-    uint _e116[2] = out_;
-    local_6 = _e116;
-    uint _e117 = base;
-    local_7 = uint((_e117 + uint(3)));
-    uint _e125[2] = local_6;
-    local_41 = _e125;
-    uint _e126 = local_7;
-    uint _e128 = local_41[1];
-    local_41[1] = (_e128 + _e126);
-    uint _e132 = local_41[0];
-    local_42 = uint(_e132);
-    uint _e136 = local_41[1];
-    local_43 = uint(_e136);
-    uint _e139 = local_43;
-    _group_0_binding_0_cs[_e139] = uint(_e114);
-    int _e144 = first.values[1];
-    uint _e146[2] = out_;
-    local_8 = _e146;
-    uint _e147 = base;
-    local_9 = uint((_e147 + uint(4)));
-    uint _e155[2] = local_8;
-    local_44 = _e155;
-    uint _e156 = local_9;
+    int _e15 = counter;
+    counter = (_e15 + 1);
+    Packet_cuda_record_0_ _e18 = packet(_e15);
+    first = _e18;
+    Packet_cuda_record_0_ _e20 = first;
+    Packet_cuda_record_0_ _e21 = adjust(_e20);
+    second = _e21;
+    Packet_cuda_record_0_ _e23 = first;
+    Packet_cuda_record_0_ _e24 = second;
+    Packet_cuda_record_0_ _e25 = operator_u002b(_e23, _e24);
+    total = _e25;
+    int _e28 = earlier(3);
+    uint _e30[2] = out_;
+    local = _e30;
+    local_1 = uint(base);
+    uint _e35[2] = local;
+    local_32 = _e35;
+    uint _e37 = local_1;
+    uint _e39 = local_32[1];
+    local_32[1] = (_e39 + _e37);
+    uint _e43 = local_32[0];
+    local_33 = uint(_e43);
+    uint _e47 = local_32[1];
+    local_34 = uint(_e47);
+    uint _e50 = local_34;
+    _group_0_binding_0_cs[_e50] = uint(_e28);
+    int _e54 = route_1(3);
+    uint _e55[2] = out_;
+    local_2 = _e55;
+    local_3 = uint((base + uint(1)));
+    uint _e63[2] = local_2;
+    local_35 = _e63;
+    uint _e65 = local_3;
+    uint _e67 = local_35[1];
+    local_35[1] = (_e67 + _e65);
+    uint _e71 = local_35[0];
+    local_36 = uint(_e71);
+    uint _e75 = local_35[1];
+    local_37 = uint(_e75);
+    uint _e78 = local_37;
+    _group_0_binding_0_cs[_e78] = uint(_e54);
+    int _e81 = forward(4);
+    uint _e82[2] = out_;
+    local_4 = _e82;
+    local_5 = uint((base + uint(2)));
+    uint _e90[2] = local_4;
+    local_38 = _e90;
+    uint _e92 = local_5;
+    uint _e94 = local_38[1];
+    local_38[1] = (_e94 + _e92);
+    uint _e98 = local_38[0];
+    local_39 = uint(_e98);
+    uint _e102 = local_38[1];
+    local_40 = uint(_e102);
+    uint _e105 = local_40;
+    _group_0_binding_0_cs[_e105] = uint(_e81);
+    int _e108 = first.key;
+    uint _e109[2] = out_;
+    local_6 = _e109;
+    local_7 = uint((base + uint(3)));
+    uint _e117[2] = local_6;
+    local_41 = _e117;
+    uint _e119 = local_7;
+    uint _e121 = local_41[1];
+    local_41[1] = (_e121 + _e119);
+    uint _e125 = local_41[0];
+    local_42 = uint(_e125);
+    uint _e129 = local_41[1];
+    local_43 = uint(_e129);
+    uint _e132 = local_43;
+    _group_0_binding_0_cs[_e132] = uint(_e108);
+    int _e137 = first.values[1];
+    uint _e138[2] = out_;
+    local_8 = _e138;
+    local_9 = uint((base + uint(4)));
+    uint _e146[2] = local_8;
+    local_44 = _e146;
+    uint _e148 = local_9;
+    uint _e150 = local_44[1];
+    local_44[1] = (_e150 + _e148);
+    uint _e154 = local_44[0];
+    local_45 = uint(_e154);
     uint _e158 = local_44[1];
-    local_44[1] = (_e158 + _e156);
-    uint _e162 = local_44[0];
-    local_45 = uint(_e162);
-    uint _e166 = local_44[1];
-    local_46 = uint(_e166);
-    uint _e169 = local_46;
-    _group_0_binding_0_cs[_e169] = uint(_e144);
-    int _e172 = second.key;
-    uint _e174[2] = out_;
-    local_10 = _e174;
-    uint _e175 = base;
-    local_11 = uint((_e175 + uint(5)));
-    uint _e183[2] = local_10;
-    local_47 = _e183;
-    uint _e184 = local_11;
-    uint _e186 = local_47[1];
-    local_47[1] = (_e186 + _e184);
-    uint _e190 = local_47[0];
-    local_48 = uint(_e190);
-    uint _e194 = local_47[1];
-    local_49 = uint(_e194);
-    uint _e197 = local_49;
-    _group_0_binding_0_cs[_e197] = uint(_e172);
-    int _e202 = second.values[1];
-    uint _e204[2] = out_;
-    local_12 = _e204;
-    uint _e205 = base;
-    local_13 = uint((_e205 + uint(6)));
-    uint _e213[2] = local_12;
-    local_50 = _e213;
-    uint _e214 = local_13;
-    uint _e216 = local_50[1];
-    local_50[1] = (_e216 + _e214);
-    uint _e220 = local_50[0];
-    local_51 = uint(_e220);
-    uint _e224 = local_50[1];
-    local_52 = uint(_e224);
-    uint _e227 = local_52;
-    _group_0_binding_0_cs[_e227] = uint(_e202);
-    int _e230 = total.key;
-    uint _e232[2] = out_;
-    local_14 = _e232;
-    uint _e233 = base;
-    local_15 = uint((_e233 + uint(7)));
-    uint _e241[2] = local_14;
-    local_53 = _e241;
-    uint _e242 = local_15;
-    uint _e244 = local_53[1];
-    local_53[1] = (_e244 + _e242);
-    uint _e248 = local_53[0];
-    local_54 = uint(_e248);
-    uint _e252 = local_53[1];
-    local_55 = uint(_e252);
-    uint _e255 = local_55;
-    _group_0_binding_0_cs[_e255] = uint(_e230);
-    int _e260 = total.values[0];
-    uint _e262[2] = out_;
-    local_16 = _e262;
-    uint _e263 = base;
-    local_17 = uint((_e263 + uint(8)));
-    uint _e271[2] = local_16;
-    local_56 = _e271;
-    uint _e272 = local_17;
-    uint _e274 = local_56[1];
-    local_56[1] = (_e274 + _e272);
-    uint _e278 = local_56[0];
-    local_57 = uint(_e278);
-    uint _e282 = local_56[1];
-    local_58 = uint(_e282);
-    uint _e285 = local_58;
-    _group_0_binding_0_cs[_e285] = uint(_e260);
-    int _e290 = total.values[1];
-    uint _e292[2] = out_;
-    local_18 = _e292;
-    uint _e293 = base;
-    local_19 = uint((_e293 + uint(9)));
-    uint _e301[2] = local_18;
-    local_59 = _e301;
-    uint _e302 = local_19;
-    uint _e304 = local_59[1];
-    local_59[1] = (_e304 + _e302);
-    uint _e308 = local_59[0];
-    local_60 = uint(_e308);
-    uint _e312 = local_59[1];
-    local_61 = uint(_e312);
-    uint _e315 = local_61;
-    _group_0_binding_0_cs[_e315] = uint(_e290);
-    int _e317 = counter;
-    counter = (_e317 + 1);
-    first_argument = _e317;
-    int _e321 = first_argument;
-    int _e322 = counter;
-    counter = (_e322 + 1);
-    int _e325 = pair(_e321, _e322);
-    uint _e327[2] = out_;
-    local_20 = _e327;
-    uint _e328 = base;
-    local_21 = uint((_e328 + uint(10)));
-    uint _e336[2] = local_20;
-    local_62 = _e336;
-    uint _e337 = local_21;
-    uint _e339 = local_62[1];
-    local_62[1] = (_e339 + _e337);
-    uint _e343 = local_62[0];
-    local_63 = uint(_e343);
-    uint _e347 = local_62[1];
-    local_64 = uint(_e347);
-    uint _e350 = local_64;
-    _group_0_binding_0_cs[_e350] = uint(_e325);
-    int _e352 = counter;
-    counter = (_e352 + 1);
-    consume(_e352);
-    int _e355 = counter;
-    uint _e357[2] = out_;
-    local_22 = _e357;
-    uint _e358 = base;
-    local_23 = uint((_e358 + uint(11)));
-    uint _e366[2] = local_22;
-    local_65 = _e366;
-    uint _e367 = local_23;
-    uint _e369 = local_65[1];
-    local_65[1] = (_e369 + _e367);
-    uint _e373 = local_65[0];
-    local_66 = uint(_e373);
-    uint _e377 = local_65[1];
-    local_67 = uint(_e377);
-    uint _e380 = local_67;
-    _group_0_binding_0_cs[_e380] = uint(_e355);
-    float _e383 = generated(0.0);
-    uint _e386[2] = out_;
-    local_24 = _e386;
-    uint _e387 = base;
-    local_25 = uint((_e387 + uint(12)));
-    uint _e394[2] = local_24;
-    local_68 = _e394;
-    uint _e395 = local_25;
-    uint _e397 = local_68[1];
-    local_68[1] = (_e397 + _e395);
-    uint _e401 = local_68[0];
-    local_69 = uint(_e401);
-    uint _e405 = local_68[1];
-    local_70 = uint(_e405);
-    uint _e408 = local_70;
-    _group_0_binding_0_cs[_e408] = floatBitsToUint(_e383);
-    int _e411 = control(3);
-    uint _e413[2] = out_;
-    local_26 = _e413;
-    uint _e414 = base;
-    local_27 = uint((_e414 + uint(13)));
-    uint _e422[2] = local_26;
-    local_71 = _e422;
-    uint _e423 = local_27;
-    uint _e425 = local_71[1];
-    local_71[1] = (_e425 + _e423);
-    uint _e429 = local_71[0];
-    local_72 = uint(_e429);
-    uint _e433 = local_71[1];
-    local_73 = uint(_e433);
-    uint _e436 = local_73;
-    _group_0_binding_0_cs[_e436] = uint(_e411);
-    uint _e438 = lane;
-    uint _e440[2] = out_;
-    local_28 = _e440;
-    uint _e441 = base;
-    local_29 = uint((_e441 + uint(14)));
-    uint _e448[2] = local_28;
-    local_74 = _e448;
-    uint _e449 = local_29;
-    uint _e451 = local_74[1];
-    local_74[1] = (_e451 + _e449);
-    uint _e455 = local_74[0];
-    local_75 = uint(_e455);
-    uint _e459 = local_74[1];
-    local_76 = uint(_e459);
-    uint _e462 = local_76;
-    _group_0_binding_0_cs[_e462] = _e438;
-    int _e464 = counter;
-    counter = (_e464 + 1);
-    int _e467 = counter;
-    int _e468 = forward(_e467);
-    uint _e470[2] = out_;
-    local_30 = _e470;
-    uint _e471 = base;
-    local_31 = uint((_e471 + uint(15)));
-    uint _e479[2] = local_30;
-    local_77 = _e479;
-    uint _e480 = local_31;
-    uint _e482 = local_77[1];
-    local_77[1] = (_e482 + _e480);
-    uint _e486 = local_77[0];
-    local_78 = uint(_e486);
-    uint _e490 = local_77[1];
-    local_79 = uint(_e490);
-    uint _e493 = local_79;
-    _group_0_binding_0_cs[_e493] = uint(_e468);
+    local_46 = uint(_e158);
+    uint _e161 = local_46;
+    _group_0_binding_0_cs[_e161] = uint(_e137);
+    int _e164 = second.key;
+    uint _e165[2] = out_;
+    local_10 = _e165;
+    local_11 = uint((base + uint(5)));
+    uint _e173[2] = local_10;
+    local_47 = _e173;
+    uint _e175 = local_11;
+    uint _e177 = local_47[1];
+    local_47[1] = (_e177 + _e175);
+    uint _e181 = local_47[0];
+    local_48 = uint(_e181);
+    uint _e185 = local_47[1];
+    local_49 = uint(_e185);
+    uint _e188 = local_49;
+    _group_0_binding_0_cs[_e188] = uint(_e164);
+    int _e193 = second.values[1];
+    uint _e194[2] = out_;
+    local_12 = _e194;
+    local_13 = uint((base + uint(6)));
+    uint _e202[2] = local_12;
+    local_50 = _e202;
+    uint _e204 = local_13;
+    uint _e206 = local_50[1];
+    local_50[1] = (_e206 + _e204);
+    uint _e210 = local_50[0];
+    local_51 = uint(_e210);
+    uint _e214 = local_50[1];
+    local_52 = uint(_e214);
+    uint _e217 = local_52;
+    _group_0_binding_0_cs[_e217] = uint(_e193);
+    int _e220 = total.key;
+    uint _e221[2] = out_;
+    local_14 = _e221;
+    local_15 = uint((base + uint(7)));
+    uint _e229[2] = local_14;
+    local_53 = _e229;
+    uint _e231 = local_15;
+    uint _e233 = local_53[1];
+    local_53[1] = (_e233 + _e231);
+    uint _e237 = local_53[0];
+    local_54 = uint(_e237);
+    uint _e241 = local_53[1];
+    local_55 = uint(_e241);
+    uint _e244 = local_55;
+    _group_0_binding_0_cs[_e244] = uint(_e220);
+    int _e249 = total.values[0];
+    uint _e250[2] = out_;
+    local_16 = _e250;
+    local_17 = uint((base + uint(8)));
+    uint _e258[2] = local_16;
+    local_56 = _e258;
+    uint _e260 = local_17;
+    uint _e262 = local_56[1];
+    local_56[1] = (_e262 + _e260);
+    uint _e266 = local_56[0];
+    local_57 = uint(_e266);
+    uint _e270 = local_56[1];
+    local_58 = uint(_e270);
+    uint _e273 = local_58;
+    _group_0_binding_0_cs[_e273] = uint(_e249);
+    int _e278 = total.values[1];
+    uint _e279[2] = out_;
+    local_18 = _e279;
+    local_19 = uint((base + uint(9)));
+    uint _e287[2] = local_18;
+    local_59 = _e287;
+    uint _e289 = local_19;
+    uint _e291 = local_59[1];
+    local_59[1] = (_e291 + _e289);
+    uint _e295 = local_59[0];
+    local_60 = uint(_e295);
+    uint _e299 = local_59[1];
+    local_61 = uint(_e299);
+    uint _e302 = local_61;
+    _group_0_binding_0_cs[_e302] = uint(_e278);
+    int first_argument = counter;
+    counter = (first_argument + 1);
+    int _e307 = counter;
+    counter = (_e307 + 1);
+    int _e310 = pair(first_argument, _e307);
+    uint _e311[2] = out_;
+    local_20 = _e311;
+    local_21 = uint((base + uint(10)));
+    uint _e319[2] = local_20;
+    local_62 = _e319;
+    uint _e321 = local_21;
+    uint _e323 = local_62[1];
+    local_62[1] = (_e323 + _e321);
+    uint _e327 = local_62[0];
+    local_63 = uint(_e327);
+    uint _e331 = local_62[1];
+    local_64 = uint(_e331);
+    uint _e334 = local_64;
+    _group_0_binding_0_cs[_e334] = uint(_e310);
+    int _e336 = counter;
+    counter = (_e336 + 1);
+    consume(_e336);
+    int _e339 = counter;
+    uint _e340[2] = out_;
+    local_22 = _e340;
+    local_23 = uint((base + uint(11)));
+    uint _e348[2] = local_22;
+    local_65 = _e348;
+    uint _e350 = local_23;
+    uint _e352 = local_65[1];
+    local_65[1] = (_e352 + _e350);
+    uint _e356 = local_65[0];
+    local_66 = uint(_e356);
+    uint _e360 = local_65[1];
+    local_67 = uint(_e360);
+    uint _e363 = local_67;
+    _group_0_binding_0_cs[_e363] = uint(_e339);
+    float _e366 = generated(0.0);
+    uint _e368[2] = out_;
+    local_24 = _e368;
+    local_25 = uint((base + uint(12)));
+    uint _e375[2] = local_24;
+    local_68 = _e375;
+    uint _e377 = local_25;
+    uint _e379 = local_68[1];
+    local_68[1] = (_e379 + _e377);
+    uint _e383 = local_68[0];
+    local_69 = uint(_e383);
+    uint _e387 = local_68[1];
+    local_70 = uint(_e387);
+    uint _e390 = local_70;
+    _group_0_binding_0_cs[_e390] = floatBitsToUint(_e366);
+    int _e393 = control(3);
+    uint _e394[2] = out_;
+    local_26 = _e394;
+    local_27 = uint((base + uint(13)));
+    uint _e402[2] = local_26;
+    local_71 = _e402;
+    uint _e404 = local_27;
+    uint _e406 = local_71[1];
+    local_71[1] = (_e406 + _e404);
+    uint _e410 = local_71[0];
+    local_72 = uint(_e410);
+    uint _e414 = local_71[1];
+    local_73 = uint(_e414);
+    uint _e417 = local_73;
+    _group_0_binding_0_cs[_e417] = uint(_e393);
+    uint _e419[2] = out_;
+    local_28 = _e419;
+    local_29 = uint((base + uint(14)));
+    uint _e426[2] = local_28;
+    local_74 = _e426;
+    uint _e428 = local_29;
+    uint _e430 = local_74[1];
+    local_74[1] = (_e430 + _e428);
+    uint _e434 = local_74[0];
+    local_75 = uint(_e434);
+    uint _e438 = local_74[1];
+    local_76 = uint(_e438);
+    uint _e441 = local_76;
+    _group_0_binding_0_cs[_e441] = _e10;
+    int _e443 = counter;
+    counter = (_e443 + 1);
+    int _e446 = counter;
+    int _e447 = forward(_e446);
+    uint _e448[2] = out_;
+    local_30 = _e448;
+    local_31 = uint((base + uint(15)));
+    uint _e456[2] = local_30;
+    local_77 = _e456;
+    uint _e458 = local_31;
+    uint _e460 = local_77[1];
+    local_77[1] = (_e460 + _e458);
+    uint _e464 = local_77[0];
+    local_78 = uint(_e464);
+    uint _e468 = local_77[1];
+    local_79 = uint(_e468);
+    uint _e471 = local_79;
+    _group_0_binding_0_cs[_e471] = uint(_e447);
 }
 

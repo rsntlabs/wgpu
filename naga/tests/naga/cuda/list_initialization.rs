@@ -1,6 +1,6 @@
 use naga::front::cuda::{parse_str, Options};
 
-use super::helpers::validate;
+use super::helpers::{source_binding_initializer, validate};
 
 fn rejected(source: &str) -> naga::front::cuda::ParseError {
     let error = parse_str(source, &Options::default()).unwrap_err();
@@ -24,19 +24,13 @@ fn cuda_scalar_lists_support_direct_copy_empty_and_trailing_comma_forms() {
             format!("{{{expression}}}"),
             format!("= {{{expression},}}"),
         ] {
-            let (module, _) = validate(&format!(
+            let (module, info) = validate(&format!(
                 "__global__ void kernel() {{ {name} value {initializer}; }}"
             ));
-            let variable = module.entry_points[0]
-                .function
-                .local_variables
-                .iter()
-                .next()
-                .unwrap()
-                .1;
+            let value = source_binding_initializer(&module.entry_points[0].function, "value");
             assert_eq!(
-                module.types[variable.ty].inner,
-                naga::TypeInner::Scalar(scalar)
+                info.get_entry_point(0)[value].ty.inner_with(&module.types),
+                &naga::TypeInner::Scalar(scalar)
             );
         }
     }

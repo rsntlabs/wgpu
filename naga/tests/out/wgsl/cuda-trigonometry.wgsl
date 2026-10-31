@@ -381,30 +381,19 @@ fn gen__naga_trigonometry(input_bits: u32, cosine: u32) -> u32 {
 }
 
 fn sine_value(value_2: f32) -> f32 {
-    var value_3: f32;
-
-    value_3 = value_2;
-    let _e2 = value_3;
-    let _e5 = gen__naga_trigonometry(bitcast<u32>(_e2), 0u);
-    return bitcast<f32>(_e5);
+    let _e3 = gen__naga_trigonometry(bitcast<u32>(value_2), 0u);
+    return bitcast<f32>(_e3);
 }
 
-fn cosine_value(value_4: f32) -> f32 {
-    var value_5: f32;
-
-    value_5 = value_4;
-    let _e2 = value_5;
-    let _e5 = gen__naga_trigonometry(bitcast<u32>(_e2), 1u);
-    return bitcast<f32>(_e5);
+fn cosine_value(value_3: f32) -> f32 {
+    let _e3 = gen__naga_trigonometry(bitcast<u32>(value_3), 1u);
+    return bitcast<f32>(_e3);
 }
 
-fn sinf(value_6: bool) -> i32 {
-    var value_7: bool;
+fn sinf(value_4: bool) -> i32 {
     var local_149: i32;
 
-    value_7 = value_6;
-    let _e2 = value_7;
-    if _e2 {
+    if value_4 {
         local_149 = 17i;
     } else {
         local_149 = 19i;
@@ -413,51 +402,29 @@ fn sinf(value_6: bool) -> i32 {
     return _e6;
 }
 
-fn cosf(value_8: i32) -> i32 {
-    var value_9: i32;
-
-    value_9 = value_8;
-    let _e3 = value_9;
-    return (_e3 + 23i);
+fn cosf(value_5: i32) -> i32 {
+    return (value_5 + 23i);
 }
 
 fn sinf_1(first: f32, second: f32) -> f32 {
-    var first_1: f32;
-    var second_1: f32;
+    return (first + second);
+}
 
-    first_1 = first;
-    second_1 = second;
-    let _e4 = first_1;
-    let _e5 = second_1;
+fn cosf_1(value_6: vec2<f32>) -> f32 {
+    var value_7: vec2<f32>;
+
+    value_7 = value_6;
+    let _e4 = value_7.x;
+    let _e5 = value_7.y;
     return (_e4 + _e5);
 }
 
-fn cosf_1(value_10: vec2<f32>) -> f32 {
-    var value_11: vec2<f32>;
-
-    value_11 = value_10;
-    let _e4 = value_11.x;
-    let _e5 = value_11.y;
-    return (_e4 + _e5);
+fn identity(value_8: f32) -> f32 {
+    return value_8;
 }
 
-fn identity(value_12: f32) -> f32 {
-    var value_13: f32;
-
-    value_13 = value_12;
-    let _e2 = value_13;
-    return _e2;
-}
-
-fn pair(first_2: f32, second_2: f32) -> f32 {
-    var first_3: f32;
-    var second_3: f32;
-
-    first_3 = first_2;
-    second_3 = second_2;
-    let _e5 = first_3;
-    let _e7 = second_3;
-    return ((_e5 * 10f) + _e7);
+fn pair(first_1: f32, second_1: f32) -> f32 {
+    return ((first_1 * 10f) + second_1);
 }
 
 @compute @workgroup_size(1, 1, 1)

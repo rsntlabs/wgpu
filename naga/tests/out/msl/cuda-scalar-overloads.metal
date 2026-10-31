@@ -21,37 +21,25 @@ struct type_7 {
 bool classify(
     bool value_1
 ) {
-    bool value_2 = {};
-    value_2 = value_1;
-    bool _e2 = value_2;
-    return !(_e2);
+    return !(value_1);
 }
 
 int classify_1(
-    int value_3
+    int value_2
 ) {
-    int value_4 = {};
-    value_4 = value_3;
-    int _e3 = value_4;
-    return as_type<int>(as_type<uint>(_e3) + as_type<uint>(10));
+    return as_type<int>(as_type<uint>(value_2) + as_type<uint>(10));
 }
 
 uint classify_2(
-    uint value_5
+    uint value_3
 ) {
-    uint value_6 = {};
-    value_6 = value_5;
-    uint _e3 = value_6;
-    return _e3 + 20u;
+    return value_3 + 20u;
 }
 
 float classify_3(
-    float value_7
+    float value_4
 ) {
-    float value_8 = {};
-    value_8 = value_7;
-    float _e3 = value_8;
-    return (_e3 * 1.5) + 0.5;
+    return (value_4 * 1.5) + 0.5;
 }
 
 int naga_f2i32(float value) {
@@ -62,108 +50,69 @@ int rank(
     int left,
     float right
 ) {
-    int left_1 = {};
-    float right_1 = {};
-    left_1 = left;
-    right_1 = right;
-    int _e5 = left_1;
-    float _e7 = right_1;
-    return as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e5) * as_type<uint>(10))) + as_type<uint>(naga_f2i32(_e7)));
+    return as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(left) * as_type<uint>(10))) + as_type<uint>(naga_f2i32(right)));
 }
 
 int rank_1(
-    float left_2,
-    int right_2
+    float left_1,
+    int right_1
 ) {
-    float left_3 = {};
-    int right_3 = {};
-    left_3 = left_2;
-    right_3 = right_2;
-    float _e5 = left_3;
-    int _e10 = right_3;
-    return as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(100) + as_type<uint>(as_type<int>(as_type<uint>(naga_f2i32(_e5)) * as_type<uint>(10))))) + as_type<uint>(_e10));
+    return as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(100) + as_type<uint>(as_type<int>(as_type<uint>(naga_f2i32(left_1)) * as_type<uint>(10))))) + as_type<uint>(right_1));
 }
 
 int pair(
-    float left_4,
-    int right_4
+    float left_2,
+    int right_2
 ) {
-    float left_5 = {};
-    int right_5 = {};
-    left_5 = left_4;
-    right_5 = right_4;
-    float _e4 = left_5;
-    int _e8 = right_5;
-    return as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(naga_f2i32(_e4)) * as_type<uint>(10))) + as_type<uint>(_e8));
+    return as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(naga_f2i32(left_2)) * as_type<uint>(10))) + as_type<uint>(right_2));
 }
 
 int promote(
-    uint left_6,
-    float right_6
+    uint left_3,
+    float right_3
 ) {
-    uint left_7 = {};
-    float right_7 = {};
-    left_7 = left_6;
-    right_7 = right_6;
-    uint _e5 = left_7;
-    float _e8 = right_7;
-    return as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(200) + as_type<uint>(static_cast<int>(_e5)))) + as_type<uint>(naga_f2i32(_e8)));
+    return as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(200) + as_type<uint>(static_cast<int>(left_3)))) + as_type<uint>(naga_f2i32(right_3)));
 }
 
 void touch(
     bool stop,
-    int value_9
+    int value_5
 ) {
-    bool stop_1 = {};
-    int value_10 = {};
-    stop_1 = stop;
-    value_10 = value_9;
-    bool _e4 = stop_1;
-    if (_e4) {
+    int value_6 = {};
+    value_6 = value_5;
+    if (stop) {
         return;
     }
-    int _e5 = value_10;
-    int _e6 = classify_1(_e5);
-    value_10 = _e6;
+    int _e3 = value_6;
+    int _e4 = classify_1(_e3);
+    value_6 = _e4;
     return;
 }
 
 int touch_1(
-    int value_11
+    int value_7
 ) {
-    int value_12 = {};
-    value_12 = value_11;
-    int _e2 = value_12;
-    int _e3 = classify_1(_e2);
-    return as_type<int>(as_type<uint>(_e3) + as_type<uint>(3));
+    int _e1 = classify_1(value_7);
+    return as_type<int>(as_type<uint>(_e1) + as_type<uint>(3));
 }
 
 int stage(
-    int value_13
+    int value_8
 ) {
-    int value_14 = {};
-    value_14 = value_13;
-    int _e3 = value_14;
-    return as_type<int>(as_type<uint>(_e3) + as_type<uint>(2));
+    return as_type<int>(as_type<uint>(value_8) + as_type<uint>(2));
 }
 
 int frozen(
-    float value_15
+    float value_9
 ) {
-    float value_16 = {};
-    value_16 = value_15;
-    float _e2 = value_16;
-    int _e4 = stage(naga_f2i32(_e2));
-    return _e4;
+    int _e2 = stage(naga_f2i32(value_9));
+    return _e2;
 }
 
 int stage_1(
-    float value_17
+    float value_10
 ) {
-    float value_18 = {};
-    value_18 = value_17;
-    float _e2 = value_18;
-    return as_type<int>(as_type<uint>(naga_f2i32(_e2)) + as_type<uint>(100));
+    return as_type<int>(as_type<uint>(naga_f2i32(value_10)) + as_type<uint>(100));
 }
 uint naga_mod(uint lhs, uint rhs) {
     return lhs % metal::select(rhs, 1u, rhs == 0u);
@@ -177,13 +126,11 @@ kernel void scalar_overloads(
 , metal::uint3 threadIdx [[thread_position_in_threadgroup]]
 , device type_4& out_1 [[user(fake0)]]
 , device type_4 const& input_1 [[user(fake0)]]
-, constant type_5& n_1 [[user(fake0)]]
+, constant type_5& n [[user(fake0)]]
 , constant _mslBufferSizes& _buffer_sizes [[user(fake0)]]
 ) {
     type_7 out = {};
     type_7 input = {};
-    uint n = {};
-    uint i = {};
     uint base = {};
     int value = {};
     type_7 local = {};
@@ -269,276 +216,270 @@ kernel void scalar_overloads(
     input = type_7 {};
     input.inner[0] = 1u;
     input.inner[1] = 0u;
-    uint _e18 = n_1.value;
-    n = _e18;
-    i = (blockIdx.x * 64u) + threadIdx.x;
-    uint _e26 = i;
-    uint _e27 = n;
-    if (_e26 < _e27) {
-        uint _e29 = i;
-        base = _e29 * 13u;
-        type_7 _e35 = input;
-        local = _e35;
-        uint _e36 = i;
-        local_1 = static_cast<uint>(_e36);
-        type_7 _e40 = local;
-        local_29 = _e40;
-        uint _e41 = local_1;
+    uint n_1 = n.value;
+    uint i = (blockIdx.x * 64u) + threadIdx.x;
+    if (i < n_1) {
+        base = i * 13u;
+        type_7 _e27 = input;
+        local = _e27;
+        local_1 = static_cast<uint>(i);
+        type_7 _e31 = local;
+        local_29 = _e31;
+        uint _e33 = local_1;
+        uint _e35 = local_29.inner[1];
+        local_29.inner[1] = _e35 + _e33;
+        uint _e39 = local_29.inner[0];
+        local_30 = static_cast<uint>(_e39);
         uint _e43 = local_29.inner[1];
-        local_29.inner[1] = _e43 + _e41;
-        uint _e47 = local_29.inner[0];
-        local_30 = static_cast<uint>(_e47);
-        uint _e51 = local_29.inner[1];
-        local_31 = static_cast<uint>(_e51);
-        uint _e55 = local_31;
-        int _e57 = input_1[_e55];
-        local_32 = _e57;
-        int _e58 = local_32;
-        local_28 = _e58;
-        int _e60 = local_28;
-        value = _e60;
-        uint _e62 = i;
-        choose = naga_mod(_e62, 2u) == 0u;
-        bool _e68 = choose;
-        bool _e69 = classify(_e68);
-        type_7 _e72 = out;
-        local_2 = _e72;
-        uint _e73 = base;
-        local_3 = static_cast<uint>(_e73);
-        type_7 _e78 = local_2;
-        local_33 = _e78;
-        uint _e79 = local_3;
+        local_31 = static_cast<uint>(_e43);
+        uint _e46 = local_31;
+        int _e49 = input_1[_e46];
+        local_32 = _e49;
+        int _e51 = local_32;
+        local_28 = _e51;
+        int _e53 = local_28;
+        value = _e53;
+        choose = naga_mod(i, 2u) == 0u;
+        bool _e60 = choose;
+        bool _e61 = classify(_e60);
+        type_7 _e63 = out;
+        local_2 = _e63;
+        uint _e65 = base;
+        local_3 = static_cast<uint>(_e65);
+        type_7 _e69 = local_2;
+        local_33 = _e69;
+        uint _e71 = local_3;
+        uint _e73 = local_33.inner[1];
+        local_33.inner[1] = _e73 + _e71;
+        uint _e77 = local_33.inner[0];
+        local_34 = static_cast<uint>(_e77);
         uint _e81 = local_33.inner[1];
-        local_33.inner[1] = _e81 + _e79;
-        uint _e85 = local_33.inner[0];
-        local_34 = static_cast<uint>(_e85);
-        uint _e89 = local_33.inner[1];
-        local_35 = static_cast<uint>(_e89);
-        uint _e92 = local_35;
-        out_1[_e92] = static_cast<int>(_e69);
-        int _e94 = value;
-        int _e95 = classify_1(_e94);
-        type_7 _e97 = out;
-        local_4 = _e97;
-        uint _e98 = base;
-        local_5 = static_cast<uint>(_e98 + 1u);
-        type_7 _e104 = local_4;
-        local_36 = _e104;
-        uint _e105 = local_5;
-        uint _e107 = local_36.inner[1];
-        local_36.inner[1] = _e107 + _e105;
-        uint _e111 = local_36.inner[0];
-        local_37 = static_cast<uint>(_e111);
-        uint _e115 = local_36.inner[1];
-        local_38 = static_cast<uint>(_e115);
-        uint _e118 = local_38;
-        out_1[_e118] = _e95;
-        int _e120 = value;
-        uint _e124 = classify_2(static_cast<uint>(as_type<int>(as_type<uint>(_e120) + as_type<uint>(16))));
-        type_7 _e126 = out;
-        local_6 = _e126;
-        uint _e127 = base;
-        local_7 = static_cast<uint>(_e127 + 2u);
-        type_7 _e134 = local_6;
-        local_39 = _e134;
-        uint _e135 = local_7;
-        uint _e137 = local_39.inner[1];
-        local_39.inner[1] = _e137 + _e135;
-        uint _e141 = local_39.inner[0];
-        local_40 = static_cast<uint>(_e141);
-        uint _e145 = local_39.inner[1];
-        local_41 = static_cast<uint>(_e145);
-        uint _e148 = local_41;
-        out_1[_e148] = static_cast<int>(_e124);
-        int _e150 = value;
-        float _e152 = classify_3(static_cast<float>(_e150));
-        type_7 _e154 = out;
-        local_8 = _e154;
-        uint _e155 = base;
-        local_9 = static_cast<uint>(_e155 + 3u);
-        type_7 _e162 = local_8;
-        local_42 = _e162;
-        uint _e163 = local_9;
-        uint _e165 = local_42.inner[1];
-        local_42.inner[1] = _e165 + _e163;
-        uint _e169 = local_42.inner[0];
-        local_43 = static_cast<uint>(_e169);
-        uint _e173 = local_42.inner[1];
-        local_44 = static_cast<uint>(_e173);
-        uint _e176 = local_44;
-        out_1[_e176] = naga_f2i32(_e152);
-        bool _e178 = choose;
-        int _e179 = value;
-        int _e184 = rank(static_cast<int>(_e178), static_cast<float>(_e179) + 0.5);
-        type_7 _e186 = out;
-        local_10 = _e186;
-        uint _e187 = base;
-        local_11 = static_cast<uint>(_e187 + 4u);
-        type_7 _e193 = local_10;
-        local_45 = _e193;
-        uint _e194 = local_11;
-        uint _e196 = local_45.inner[1];
-        local_45.inner[1] = _e196 + _e194;
-        uint _e200 = local_45.inner[0];
-        local_46 = static_cast<uint>(_e200);
-        uint _e204 = local_45.inner[1];
-        local_47 = static_cast<uint>(_e204);
-        uint _e207 = local_47;
-        out_1[_e207] = _e184;
-        int _e209 = value;
-        bool _e213 = choose;
-        int _e215 = rank_1(static_cast<float>(_e209) + 0.5, static_cast<int>(_e213));
-        type_7 _e217 = out;
-        local_12 = _e217;
-        uint _e218 = base;
-        local_13 = static_cast<uint>(_e218 + 5u);
-        type_7 _e224 = local_12;
-        local_48 = _e224;
-        uint _e225 = local_13;
-        uint _e227 = local_48.inner[1];
-        local_48.inner[1] = _e227 + _e225;
-        uint _e231 = local_48.inner[0];
-        local_49 = static_cast<uint>(_e231);
-        uint _e235 = local_48.inner[1];
-        local_50 = static_cast<uint>(_e235);
-        uint _e238 = local_50;
-        out_1[_e238] = _e215;
-        int _e240 = value;
-        int _e244 = value;
-        int _e246 = promote(static_cast<uint>(as_type<int>(as_type<uint>(_e240) + as_type<uint>(16))), static_cast<float>(_e244));
-        type_7 _e248 = out;
-        local_14 = _e248;
-        uint _e249 = base;
-        local_15 = static_cast<uint>(_e249 + 6u);
-        type_7 _e255 = local_14;
-        local_51 = _e255;
-        uint _e256 = local_15;
-        uint _e258 = local_51.inner[1];
-        local_51.inner[1] = _e258 + _e256;
-        uint _e262 = local_51.inner[0];
-        local_52 = static_cast<uint>(_e262);
-        uint _e266 = local_51.inner[1];
-        local_53 = static_cast<uint>(_e266);
-        uint _e269 = local_53;
-        out_1[_e269] = _e246;
-        int _e271 = value;
-        effect = _e271;
-        bool _e273 = choose;
-        int _e274 = effect;
-        effect = as_type<int>(as_type<uint>(_e274) + as_type<uint>(1));
-        touch(_e273, _e274);
-        int _e277 = effect;
-        type_7 _e279 = out;
-        local_16 = _e279;
-        uint _e280 = base;
-        local_17 = static_cast<uint>(_e280 + 7u);
-        type_7 _e286 = local_16;
-        local_54 = _e286;
-        uint _e287 = local_17;
-        uint _e289 = local_54.inner[1];
-        local_54.inner[1] = _e289 + _e287;
-        uint _e293 = local_54.inner[0];
-        local_55 = static_cast<uint>(_e293);
-        uint _e297 = local_54.inner[1];
-        local_56 = static_cast<uint>(_e297);
-        uint _e300 = local_56;
-        out_1[_e300] = _e277;
-        int _e302 = effect;
-        int _e303 = touch_1(_e302);
-        type_7 _e305 = out;
-        local_18 = _e305;
-        uint _e306 = base;
-        local_19 = static_cast<uint>(_e306 + 8u);
-        type_7 _e312 = local_18;
-        local_57 = _e312;
-        uint _e313 = local_19;
-        uint _e315 = local_57.inner[1];
-        local_57.inner[1] = _e315 + _e313;
-        uint _e319 = local_57.inner[0];
-        local_58 = static_cast<uint>(_e319);
-        uint _e323 = local_57.inner[1];
-        local_59 = static_cast<uint>(_e323);
-        uint _e326 = local_59;
-        out_1[_e326] = _e303;
-        int _e328 = value;
-        int _e332 = frozen(static_cast<float>(_e328) + 0.75);
-        type_7 _e334 = out;
-        local_20 = _e334;
-        uint _e335 = base;
-        local_21 = static_cast<uint>(_e335 + 9u);
-        type_7 _e341 = local_20;
-        local_60 = _e341;
-        uint _e342 = local_21;
-        uint _e344 = local_60.inner[1];
-        local_60.inner[1] = _e344 + _e342;
-        uint _e348 = local_60.inner[0];
-        local_61 = static_cast<uint>(_e348);
-        uint _e352 = local_60.inner[1];
-        local_62 = static_cast<uint>(_e352);
-        uint _e355 = local_62;
-        out_1[_e355] = _e332;
-        int _e357 = value;
-        int _e361 = stage_1(static_cast<float>(_e357) + 0.75);
-        type_7 _e363 = out;
-        local_22 = _e363;
-        uint _e364 = base;
-        local_23 = static_cast<uint>(_e364 + 10u);
-        type_7 _e370 = local_22;
-        local_63 = _e370;
-        uint _e371 = local_23;
-        uint _e373 = local_63.inner[1];
-        local_63.inner[1] = _e373 + _e371;
-        uint _e377 = local_63.inner[0];
-        local_64 = static_cast<uint>(_e377);
-        uint _e381 = local_63.inner[1];
-        local_65 = static_cast<uint>(_e381);
-        uint _e384 = local_65;
-        out_1[_e384] = _e361;
-        int _e386 = effect;
-        effect = as_type<int>(as_type<uint>(_e386) + as_type<uint>(1));
-        int _e389 = classify_1(_e386);
-        int _e390 = touch_1(_e389);
-        nested = _e390;
-        int _e392 = nested;
-        int _e395 = effect;
-        type_7 _e398 = out;
-        local_24 = _e398;
-        uint _e399 = base;
-        local_25 = static_cast<uint>(_e399 + 11u);
-        type_7 _e405 = local_24;
-        local_66 = _e405;
-        uint _e406 = local_25;
-        uint _e408 = local_66.inner[1];
-        local_66.inner[1] = _e408 + _e406;
-        uint _e412 = local_66.inner[0];
-        local_67 = static_cast<uint>(_e412);
-        uint _e416 = local_66.inner[1];
-        local_68 = static_cast<uint>(_e416);
-        uint _e419 = local_68;
-        out_1[_e419] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e392) * as_type<uint>(10))) + as_type<uint>(_e395));
-        int _e421 = value;
-        argument = as_type<int>(as_type<uint>(_e421) + as_type<uint>(8));
-        int _e425 = argument;
-        int _e426 = argument;
-        argument = as_type<int>(as_type<uint>(_e426) + as_type<uint>(1));
-        int _e430 = pair(static_cast<float>(_e425), _e426);
-        captured = _e430;
-        int _e432 = captured;
-        int _e435 = argument;
-        type_7 _e438 = out;
-        local_26 = _e438;
-        uint _e439 = base;
-        local_27 = static_cast<uint>(_e439 + 12u);
-        type_7 _e445 = local_26;
-        local_69 = _e445;
-        uint _e446 = local_27;
-        uint _e448 = local_69.inner[1];
-        local_69.inner[1] = _e448 + _e446;
-        uint _e452 = local_69.inner[0];
-        local_70 = static_cast<uint>(_e452);
-        uint _e456 = local_69.inner[1];
-        local_71 = static_cast<uint>(_e456);
-        uint _e459 = local_71;
-        out_1[_e459] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e432) * as_type<uint>(100))) + as_type<uint>(_e435));
+        local_35 = static_cast<uint>(_e81);
+        uint _e84 = local_35;
+        out_1[_e84] = static_cast<int>(_e61);
+        int _e87 = value;
+        int _e88 = classify_1(_e87);
+        type_7 _e89 = out;
+        local_4 = _e89;
+        uint _e91 = base;
+        local_5 = static_cast<uint>(_e91 + 1u);
+        type_7 _e96 = local_4;
+        local_36 = _e96;
+        uint _e98 = local_5;
+        uint _e100 = local_36.inner[1];
+        local_36.inner[1] = _e100 + _e98;
+        uint _e104 = local_36.inner[0];
+        local_37 = static_cast<uint>(_e104);
+        uint _e108 = local_36.inner[1];
+        local_38 = static_cast<uint>(_e108);
+        uint _e111 = local_38;
+        out_1[_e111] = _e88;
+        int _e113 = value;
+        uint _e117 = classify_2(static_cast<uint>(as_type<int>(as_type<uint>(_e113) + as_type<uint>(16))));
+        type_7 _e118 = out;
+        local_6 = _e118;
+        uint _e120 = base;
+        local_7 = static_cast<uint>(_e120 + 2u);
+        type_7 _e126 = local_6;
+        local_39 = _e126;
+        uint _e128 = local_7;
+        uint _e130 = local_39.inner[1];
+        local_39.inner[1] = _e130 + _e128;
+        uint _e134 = local_39.inner[0];
+        local_40 = static_cast<uint>(_e134);
+        uint _e138 = local_39.inner[1];
+        local_41 = static_cast<uint>(_e138);
+        uint _e141 = local_41;
+        out_1[_e141] = static_cast<int>(_e117);
+        int _e143 = value;
+        float _e145 = classify_3(static_cast<float>(_e143));
+        type_7 _e146 = out;
+        local_8 = _e146;
+        uint _e148 = base;
+        local_9 = static_cast<uint>(_e148 + 3u);
+        type_7 _e154 = local_8;
+        local_42 = _e154;
+        uint _e156 = local_9;
+        uint _e158 = local_42.inner[1];
+        local_42.inner[1] = _e158 + _e156;
+        uint _e162 = local_42.inner[0];
+        local_43 = static_cast<uint>(_e162);
+        uint _e166 = local_42.inner[1];
+        local_44 = static_cast<uint>(_e166);
+        uint _e169 = local_44;
+        out_1[_e169] = naga_f2i32(_e145);
+        bool _e171 = choose;
+        int _e172 = value;
+        int _e177 = rank(static_cast<int>(_e171), static_cast<float>(_e172) + 0.5);
+        type_7 _e178 = out;
+        local_10 = _e178;
+        uint _e180 = base;
+        local_11 = static_cast<uint>(_e180 + 4u);
+        type_7 _e185 = local_10;
+        local_45 = _e185;
+        uint _e187 = local_11;
+        uint _e189 = local_45.inner[1];
+        local_45.inner[1] = _e189 + _e187;
+        uint _e193 = local_45.inner[0];
+        local_46 = static_cast<uint>(_e193);
+        uint _e197 = local_45.inner[1];
+        local_47 = static_cast<uint>(_e197);
+        uint _e200 = local_47;
+        out_1[_e200] = _e177;
+        int _e202 = value;
+        bool _e206 = choose;
+        int _e208 = rank_1(static_cast<float>(_e202) + 0.5, static_cast<int>(_e206));
+        type_7 _e209 = out;
+        local_12 = _e209;
+        uint _e211 = base;
+        local_13 = static_cast<uint>(_e211 + 5u);
+        type_7 _e216 = local_12;
+        local_48 = _e216;
+        uint _e218 = local_13;
+        uint _e220 = local_48.inner[1];
+        local_48.inner[1] = _e220 + _e218;
+        uint _e224 = local_48.inner[0];
+        local_49 = static_cast<uint>(_e224);
+        uint _e228 = local_48.inner[1];
+        local_50 = static_cast<uint>(_e228);
+        uint _e231 = local_50;
+        out_1[_e231] = _e208;
+        int _e233 = value;
+        int _e237 = value;
+        int _e239 = promote(static_cast<uint>(as_type<int>(as_type<uint>(_e233) + as_type<uint>(16))), static_cast<float>(_e237));
+        type_7 _e240 = out;
+        local_14 = _e240;
+        uint _e242 = base;
+        local_15 = static_cast<uint>(_e242 + 6u);
+        type_7 _e247 = local_14;
+        local_51 = _e247;
+        uint _e249 = local_15;
+        uint _e251 = local_51.inner[1];
+        local_51.inner[1] = _e251 + _e249;
+        uint _e255 = local_51.inner[0];
+        local_52 = static_cast<uint>(_e255);
+        uint _e259 = local_51.inner[1];
+        local_53 = static_cast<uint>(_e259);
+        uint _e262 = local_53;
+        out_1[_e262] = _e239;
+        int _e264 = value;
+        effect = _e264;
+        bool _e266 = choose;
+        int _e267 = effect;
+        effect = as_type<int>(as_type<uint>(_e267) + as_type<uint>(1));
+        touch(_e266, _e267);
+        int _e270 = effect;
+        type_7 _e271 = out;
+        local_16 = _e271;
+        uint _e273 = base;
+        local_17 = static_cast<uint>(_e273 + 7u);
+        type_7 _e278 = local_16;
+        local_54 = _e278;
+        uint _e280 = local_17;
+        uint _e282 = local_54.inner[1];
+        local_54.inner[1] = _e282 + _e280;
+        uint _e286 = local_54.inner[0];
+        local_55 = static_cast<uint>(_e286);
+        uint _e290 = local_54.inner[1];
+        local_56 = static_cast<uint>(_e290);
+        uint _e293 = local_56;
+        out_1[_e293] = _e270;
+        int _e295 = effect;
+        int _e296 = touch_1(_e295);
+        type_7 _e297 = out;
+        local_18 = _e297;
+        uint _e299 = base;
+        local_19 = static_cast<uint>(_e299 + 8u);
+        type_7 _e304 = local_18;
+        local_57 = _e304;
+        uint _e306 = local_19;
+        uint _e308 = local_57.inner[1];
+        local_57.inner[1] = _e308 + _e306;
+        uint _e312 = local_57.inner[0];
+        local_58 = static_cast<uint>(_e312);
+        uint _e316 = local_57.inner[1];
+        local_59 = static_cast<uint>(_e316);
+        uint _e319 = local_59;
+        out_1[_e319] = _e296;
+        int _e321 = value;
+        int _e325 = frozen(static_cast<float>(_e321) + 0.75);
+        type_7 _e326 = out;
+        local_20 = _e326;
+        uint _e328 = base;
+        local_21 = static_cast<uint>(_e328 + 9u);
+        type_7 _e333 = local_20;
+        local_60 = _e333;
+        uint _e335 = local_21;
+        uint _e337 = local_60.inner[1];
+        local_60.inner[1] = _e337 + _e335;
+        uint _e341 = local_60.inner[0];
+        local_61 = static_cast<uint>(_e341);
+        uint _e345 = local_60.inner[1];
+        local_62 = static_cast<uint>(_e345);
+        uint _e348 = local_62;
+        out_1[_e348] = _e325;
+        int _e350 = value;
+        int _e354 = stage_1(static_cast<float>(_e350) + 0.75);
+        type_7 _e355 = out;
+        local_22 = _e355;
+        uint _e357 = base;
+        local_23 = static_cast<uint>(_e357 + 10u);
+        type_7 _e362 = local_22;
+        local_63 = _e362;
+        uint _e364 = local_23;
+        uint _e366 = local_63.inner[1];
+        local_63.inner[1] = _e366 + _e364;
+        uint _e370 = local_63.inner[0];
+        local_64 = static_cast<uint>(_e370);
+        uint _e374 = local_63.inner[1];
+        local_65 = static_cast<uint>(_e374);
+        uint _e377 = local_65;
+        out_1[_e377] = _e354;
+        int _e379 = effect;
+        effect = as_type<int>(as_type<uint>(_e379) + as_type<uint>(1));
+        int _e382 = classify_1(_e379);
+        int _e383 = touch_1(_e382);
+        nested = _e383;
+        int _e385 = nested;
+        int _e388 = effect;
+        type_7 _e390 = out;
+        local_24 = _e390;
+        uint _e392 = base;
+        local_25 = static_cast<uint>(_e392 + 11u);
+        type_7 _e397 = local_24;
+        local_66 = _e397;
+        uint _e399 = local_25;
+        uint _e401 = local_66.inner[1];
+        local_66.inner[1] = _e401 + _e399;
+        uint _e405 = local_66.inner[0];
+        local_67 = static_cast<uint>(_e405);
+        uint _e409 = local_66.inner[1];
+        local_68 = static_cast<uint>(_e409);
+        uint _e412 = local_68;
+        out_1[_e412] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e385) * as_type<uint>(10))) + as_type<uint>(_e388));
+        int _e414 = value;
+        argument = as_type<int>(as_type<uint>(_e414) + as_type<uint>(8));
+        int _e418 = argument;
+        int _e419 = argument;
+        argument = as_type<int>(as_type<uint>(_e419) + as_type<uint>(1));
+        int _e423 = pair(static_cast<float>(_e418), _e419);
+        captured = _e423;
+        int _e425 = captured;
+        int _e428 = argument;
+        type_7 _e430 = out;
+        local_26 = _e430;
+        uint _e432 = base;
+        local_27 = static_cast<uint>(_e432 + 12u);
+        type_7 _e437 = local_26;
+        local_69 = _e437;
+        uint _e439 = local_27;
+        uint _e441 = local_69.inner[1];
+        local_69.inner[1] = _e441 + _e439;
+        uint _e445 = local_69.inner[0];
+        local_70 = static_cast<uint>(_e445);
+        uint _e449 = local_69.inner[1];
+        local_71 = static_cast<uint>(_e449);
+        uint _e452 = local_71;
+        out_1[_e452] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e425) * as_type<uint>(100))) + as_type<uint>(_e428));
     }
 }

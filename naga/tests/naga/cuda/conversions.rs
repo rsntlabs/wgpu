@@ -11,7 +11,7 @@ const TYPES: [(&str, &str, naga::Scalar); 4] = [
     ("float", "1.5f", naga::Scalar::F32),
 ];
 
-use super::helpers::validate;
+use super::helpers::{source_binding_initializer, validate};
 
 fn expression_scalar(
     module: &naga::Module,
@@ -161,14 +161,7 @@ fn cuda_explicit_scalar_casts_share_conversion_semantics() {
                 let source = format!("__global__ void casts() {{ {ty} value = {cast}; }}");
                 let (module, info) = validate(&source);
                 let function = &module.entry_points[0].function;
-                let value = function
-                    .body
-                    .iter()
-                    .find_map(|statement| match *statement {
-                        naga::Statement::Store { value, .. } => Some(value),
-                        _ => None,
-                    })
-                    .unwrap();
+                let value = source_binding_initializer(function, "value");
                 assert_eq!(expression_scalar(&module, &info, value), scalar, "{source}");
             }
         }
@@ -205,17 +198,12 @@ fn cuda_unary_arithmetic_promotes_bool_and_wraps_unsigned_negation() {
         "__global__ void unary() { int positive = +true; int negative = -true; unsigned int wrapped = -1u; }",
     );
     let function = &module.entry_points[0].function;
-    let values: Vec<_> = function
-        .body
-        .iter()
-        .filter_map(|statement| match *statement {
-            naga::Statement::Store { value, .. } => Some(value),
-            _ => None,
-        })
-        .collect();
-    let expected = [naga::Scalar::I32, naga::Scalar::I32, naga::Scalar::U32];
-    assert_eq!(values.len(), expected.len());
-    for (value, scalar) in values.into_iter().zip(expected) {
+    for (name, scalar) in [
+        ("positive", naga::Scalar::I32),
+        ("negative", naga::Scalar::I32),
+        ("wrapped", naga::Scalar::U32),
+    ] {
+        let value = source_binding_initializer(function, name);
         assert_eq!(expression_scalar(&module, &info, value), scalar);
     }
 }

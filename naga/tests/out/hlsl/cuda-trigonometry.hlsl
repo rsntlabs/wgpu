@@ -510,32 +510,21 @@ uint _naga_trigonometry(uint input_bits, uint cosine)
 
 float sine_value(float value_2)
 {
-    float value_3 = (float)0;
-
-    value_3 = value_2;
-    float _e2 = value_3;
-    const uint _e5 = _naga_trigonometry(asuint(_e2), 0u);
-    return asfloat(_e5);
+    const uint _e3 = _naga_trigonometry(asuint(value_2), 0u);
+    return asfloat(_e3);
 }
 
-float cosine_value(float value_4)
+float cosine_value(float value_3)
 {
-    float value_5 = (float)0;
-
-    value_5 = value_4;
-    float _e2 = value_5;
-    const uint _e5 = _naga_trigonometry(asuint(_e2), 1u);
-    return asfloat(_e5);
+    const uint _e3 = _naga_trigonometry(asuint(value_3), 1u);
+    return asfloat(_e3);
 }
 
-int sinf(bool value_6)
+int sinf(bool value_4)
 {
-    bool value_7 = (bool)0;
     int local_149 = (int)0;
 
-    value_7 = value_6;
-    bool _e2 = value_7;
-    if (_e2) {
+    if (value_4) {
         local_149 = int(17);
     } else {
         local_149 = int(19);
@@ -544,56 +533,34 @@ int sinf(bool value_6)
     return _e6;
 }
 
-int cosf(int value_8)
+int cosf(int value_5)
 {
-    int value_9 = (int)0;
-
-    value_9 = value_8;
-    int _e3 = value_9;
-    return asint(asuint(_e3) + asuint(int(23)));
+    return asint(asuint(value_5) + asuint(int(23)));
 }
 
 float sinf_1(float first, float second)
 {
-    float first_1 = (float)0;
-    float second_1 = (float)0;
+    return (first + second);
+}
 
-    first_1 = first;
-    second_1 = second;
-    float _e4 = first_1;
-    float _e5 = second_1;
+float cosf_1(float2 value_6)
+{
+    float2 value_7 = (float2)0;
+
+    value_7 = value_6;
+    float _e4 = value_7.x;
+    float _e5 = value_7.y;
     return (_e4 + _e5);
 }
 
-float cosf_1(float2 value_10)
+float identity(float value_8)
 {
-    float2 value_11 = (float2)0;
-
-    value_11 = value_10;
-    float _e4 = value_11.x;
-    float _e5 = value_11.y;
-    return (_e4 + _e5);
+    return value_8;
 }
 
-float identity(float value_12)
+float pair(float first_1, float second_1)
 {
-    float value_13 = (float)0;
-
-    value_13 = value_12;
-    float _e2 = value_13;
-    return _e2;
-}
-
-float pair(float first_2, float second_2)
-{
-    float first_3 = (float)0;
-    float second_3 = (float)0;
-
-    first_3 = first_2;
-    second_3 = second_2;
-    float _e5 = first_3;
-    float _e7 = second_3;
-    return ((_e5 * 10.0) + _e7);
+    return ((first_1 * 10.0) + second_1);
 }
 
 typedef float ret_ZeroValuearray2_float_[2];

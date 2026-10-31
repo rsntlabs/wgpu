@@ -77,69 +77,48 @@ vec4 fabs_2(vec4 value_5) {
 }
 
 float absolute(float value_7) {
-    float value_8 = 0.0;
     uint local_182 = 0u;
-    value_8 = value_7;
-    float _e2 = value_8;
-    uint _e5 = (floatBitsToUint(_e2) & 2147483647u);
-    local_182 = ((_e5 > 2139095040u) ? 2143289344u : _e5);
-    uint _e11 = local_182;
-    return uintBitsToFloat(_e11);
+    uint _e3 = (floatBitsToUint(value_7) & 2147483647u);
+    local_182 = ((_e3 > 2139095040u) ? 2143289344u : _e3);
+    uint _e9 = local_182;
+    return uintBitsToFloat(_e9);
 }
 
-float converted_absolute(int value_9) {
-    int value_10 = 0;
+float converted_absolute(int value_8) {
     uint local_183 = 0u;
-    value_10 = value_9;
-    int _e2 = value_10;
-    uint _e6 = (floatBitsToUint(float(_e2)) & 2147483647u);
-    local_183 = ((_e6 > 2139095040u) ? 2143289344u : _e6);
-    uint _e12 = local_183;
-    return uintBitsToFloat(_e12);
+    uint _e4 = (floatBitsToUint(float(value_8)) & 2147483647u);
+    local_183 = ((_e4 > 2139095040u) ? 2143289344u : _e4);
+    uint _e10 = local_183;
+    return uintBitsToFloat(_e10);
 }
 
-float converted_absolute_1(uint value_11) {
-    uint value_12 = 0u;
+float converted_absolute_1(uint value_9) {
     uint local_184 = 0u;
-    value_12 = value_11;
-    uint _e2 = value_12;
-    uint _e6 = (floatBitsToUint(float(_e2)) & 2147483647u);
-    local_184 = ((_e6 > 2139095040u) ? 2143289344u : _e6);
-    uint _e12 = local_184;
-    return uintBitsToFloat(_e12);
+    uint _e4 = (floatBitsToUint(float(value_9)) & 2147483647u);
+    local_184 = ((_e4 > 2139095040u) ? 2143289344u : _e4);
+    uint _e10 = local_184;
+    return uintBitsToFloat(_e10);
 }
 
-float converted_absolute_2(bool value_13) {
-    bool value_14 = false;
+float converted_absolute_2(bool value_10) {
     uint local_185 = 0u;
-    value_14 = value_13;
-    bool _e2 = value_14;
-    uint _e6 = (floatBitsToUint(float(_e2)) & 2147483647u);
-    local_185 = ((_e6 > 2139095040u) ? 2143289344u : _e6);
-    uint _e12 = local_185;
-    return uintBitsToFloat(_e12);
+    uint _e4 = (floatBitsToUint(float(value_10)) & 2147483647u);
+    local_185 = ((_e4 > 2139095040u) ? 2143289344u : _e4);
+    uint _e10 = local_185;
+    return uintBitsToFloat(_e10);
 }
 
-int fabs_3(int value_15) {
-    int value_16 = 0;
-    value_16 = value_15;
-    int _e3 = value_16;
-    return (_e3 + 40);
+int fabs_3(int value_11) {
+    return (value_11 + 40);
 }
 
-uint fabs_4(uint value_17) {
-    uint value_18 = 0u;
-    value_18 = value_17;
-    uint _e3 = value_18;
-    return (_e3 + 50u);
+uint fabs_4(uint value_12) {
+    return (value_12 + 50u);
 }
 
-int fabs_5(bool value_19) {
-    bool value_20 = false;
+int fabs_5(bool value_13) {
     int local_186 = 0;
-    value_20 = value_19;
-    bool _e2 = value_20;
-    if (_e2) {
+    if (value_13) {
         local_186 = 7;
     } else {
         local_186 = 9;
@@ -148,12 +127,9 @@ int fabs_5(bool value_19) {
     return _e6;
 }
 
-int fabsf(bool value_21) {
-    bool value_22 = false;
+int fabsf(bool value_14) {
     int local_187 = 0;
-    value_22 = value_21;
-    bool _e2 = value_22;
-    if (_e2) {
+    if (value_14) {
         local_187 = 11;
     } else {
         local_187 = 13;
@@ -163,13 +139,7 @@ int fabsf(bool value_21) {
 }
 
 float fabsf_1(float first, float second) {
-    float first_1 = 0.0;
-    float second_1 = 0.0;
-    first_1 = first;
-    second_1 = second;
-    float _e4 = first_1;
-    float _e5 = second_1;
-    return (_e4 + _e5);
+    return (first + second);
 }
 
 void main() {

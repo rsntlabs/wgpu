@@ -74,76 +74,53 @@ fn fabs_2(value_5: vec4<f32>) -> vec4<f32> {
 }
 
 fn absolute(value_7: f32) -> f32 {
-    var value_8: f32;
     var local_182: u32;
 
-    value_8 = value_7;
-    let _e2 = value_8;
-    let _e5 = (bitcast<u32>(_e2) & 2147483647u);
-    local_182 = select(_e5, 2143289344u, (_e5 > 2139095040u));
-    let _e11 = local_182;
-    return bitcast<f32>(_e11);
+    let _e3 = (bitcast<u32>(value_7) & 2147483647u);
+    local_182 = select(_e3, 2143289344u, (_e3 > 2139095040u));
+    let _e9 = local_182;
+    return bitcast<f32>(_e9);
 }
 
-fn converted_absolute(value_9: i32) -> f32 {
-    var value_10: i32;
+fn converted_absolute(value_8: i32) -> f32 {
     var local_183: u32;
 
-    value_10 = value_9;
-    let _e2 = value_10;
-    let _e6 = (bitcast<u32>(f32(_e2)) & 2147483647u);
-    local_183 = select(_e6, 2143289344u, (_e6 > 2139095040u));
-    let _e12 = local_183;
-    return bitcast<f32>(_e12);
+    let _e4 = (bitcast<u32>(f32(value_8)) & 2147483647u);
+    local_183 = select(_e4, 2143289344u, (_e4 > 2139095040u));
+    let _e10 = local_183;
+    return bitcast<f32>(_e10);
 }
 
-fn converted_absolute_1(value_11: u32) -> f32 {
-    var value_12: u32;
+fn converted_absolute_1(value_9: u32) -> f32 {
     var local_184: u32;
 
-    value_12 = value_11;
-    let _e2 = value_12;
-    let _e6 = (bitcast<u32>(f32(_e2)) & 2147483647u);
-    local_184 = select(_e6, 2143289344u, (_e6 > 2139095040u));
-    let _e12 = local_184;
-    return bitcast<f32>(_e12);
+    let _e4 = (bitcast<u32>(f32(value_9)) & 2147483647u);
+    local_184 = select(_e4, 2143289344u, (_e4 > 2139095040u));
+    let _e10 = local_184;
+    return bitcast<f32>(_e10);
 }
 
-fn converted_absolute_2(value_13: bool) -> f32 {
-    var value_14: bool;
+fn converted_absolute_2(value_10: bool) -> f32 {
     var local_185: u32;
 
-    value_14 = value_13;
-    let _e2 = value_14;
-    let _e6 = (bitcast<u32>(f32(_e2)) & 2147483647u);
-    local_185 = select(_e6, 2143289344u, (_e6 > 2139095040u));
-    let _e12 = local_185;
-    return bitcast<f32>(_e12);
+    let _e4 = (bitcast<u32>(f32(value_10)) & 2147483647u);
+    local_185 = select(_e4, 2143289344u, (_e4 > 2139095040u));
+    let _e10 = local_185;
+    return bitcast<f32>(_e10);
 }
 
-fn fabs_3(value_15: i32) -> i32 {
-    var value_16: i32;
-
-    value_16 = value_15;
-    let _e3 = value_16;
-    return (_e3 + 40i);
+fn fabs_3(value_11: i32) -> i32 {
+    return (value_11 + 40i);
 }
 
-fn fabs_4(value_17: u32) -> u32 {
-    var value_18: u32;
-
-    value_18 = value_17;
-    let _e3 = value_18;
-    return (_e3 + 50u);
+fn fabs_4(value_12: u32) -> u32 {
+    return (value_12 + 50u);
 }
 
-fn fabs_5(value_19: bool) -> i32 {
-    var value_20: bool;
+fn fabs_5(value_13: bool) -> i32 {
     var local_186: i32;
 
-    value_20 = value_19;
-    let _e2 = value_20;
-    if _e2 {
+    if value_13 {
         local_186 = 7i;
     } else {
         local_186 = 9i;
@@ -152,13 +129,10 @@ fn fabs_5(value_19: bool) -> i32 {
     return _e6;
 }
 
-fn fabsf(value_21: bool) -> i32 {
-    var value_22: bool;
+fn fabsf(value_14: bool) -> i32 {
     var local_187: i32;
 
-    value_22 = value_21;
-    let _e2 = value_22;
-    if _e2 {
+    if value_14 {
         local_187 = 11i;
     } else {
         local_187 = 13i;
@@ -168,14 +142,7 @@ fn fabsf(value_21: bool) -> i32 {
 }
 
 fn fabsf_1(first: f32, second: f32) -> f32 {
-    var first_1: f32;
-    var second_1: f32;
-
-    first_1 = first;
-    second_1 = second;
-    let _e4 = first_1;
-    let _e5 = second_1;
-    return (_e4 + _e5);
+    return (first + second);
 }
 
 @compute @workgroup_size(1, 1, 1)

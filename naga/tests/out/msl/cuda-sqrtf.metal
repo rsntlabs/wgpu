@@ -82,51 +82,36 @@ uint _naga_sqrtf(
 float root_1(
     float value_1
 ) {
-    float value_2 = {};
-    value_2 = value_1;
-    float _e2 = value_2;
-    uint _e4 = _naga_sqrtf(as_type<uint>(_e2));
-    return as_type<float>(_e4);
+    uint _e2 = _naga_sqrtf(as_type<uint>(value_1));
+    return as_type<float>(_e2);
 }
 
 float root_2(
-    int value_3
+    int value_2
 ) {
-    int value_4 = {};
-    value_4 = value_3;
-    int _e2 = value_4;
-    uint _e5 = _naga_sqrtf(as_type<uint>(static_cast<float>(_e2)));
-    return as_type<float>(_e5);
+    uint _e3 = _naga_sqrtf(as_type<uint>(static_cast<float>(value_2)));
+    return as_type<float>(_e3);
 }
 
 float root_3(
-    uint value_5
+    uint value_3
 ) {
-    uint value_6 = {};
-    value_6 = value_5;
-    uint _e2 = value_6;
-    uint _e5 = _naga_sqrtf(as_type<uint>(static_cast<float>(_e2)));
-    return as_type<float>(_e5);
+    uint _e3 = _naga_sqrtf(as_type<uint>(static_cast<float>(value_3)));
+    return as_type<float>(_e3);
 }
 
 float root_4(
-    bool value_7
+    bool value_4
 ) {
-    bool value_8 = {};
-    value_8 = value_7;
-    bool _e2 = value_8;
-    uint _e5 = _naga_sqrtf(as_type<uint>(static_cast<float>(_e2)));
-    return as_type<float>(_e5);
+    uint _e3 = _naga_sqrtf(as_type<uint>(static_cast<float>(value_4)));
+    return as_type<float>(_e3);
 }
 
 int sqrtf(
-    bool value_9
+    bool value_5
 ) {
-    bool value_10 = {};
     int local_160 = {};
-    value_10 = value_9;
-    bool _e2 = value_10;
-    if (_e2) {
+    if (value_5) {
         local_160 = 7;
     } else {
         local_160 = 9;
@@ -139,13 +124,7 @@ float sqrtf_1(
     float first,
     float second
 ) {
-    float first_1 = {};
-    float second_1 = {};
-    first_1 = first;
-    second_1 = second;
-    float _e4 = first_1;
-    float _e5 = second_1;
-    return _e4 + _e5;
+    return first + second;
 }
 int naga_neg(int val) {
     return as_type<int>(-as_type<uint>(val));
