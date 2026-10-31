@@ -35,7 +35,6 @@ void integer_ops(uint3 threadIdx : SV_GroupThreadID)
     uint bits = (uint)0;
     uint local = (uint)0;
     uint local_1 = (uint)0;
-    uint local_2 = (uint)0;
 
     int value_1 = value.value;
     uint amount_1 = amount.value;
@@ -46,19 +45,17 @@ void integer_ops(uint3 threadIdx : SV_GroupThreadID)
     uint _e17 = bits;
     bits = (_e17 ^ 1u);
     uint _e20 = bits;
-    local = amount_1;
-    uint _e22 = local;
-    bits = (_e20 << _e22);
-    uint _e24 = bits;
-    bits = (_e24 >> 1u);
-    uint _e27 = bits;
-    bits = naga_mod(_e27, 97u);
-    uint _e30 = bits;
-    bits = (_e30 & 255u);
-    uint _e33 = bits;
-    local_1 = uint(threadIdx.x);
-    uint _e38 = local_1;
-    local_2 = uint(_e38);
-    uint _e41 = local_2;
-    out_.Store(_e41*4, asuint(~(_e33)));
+    bits = (_e20 << amount_1);
+    uint _e22 = bits;
+    bits = (_e22 >> 1u);
+    uint _e25 = bits;
+    bits = naga_mod(_e25, 97u);
+    uint _e28 = bits;
+    bits = (_e28 & 255u);
+    uint _e31 = bits;
+    local = uint(threadIdx.x);
+    uint _e36 = local;
+    local_1 = uint(_e36);
+    uint _e39 = local_1;
+    out_.Store(_e39*4, asuint(~(_e31)));
 }

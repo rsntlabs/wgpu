@@ -1,6 +1,8 @@
-use super::{case, ShaderTest};
+use super::{case, module_case, ShaderBuffer, ShaderTest};
 
 const SENTINEL: i32 = -101;
+const COPY_SNAPSHOTS: &str =
+    include_str!("../../../../../naga/tests/in/cuda/scalar-copy-snapshots.cu");
 
 pub(super) fn cases() -> Vec<ShaderTest> {
     let mut snapshot_initial = [SENTINEL; 32];
@@ -71,6 +73,37 @@ pub(super) fn cases() -> Vec<ShaderTest> {
             &initial,
             &expected,
         ));
+    }
+    for choose in [0, 1] {
+        let mut initial = [SENTINEL; 32];
+        initial[7] = choose;
+        initial[8] = 4;
+        let mut expected = initial;
+        let branch_value = if choose == 0 { 17 } else { 13 };
+        let loop_value = branch_value + 6;
+        expected[..15].copy_from_slice(&[
+            4,
+            9,
+            9,
+            11,
+            11,
+            branch_value,
+            branch_value,
+            choose,
+            19,
+            loop_value,
+            loop_value,
+            loop_value,
+            19,
+            19,
+            20,
+        ]);
+        tests.push(module_case(
+            &format!("scalar copies keep snapshots before storage, helper, branch, loop and atomic mutation {choose}"),
+            COPY_SNAPSHOTS, [1, 1, 1], &expected,
+        ).module_buffers(vec![ShaderBuffer::new(
+            0, wgpu::BufferBindingType::Storage { read_only: false }, &initial,
+        )], 0, [1, 1, 1]));
     }
     tests
 }

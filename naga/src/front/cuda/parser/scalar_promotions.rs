@@ -32,8 +32,7 @@ impl ScalarPromotions {
         let budget = &mut parser.parameter_expansion_budget;
         budget.charge_work(function.local_variables.len(), span)?;
         if !function.local_variables.iter().any(|(_, local)| {
-            local.name.is_some()
-                && local.init.is_none()
+            local.init.is_none()
                 && matches!(parser.module.types[local.ty].inner, TypeInner::Scalar(_))
         }) {
             return Ok(Self::default());
@@ -48,8 +47,7 @@ impl ScalarPromotions {
                 store_position: usize::MAX,
                 first_load: usize::MAX,
                 stores: 0,
-                eligible: local.name.is_some()
-                    && local.init.is_none()
+                eligible: local.init.is_none()
                     && matches!(parser.module.types[local.ty].inner, TypeInner::Scalar(_)),
             })
             .collect();
@@ -242,6 +240,17 @@ impl<'a> Analysis<'a> {
                                 candidate.initializer = Some(value);
                                 candidate.store_position = position;
                             } else {
+                                candidate.eligible = false;
+                            }
+                            if function.local_variables[local].name.is_none()
+                                && !matches!(
+                                    function.expressions[value],
+                                    Expression::Load { .. }
+                                        | Expression::FunctionArgument(_)
+                                        | Expression::CallResult(_)
+                                        | Expression::AtomicResult { .. }
+                                )
+                            {
                                 candidate.eligible = false;
                             }
                             if function.expressions[value].needs_pre_emit()
