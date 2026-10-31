@@ -182,6 +182,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 - Support CUDA pointer reassignment across compatible arrays and objects, including runtime control flow and chained assignments.
 - Preserve CUDA pointer variable and parameter names in generated shaders.
 - Emit named values for immutable CUDA scalars to reduce redundant local storage.
+- Simplify direct accesses through unchanged CUDA kernel buffer pointers.
 - Support CUDA vector buffer parameters with packed three-component layouts and const access.
 - Support CUDA shared numeric vectors and fixed vector arrays.
 - Support CUDA scalar bit reinterpretation intrinsics.

@@ -45,6 +45,27 @@ impl Parser<'_> {
             .expressions
             .try_get(handle)
             .map_err(|_| remapping_error(span))?;
+        let expression = if let (&PointerExpressionKind::Snapshot(local), Some(immutable)) =
+            (&expression.kind, source.pointers.immutable.as_deref())
+        {
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            let initializer = immutable
+                .initializer(local)
+                .ok_or_else(|| remapping_error(span))?;
+            let initializer = source
+                .pointers
+                .expressions
+                .try_get(initializer)
+                .map_err(|_| remapping_error(span))?;
+            if !matches!(initializer.kind, PointerExpressionKind::Array(_))
+                || initializer.pointee != expression.pointee
+            {
+                return Err(remapping_error(span));
+            }
+            initializer
+        } else {
+            expression
+        };
         let mut position = None;
         let kind = match expression.kind {
             PointerExpressionKind::Object(binding) => PointerExpressionKind::Object(
@@ -353,6 +374,23 @@ impl Parser<'_> {
         mapper: &mut impl PointerRemapper,
         span: Span,
     ) -> Result<(), ParseError> {
+        if let Some(immutable) = source.pointers.immutable.as_deref() {
+            let proven = match *operation {
+                PointerOperation::Initialize {
+                    destination,
+                    ref value,
+                } => immutable.initializer(destination) == Some(value.expression),
+                PointerOperation::Capture { destination, .. } => {
+                    immutable.initializer(destination).is_some()
+                }
+                _ => false,
+            };
+            return if proven {
+                Ok(())
+            } else {
+                Err(remapping_error(span))
+            };
+        }
         if let Some(runtime) = source.pointers.runtime.as_deref() {
             return runtime.lower_operation(self, source, operation, mapper, span);
         }

@@ -6,60 +6,38 @@ struct _4
     float _m0;
 };
 
-layout(set = 0, binding = 0, std140) uniform _11_10
+layout(set = 0, binding = 0, std140) uniform _9_8
 {
     _4 _m0;
-} _10;
+} _8;
 
-layout(set = 0, binding = 1, std430) readonly buffer _14_13
+layout(set = 0, binding = 1, std430) readonly buffer _12_11
 {
     float _m0[];
-} _13;
+} _11;
 
-layout(set = 0, binding = 2, std430) buffer _17_16
+layout(set = 0, binding = 2, std430) buffer _15_14
 {
     float _m0[];
-} _16;
+} _14;
 
 void main()
 {
-    uint _63 = 0u;
-    uint _57 = 0u;
-    float _51 = 0.0;
+    uint _40 = 0u;
+    uint _33 = 0u;
     uint _44 = 0u;
-    uint _37[2] = uint[](0u, 0u);
-    uint _61[2] = uint[](0u, 0u);
-    uint _55 = 0u;
-    uint _49 = 0u;
-    uint _42[2] = uint[](0u, 0u);
-    float _34 = 0.0;
-    uint _65 = 0u;
-    float _59 = 0.0;
-    uint _53[2] = uint[](0u, 0u);
-    uint _47[2] = uint[](0u, 0u);
-    uint _40[2] = uint[](0u, 0u);
-    _34 = _10._m0._m0;
-    _37 = uint[](0u, 0u);
-    _37[0u] = 0u;
-    _37[1u] = 0u;
-    _40 = uint[](0u, 0u);
-    _40[0u] = 1u;
-    _40[1u] = 0u;
-    _34 *= 2.0;
-    _47 = _37;
-    _49 = gl_LocalInvocationID.x;
-    _53 = _47;
-    _53[1u] += _49;
-    _55 = _53[0u];
-    _57 = _53[1u];
-    _59 = _13._m0[_57];
-    _51 = _59;
-    _42 = _40;
-    _44 = gl_LocalInvocationID.x;
-    _61 = _42;
-    _61[1u] += _44;
-    _63 = _61[0u];
-    _65 = _61[1u];
-    _16._m0[_65] = _51 * _34;
+    float _38 = 0.0;
+    float _30 = 0.0;
+    float _42 = 0.0;
+    uint _36 = 0u;
+    _30 = _8._m0._m0;
+    _30 *= 2.0;
+    _36 = gl_LocalInvocationID.x;
+    _40 = _36;
+    _42 = _11._m0[_40];
+    _38 = _42;
+    _33 = gl_LocalInvocationID.x;
+    _44 = _33;
+    _14._m0[_44] = _38 * _30;
 }
 

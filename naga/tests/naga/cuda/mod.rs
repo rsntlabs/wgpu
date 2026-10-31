@@ -20,6 +20,7 @@ mod function_macros;
 mod helper_builtins;
 mod helper_parameters;
 mod helpers;
+mod immutable_pointers;
 mod inferred_arrays;
 mod inline;
 mod integer_intrinsics;

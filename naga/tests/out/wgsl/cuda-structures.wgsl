@@ -23,9 +23,9 @@ struct Packet_cuda_record_2_ {
 }
 
 @group(0) @binding(0)
-var<storage> input_1: array<Packet_cuda_record_1_>;
+var<storage> input: array<Packet_cuda_record_1_>;
 @group(0) @binding(1)
-var<storage, read_write> output_1: array<Packet_cuda_record_1_>;
+var<storage, read_write> output: array<Packet_cuda_record_1_>;
 
 fn adjust(value: Packet_cuda_record_1_, bias: i32) -> Packet_cuda_record_1_ {
     var value_1: Packet_cuda_record_1_;
@@ -60,228 +60,148 @@ fn operator_u002b(left: Packet_cuda_record_1_, right: Packet_cuda_record_1_) -> 
 
 @compute @workgroup_size(2, 1, 1)
 fn structures(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
-    var input: array<u32, 2>;
-    var output: array<u32, 2>;
     var original: Packet_cuda_record_1_;
-    var local: array<u32, 2>;
-    var local_1: u32;
+    var local: u32;
     var changed: Packet_cuda_record_1_;
-    var local_2: Packet_cuda_record_2_;
+    var local_1: Packet_cuda_record_2_;
     var combined: Packet_cuda_record_1_;
-    var local_3: array<u32, 2>;
-    var local_4: u32;
-    var local_5: array<u32, 2>;
-    var local_6: u32;
+    var local_2: u32;
+    var local_3: u32;
     var sample: i32;
-    var local_7: array<u32, 2>;
-    var local_8: u32;
-    var local_9: u32;
+    var local_4: u32;
+    var local_5: u32;
     var row: i32;
     var column: i32;
-    var local_10: array<u32, 2>;
+    var local_6: u32;
+    var local_7: u32;
+    var local_8: u32;
+    var local_9: u32;
+    var local_10: Packet_cuda_record_1_;
     var local_11: u32;
-    var local_12: u32;
+    var local_12: Packet_cuda_record_1_;
     var local_13: u32;
-    var local_14: array<u32, 2>;
+    var local_14: u32;
     var local_15: u32;
-    var local_16: Packet_cuda_record_1_;
-    var local_17: array<u32, 2>;
-    var local_18: u32;
-    var local_19: u32;
-    var local_20: Packet_cuda_record_1_;
-    var local_21: array<u32, 2>;
-    var local_22: u32;
-    var local_23: u32;
-    var local_24: array<u32, 2>;
-    var local_25: u32;
-    var local_26: u32;
-    var local_27: array<u32, 2>;
-    var local_28: u32;
-    var local_29: u32;
-    var local_30: array<u32, 2>;
-    var local_31: u32;
-    var local_32: u32;
-    var local_33: array<u32, 2>;
-    var local_34: u32;
-    var local_35: u32;
+    var local_16: u32;
+    var local_17: u32;
 
-    input = array<u32, 2>();
-    input[0] = 0u;
-    input[1] = 0u;
-    output = array<u32, 2>();
-    output[0] = 1u;
-    output[1] = 0u;
     let lane = threadIdx.x;
     if (lane >= 2u) {
         return;
     }
-    let _e17 = input;
-    local = _e17;
-    local_1 = u32(lane);
-    let _e21 = local;
-    local_17 = _e21;
-    let _e23 = local_1;
-    let _e25 = local_17[1];
-    local_17[1] = (_e25 + _e23);
-    let _e29 = local_17[0];
-    local_18 = u32(_e29);
-    let _e33 = local_17[1];
-    local_19 = u32(_e33);
-    let _e36 = local_19;
-    let _e39 = input_1[_e36];
-    local_20 = _e39;
-    let _e41 = local_20;
-    local_16 = _e41;
-    let _e43 = local_16;
-    original = _e43;
-    let _e45 = original;
-    let _e49 = adjust(_e45, (3i + i32(lane)));
-    changed = _e49;
+    local = u32(lane);
+    let _e6 = local;
+    local_11 = u32(_e6);
+    let _e9 = local_11;
+    let _e12 = input[_e9];
+    local_12 = _e12;
+    let _e14 = local_12;
+    local_10 = _e14;
+    let _e16 = local_10;
+    original = _e16;
+    let _e18 = original;
+    let _e22 = adjust(_e18, (3i + i32(lane)));
+    changed = _e22;
     {
-        local_2.w = 7i;
-        local_2.x = 11i;
-        let _e58 = local_2.w;
-        let _e59 = local_2.x;
-        let _e66 = changed.samples[0i].tag;
-        changed.samples[0i].tag = (_e66 + u32((_e58 + _e59)));
+        local_1.w = 7i;
+        local_1.x = 11i;
+        let _e31 = local_1.w;
+        let _e32 = local_1.x;
+        let _e39 = changed.samples[0i].tag;
+        changed.samples[0i].tag = (_e39 + u32((_e31 + _e32)));
     }
-    let _e68 = changed;
-    let _e69 = original;
-    let _e70 = operator_u002b(_e68, _e69);
-    combined = _e70;
-    let _e73 = original.serial;
-    let _e80 = combined.weights[0i][0i];
-    combined.weights[0i][0i] = (_e80 + f32(_e73));
-    let _e83 = combined.serial;
-    combined.colour.w = f32(_e83);
+    let _e41 = changed;
+    let _e42 = original;
+    let _e43 = operator_u002b(_e41, _e42);
+    combined = _e43;
+    let _e46 = original.serial;
+    let _e53 = combined.weights[0i][0i];
+    combined.weights[0i][0i] = (_e53 + f32(_e46));
+    let _e56 = combined.serial;
+    combined.colour.w = f32(_e56);
     let slot = (lane + 1u);
-    let _e90 = combined.serial;
-    let _e92 = output;
-    local_3 = _e92;
-    local_4 = u32(slot);
-    let _e96 = local_3;
-    local_21 = _e96;
-    let _e98 = local_4;
-    let _e100 = local_21[1];
-    local_21[1] = (_e100 + _e98);
-    let _e104 = local_21[0];
-    local_22 = u32(_e104);
-    let _e108 = local_21[1];
-    local_23 = u32(_e108);
-    let _e111 = local_23;
-    output_1[_e111].serial = _e90;
-    let _e116 = combined.uv;
-    let _e117 = output;
-    local_5 = _e117;
-    local_6 = u32(slot);
-    let _e121 = local_5;
-    local_24 = _e121;
-    let _e123 = local_6;
-    let _e125 = local_24[1];
-    local_24[1] = (_e125 + _e123);
-    let _e129 = local_24[0];
-    local_25 = u32(_e129);
-    let _e133 = local_24[1];
-    local_26 = u32(_e133);
-    let _e136 = local_26;
-    output_1[_e136].uv = _e116;
+    let _e63 = combined.serial;
+    local_2 = u32(slot);
+    let _e66 = local_2;
+    local_13 = u32(_e66);
+    let _e69 = local_13;
+    output[_e69].serial = _e63;
+    let _e74 = combined.uv;
+    local_3 = u32(slot);
+    let _e77 = local_3;
+    local_14 = u32(_e77);
+    let _e80 = local_14;
+    output[_e80].uv = _e74;
     {
         sample = 0i;
         loop {
-            let _e141 = sample;
-            if (_e141 < 2i) {
+            let _e85 = sample;
+            if (_e85 < 2i) {
             } else {
                 break;
             }
-            let _e145 = sample;
-            let _e147 = combined.samples[_e145];
-            let _e148 = output;
-            local_7 = _e148;
-            local_8 = u32(slot);
-            let _e152 = sample;
-            local_9 = u32(_e152);
-            let _e155 = local_7;
-            local_27 = _e155;
-            let _e157 = local_8;
-            let _e159 = local_27[1];
-            local_27[1] = (_e159 + _e157);
-            let _e163 = local_27[0];
-            local_28 = u32(_e163);
-            let _e167 = local_27[1];
-            local_29 = u32(_e167);
-            let _e170 = local_29;
-            let _e173 = local_9;
-            output_1[_e170].samples[_e173] = _e147;
+            let _e89 = sample;
+            let _e91 = combined.samples[_e89];
+            local_4 = u32(slot);
+            let _e94 = sample;
+            local_5 = u32(_e94);
+            let _e97 = local_4;
+            local_15 = u32(_e97);
+            let _e100 = local_15;
+            let _e103 = local_5;
+            output[_e100].samples[_e103] = _e91;
             continuing {
-                let _e175 = sample;
-                sample = (_e175 + 1i);
+                let _e105 = sample;
+                sample = (_e105 + 1i);
             }
         }
     }
     {
         row = 0i;
         loop {
-            let _e180 = row;
-            if (_e180 < 2i) {
+            let _e110 = row;
+            if (_e110 < 2i) {
             } else {
                 break;
             }
             {
                 column = 0i;
                 loop {
-                    let _e185 = column;
-                    if (_e185 < 2i) {
+                    let _e115 = column;
+                    if (_e115 < 2i) {
                     } else {
                         break;
                     }
-                    let _e189 = row;
-                    let _e191 = column;
-                    let _e193 = combined.weights[_e189][_e191];
-                    let _e194 = output;
-                    local_10 = _e194;
-                    local_11 = u32(slot);
-                    let _e198 = row;
-                    local_12 = u32(_e198);
-                    let _e201 = column;
-                    local_13 = u32(_e201);
-                    let _e204 = local_10;
-                    local_30 = _e204;
-                    let _e206 = local_11;
-                    let _e208 = local_30[1];
-                    local_30[1] = (_e208 + _e206);
-                    let _e212 = local_30[0];
-                    local_31 = u32(_e212);
-                    let _e216 = local_30[1];
-                    local_32 = u32(_e216);
-                    let _e219 = local_32;
-                    let _e222 = local_12;
-                    let _e224 = local_13;
-                    output_1[_e219].weights[_e222][_e224] = _e193;
+                    let _e119 = row;
+                    let _e121 = column;
+                    let _e123 = combined.weights[_e119][_e121];
+                    local_6 = u32(slot);
+                    let _e126 = row;
+                    local_7 = u32(_e126);
+                    let _e129 = column;
+                    local_8 = u32(_e129);
+                    let _e132 = local_6;
+                    local_16 = u32(_e132);
+                    let _e135 = local_16;
+                    let _e138 = local_7;
+                    let _e140 = local_8;
+                    output[_e135].weights[_e138][_e140] = _e123;
                     continuing {
-                        let _e226 = column;
-                        column = (_e226 + 1i);
+                        let _e142 = column;
+                        column = (_e142 + 1i);
                     }
                 }
             }
             continuing {
-                let _e229 = row;
-                row = (_e229 + 1i);
+                let _e145 = row;
+                row = (_e145 + 1i);
             }
         }
     }
-    let _e233 = combined.colour;
-    let _e234 = output;
-    local_14 = _e234;
-    local_15 = u32(slot);
-    let _e238 = local_14;
-    local_33 = _e238;
-    let _e240 = local_15;
-    let _e242 = local_33[1];
-    local_33[1] = (_e242 + _e240);
-    let _e246 = local_33[0];
-    local_34 = u32(_e246);
-    let _e250 = local_33[1];
-    local_35 = u32(_e250);
-    let _e253 = local_35;
-    output_1[_e253].colour = _e233;
+    let _e149 = combined.colour;
+    local_9 = u32(slot);
+    let _e152 = local_9;
+    local_17 = u32(_e152);
+    let _e155 = local_17;
+    output[_e155].colour = _e149;
 }

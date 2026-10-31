@@ -2,6 +2,7 @@ use super::parameter_calls::MappedExpression;
 use super::reference_bindings::{AddressProjection, BoundTarget};
 use super::*;
 
+mod immutable;
 mod origins;
 mod remapping;
 pub(super) mod runtime;
@@ -10,6 +11,7 @@ mod state_validation;
 mod updates;
 mod validation;
 
+pub(super) use immutable::ImmutablePointers;
 use origins::PointerOrigin;
 pub(super) use state::{PointerCell, PointerCellKind, PointerOperation};
 
@@ -88,6 +90,7 @@ pub(super) struct PointerState {
     pub(super) cells: FastHashMap<Handle<LocalVariable>, PointerCell>,
     pub(super) operations: FastHashMap<Handle<Expression>, PointerOperation>,
     pub(super) operation_markers: crate::FastHashSet<Handle<Expression>>,
+    pub(super) immutable: Option<Box<ImmutablePointers>>,
     pub(super) runtime: Option<Box<runtime::PointerRuntime>>,
 }
 
@@ -98,6 +101,8 @@ impl PointerState {
             && self.cells.is_empty()
             && self.operations.is_empty()
             && self.operation_markers.is_empty()
+            && self.immutable.is_none()
+            && self.runtime.is_none()
     }
 }
 
