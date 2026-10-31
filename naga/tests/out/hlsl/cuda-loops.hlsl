@@ -5,7 +5,7 @@ struct type_3 {
     int _end_pad_2;
 };
 
-RWByteAddressBuffer out_ : register(u0);
+RWByteAddressBuffer out_1 : register(u0);
 cbuffer n_1 : register(b1) { type_3 n_1; }
 
 typedef uint ret_ZeroValuearray2_uint_[2];
@@ -16,20 +16,20 @@ ret_ZeroValuearray2_uint_ ZeroValuearray2_uint_() {
 [numthreads(1, 1, 1)]
 void loops(uint3 threadIdx : SV_GroupThreadID)
 {
-    uint local[2] = (uint[2])0;
+    uint out_[2] = (uint[2])0;
     int n = (int)0;
     int sum = (int)0;
     int i = (int)0;
     int i_1 = (int)0;
-    uint local_1[2] = (uint[2])0;
-    uint local_2 = (uint)0;
-    uint local_3[2] = (uint[2])0;
+    uint local[2] = (uint[2])0;
+    uint local_1 = (uint)0;
+    uint local_2[2] = (uint[2])0;
+    uint local_3 = (uint)0;
     uint local_4 = (uint)0;
-    uint local_5 = (uint)0;
 
-    local = ZeroValuearray2_uint_();
-    local[0] = 0u;
-    local[1] = 0u;
+    out_ = ZeroValuearray2_uint_();
+    out_[0] = 0u;
+    out_[1] = 0u;
     int _e10 = n_1.value;
     n = _e10;
     sum = int(0);
@@ -105,18 +105,18 @@ void loops(uint3 threadIdx : SV_GroupThreadID)
         }
     }
     int _e55 = sum;
-    uint _e58[2] = local;
-    local_1 = _e58;
-    local_2 = uint(threadIdx.x);
-    uint _e63[2] = local_1;
-    local_3 = _e63;
-    uint _e64 = local_2;
-    uint _e66 = local_3[1];
-    local_3[1] = (_e66 + _e64);
-    uint _e70 = local_3[0];
-    local_4 = uint(_e70);
-    uint _e74 = local_3[1];
-    local_5 = uint(_e74);
-    uint _e77 = local_5;
-    out_.Store(_e77*4, asuint(_e55));
+    uint _e58[2] = out_;
+    local = _e58;
+    local_1 = uint(threadIdx.x);
+    uint _e63[2] = local;
+    local_2 = _e63;
+    uint _e64 = local_1;
+    uint _e66 = local_2[1];
+    local_2[1] = (_e66 + _e64);
+    uint _e70 = local_2[0];
+    local_3 = uint(_e70);
+    uint _e74 = local_2[1];
+    local_4 = uint(_e74);
+    uint _e77 = local_4;
+    out_1.Store(_e77*4, asuint(_e55));
 }

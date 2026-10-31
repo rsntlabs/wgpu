@@ -15,19 +15,19 @@ layout(std140) uniform type_3_block_1Compute { type_3 _group_0_binding_1_cs; };
 
 void main() {
     uvec3 threadIdx = gl_LocalInvocationID;
-    uint local[2] = uint[2](0u, 0u);
+    uint out_[2] = uint[2](0u, 0u);
     int n = 0;
     int sum = 0;
     int i = 0;
     int i_1 = 0;
-    uint local_1[2] = uint[2](0u, 0u);
-    uint local_2 = 0u;
-    uint local_3[2] = uint[2](0u, 0u);
+    uint local[2] = uint[2](0u, 0u);
+    uint local_1 = 0u;
+    uint local_2[2] = uint[2](0u, 0u);
+    uint local_3 = 0u;
     uint local_4 = 0u;
-    uint local_5 = 0u;
-    local = uint[2](0u, 0u);
-    local[0] = 0u;
-    local[1] = 0u;
+    out_ = uint[2](0u, 0u);
+    out_[0] = 0u;
+    out_[1] = 0u;
     int _e10 = _group_0_binding_1_cs.value;
     n = _e10;
     sum = 0;
@@ -94,19 +94,19 @@ void main() {
         }
     }
     int _e55 = sum;
-    uint _e58[2] = local;
-    local_1 = _e58;
-    local_2 = uint(threadIdx.x);
-    uint _e63[2] = local_1;
-    local_3 = _e63;
-    uint _e64 = local_2;
-    uint _e66 = local_3[1];
-    local_3[1] = (_e66 + _e64);
-    uint _e70 = local_3[0];
-    local_4 = uint(_e70);
-    uint _e74 = local_3[1];
-    local_5 = uint(_e74);
-    uint _e77 = local_5;
+    uint _e58[2] = out_;
+    local = _e58;
+    local_1 = uint(threadIdx.x);
+    uint _e63[2] = local;
+    local_2 = _e63;
+    uint _e64 = local_1;
+    uint _e66 = local_2[1];
+    local_2[1] = (_e66 + _e64);
+    uint _e70 = local_2[0];
+    local_3 = uint(_e70);
+    uint _e74 = local_2[1];
+    local_4 = uint(_e74);
+    uint _e77 = local_4;
     _group_0_binding_0_cs[_e77] = _e55;
 }
 

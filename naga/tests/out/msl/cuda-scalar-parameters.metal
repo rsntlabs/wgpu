@@ -23,66 +23,66 @@ struct scaleInput {
 kernel void scale(
   metal::uint3 threadIdx [[thread_position_in_threadgroup]]
 , constant type_1& factor_1 [[user(fake0)]]
-, device type_2 const& input [[user(fake0)]]
-, device type_2& output [[user(fake0)]]
+, device type_2 const& input_1 [[user(fake0)]]
+, device type_2& output_1 [[user(fake0)]]
 , constant _mslBufferSizes& _buffer_sizes [[user(fake0)]]
 ) {
     float factor = {};
+    type_5 input = {};
+    type_5 output = {};
     type_5 local = {};
-    type_5 local_1 = {};
+    uint local_1 = {};
     type_5 local_2 = {};
     uint local_3 = {};
-    type_5 local_4 = {};
-    uint local_5 = {};
-    float local_6 = {};
-    type_5 local_7 = {};
-    uint local_8 = {};
-    uint local_9 = {};
-    float local_10 = {};
-    type_5 local_11 = {};
-    uint local_12 = {};
-    uint local_13 = {};
+    float local_4 = {};
+    type_5 local_5 = {};
+    uint local_6 = {};
+    uint local_7 = {};
+    float local_8 = {};
+    type_5 local_9 = {};
+    uint local_10 = {};
+    uint local_11 = {};
     float _e3 = factor_1.value;
     factor = _e3;
-    local = type_5 {};
-    local.inner[0] = 0u;
-    local.inner[1] = 0u;
-    local_1 = type_5 {};
-    local_1.inner[0] = 1u;
-    local_1.inner[1] = 0u;
+    input = type_5 {};
+    input.inner[0] = 0u;
+    input.inner[1] = 0u;
+    output = type_5 {};
+    output.inner[0] = 1u;
+    output.inner[1] = 0u;
     float _e19 = factor;
     factor = _e19 * 2.0;
-    type_5 _e24 = local;
-    local_4 = _e24;
-    local_5 = static_cast<uint>(threadIdx.x);
-    type_5 _e29 = local_4;
-    local_7 = _e29;
-    uint _e30 = local_5;
-    uint _e32 = local_7.inner[1];
-    local_7.inner[1] = _e32 + _e30;
-    uint _e36 = local_7.inner[0];
-    local_8 = static_cast<uint>(_e36);
-    uint _e40 = local_7.inner[1];
-    local_9 = static_cast<uint>(_e40);
-    uint _e44 = local_9;
-    float _e46 = input[_e44];
-    local_10 = _e46;
-    float _e47 = local_10;
-    local_6 = _e47;
-    float _e49 = local_6;
-    float _e50 = factor;
-    type_5 _e54 = local_1;
-    local_2 = _e54;
+    type_5 _e24 = input;
+    local_2 = _e24;
     local_3 = static_cast<uint>(threadIdx.x);
-    type_5 _e59 = local_2;
-    local_11 = _e59;
-    uint _e60 = local_3;
-    uint _e62 = local_11.inner[1];
-    local_11.inner[1] = _e62 + _e60;
-    uint _e66 = local_11.inner[0];
-    local_12 = static_cast<uint>(_e66);
-    uint _e70 = local_11.inner[1];
-    local_13 = static_cast<uint>(_e70);
-    uint _e73 = local_13;
-    output[_e73] = _e49 * _e50;
+    type_5 _e29 = local_2;
+    local_5 = _e29;
+    uint _e30 = local_3;
+    uint _e32 = local_5.inner[1];
+    local_5.inner[1] = _e32 + _e30;
+    uint _e36 = local_5.inner[0];
+    local_6 = static_cast<uint>(_e36);
+    uint _e40 = local_5.inner[1];
+    local_7 = static_cast<uint>(_e40);
+    uint _e44 = local_7;
+    float _e46 = input_1[_e44];
+    local_8 = _e46;
+    float _e47 = local_8;
+    local_4 = _e47;
+    float _e49 = local_4;
+    float _e50 = factor;
+    type_5 _e54 = output;
+    local = _e54;
+    local_1 = static_cast<uint>(threadIdx.x);
+    type_5 _e59 = local;
+    local_9 = _e59;
+    uint _e60 = local_1;
+    uint _e62 = local_9.inner[1];
+    local_9.inner[1] = _e62 + _e60;
+    uint _e66 = local_9.inner[0];
+    local_10 = static_cast<uint>(_e66);
+    uint _e70 = local_9.inner[1];
+    local_11 = static_cast<uint>(_e70);
+    uint _e73 = local_11;
+    output_1[_e73] = _e49 * _e50;
 }

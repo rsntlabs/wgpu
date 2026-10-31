@@ -3,6 +3,7 @@ use super::*;
 impl Parser<'_> {
     pub(in super::super) fn source_pointer_variable(
         &mut self,
+        name: &str,
         pointer: PointerValue,
         is_const: bool,
         span: Span,
@@ -17,6 +18,9 @@ impl Parser<'_> {
             },
             span,
         )?;
+        self.parameter_expansion_budget
+            .charge_bytes(name.len(), span)?;
+        self.function.ir.local_variables[cell].name = Some(String::from(name));
         let expression = self.function.pointers.cells[&cell].expression;
         let binding = self.freeze_reference(ReferenceValue {
             reference: Reference::Pointer(expression),

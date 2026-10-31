@@ -244,6 +244,8 @@ arguments. Initializers evaluate once, so later changes to an index or condition
 do not retarget a pointer. Locals preserve live aliases in kernels and helpers,
 including mixed declaration lists and block or loop scopes. Pointee `const`
 prevents writes; top-level pointer `const` prevents modifying the pointer itself.
+Generated shaders retain source names for pointers, with backend-specific
+sanitization and suffixes to distinguish overlapping scopes.
 Mutable local pointers and pointer parameters support `++`, `--`, `+=`, and `-=`
 with integral displacements. Updates preserve the original array or object origin.
 Plain assignment, `pointer = replacement`, captures the replacement's origin,
