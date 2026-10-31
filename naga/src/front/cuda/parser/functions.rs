@@ -70,6 +70,9 @@ const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 11] = [
     ),
 ];
 
+const SQRT_BUILTINS: [&str; 2] = ["sqrtf", "sqrt"];
+const INTEGRAL_DOUBLE_BUILTINS: [&str; 2] = ["fabs", "sqrt"];
+
 #[derive(Clone, Copy, PartialEq)]
 pub(super) struct MathBuiltin {
     function: MathFunction,
@@ -123,10 +126,11 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
                 .into_iter()
                 .map(|(name, _, _, _)| (name, GlobalDeclaration::Functions(Vec::new()))),
         )
-        .chain(core::iter::once((
-            "sqrtf",
-            GlobalDeclaration::Functions(Vec::new()),
-        )))
+        .chain(
+            SQRT_BUILTINS
+                .into_iter()
+                .map(|name| (name, GlobalDeclaration::Functions(Vec::new()))),
+        )
         .chain(
             INTEGER_ATOMICS
                 .into_iter()
@@ -199,7 +203,9 @@ pub(super) enum FunctionCandidate {
         source: Scalar,
         result: Scalar,
     },
-    IntegralFabs(Scalar),
+    IntegralDouble {
+        source: Scalar,
+    },
     Sqrt,
     Constructor {
         size: VectorSize,
@@ -744,7 +750,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Bitcast { result, .. }
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
             FunctionCandidate::WrappingAtomic(_) => TypeSpecifier::Scalar(Scalar::U32),
-            FunctionCandidate::IntegralFabs(_) => unreachable!(),
+            FunctionCandidate::IntegralDouble { .. } => unreachable!(),
             FunctionCandidate::Sqrt => TypeSpecifier::Scalar(Scalar::F32),
             FunctionCandidate::Constructor { size, scalar } => {
                 TypeSpecifier::Vector { size, scalar }
@@ -1336,7 +1342,10 @@ impl<'a> Parser<'a> {
                         result,
                     }),
             )
-            .chain((builtin_visible && name == "sqrtf").then_some(FunctionCandidate::Sqrt))
+            .chain(
+                (builtin_visible && SQRT_BUILTINS.contains(&name))
+                    .then_some(FunctionCandidate::Sqrt),
+            )
             .chain(atomic_function.into_iter().flat_map(|function| {
                 [Scalar::I32, Scalar::U32]
                     .map(|scalar| FunctionCandidate::Atomic { function, scalar })
@@ -1372,7 +1381,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::AtomicCompareExchange(_) => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::Unary { .. }
-            | FunctionCandidate::IntegralFabs(_)
+            | FunctionCandidate::IntegralDouble { .. }
             | FunctionCandidate::Sqrt => 1,
             FunctionCandidate::Constructor { size, .. } => size as usize,
         }
@@ -1403,7 +1412,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Bitcast { source, .. }
             | FunctionCandidate::Unary { source, .. }
             | FunctionCandidate::Multiply24(source)
-            | FunctionCandidate::IntegralFabs(source) => return scalar_resolution(source),
+            | FunctionCandidate::IntegralDouble { source } => return scalar_resolution(source),
             FunctionCandidate::Sqrt => return scalar_resolution(Scalar::F32),
             FunctionCandidate::Constructor { scalar, .. } => return scalar_resolution(scalar),
             FunctionCandidate::Atomic { scalar, .. }
@@ -1578,8 +1587,8 @@ impl<'a> Parser<'a> {
                 message: String::from("recursive device helper calls are unsupported"),
                 span,
             }),
-            FunctionCandidate::IntegralFabs(_) => Err(ParseError {
-                message: String::from("integral fabs requires unsupported double precision"),
+            FunctionCandidate::IntegralDouble { .. } => Err(ParseError {
+                message: format!("integral {name} requires unsupported double precision"),
                 span,
             }),
             _ => Ok(best_candidate),
@@ -1591,17 +1600,17 @@ impl<'a> Parser<'a> {
         name: &str,
         arguments: &[impl CallArgument],
     ) -> OverloadResolution {
-        let integral_fabs = self.integral_fabs_candidate(name, arguments);
-        let mut viable_candidates =
-            self.function_candidates(name)
-                .chain(integral_fabs)
-                .filter(|&candidate| {
-                    self.candidate_arity(candidate) == arguments.len()
-                        && arguments.iter().enumerate().all(|(index, argument)| {
-                            self.candidate_conversion(candidate, index, argument)
-                                .is_some()
-                        })
-                });
+        let integral_double = self.integral_double_candidate(name, arguments);
+        let mut viable_candidates = self
+            .function_candidates(name)
+            .chain(integral_double)
+            .filter(|&candidate| {
+                self.candidate_arity(candidate) == arguments.len()
+                    && arguments.iter().enumerate().all(|(index, argument)| {
+                        self.candidate_conversion(candidate, index, argument)
+                            .is_some()
+                    })
+            });
         let mut remaining_candidates = viable_candidates.clone();
         let Some(mut best_candidate) = remaining_candidates.next() else {
             return OverloadResolution::NoViable;
@@ -1620,12 +1629,12 @@ impl<'a> Parser<'a> {
         OverloadResolution::Selected(best_candidate)
     }
 
-    fn integral_fabs_candidate(
+    fn integral_double_candidate(
         &self,
         name: &str,
         arguments: &[impl CallArgument],
     ) -> Option<FunctionCandidate> {
-        if name != "fabs"
+        if !INTEGRAL_DOUBLE_BUILTINS.contains(&name)
             || arguments.len() != 1
             || !matches!(
                 self.global_declarations.get(name),
@@ -1653,6 +1662,6 @@ impl<'a> Parser<'a> {
                     .candidate_conversion(candidate, 0, &arguments[0])
                     .is_some()
         });
-        (!exact_ordinary).then_some(FunctionCandidate::IntegralFabs(source))
+        (!exact_ordinary).then_some(FunctionCandidate::IntegralDouble { source })
     }
 }

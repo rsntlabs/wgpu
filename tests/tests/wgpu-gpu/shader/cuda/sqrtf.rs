@@ -11,7 +11,7 @@ pub(super) fn cases() -> Vec<ShaderTest> {
     ]
 }
 
-fn expected_bits(input_bits: u32) -> u32 {
+pub(super) fn expected_bits(input_bits: u32) -> u32 {
     if input_bits & 0x7fff_ffff == 0 || input_bits == 0x7f80_0000 {
         input_bits
     } else if input_bits & 0x8000_0000 != 0 || input_bits & 0x7f80_0000 == 0x7f80_0000 {
@@ -167,7 +167,7 @@ fn output_case(name: &str, source: &str, expected: &[u32; 32]) -> ShaderTest {
     )
 }
 
-fn input_bits() -> Vec<u32> {
+pub(super) fn input_bits() -> Vec<u32> {
     let mut inputs = Vec::new();
     let mut add = |bits| {
         if !inputs.contains(&bits) {

@@ -203,6 +203,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 - Support CUDA scalar and aggregate list initialization with narrowing checks and ordered element initialization.
 - Infer CUDA local array bounds from nonempty initializer lists.
 - Support CUDA scalar `sqrtf` with correctly rounded results using integer arithmetic.
+- Support the CUDA `sqrt(float)` overload with shared square-root lowering and integral overload selection.
 - Support CUDA scalar `floorf`, including negative subnormals and large integral values.
 - Support CUDA scalar `ceilf`, including subnormal inputs and signed zero results.
 - Support CUDA scalar `__saturatef`, including NaNs, signed zeros, and subnormal inputs.
