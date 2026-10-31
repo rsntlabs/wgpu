@@ -21,6 +21,7 @@ mod parameter_expansion;
 mod pointers;
 mod reference_bindings;
 mod references;
+mod saturate;
 mod sqrtf;
 mod statements;
 mod structures;

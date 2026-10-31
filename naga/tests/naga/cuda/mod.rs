@@ -45,6 +45,7 @@ mod preprocessing_conditions;
 mod prototypes;
 mod reference_bindings;
 mod reference_categories;
+mod saturate;
 mod shared;
 mod shared_vectors;
 mod specifiers;

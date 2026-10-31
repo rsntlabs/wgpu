@@ -360,6 +360,14 @@ canonical quiet NaN `0x7fc00000`. These results follow NVIDIA's
 Calls execute at runtime and are not constant expressions. Double-precision
 `floor` remains unsupported.
 
+`__saturatef(float)` clamps its argument to `[+0.0, 1.0]` and returns `float`.
+Scalar arguments convert to `float` first. Negative values, both signed zeros,
+and NaNs produce positive zero; values greater than one produce one. Positive
+values below one retain their received bits, including subnormals. These results
+follow NVIDIA's
+[`__saturatef` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SINGLE.html).
+Calls execute at runtime and are not constant expressions.
+
 `sinf(float)` and `cosf(float)` return `float` and accept scalar arguments that
 convert to `float`. Integer range reduction and polynomial evaluation cover
 the full finite input range, with results within two ULP of the exact sine or
@@ -381,7 +389,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `sqrtf`, `floorf`, `sinf`, or `cosf` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `sqrtf`, `floorf`, `__saturatef`, `sinf`, or `cosf` remain unsupported.
 
 ## Bit reinterpretation
 
