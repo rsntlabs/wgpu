@@ -1348,7 +1348,12 @@ impl<W: Write> Writer<W> {
     ) -> BackendResult {
         // Write variable name
         write!(self.out, "let {name}")?;
-        if self.flags.contains(WriterFlags::EXPLICIT_TYPES) {
+        if self.flags.contains(WriterFlags::EXPLICIT_TYPES)
+            && !func_ctx.info[handle]
+                .ty
+                .handle()
+                .is_some_and(|ty| self.is_builtin_wgsl_struct(module, ty))
+        {
             write!(self.out, ": ")?;
             // Write variable type
             self.write_type_resolution(module, &func_ctx.info[handle].ty)?;

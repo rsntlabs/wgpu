@@ -10,4 +10,5 @@ mod spirv_switch_fallthrough;
 mod validation;
 mod wgsl_errors;
 mod wgsl_named_call_results;
+mod wgsl_predeclared_result_types;
 mod wgsl_switch_fallthrough;
