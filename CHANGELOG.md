@@ -146,6 +146,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 - Support scalar CUDA kernel parameters through uniform buffers, including per-invocation parameter mutation.
 - Support CUDA conditional branches, scoped locals, comparisons, and short-circuit logical operators.
 - Support CUDA scalar arithmetic conversions, assignment conversions, and explicit casts.
+- Accept CUDA `signed`, `signed int`, and `int signed` as spellings of 32-bit `int`.
 - Support CUDA assignment expressions, compound arithmetic assignments, and prefix/postfix updates.
 - Support CUDA `for`, `while`, and `do`/`while` loops with `break` and `continue`.
 - Support CUDA switches with constant case labels, fallthrough, and scoped declarations.

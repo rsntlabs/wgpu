@@ -1,7 +1,7 @@
 use super::*;
 
 use super::function_declarations::Inlining;
-use super::types::VECTOR_TYPES;
+use super::types::{IntegerSpecifiers, VECTOR_TYPES};
 use crate::MathFunction;
 
 const MATH_BUILTINS: [(&str, MathFunction); 4] = [
@@ -267,8 +267,7 @@ impl<'a> Parser<'a> {
         let mut seen_static = false;
         let mut cuda_inline_span = None;
         let mut explicit_const = false;
-        let mut seen_int = false;
-        let mut seen_unsigned = false;
+        let mut integers = IntegerSpecifiers::default();
         loop {
             let token = self.lexer.peek()?;
             match token.0 {
@@ -328,24 +327,14 @@ impl<'a> Parser<'a> {
                     explicit_const = true;
                     result_span.get_or_insert(token.1);
                 }
-                Token::Word("int") => {
-                    if seen_int || (result.is_some() && !seen_unsigned) {
+                Token::Word(specifier @ ("int" | "signed" | "unsigned")) => {
+                    if result.is_some() && integers.is_empty() {
                         return self.fail("incompatible or repeated return type specifier");
                     }
-                    seen_int = true;
-                    result = Some(ReturnType::Value(TypeSpecifier::Scalar(if seen_unsigned {
-                        Scalar::U32
-                    } else {
-                        Scalar::I32
-                    })));
-                    result_span.get_or_insert(token.1);
-                }
-                Token::Word("unsigned") => {
-                    if seen_unsigned || (result.is_some() && !seen_int) {
+                    let Some(scalar) = integers.consume(specifier) else {
                         return self.fail("incompatible or repeated return type specifier");
-                    }
-                    seen_unsigned = true;
-                    result = Some(ReturnType::Value(TypeSpecifier::Scalar(Scalar::U32)));
+                    };
+                    result = Some(ReturnType::Value(TypeSpecifier::Scalar(scalar)));
                     result_span.get_or_insert(token.1);
                 }
                 Token::Word("void" | "float" | "bool") => {

@@ -55,6 +55,12 @@ order across both parameter kinds.
 The caller supplies these buffers and dispatches the resulting compute entry
 point by its original kernel name.
 
+`signed`, `signed int`, and `int signed` name the existing 32-bit `int` type in
+declarations, signatures, aliases, and scalar casts. Supported qualifier orders
+include `const signed int` and `signed constexpr int`; single-word functional
+casts can use `signed(value)`. These spellings preserve `int`'s literal ranges,
+arithmetic conversions, overload identity, and buffer layout.
+
 Pointer parameters become storage buffers with runtime arrays of the corresponding
 element type. A `const` pointee produces a read-only buffer; other buffers permit
 reads and writes. Element layouts are:
@@ -329,7 +335,7 @@ calls are not guaranteed. Functions and calls use the existing Naga lowering.
 These constraints follow NVIDIA's [inlining rules](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-c-programming-guide/index.html#noinline-and-forceinline)
 and C++ [linkage rules](https://eel.is/c++draft/dcl.link#8).
 Execution-space, function, return-type, and `const` specifiers may appear in any
-valid order; `unsigned` and `int` may be interleaved with those specifiers.
+valid order; `unsigned`, `signed`, and `int` may be interleaved with those specifiers.
 Static variables and the `__inline_hint__` specifier remain unsupported.
 Top-level return `const`, including `const void`, does not change the result type.
 The frontend preserves ordinary value-only function calls; `inline` does not

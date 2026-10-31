@@ -53,6 +53,7 @@ mod saturate;
 mod scalar_promotion;
 mod shared;
 mod shared_vectors;
+mod signed;
 mod specifiers;
 mod sqrtf;
 mod streaming;

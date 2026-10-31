@@ -52,6 +52,7 @@ mod restrict;
 mod saturate;
 mod scalar_promotion;
 mod shared_vectors;
+mod signed;
 mod specifiers;
 mod sqrtf;
 mod structures;
@@ -111,6 +112,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_SATURATE,
         CUDA_SCALAR_PROMOTION,
         CUDA_SHARED_VECTORS,
+        CUDA_SIGNED,
         CUDA_SPECIFIERS,
         CUDA_SQRTF,
         CUDA_STRUCTURES,
@@ -345,6 +347,8 @@ static CUDA_SATURATE: GpuTestConfiguration = configuration(saturate::cases);
 static CUDA_SCALAR_PROMOTION: GpuTestConfiguration = configuration(scalar_promotion::cases);
 #[apply(gpu_test!)]
 static CUDA_SHARED_VECTORS: GpuTestConfiguration = configuration(shared_vectors::cases);
+#[apply(gpu_test!)]
+static CUDA_SIGNED: GpuTestConfiguration = configuration(signed::cases);
 #[apply(gpu_test!)]
 static CUDA_SPECIFIERS: GpuTestConfiguration = configuration(specifiers::cases);
 #[apply(gpu_test!)]

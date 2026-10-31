@@ -37,6 +37,33 @@ pub(super) enum GlobalDeclaration {
     },
 }
 
+#[derive(Default)]
+pub(super) struct IntegerSpecifiers {
+    seen_int: bool,
+    seen_signed: bool,
+    seen_unsigned: bool,
+}
+
+impl IntegerSpecifiers {
+    pub(super) const fn is_empty(&self) -> bool {
+        !self.seen_int && !self.seen_signed && !self.seen_unsigned
+    }
+
+    pub(super) fn consume(&mut self, specifier: &str) -> Option<Scalar> {
+        match specifier {
+            "int" if !self.seen_int => self.seen_int = true,
+            "signed" if !self.seen_signed && !self.seen_unsigned => self.seen_signed = true,
+            "unsigned" if !self.seen_unsigned && !self.seen_signed => self.seen_unsigned = true,
+            _ => return None,
+        }
+        Some(if self.seen_unsigned {
+            Scalar::U32
+        } else {
+            Scalar::I32
+        })
+    }
+}
+
 fn type_name(
     name: &str,
     symbols: &SymbolTable<&str, Symbol>,
@@ -45,7 +72,7 @@ fn type_name(
     let scalar = match name {
         "bool" => Scalar::BOOL,
         "float" => Scalar::F32,
-        "int" => Scalar::I32,
+        "int" | "signed" => Scalar::I32,
         "unsigned" => Scalar::U32,
         _ => {
             return match symbols.lookup(name) {
@@ -102,8 +129,7 @@ fn declaration_type(
     let mut ty: Option<QualifiedType> = None;
     let mut explicit_const = false;
     let mut is_constexpr = false;
-    let mut seen_int = false;
-    let mut seen_unsigned = false;
+    let mut integers = IntegerSpecifiers::default();
     loop {
         let token = lexer.peek()?;
         let invalid = |message: &str| ParseError {
@@ -129,22 +155,15 @@ fn declaration_type(
                 }
                 is_constexpr = true;
             }
-            Token::Word("int" | "unsigned") => {
-                let unsigned = token.0 == Token::Word("unsigned");
-                if (unsigned && seen_unsigned)
-                    || (!unsigned && seen_int)
-                    || (ty.is_some() && !seen_int && !seen_unsigned)
-                {
+            Token::Word(specifier @ ("int" | "signed" | "unsigned")) => {
+                if ty.is_some() && integers.is_empty() {
                     return Err(invalid("incompatible or repeated type specifier"));
                 }
-                seen_int |= !unsigned;
-                seen_unsigned |= unsigned;
+                let scalar = integers
+                    .consume(specifier)
+                    .ok_or_else(|| invalid("incompatible or repeated type specifier"))?;
                 ty = Some(QualifiedType {
-                    ty: TypeSpecifier::Scalar(if seen_unsigned {
-                        Scalar::U32
-                    } else {
-                        Scalar::I32
-                    }),
+                    ty: TypeSpecifier::Scalar(scalar),
                     is_const: false,
                 });
             }
