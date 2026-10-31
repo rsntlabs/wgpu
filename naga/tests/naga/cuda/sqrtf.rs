@@ -278,7 +278,6 @@ fn cuda_sqrtf_rejects_vectors_arrays_pointers_and_unsupported_variants() {
         "__global__ void kernel(float *out) { sqrtf(out); }",
         "__global__ void kernel() { float values[2]{}; sqrtf(values); }",
         "__global__ void kernel() { sqrtf(4.0); }",
-        "__global__ void kernel() { sqrt(4.0f); }",
         "__global__ void kernel() { __fsqrt_rn(4.0f); }",
         "__global__ void kernel() { sqrtf(missing); }",
     ] {

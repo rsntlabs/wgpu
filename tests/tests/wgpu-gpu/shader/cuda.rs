@@ -61,6 +61,7 @@ mod scalar_promotion;
 mod shared_vectors;
 mod signed;
 mod specifiers;
+mod sqrt;
 mod sqrtf;
 mod structures;
 mod switches;
@@ -128,6 +129,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_SHARED_VECTORS,
         CUDA_SIGNED,
         CUDA_SPECIFIERS,
+        CUDA_SQRT,
         CUDA_SQRTF,
         CUDA_STRUCTURES,
         CUDA_SWITCHES,
@@ -379,6 +381,8 @@ static CUDA_SHARED_VECTORS: GpuTestConfiguration = configuration(shared_vectors:
 static CUDA_SIGNED: GpuTestConfiguration = configuration(signed::cases);
 #[apply(gpu_test!)]
 static CUDA_SPECIFIERS: GpuTestConfiguration = configuration(specifiers::cases);
+#[apply(gpu_test!)]
+static CUDA_SQRT: GpuTestConfiguration = configuration(sqrt::cases);
 #[apply(gpu_test!)]
 static CUDA_SQRTF: GpuTestConfiguration = configuration(sqrtf::cases);
 #[apply(gpu_test!)]

@@ -62,6 +62,7 @@ mod shared;
 mod shared_vectors;
 mod signed;
 mod specifiers;
+mod sqrt;
 mod sqrtf;
 mod streaming;
 mod structures;

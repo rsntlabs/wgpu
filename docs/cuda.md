@@ -379,7 +379,12 @@ overloads still participate and take precedence over the library templates.
 Calls execute at runtime and are not constant expressions.
 
 `sqrtf(float)` returns `float` and accepts scalar arguments that convert to
-`float`. Positive finite inputs use correctly rounded, round-to-nearest
+`float`. The `sqrt(float)` overload uses the same implementation, following
+CUDA's [overloaded math functions](https://docs.nvidia.com/cuda/archive/13.0.1/cuda-math-api/index.html).
+Integral arguments to `sqrt` select unsupported double-precision overloads;
+use `sqrtf` or explicitly convert to `float`. Exact user-defined integral
+overloads still participate and take precedence over the library templates.
+Positive finite inputs use correctly rounded, round-to-nearest
 ties-to-even results, matching CUDA's default
 [`prec-sqrt=true`](https://docs.nvidia.com/cuda/archive/13.0.1/cuda-compiler-driver-nvcc/index.html#prec-sqrt-true-false-prec-sqrt).
 The calculation uses integer operations on the input representation, including
@@ -438,7 +443,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `sqrtf`, `floorf`, `ceilf`, `__saturatef`, `sinf`, or `cosf` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `sqrt`, `sqrtf`, `floorf`, `ceilf`, `__saturatef`, `sinf`, or `cosf` remain unsupported.
 
 ## Bit reinterpretation
 
