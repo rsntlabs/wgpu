@@ -37,7 +37,7 @@ impl Parser<'_> {
                 });
             }
             let function = &self.module.entry_points[index].function;
-            let mut proof = UniformLoops::new(
+            let mut proof = UniformControlFlow::new(
                 &self.module,
                 function,
                 &mut self.parameter_expansion_budget,
@@ -57,7 +57,7 @@ struct LoopUniformity<'a> {
     uniform: bool,
 }
 
-struct UniformLoops<'a> {
+struct UniformControlFlow<'a> {
     module: &'a Module,
     function: &'a Function,
     budget: &'a mut parameter_expansion::ExpansionBudget,
@@ -68,7 +68,7 @@ struct UniformLoops<'a> {
     changed: bool,
 }
 
-impl<'a> UniformLoops<'a> {
+impl<'a> UniformControlFlow<'a> {
     fn new(
         module: &'a Module,
         function: &'a Function,
@@ -300,6 +300,15 @@ impl<'a> UniformLoops<'a> {
         Ok(result)
     }
 
+    fn switch_exits_uniform(&mut self, cases: &[crate::SwitchCase]) -> Result<bool, ParseError> {
+        let mut uniform = true;
+        for case in cases {
+            self.budget.charge_work(1, self.span)?;
+            uniform &= self.exits_uniform(&case.body, true, 0, 0)?;
+        }
+        Ok(uniform)
+    }
+
     fn stores(
         &mut self,
         block: &crate::Block,
@@ -329,11 +338,8 @@ impl<'a> UniformLoops<'a> {
                     selector,
                     ref cases,
                 } => {
-                    let mut branch_uniform = uniform && self.value(selector);
-                    for case in cases {
-                        self.budget.charge_work(1, self.span)?;
-                        branch_uniform &= self.exits_uniform(&case.body, true, 0, 0)?;
-                    }
+                    let exits_uniform = self.switch_exits_uniform(cases)?;
+                    let branch_uniform = uniform && self.value(selector) && exits_uniform;
                     for case in cases {
                         self.budget.charge_work(1, self.span)?;
                         returned |=
@@ -439,18 +445,24 @@ impl<'a> UniformLoops<'a> {
                     returned = self.check(body, conditional, returned, loop_index)?
                 }
                 Statement::If {
+                    condition,
                     ref accept,
                     ref reject,
-                    ..
                 } => {
-                    let accept_returned = self.check(accept, true, returned, loop_index)?;
-                    let reject_returned = self.check(reject, true, returned, loop_index)?;
+                    let conditional = conditional || !self.value(condition);
+                    let accept_returned = self.check(accept, conditional, returned, loop_index)?;
+                    let reject_returned = self.check(reject, conditional, returned, loop_index)?;
                     returned |= accept_returned || reject_returned;
                 }
-                Statement::Switch { ref cases, .. } => {
+                Statement::Switch {
+                    selector,
+                    ref cases,
+                } => {
+                    let exits_uniform = self.switch_exits_uniform(cases)?;
+                    let conditional = conditional || !self.value(selector) || !exits_uniform;
                     for case in cases {
                         self.budget.charge_work(1, self.span)?;
-                        returned |= self.check(&case.body, true, returned, loop_index)?;
+                        returned |= self.check(&case.body, conditional, returned, loop_index)?;
                     }
                 }
                 Statement::Loop {
@@ -473,7 +485,7 @@ impl<'a> UniformLoops<'a> {
 
 fn barrier_error(span: Span) -> ParseError {
     ParseError {
-        message: String::from("CUDA barriers require straight-line control flow or a proved uniform loop with no prior possible return"),
+        message: String::from("CUDA barriers require straight-line or proved uniform control flow with no prior possible return"),
         span,
     }
 }

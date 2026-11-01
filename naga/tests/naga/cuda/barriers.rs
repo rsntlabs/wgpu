@@ -48,11 +48,18 @@ fn cuda_syncthreads_empty_kernel_and_unreachable_call_validate() {
 }
 
 #[test]
-fn cuda_syncthreads_rejects_conditional_placement() {
+fn cuda_syncthreads_accepts_uniform_and_rejects_divergent_conditional_placement() {
     for statement in [
-        "if (threadIdx.x == 0u) __syncthreads();",
         "if (true) { __syncthreads(); }",
         "if (false) {} else { { __syncthreads(); } }",
+        "switch (0u) { case 0u: __syncthreads(); break; default: break; }",
+    ] {
+        validate(&format!("__global__ void sync() {{ {statement} }}"));
+    }
+    for statement in [
+        "if (threadIdx.x == 0u) __syncthreads();",
+        "if (threadIdx.x) {} else { { __syncthreads(); } }",
+        "switch (threadIdx.x) { case 0u: __syncthreads(); break; default: break; }",
     ] {
         assert_placement_error(statement);
     }

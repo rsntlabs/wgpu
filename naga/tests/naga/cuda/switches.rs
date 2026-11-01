@@ -369,12 +369,26 @@ fn cuda_switch_does_not_discard_reachable_statements_after_case_breaks() {
 }
 
 #[test]
-fn cuda_switch_barriers_retain_conservative_conditional_and_return_rules() {
+fn cuda_switch_barriers_accept_uniform_control_and_preserve_return_rules() {
     for body in [
         "switch (selector) { case 0: __syncthreads(); break; }",
         "switch (0) { default: { __syncthreads(); } }",
         "switch (selector) { case 0: for (int iteration = 0; iteration < 1; ++iteration) { __syncthreads(); } break; }",
         "switch (selector) { case 0: switch (selector) { default: __syncthreads(); } break; }",
+    ] {
+        let (module, info) = super::helpers::validate_with_options(
+            &kernel(body),
+            &Options { workgroup_size: [4, 1, 1] },
+        );
+        #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+        super::helpers::wgsl_roundtrip(&module, &info, naga::back::wgsl::WriterFlags::EXPLICIT_TYPES);
+        let _ = (module, info);
+    }
+    for body in [
+        "switch (threadIdx.x) { case 0u: __syncthreads(); break; default: break; }",
+        "switch (threadIdx.x) { case 0u: { __syncthreads(); } break; default: break; }",
+        "switch (threadIdx.x) { case 0u: for (int iteration = 0; iteration < 1; ++iteration) { __syncthreads(); } break; default: break; }",
+        "switch (selector) { case 0: switch (threadIdx.x) { case 0u: __syncthreads(); break; default: break; } break; }",
         "switch (selector) { case 0: return; default: break; } __syncthreads();",
         "switch (selector) { default: switch (selector) { case 0: return; default: break; } } __syncthreads();",
     ] {
