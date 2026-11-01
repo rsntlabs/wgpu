@@ -507,6 +507,7 @@ impl Parser<'_> {
                     for &argument in arguments {
                         mapped.push(self.invocation_value(invocation, argument)?);
                     }
+                    self.append_invocation_builtins(invocation, function, &mut mapped, span)?;
                     let mapped_result = if let Some(result) = result {
                         let mapped_result = self.append_call_result(function, span)?;
                         self.cache_invocation_expression(

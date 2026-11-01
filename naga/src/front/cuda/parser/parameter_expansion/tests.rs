@@ -71,6 +71,7 @@ fn branch_cache_rematerializes_values_and_deferred_references() {
         source: &function,
         source_state: Some(&state),
         promotions: None,
+        builtins: None,
         arguments: Vec::new(),
         expressions: alloc::vec![None; function.expressions.len()],
         mapped_handles: Vec::new(),

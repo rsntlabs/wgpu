@@ -1,12 +1,14 @@
 use super::*;
 
+mod helpers;
+
+use helpers::CallUniformity;
+
 impl Parser<'_> {
     pub(super) fn emit_workgroup_barrier(&mut self, span: Span) -> Result<(), ParseError> {
         if self.function.kind == FunctionKind::Device {
-            return Err(ParseError {
-                message: String::from("barriers are unsupported in device helpers"),
-                span,
-            });
+            self.activate_parameter_expansion(span)?;
+            self.has_helper_barriers = true;
         }
         self.push_statement(
             Statement::ControlBarrier(crate::Barrier::WORK_GROUP | crate::Barrier::STORAGE),
@@ -16,6 +18,9 @@ impl Parser<'_> {
     }
 
     pub(super) fn check_workgroup_barriers(&mut self) -> Result<(), ParseError> {
+        if self.has_helper_barriers {
+            return self.check_helper_barriers();
+        }
         for index in 0..self.module.entry_points.len() {
             self.parameter_expansion_budget
                 .charge_work(1, self.lexer.span_from(0))?;
@@ -66,6 +71,7 @@ struct UniformControlFlow<'a> {
     values: Vec<bool>,
     loops: Vec<LoopUniformity<'a>>,
     changed: bool,
+    calls: Option<CallUniformity<'a>>,
 }
 
 impl<'a> UniformControlFlow<'a> {
@@ -95,6 +101,7 @@ impl<'a> UniformControlFlow<'a> {
             values,
             loops: Vec::new(),
             changed: false,
+            calls: None,
         };
         proof.inventory(&function.body, 1)?;
         Ok(proof)
@@ -174,12 +181,21 @@ impl<'a> UniformControlFlow<'a> {
                 | Expression::Constant(_)
                 | Expression::Override(_)
                 | Expression::ZeroValue(_) => true,
-                Expression::FunctionArgument(index) => matches!(
-                    self.function.arguments[index as usize].binding,
-                    Some(Binding::BuiltIn(
-                        BuiltIn::WorkGroupId | BuiltIn::WorkGroupSize | BuiltIn::NumWorkGroups
-                    ))
-                ),
+                Expression::FunctionArgument(index) => self
+                    .calls
+                    .as_ref()
+                    .and_then(|calls| calls.arguments.get(index as usize))
+                    .copied()
+                    .unwrap_or_else(|| {
+                        matches!(
+                            self.function.arguments[index as usize].binding,
+                            Some(Binding::BuiltIn(
+                                BuiltIn::WorkGroupId
+                                    | BuiltIn::WorkGroupSize
+                                    | BuiltIn::NumWorkGroups
+                            ))
+                        )
+                    }),
                 Expression::GlobalVariable(global) => matches!(
                     self.module.global_variables[global].space,
                     AddressSpace::Uniform | AddressSpace::Immediate
@@ -476,6 +492,24 @@ impl<'a> UniformControlFlow<'a> {
                     returned |= self.check(continuing, conditional, returned, loop_index)?;
                 }
                 Statement::Return { .. } => returned = true,
+                Statement::Call {
+                    function,
+                    ref arguments,
+                    ..
+                } => {
+                    if let Some(calls) = self.calls.as_mut() {
+                        if calls.synchronizes(function, span)? {
+                            if conditional
+                                || returned
+                                || arguments.len()
+                                    != self.module.functions[function].arguments.len()
+                            {
+                                return Err(barrier_error(span));
+                            }
+                            calls.join(function, arguments, &self.values, self.budget, span)?;
+                        }
+                    }
+                }
                 _ => {}
             }
         }

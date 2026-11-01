@@ -263,6 +263,7 @@ pub(super) struct Parser<'a> {
     parameter_expansion_budget: parameter_expansion::ExpansionBudget,
     atomic_storage: Option<atomics::AtomicStorage>,
     has_atomics: bool,
+    has_helper_barriers: bool,
     kernels: Vec<Kernel<'a>>,
     sqrtf_function: Option<Handle<Function>>,
     float_math_functions: [Option<Handle<Function>>; 3],
@@ -291,6 +292,7 @@ impl<'a> Parser<'a> {
             parameter_expansion_budget: parameter_expansion::ExpansionBudget::default(),
             atomic_storage: None,
             has_atomics: false,
+            has_helper_barriers: false,
             kernels: Vec::new(),
             sqrtf_function: None,
             float_math_functions: [None; 3],
@@ -330,7 +332,12 @@ impl<'a> Parser<'a> {
         self.check_workgroup_barriers()?;
         self.promote_scalar_locals()?;
         // Remove call results from source statements discarded after a jump.
-        crate::compact::compact(&mut self.module, crate::compact::KeepUnused::Yes);
+        let keep_unused = if self.has_helper_barriers {
+            crate::compact::KeepUnused::No
+        } else {
+            crate::compact::KeepUnused::Yes
+        };
+        crate::compact::compact(&mut self.module, keep_unused);
         Ok(self.module)
     }
 

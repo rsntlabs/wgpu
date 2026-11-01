@@ -401,7 +401,7 @@ fn cuda_pointer_parameters_bind_shared_and_storage_roots_with_existing_barrier_r
         panic!("expected the original packed record buffer");
     };
     assert_eq!(stride, 20);
-    rejected("__device__ void wait(int *value) { __syncthreads(); } __global__ void kernel() {}");
+    validate("__device__ void wait(int *value) { __syncthreads(); } __global__ void kernel() {}");
     rejected(
         "__device__ void update(int *value) { __shared__ int shared; } __global__ void kernel() {}",
     );

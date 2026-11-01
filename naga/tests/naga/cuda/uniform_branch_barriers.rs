@@ -166,7 +166,7 @@ fn cuda_uniform_branch_barriers_reject_escaping_control_flow_and_preserve_safety
     ] {
         rejected(&kernel(body));
     }
-    rejected("namespace cg = cooperative_groups; __device__ void helper(unsigned count) { if (count) cg::thread_block::sync(); } __global__ void kernel(unsigned count) { helper(count); }");
+    roundtrip("namespace cg = cooperative_groups; __device__ void helper(unsigned count) { if (count) cg::thread_block::sync(); } __global__ void kernel(unsigned count) { helper(count); }");
     let mut body = String::new();
     for index in 0..1024 {
         body.push_str(&format!("unsigned decision{index} = 0u;"));

@@ -18,6 +18,7 @@ mod control_flow;
 mod conversions;
 mod declarations;
 mod device_functions;
+mod device_helper_barriers;
 mod dim3;
 mod dual_execution;
 mod dynamic_shared;

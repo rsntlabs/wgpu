@@ -372,10 +372,10 @@ fn cuda_dynamic_shared_preserves_declaration_barrier_scope_and_resource_limits()
         "__global__ void kernel() { { extern __shared__ int hidden[]; } hidden[0] = 7; }",
         "__global__ void kernel(int *values) { extern __shared__ int values[]; }",
         "__device__ void invalid() { __shared__ int fixed[4]; } __global__ void kernel() {}",
-        "__device__ void invalid() { extern __shared__ int values[]; __syncthreads(); } __global__ void kernel() { invalid(); }",
         "__global__ void kernel() { extern __shared__ int values[]; if (threadIdx.x) __syncthreads(); }",
         "__global__ void kernel() { extern __shared__ int values[]; if (threadIdx.x) return; __syncthreads(); }",
     ] { rejected(source, 16); }
+    roundtrip("__device__ void synchronize() { extern __shared__ int values[]; __syncthreads(); } __global__ void kernel() { synchronize(); }", 16);
     let error = rejected(
         "__global__ void kernel() { extern __shared__ int values[]; }",
         u32::MAX,

@@ -147,6 +147,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 - Honor CLI entry-point selection in WGSL, HLSL, and Metal output and resolve overrides consistently for selected shader entries.
 - Support CUDA synchronization in branches proven uniform across a thread block.
 - Support CUDA `extern __shared__` arrays using a supplied launch byte count.
+- Support block synchronization in CUDA device helpers with proven uniform calls, branches, and loops.
 - Support scalar CUDA kernel parameters through uniform buffers, including per-invocation parameter mutation.
 - Support CUDA conditional branches, scoped locals, comparisons, and short-circuit logical operators.
 - Support CUDA scalar arithmetic conversions, assignment conversions, and explicit casts.

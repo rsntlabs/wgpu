@@ -168,6 +168,6 @@ fn cuda_uniform_loop_barriers_keep_unproved_bounds_and_existing_placement_restri
         "__global__ void kernel(const unsigned *input) { unsigned bound = input[0]; for (unsigned index = 0u; index < bound; ++index) { __syncthreads(); } }",
         "__device__ unsigned opaque() { return 3u; } __global__ void kernel() { for (unsigned index = 0u; index < opaque(); ++index) { __syncthreads(); } }",
         "__device__ void alter(unsigned &value) { value = threadIdx.x; } __global__ void kernel() { unsigned bound = 3u; for (unsigned index = 0u; index < bound; ++index) { __syncthreads(); alter(bound); } }",
-        "__device__ void helper() { for (unsigned index = 0u; index < 3u; ++index) { __syncthreads(); } } __global__ void kernel() { helper(); }",
     ] { rejected(source); }
+    roundtrip("__device__ void helper() { for (unsigned index = 0u; index < 3u; ++index) { __syncthreads(); } } __global__ void kernel() { helper(); }");
 }

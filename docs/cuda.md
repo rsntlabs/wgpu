@@ -332,7 +332,7 @@ for backend scopes. These limits are checked before copying generated payload;
 they do not describe an exact allocator or process memory limit.
 
 Helpers have no resource bindings. Pointer and reference results,
-whole-array references, static shared declarations, and barriers in helper bodies remain unsupported. Kernel prototypes
+whole-array references and static shared declarations in helper bodies remain unsupported. Kernel prototypes
 remain unsupported.
 Pointer members, null pointers,
 pointer comparisons and differences, pointer casts, and general pointer
@@ -1187,8 +1187,9 @@ synchronization when any invocation writes them.
 global buffer accesses visible to other invocations in that block. It lowers to
 a control barrier covering both workgroup and storage memory, following
 [CUDA's synchronization semantics](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-c-programming-guide/index.html#synchronization-functions).
-This zero-argument statement supports straight-line kernel flow, `if` branches,
-switch cases, and `for`, `while`, and `do` loops proven uniform for the block.
+This zero-argument statement supports kernels and device helpers, including
+`if` branches, switch cases, and `for`, `while`, and `do` loops proven uniform
+for the block.
 A bounded CUDA-specific proof tracks scalar counters, updates, uniform kernel
 parameters, and workgroup builtins. A switch also needs uniform case exits:
 a divergent `break` can skip a barrier even when its selector is uniform.
@@ -1196,12 +1197,30 @@ Divergent branches and gathers can reconverge before a barrier when they do not
 return or make later control nonuniform. Storage and shared memory reads and
 opaque helper results remain unproved controls.
 
-Barriers in device helpers or after a possible earlier `return` remain
+Calls to synchronizing helpers require uniform control flow. Uniform scalar
+arguments can control helper branches and loops; varying data arguments can
+participate in computations that do not control synchronization. This applies
+through chains of helpers and forward declarations. For example:
+
+```cuda
+__device__ void synchronize(unsigned count) {
+    for (unsigned iteration = 0u; iteration < count; ++iteration)
+        __syncthreads();
+}
+
+__global__ void kernel(unsigned count) { synchronize(count); }
+```
+
+By-value helpers remain ordinary functions in the generated code. Block and grid
+identifiers preserve their uniformity through value arguments. A helper return
+ends that call, so a return after its last barrier does not prevent a later
+kernel barrier.
+
+Barriers after a possible earlier return in the same function remain
 unsupported. Branches and loops containing barriers are rejected when their
-control is unproved or exits diverge. This conservative proof
-can reject valid CUDA programs and does not implement complete WGSL uniformity
-analysis. Returns after the last barrier in straight-line kernel flow are
-allowed. Synchronization does not extend across workgroups.
+control is unproved or exits diverge. This conservative proof can reject valid
+CUDA programs and does not implement complete WGSL uniformity analysis.
+Synchronization does not extend across workgroups.
 
 ## Cooperative Groups
 
@@ -1228,9 +1247,9 @@ directives remain unsupported.
 
 `cg::sync(group)`, `group.sync()`, and `Block::sync()` synchronize the whole
 block with the same workgroup and storage-memory barriers as `__syncthreads()`.
-Every spelling uses the same kernel control-flow checks above, including
-proven uniform loops and rejection after a possible earlier return.
-Synchronization in device helpers remains unsupported. These operations follow CUDA's
+Every spelling uses the same kernel and helper call checks above, including
+proven uniform loops and rejection after a possible earlier return in that
+function. These operations follow CUDA's
 [full-block synchronization semantics](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cooperative-groups.html#sync).
 
 `thread_rank()`, `num_threads()`, and its alias `size()` return `unsigned int`.
