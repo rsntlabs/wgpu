@@ -214,6 +214,9 @@ impl Parser<'_> {
                 }
             }
             Expression::Load { pointer } => {
+                let volatile = invocation
+                    .source_state
+                    .is_some_and(|state| state.volatile_accesses.loads.contains(&handle));
                 if let Some(value) = self.invocation_builtin_load(invocation, pointer, span)? {
                     let mapped = self.cache_invocation_expression(
                         invocation,
@@ -243,7 +246,10 @@ impl Parser<'_> {
                         let reference = ReferenceValue {
                             discard_read: true,
                             reference: Reference::Bound(binding),
-                            qualifiers: Qualifiers::NONE,
+                            qualifiers: Qualifiers {
+                                is_volatile: volatile,
+                                ..Qualifiers::NONE
+                            },
                             ty,
                             span,
                             constant: ConstantValue::default(),
@@ -343,6 +349,12 @@ impl Parser<'_> {
             _ => return Err(expansion_error(span)),
         };
         let value = self.append(expression, span)?;
+        if invocation
+            .source_state
+            .is_some_and(|state| state.volatile_accesses.loads.contains(&handle))
+        {
+            self.record_volatile_load(value, span)?;
+        }
         let mapped =
             self.cache_invocation_expression(invocation, handle, MappedExpression::Value(value))?;
         self.name_invocation_expression(source, handle, value, span)?;

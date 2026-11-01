@@ -183,6 +183,7 @@ impl Parser<'_> {
                 };
                 reference.ty = element_ty;
                 reference.span = span;
+                reference.discard_read = true;
                 reference.constant = ConstantValue {
                     literal: None,
                     is_discardable: discardable,
@@ -258,6 +259,7 @@ impl Parser<'_> {
         }
         reference.ty = ty.clone();
         reference.span = span;
+        reference.discard_read = true;
         reference.constant.literal = None;
         Ok(reference)
     }
@@ -323,6 +325,8 @@ impl Parser<'_> {
         };
         let ty = reference.ty.clone();
         let span = reference.span;
+        let reference_volatile = reference.qualifiers.is_volatile;
+        self.require_volatile_scalar(reference.qualifiers, &ty, span)?;
         let constant = reference.constant;
         if !matches!(
             reference.reference,
@@ -348,12 +352,17 @@ impl Parser<'_> {
             handle,
             ty,
             span,
-            constant: ConstantValue::evaluated(constant.literal),
+            constant: if reference_volatile {
+                ConstantValue::default()
+            } else {
+                ConstantValue::evaluated(constant.literal)
+            },
         })
     }
 
     fn read_reference(&mut self, reference: ReferenceValue) -> Result<Value, ParseError> {
         let span = reference.span;
+        self.require_volatile_scalar(reference.qualifiers, &reference.ty, span)?;
         let handle = match reference.reference {
             Reference::PointerAccess(access) => {
                 let pointer = self.validation_pointer(access, span)?;
@@ -370,11 +379,18 @@ impl Parser<'_> {
                 return self.rvalue(ExpressionValue::Reference(reference))
             }
         };
+        if reference.qualifiers.is_volatile {
+            self.record_volatile_load(handle, span)?;
+        }
         Ok(Value {
             handle,
             ty: reference.ty,
             span,
-            constant: ConstantValue::evaluated(reference.constant.literal),
+            constant: if reference.qualifiers.is_volatile {
+                ConstantValue::default()
+            } else {
+                ConstantValue::evaluated(reference.constant.literal)
+            },
         })
     }
 
@@ -395,9 +411,22 @@ impl Parser<'_> {
 
     pub(super) fn discard_result(&mut self, result: ExpressionResult) -> Result<(), ParseError> {
         if let ExpressionResult::Value(ExpressionValue::Reference(reference)) = result {
-            self.consume_reference(reference, &mut |_, _| Ok(()))?;
+            if self.has_discarded_volatile_read(&reference) {
+                self.rvalue(ExpressionValue::Reference(reference))?;
+            } else {
+                self.consume_reference(reference, &mut |_, _| Ok(()))?;
+            }
         }
         Ok(())
+    }
+
+    pub(super) fn has_discarded_volatile_read(&self, reference: &ReferenceValue) -> bool {
+        reference.qualifiers.is_volatile
+            && reference.discard_read
+            && !matches!(
+                reference.ty.inner_with(&self.module.types),
+                TypeInner::Array { .. }
+            )
     }
 
     pub(super) fn decorate_reference(

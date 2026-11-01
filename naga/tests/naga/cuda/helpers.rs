@@ -10,13 +10,19 @@ pub(crate) fn validate_with_options(
     source: &str,
     options: &Options,
 ) -> (naga::Module, naga::valid::ModuleInfo) {
+    validate_with_options_and_capabilities(source, options, naga::valid::Capabilities::empty())
+}
+
+#[track_caller]
+pub(crate) fn validate_with_options_and_capabilities(
+    source: &str,
+    options: &Options,
+    capabilities: naga::valid::Capabilities,
+) -> (naga::Module, naga::valid::ModuleInfo) {
     let module = parse_str(source, options).unwrap();
-    let info = naga::valid::Validator::new(
-        naga::valid::ValidationFlags::all(),
-        naga::valid::Capabilities::empty(),
-    )
-    .validate(&module)
-    .unwrap();
+    let info = naga::valid::Validator::new(naga::valid::ValidationFlags::all(), capabilities)
+        .validate(&module)
+        .unwrap();
     (module, info)
 }
 
@@ -87,14 +93,22 @@ pub(crate) fn wgsl_roundtrip(
     info: &naga::valid::ModuleInfo,
     flags: naga::back::wgsl::WriterFlags,
 ) -> (String, naga::Module) {
+    wgsl_roundtrip_with_capabilities(module, info, flags, naga::valid::Capabilities::empty())
+}
+
+#[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+#[track_caller]
+pub(crate) fn wgsl_roundtrip_with_capabilities(
+    module: &naga::Module,
+    info: &naga::valid::ModuleInfo,
+    flags: naga::back::wgsl::WriterFlags,
+    capabilities: naga::valid::Capabilities,
+) -> (String, naga::Module) {
     let output = naga::back::wgsl::write_string(module, info, flags).unwrap();
     let reparsed =
         naga::front::wgsl::parse_str(&output).unwrap_or_else(|error| panic!("{error:?}\n{output}"));
-    naga::valid::Validator::new(
-        naga::valid::ValidationFlags::all(),
-        naga::valid::Capabilities::empty(),
-    )
-    .validate(&reparsed)
-    .unwrap();
+    naga::valid::Validator::new(naga::valid::ValidationFlags::all(), capabilities)
+        .validate(&reparsed)
+        .unwrap();
     (output, reparsed)
 }

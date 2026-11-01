@@ -443,6 +443,9 @@ impl Parser<'_> {
                     has_return |= body_return || continuing_return;
                 }
                 Statement::Store { pointer, value } => {
+                    let volatile = invocation.source_state.is_some_and(|state| {
+                        state.volatile_accesses.contains_store(pointer, value, span)
+                    });
                     if self.remove_promoted_store(invocation, pointer, value, span)? {
                         continue;
                     }
@@ -458,6 +461,9 @@ impl Parser<'_> {
                                 value,
                                 span,
                             )? {
+                                if volatile {
+                                    self.record_volatile_store(mapped, value, span)?;
+                                }
                                 self.generated_statement(
                                     Statement::Store {
                                         pointer: mapped,
@@ -479,6 +485,9 @@ impl Parser<'_> {
                             self.decorate_reference(
                                 &mut reference,
                                 &mut |parser, pointer, _, span| {
+                                    if volatile {
+                                        parser.record_volatile_store(pointer, value, span)?;
+                                    }
                                     parser.generated_statement(
                                         Statement::Store { pointer, value },
                                         span,

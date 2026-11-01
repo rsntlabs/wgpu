@@ -143,7 +143,7 @@ impl Parser<'_> {
                 if !templates[handle.index()] {
                     self.check_no_live_pointer_accesses(&function, &state, span)?;
                 }
-                if !state.pointers.is_empty() {
+                if !state.pointers.is_empty() || !state.volatile_accesses.is_empty() {
                     self.parameter_states.insert(handle, state);
                 }
                 self.module.functions[handle] = function;

@@ -309,6 +309,8 @@ impl<'a> Parser<'a> {
         let mut seen_static = false;
         let mut cuda_inline_span = None;
         let mut explicit_const = false;
+        let mut explicit_volatile = false;
+        let mut volatile_result = false;
         let mut integers = IntegerSpecifiers::default();
         loop {
             let token = self.lexer.peek()?;
@@ -317,6 +319,7 @@ impl<'a> Parser<'a> {
                     let cooperative_groups::QualifiedItem::Type(ty) = name.item else {
                         return self.fail("expected a supported function return type");
                     };
+                    volatile_result = ty.qualifiers.is_volatile;
                     result = Some(ReturnType::Value(ty.ty));
                     result_span.get_or_insert(name.span);
                     continue;
@@ -379,6 +382,13 @@ impl<'a> Parser<'a> {
                     explicit_const = true;
                     result_span.get_or_insert(token.1);
                 }
+                Token::Word("volatile") => {
+                    if explicit_volatile {
+                        return self.fail("duplicate volatile qualifier");
+                    }
+                    explicit_volatile = true;
+                    result_span.get_or_insert(token.1);
+                }
                 Token::Word(specifier @ ("int" | "signed" | "unsigned")) => {
                     if result.is_some() && integers.is_empty() {
                         return self.fail("incompatible or repeated return type specifier");
@@ -406,6 +416,7 @@ impl<'a> Parser<'a> {
                     let Some(ty) = self.type_name(name) else {
                         break;
                     };
+                    volatile_result = ty.qualifiers.is_volatile;
                     result = Some(ReturnType::Value(ty.ty));
                     result_span.get_or_insert(token.1);
                 }
@@ -422,6 +433,14 @@ impl<'a> Parser<'a> {
         let Some(result) = result else {
             return self.fail("expected a supported function return type");
         };
+        if (explicit_volatile || volatile_result)
+            && !matches!(
+                result,
+                ReturnType::Void | ReturnType::Value(TypeSpecifier::Scalar(_))
+            )
+        {
+            return self.fail("volatile class return types are unsupported");
+        }
         if matches!(result, ReturnType::Value(TypeSpecifier::ThreadBlock)) {
             return self.fail("thread_block return types are unsupported");
         }
@@ -555,6 +574,14 @@ impl<'a> Parser<'a> {
             self.check_operator_parameters(operator, header.name_span)?;
         }
         let is_prototype = self.lexer.peek()?.0 == Token::Separator(';');
+        if !is_prototype {
+            if let Some(span) = self.function.volatile_parameter_object {
+                return Err(ParseError {
+                    message: String::from("volatile parameter objects are unsupported"),
+                    span,
+                });
+            }
+        }
         let intrinsic = self.function_candidates(header.name).find(|&candidate| {
             matches!(
                 candidate,

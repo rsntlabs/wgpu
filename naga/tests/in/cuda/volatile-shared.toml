@@ -1,0 +1,8 @@
+capabilities = "MEMORY_DECORATION_VOLATILE_WORKGROUP"
+targets = "IR | SPIRV | WGSL"
+
+[cuda-in]
+workgroup_size = [4, 1, 1]
+
+[spv]
+version = [1, 0]

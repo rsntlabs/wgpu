@@ -134,3 +134,75 @@ fn hlsl_rejects_invalid_special_constants_binding() {
         assert!(!files.output.exists());
     }
 }
+
+#[test]
+fn cuda_volatile_storage_pointer_preserves_its_resource_binding() {
+    let files = TestFiles::new(
+        "cu",
+        "__global__ void update(volatile unsigned *values) {
+            values[0]; values[0] = values[1] + 3u;
+        }",
+    );
+    let result = files.translate(&[]);
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let module =
+        files.read_module_with_capabilities(naga::valid::Capabilities::MEMORY_DECORATION_VOLATILE);
+    let resources: Vec<_> = module
+        .global_variables
+        .iter()
+        .filter(|(_, variable)| variable.binding.is_some())
+        .collect();
+    assert_eq!(resources.len(), 1);
+    let (_, resource) = resources[0];
+    assert_eq!(
+        resource.binding,
+        Some(naga::ResourceBinding {
+            group: 0,
+            binding: 0
+        })
+    );
+    assert!(resource
+        .memory_decorations
+        .contains(naga::MemoryDecorations::VOLATILE));
+}
+
+#[test]
+fn cuda_volatile_helper_pointer_decorates_the_shared_allocation() {
+    let files = TestFiles::new(
+        "cu",
+        "__device__ unsigned read(volatile unsigned *values, unsigned index) {
+            values[index]; return values[index];
+        }
+        __global__ void exchange(unsigned *output) {
+            __shared__ unsigned values[4];
+            unsigned lane = threadIdx.x;
+            values[lane] = lane + 1u;
+            __syncthreads();
+            output[lane] = read(values, (lane + 1u) % 4u);
+        }",
+    );
+    let result = files.translate(&["--cuda-workgroup-size", "4,1,1"]);
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let module = files.read_module_with_capabilities(
+        naga::valid::Capabilities::MEMORY_DECORATION_VOLATILE_WORKGROUP,
+    );
+    let shared: Vec<_> = module
+        .global_variables
+        .iter()
+        .filter(|(_, variable)| variable.space == naga::AddressSpace::WorkGroup)
+        .collect();
+    assert_eq!(shared.len(), 1);
+    assert!(shared[0]
+        .1
+        .memory_decorations
+        .contains(naga::MemoryDecorations::VOLATILE));
+    assert_eq!(module.entry_points[0].workgroup_size, [4, 1, 1]);
+}

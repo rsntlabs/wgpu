@@ -633,7 +633,8 @@ impl Parser<'_> {
         {
             return Err(pointer_state_error(span));
         }
-        self.check_no_live_pointer_locals(function, state, false, span)
+        self.check_no_live_pointer_locals(function, state, false, span)?;
+        self.check_closed_volatile_accesses(function, state, span)
     }
 
     fn check_no_live_pointer_locals(

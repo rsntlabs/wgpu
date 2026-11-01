@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA volatile scalar accesses through storage and shared-memory pointer and reference views.
 - Preserve implicit workgroup layouts and aggregate copies in SPIR-V output.
 - Support volatile workgroup loads and stores in SPIR-V and Vulkan with the native `MEMORY_DECORATION_VOLATILE_WORKGROUP` feature.
 - Preserve unused reads from volatile storage buffers during compaction and shader generation.

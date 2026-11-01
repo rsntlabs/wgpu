@@ -70,6 +70,12 @@ impl<'a> Parser<'a> {
                 qualifiers,
             } = self.parse_type()?;
             let is_const = qualifiers.is_const;
+            if qualifiers.is_volatile {
+                return Err(ParseError {
+                    message: String::from("volatile structure members are unsupported"),
+                    span: type_span,
+                });
+            }
             if matches!(specifier, TypeSpecifier::Pointer { .. }) {
                 return Err(ParseError {
                     message: String::from("pointer structure members are unsupported"),

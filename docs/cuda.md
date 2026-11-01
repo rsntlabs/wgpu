@@ -53,6 +53,34 @@ compatibility helpers. Calls reuse each helper across the module, keeping the
 integer algorithms out of source functions while preserving their numerical
 behavior. Other operations can still produce temporary expressions.
 
+## Volatile access
+
+`volatile` scalar accesses through pointers and references can target kernel
+storage buffers and static or dynamic shared memory. Pointee qualifiers survive
+aliases, `auto`, helper parameters, and supported conditional expressions.
+Adding `const` or `volatile` is allowed; dropping either qualifier is rejected.
+Top-level qualification of a pointer object remains distinct from qualification
+of its pointee.
+
+An actual volatile read or write marks its existing backing allocation as
+volatile without changing its binding or layout. Forming an address, binding a
+reference, or decaying an array does not itself read the contents. Discarded
+volatile scalar lvalues retain their reads, and assignment and update expressions
+retain their evaluation order. Scalar members of records and vector components
+can be accessed through volatile views; whole volatile record and vector copies
+are unsupported.
+
+Validation requires `MEMORY_DECORATION_VOLATILE` for storage buffers and
+`MEMORY_DECORATION_VOLATILE_WORKGROUP` for shared memory. The corresponding native
+wgpu features must also be enabled. Backend support still applies: volatile
+shared memory currently requires Vulkan. Generated WGSL uses Naga's native
+`@volatile` extension.
+
+Volatile access does not provide atomicity or synchronization; use supported
+atomic operations and barriers for those purposes. Volatile automatic objects,
+volatile pointer objects, accesses to function or private memory through volatile
+views, and volatile shared allocations containing atomics remain unsupported.
+
 ## Kernel interface
 
 Each source contains one or more `__global__ void` kernels, optionally preceded by
@@ -958,11 +986,12 @@ literals are supported.
 
 Conditional expressions `condition ? accept : reject` evaluate the condition
 once and only evaluate the selected arm. They associate right to left. Matching
-scalar or vector lvalue arms preserve their reference and support assignment.
+scalar or vector lvalue arms preserve their reference when one arm's qualifiers
+include the other's, and support assignment when mutable.
 Scalar references and vector fields also support compound assignments and
 prefix/postfix updates; a const arm prevents modification.
-Discarding a reference preserves its side effects without reading the selected
-storage value. Other scalar arms use a common arithmetic type, with matching
+Discarding a nonvolatile reference preserves its side effects without reading
+the selected storage value. Other scalar arms use a common arithmetic type, with matching
 boolean arms retaining `bool`. Matching vector arms retain their exact type;
 other vector combinations are unsupported. Both arms may be void in discarded
 expressions or void returns; mixing void and value arms is unsupported.
@@ -1290,7 +1319,7 @@ partial-block collectives are not yet supported. These operations are described 
 Unsupported syntax produces a parse error with a source span. This includes
 includes and other preprocessing forms outside the subset above, host code and launch syntax,
 pointer operations outside the borrowed subset above,
-mixed-type dynamic shared views, `volatile` objects and pointer views,
+mixed-type dynamic shared views, volatile objects and views outside the subset above,
 atomic operations outside the integer overloads above,
 other synchronization primitives, templates,
 double precision, and inline PTX. No CUDA runtime ABI or NVIDIA device code is

@@ -267,7 +267,12 @@ impl<'a> Parser<'a> {
         name: QualifiedName,
     ) -> Result<ExpressionResult, ParseError> {
         match name.item {
-            QualifiedItem::Type(ty) => self.type_expression(ty.ty, name.span),
+            QualifiedItem::Type(ty) => {
+                if ty.qualifiers.is_volatile && !matches!(ty.ty, TypeSpecifier::Scalar(_)) {
+                    return self.fail("volatile class value construction is unsupported");
+                }
+                self.type_expression(ty.ty, name.span)
+            }
             QualifiedItem::Function(GroupFunction::Current) => {
                 self.lexer.expect_span(Token::Paren('('))?;
                 let end = self.lexer.expect_span(Token::Paren(')'))?;
