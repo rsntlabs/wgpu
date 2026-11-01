@@ -1290,7 +1290,8 @@ partial-block collectives are not yet supported. These operations are described 
 Unsupported syntax produces a parse error with a source span. This includes
 includes and other preprocessing forms outside the subset above, host code and launch syntax,
 pointer operations outside the borrowed subset above,
-mixed-type dynamic shared views, atomic operations outside the integer overloads above,
+mixed-type dynamic shared views, `volatile` objects and pointer views,
+atomic operations outside the integer overloads above,
 other synchronization primitives, templates,
 double precision, and inline PTX. No CUDA runtime ABI or NVIDIA device code is
 generated.

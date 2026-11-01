@@ -13,8 +13,8 @@ impl FunctionTracer<'_> {
     /// Like [`Self::trace_block`], but also mark every [`Emit`]ted expression
     /// as used, whether or not anything needs its value.
     ///
-    /// Compaction only keeps values something actually needs, so
-    /// `trace_block` ignores `Emit` statements. A consumer that has to account
+    /// Compaction only keeps needed values and effects, so
+    /// `trace_block` ignores pure `Emit` statements. A consumer that has to account
     /// for every expression the generated code *mentions*, rather than every
     /// expression it needs, wants this instead: the MSL backend does no dead
     /// code elimination, so it writes out a definition for each expression it
@@ -34,13 +34,10 @@ impl FunctionTracer<'_> {
                 use crate::Statement as St;
                 match *stmt {
                     St::Emit(ref range) => {
-                        // If we come across a statement that actually uses an
-                        // expression in this range, it'll get traced from
-                        // there. But since evaluating expressions has no
-                        // effect, we don't need to assume that everything
-                        // emitted is live - unless our caller says otherwise.
-                        if emits_are_used {
-                            self.expressions_used.insert_iter(range.clone());
+                        for expression in range.clone() {
+                            if emits_are_used || self.expression_effects.must_evaluate(expression) {
+                                self.expressions_used.insert(expression);
+                            }
                         }
                     }
                     St::Block(ref block) => worklist.push(block),

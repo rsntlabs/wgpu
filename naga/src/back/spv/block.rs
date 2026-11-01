@@ -797,7 +797,10 @@ impl BlockContext<'_> {
             .named_expressions
             .contains_key(&expr_handle);
 
-        if self.fun_info[expr_handle].ref_count == 0 && !is_named_expression {
+        if self.fun_info[expr_handle].ref_count == 0
+            && !is_named_expression
+            && !self.expression_effects.must_evaluate(expr_handle)
+        {
             return Ok(());
         }
 

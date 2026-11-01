@@ -16,6 +16,7 @@ pub struct FunctionTracer<'a> {
 
     /// Function-local expressions used.
     pub expressions_used: HandleSet<crate::Expression>,
+    pub expression_effects: crate::proc::ExpressionEffects,
 }
 
 impl FunctionTracer<'_> {
