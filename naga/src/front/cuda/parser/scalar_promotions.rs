@@ -3,6 +3,9 @@ use super::*;
 
 struct Candidate {
     initializer: Option<Handle<Expression>>,
+    constant_index: Option<u32>,
+    copy_source: Option<Handle<LocalVariable>>,
+    index_only: bool,
     store_position: usize,
     first_load: usize,
     stores: u8,
@@ -16,6 +19,7 @@ pub(super) struct ScalarPromotions {
 }
 
 struct Analysis<'a> {
+    module: &'a Module,
     function: &'a Function,
     budget: &'a mut ExpansionBudget,
     span: Span,
@@ -44,6 +48,9 @@ impl ScalarPromotions {
             .iter()
             .map(|(_, local)| Candidate {
                 initializer: None,
+                constant_index: None,
+                copy_source: None,
+                index_only: true,
                 store_position: usize::MAX,
                 first_load: usize::MAX,
                 stores: 0,
@@ -52,6 +59,7 @@ impl ScalarPromotions {
             })
             .collect();
         let mut analysis = Analysis {
+            module: &parser.module,
             function,
             budget,
             span,
@@ -90,6 +98,24 @@ impl<'a> Analysis<'a> {
         operand: Handle<Expression>,
         allow_local: bool,
     ) -> Result<bool, ParseError> {
+        self.operand_use(owner, operand, allow_local, false)
+    }
+
+    fn index_operand(
+        &mut self,
+        owner: Handle<Expression>,
+        operand: Handle<Expression>,
+    ) -> Result<bool, ParseError> {
+        self.operand_use(Some(owner), operand, false, true)
+    }
+
+    fn operand_use(
+        &mut self,
+        owner: Option<Handle<Expression>>,
+        operand: Handle<Expression>,
+        allow_local: bool,
+        is_index: bool,
+    ) -> Result<bool, ParseError> {
         self.budget.charge_work(1, self.span)?;
         if operand.index() >= self.function.expressions.len()
             || owner.is_some_and(|owner| operand.index() >= owner.index())
@@ -104,13 +130,63 @@ impl<'a> Analysis<'a> {
                 candidate.eligible = false;
             }
         }
+        if !is_index {
+            self.non_index_use(operand);
+        }
         Ok(true)
+    }
+
+    fn non_index_use(&mut self, operand: Handle<Expression>) {
+        if let Expression::Load { pointer } = self.function.expressions[operand] {
+            if let Expression::LocalVariable(local) = self.function.expressions[pointer] {
+                self.candidates[local.index()].index_only = false;
+            }
+        }
+    }
+
+    fn copied_index_source(
+        &self,
+        pointer: Handle<Expression>,
+        value: Handle<Expression>,
+        is_root: bool,
+    ) -> Option<Handle<LocalVariable>> {
+        if !is_root {
+            return None;
+        }
+        let function = self.function;
+        let Expression::LocalVariable(destination) = function.expressions[pointer] else {
+            return None;
+        };
+        let local = &function.local_variables[destination];
+        if local.name.is_some()
+            || self.module.types[local.ty].inner != TypeInner::Scalar(Scalar::U32)
+            || self.candidates[destination.index()].stores != 0
+        {
+            return None;
+        }
+        let Expression::Load { pointer } = function.expressions[value] else {
+            return None;
+        };
+        let Expression::LocalVariable(source) = function.expressions[pointer] else {
+            return None;
+        };
+        (self.module.types[function.local_variables[source].ty].inner
+            == TypeInner::Scalar(Scalar::U32))
+        .then_some(source)
     }
 
     fn expressions(&mut self) -> Result<bool, ParseError> {
         let function = self.function;
         for (handle, expression) in function.expressions.iter() {
             self.budget.charge_work(1, self.span)?;
+            if let Expression::Access { base, index } = *expression {
+                if !self.operand(Some(handle), base, false)?
+                    || !self.index_operand(handle, index)?
+                {
+                    return Ok(false);
+                }
+                continue;
+            }
             let mut operand = |value, allow_local| self.operand(Some(handle), value, allow_local);
             let supported = match *expression {
                 Expression::Literal(_)
@@ -129,11 +205,9 @@ impl<'a> Analysis<'a> {
                 | Expression::Swizzle { vector: expr, .. }
                 | Expression::Relational { argument: expr, .. }
                 | Expression::AccessIndex { base: expr, .. } => operand(expr, false)?,
-                Expression::Binary { left, right, .. }
-                | Expression::Access {
-                    base: left,
-                    index: right,
-                } => operand(left, false)? && operand(right, false)?,
+                Expression::Binary { left, right, .. } => {
+                    operand(left, false)? && operand(right, false)?
+                }
                 Expression::Select {
                     condition,
                     accept,
@@ -229,15 +303,29 @@ impl<'a> Analysis<'a> {
                     }
                     Statement::Store { pointer, value } => {
                         if !self.operand(None, pointer, true)?
-                            || !self.operand(None, value, false)?
+                            || !self.operand_use(None, value, false, true)?
                         {
                             return Ok(false);
                         }
+                        let copy_source = self.copied_index_source(pointer, value, is_root);
+                        if copy_source.is_none() {
+                            self.non_index_use(value);
+                        }
                         if let Expression::LocalVariable(local) = function.expressions[pointer] {
+                            let constant_index = if function.local_variables[local].name.is_none()
+                                && self.module.types[function.local_variables[local].ty].inner
+                                    == TypeInner::Scalar(Scalar::U32)
+                            {
+                                self.constant_index(value)?
+                            } else {
+                                None
+                            };
                             let candidate = &mut self.candidates[local.index()];
                             candidate.stores = candidate.stores.saturating_add(1);
                             if is_root && candidate.stores == 1 {
                                 candidate.initializer = Some(value);
+                                candidate.constant_index = constant_index;
+                                candidate.copy_source = copy_source;
                                 candidate.store_position = position;
                             } else {
                                 candidate.eligible = false;
@@ -250,6 +338,7 @@ impl<'a> Analysis<'a> {
                                         | Expression::CallResult(_)
                                         | Expression::AtomicResult { .. }
                                 )
+                                && constant_index.is_none()
                             {
                                 candidate.eligible = false;
                             }
@@ -361,6 +450,170 @@ impl<'a> Analysis<'a> {
         Ok(true)
     }
 
+    fn constant_index(
+        &mut self,
+        mut handle: Handle<Expression>,
+    ) -> Result<Option<u32>, ParseError> {
+        if !matches!(
+            self.function.expressions[handle],
+            Expression::As {
+                kind: ScalarKind::Uint,
+                convert: Some(4),
+                ..
+            }
+        ) {
+            return Ok(None);
+        }
+        let mut has_signed_cast = false;
+        loop {
+            self.budget.charge_work(1, self.span)?;
+            let value = match self.function.expressions[handle] {
+                Expression::As {
+                    expr,
+                    kind: ScalarKind::Sint,
+                    convert: Some(4),
+                } => {
+                    has_signed_cast = true;
+                    handle = expr;
+                    continue;
+                }
+                Expression::As {
+                    expr,
+                    kind: ScalarKind::Uint,
+                    convert: Some(4),
+                } => {
+                    handle = expr;
+                    continue;
+                }
+                Expression::Literal(Literal::I32(value)) if value >= 0 => value as u32,
+                Expression::Literal(Literal::U32(value)) => value,
+                _ => return Ok(None),
+            };
+            return Ok((!has_signed_cast || value <= i32::MAX as u32).then_some(value));
+        }
+    }
+
+    fn constant_index_origins(&mut self) -> Result<Vec<Option<Handle<LocalVariable>>>, ParseError> {
+        self.budget
+            .charge_slice::<Handle<LocalVariable>>(self.candidates.len(), self.span)?;
+        self.budget.charge_work(self.candidates.len(), self.span)?;
+        let mut pending = Vec::with_capacity(self.candidates.len());
+        for candidate in &self.candidates {
+            if candidate.initializer.is_none() || !candidate.index_only {
+                if let Some(source) = candidate.copy_source {
+                    pending.push(source);
+                }
+            }
+        }
+        while let Some(local) = pending.pop() {
+            self.budget.charge_work(1, self.span)?;
+            let candidate = &mut self.candidates[local.index()];
+            if candidate.index_only {
+                candidate.index_only = false;
+                if let Some(source) = candidate.copy_source {
+                    pending.push(source);
+                }
+            }
+        }
+        self.budget.charge_work(self.candidates.len(), self.span)?;
+        for candidate in &mut self.candidates {
+            if candidate.constant_index.is_some() && !candidate.index_only {
+                candidate.initializer = None;
+            }
+        }
+        self.budget
+            .charge_slice::<Option<Handle<LocalVariable>>>(self.candidates.len(), self.span)?;
+        self.budget.charge_work(self.candidates.len(), self.span)?;
+        let mut origins = alloc::vec![None; self.candidates.len()];
+        for statement in self.function.body.iter() {
+            self.budget.charge_work(1, self.span)?;
+            let Statement::Store { pointer, value } = *statement else {
+                continue;
+            };
+            let Expression::LocalVariable(local) = self.function.expressions[pointer] else {
+                continue;
+            };
+            let candidate = &self.candidates[local.index()];
+            if candidate.initializer == Some(value) {
+                origins[local.index()] = if candidate.constant_index.is_some() {
+                    Some(local)
+                } else {
+                    candidate
+                        .copy_source
+                        .and_then(|source| origins[source.index()])
+                };
+            }
+        }
+        Ok(origins)
+    }
+
+    fn constant_index_bounds(
+        &mut self,
+        origins: &[Option<Handle<LocalVariable>>],
+    ) -> Result<(), ParseError> {
+        let function = self.function;
+        self.budget
+            .charge_slice::<TypeResolution>(function.expressions.len(), self.span)?;
+        self.budget
+            .charge_work(function.expressions.len(), self.span)?;
+        let mut types = crate::front::Typifier::new();
+        let (first, _) = function.expressions.iter().next().unwrap();
+        if types
+            .grow(
+                first,
+                &function.expressions,
+                &crate::proc::ResolveContext::with_locals(
+                    self.module,
+                    &function.local_variables,
+                    &function.arguments,
+                ),
+            )
+            .is_err()
+        {
+            self.budget.charge_work(self.candidates.len(), self.span)?;
+            for candidate in &mut self.candidates {
+                if candidate.constant_index.is_some() {
+                    candidate.initializer = None;
+                }
+            }
+            return Ok(());
+        }
+        for (_, expression) in function.expressions.iter() {
+            self.budget.charge_work(1, self.span)?;
+            let Expression::Access { base, index } = *expression else {
+                continue;
+            };
+            let Expression::Load { pointer } = function.expressions[index] else {
+                continue;
+            };
+            let Expression::LocalVariable(local) = function.expressions[pointer] else {
+                continue;
+            };
+            let Some(origin) = origins[local.index()] else {
+                continue;
+            };
+            let candidate = &mut self.candidates[origin.index()];
+            let Some(value) = candidate.constant_index else {
+                continue;
+            };
+            if candidate.initializer.is_none() {
+                continue;
+            }
+            let in_bounds = match types[base]
+                .inner_with(&self.module.types)
+                .indexable_length_pending(self.module)
+            {
+                Ok(crate::proc::IndexableLength::Known(length)) => value < length,
+                Ok(crate::proc::IndexableLength::Dynamic) => true,
+                Err(_) => false,
+            };
+            if !in_bounds {
+                candidate.initializer = None;
+            }
+        }
+        Ok(())
+    }
+
     fn finish(mut self) -> Result<ScalarPromotions, ParseError> {
         let function = self.function;
         for (handle, expression) in function.expressions.iter() {
@@ -379,6 +632,7 @@ impl<'a> Analysis<'a> {
             }
         }
         let mut has_promotions = false;
+        let mut check_constant_indices = false;
         for candidate in &mut self.candidates {
             self.budget.charge_work(1, self.span)?;
             if !candidate.eligible
@@ -388,6 +642,20 @@ impl<'a> Analysis<'a> {
                 candidate.initializer = None;
             }
             has_promotions |= candidate.initializer.is_some();
+            check_constant_indices |=
+                candidate.initializer.is_some() && candidate.constant_index.is_some();
+        }
+        if check_constant_indices {
+            let origins = self.constant_index_origins()?;
+            self.budget.charge_work(origins.len(), self.span)?;
+            if origins.iter().any(Option::is_some) {
+                self.constant_index_bounds(&origins)?;
+            }
+            self.budget.charge_work(self.candidates.len(), self.span)?;
+            has_promotions = self
+                .candidates
+                .iter()
+                .any(|candidate| candidate.initializer.is_some());
         }
         if !has_promotions {
             return Ok(ScalarPromotions::default());

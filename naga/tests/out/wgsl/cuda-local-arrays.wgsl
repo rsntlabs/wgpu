@@ -49,336 +49,270 @@ fn reset_sum(count: i32) -> i32 {
 @compute @workgroup_size(1, 1, 1)
 fn local_arrays() {
     var seed: i32;
-    var local: u32;
     var signed_values: array<i32, 3>;
-    var local_1: u32;
     var words: array<u32, 2>;
-    var local_2: u32;
     var samples: array<f32, 2>;
-    var local_3: u32;
     var flags: array<bool, 3>;
-    var local_4: u32;
     var zeros: array<i32, 2>;
-    var local_5: u32;
-    var local_6: u32;
-    var local_7: u32;
     var zero_flags: array<bool, 2>;
-    var local_8: u32;
-    var local_9: bool;
+    var local: bool;
     var bank: array<u32, 2>;
     var bank_1: array<f32, 2>;
-    var local_10: u32;
-    var local_11: u32;
+    var local_1: u32;
     var signed_values_1: array<i32, 2>;
-    var local_12: u32;
-    var local_13: u32;
+    var local_2: u32;
     var mixed: array<i32, 2>;
-    var local_14: u32;
-    var local_15: u32;
     var reset_total: i32;
     var i: i32;
     var reset: array<i32, 2>;
-    var local_16: u32;
     var total: i32;
     var scratch: array<i32, 2>;
     var j: i32;
-    var local_17: u32;
     var zero_samples: array<f32, 2>;
-    var local_18: u32;
     var left: array<i32, 2>;
     var right: array<i32, 2>;
-    var local_19: u32;
     var temporary: array<i32, 2>;
     var temporary_1: array<i32, 2>;
-    var local_20: u32;
-    var local_21: u32;
+    var local_3: u32;
+    var local_4: u32;
     var index: i32;
     var rhs: i32;
-    var local_22: u32;
-    var local_23: i32;
-    var local_24: u32;
-    var local_25: u32;
-    var local_26: u32;
-    var local_27: i32;
-    var local_28: u32;
-    var local_29: u32;
-    var local_30: u32;
-    var local_31: u32;
-    var local_32: u32;
+    var local_5: i32;
+    var local_6: i32;
+    var local_7: u32;
+    var local_8: u32;
+    var local_9: u32;
+    var local_10: u32;
 
-    local = u32(0i);
-    let _e3 = local;
-    let _e6 = out[_e3];
-    seed = _e6;
-    let _e8 = seed;
-    signed_values[0i] = _e8;
+    let _e4 = out[u32(0i)];
+    seed = _e4;
+    let _e6 = seed;
+    signed_values[0i] = _e6;
     signed_values[1i] = -(2i);
     signed_values[2i] = 4i;
-    let _e23 = signed_values[0i];
-    let _e24 = signed_values[1i];
-    let _e28 = signed_values[2i];
-    local_1 = u32(0i);
-    let _e33 = local_1;
-    out[_e33] = ((_e23 + _e24) + _e28);
+    let _e21 = signed_values[0i];
+    let _e22 = signed_values[1i];
+    let _e26 = signed_values[2i];
+    out[u32(0i)] = ((_e21 + _e22) + _e26);
     words = array<u32, 2>();
     words[0i] = 4294967295u;
     words[1i] = 1u;
-    let _e47 = words[0i];
-    let _e48 = words[1i];
-    local_2 = u32(1i);
-    let _e56 = local_2;
-    out[_e56] = i32(((_e47 + _e48) == 0u));
+    let _e43 = words[0i];
+    let _e44 = words[1i];
+    out[u32(1i)] = i32(((_e43 + _e44) == 0u));
     samples = array<f32, 2>();
     samples[0i] = 1.5f;
     samples[1i] = 2.25f;
-    let _e70 = samples[0i];
-    let _e71 = samples[1i];
-    local_3 = u32(2i);
-    let _e79 = local_3;
-    out[_e79] = i32(((_e70 + _e71) * 4f));
+    let _e64 = samples[0i];
+    let _e65 = samples[1i];
+    out[u32(2i)] = i32(((_e64 + _e65) * 4f));
     flags = array<bool, 3>();
-    let _e83 = seed;
-    flags[0i] = (_e83 != 0i);
+    let _e75 = seed;
+    flags[0i] = (_e75 != 0i);
     flags[2i] = true;
-    let _e93 = flags[0i];
-    let _e99 = flags[1i];
-    let _e106 = flags[2i];
-    local_4 = u32(3i);
-    let _e112 = local_4;
-    out[_e112] = (((i32(_e93) * 100i) + (i32(_e99) * 10i)) + i32(_e106));
+    let _e85 = flags[0i];
+    let _e91 = flags[1i];
+    let _e98 = flags[2i];
+    out[u32(3i)] = (((i32(_e85) * 100i) + (i32(_e91) * 10i)) + i32(_e98));
     zeros = array<i32, 2>();
-    let _e120 = zeros[0i];
-    let _e121 = zeros[1i];
-    local_5 = u32(4i);
-    let _e126 = local_5;
-    out[_e126] = (_e120 + _e121);
-    let _e128 = seed;
-    let _e129 = local_sum(_e128);
-    local_6 = u32(5i);
-    let _e133 = local_6;
-    out[_e133] = _e129;
-    let _e136 = reset_sum(3i);
-    local_7 = u32(6i);
-    let _e140 = local_7;
-    out[_e140] = _e136;
+    let _e110 = zeros[0i];
+    let _e111 = zeros[1i];
+    out[u32(4i)] = (_e110 + _e111);
+    let _e116 = seed;
+    let _e117 = local_sum(_e116);
+    out[u32(5i)] = _e117;
+    let _e122 = reset_sum(3i);
+    out[u32(6i)] = _e122;
     zero_flags = array<bool, 2>();
-    let _e146 = zero_flags[0i];
-    local_9 = _e146;
-    if _e146 {
+    let _e130 = zero_flags[0i];
+    local = _e130;
+    if _e130 {
     } else {
-        let _e150 = zero_flags[1i];
-        local_9 = _e150;
+        let _e134 = zero_flags[1i];
+        local = _e134;
     }
-    let _e151 = local_9;
-    local_8 = u32(7i);
-    let _e156 = local_8;
-    out[_e156] = i32(_e151);
+    let _e135 = local;
+    out[u32(7i)] = i32(_e135);
     bank = array<u32, 2>();
     bank[0i] = 3u;
     bank[1i] = 4u;
     {
         bank_1 = array<f32, 2>();
         bank_1[1i] = 6.5f;
-        let _e175 = bank_1[0i];
-        let _e176 = bank_1[1i];
-        local_10 = u32(8i);
-        let _e182 = local_10;
-        local_29 = _e182;
-        let _e184 = local_29;
-        out[_e184] = i32((_e175 + _e176));
+        let _e157 = bank_1[0i];
+        let _e158 = bank_1[1i];
+        local_1 = u32(8i);
+        let _e164 = local_1;
+        local_7 = _e164;
+        let _e166 = local_7;
+        out[_e166] = i32((_e157 + _e158));
     }
-    let _e190 = bank[0i];
-    let _e191 = bank[1i];
-    local_11 = u32(9i);
-    let _e197 = local_11;
-    out[_e197] = i32((_e190 + _e191));
+    let _e172 = bank[0i];
+    let _e173 = bank[1i];
+    out[u32(9i)] = i32((_e172 + _e173));
     {
-        let _e199 = seed;
-        signed_values_1[0i] = _e199;
-        let _e203 = seed;
-        signed_values_1[1i] = _e203;
-        let _e210 = signed_values_1[0i];
-        let _e211 = signed_values_1[1i];
-        local_12 = u32(10i);
-        let _e216 = local_12;
-        local_30 = _e216;
-        let _e218 = local_30;
-        out[_e218] = (_e210 + _e211);
+        let _e179 = seed;
+        signed_values_1[0i] = _e179;
+        let _e183 = seed;
+        signed_values_1[1i] = _e183;
+        let _e190 = signed_values_1[0i];
+        let _e191 = signed_values_1[1i];
+        local_2 = u32(10i);
+        let _e196 = local_2;
+        local_8 = _e196;
+        let _e198 = local_8;
+        out[_e198] = (_e190 + _e191);
     }
-    let _e222 = signed_values[0i];
-    local_13 = u32(11i);
-    let _e226 = local_13;
-    out[_e226] = _e222;
+    let _e202 = signed_values[0i];
+    out[u32(11i)] = _e202;
     mixed = array<i32, 2>();
-    let _e230 = seed;
-    seed = (_e230 + 1i);
+    let _e208 = seed;
+    seed = (_e208 + 1i);
     let next = seed;
     mixed[0i] = next;
-    let _e236 = seed;
-    seed = (_e236 + 1i);
-    mixed[1i] = _e236;
-    let _e243 = mixed[0i];
-    let _e248 = mixed[1i];
-    local_14 = u32(12i);
-    let _e253 = local_14;
-    out[_e253] = ((_e243 * 10i) + _e248);
-    let _e255 = seed;
-    local_15 = u32(13i);
-    let _e259 = local_15;
-    out[_e259] = _e255;
+    let _e214 = seed;
+    seed = (_e214 + 1i);
+    mixed[1i] = _e214;
+    let _e221 = mixed[0i];
+    let _e226 = mixed[1i];
+    out[u32(12i)] = ((_e221 * 10i) + _e226);
+    let _e231 = seed;
+    out[u32(13i)] = _e231;
     reset_total = 0i;
     {
         i = 0i;
         loop {
-            let _e265 = i;
-            if (_e265 < 3i) {
+            let _e239 = i;
+            if (_e239 < 3i) {
             } else {
                 break;
             }
             reset = array<i32, 2>();
-            let _e270 = i;
-            if (_e270 == 1i) {
+            let _e244 = i;
+            if (_e244 == 1i) {
                 reset[0i] = 90i;
                 continue;
             }
-            let _e278 = reset[0i];
-            let _e279 = i;
-            let _e281 = reset_total;
-            reset_total = (_e281 + (_e278 + _e279));
+            let _e252 = reset[0i];
+            let _e253 = i;
+            let _e255 = reset_total;
+            reset_total = (_e255 + (_e252 + _e253));
             reset[0i] = 99i;
             continuing {
-                let _e286 = i;
-                i = (_e286 + 1i);
+                let _e260 = i;
+                i = (_e260 + 1i);
             }
         }
     }
-    let _e289 = reset_total;
-    local_16 = u32(14i);
-    let _e293 = local_16;
-    out[_e293] = _e289;
+    let _e263 = reset_total;
+    out[u32(14i)] = _e263;
     total = 0i;
     {
         scratch = array<i32, 2>();
         j = 0i;
         loop {
-            let _e301 = j;
-            if (_e301 < 3i) {
+            let _e273 = j;
+            if (_e273 < 3i) {
             } else {
                 break;
             }
-            let _e304 = j;
-            let _e308 = scratch[(_e304 % 2i)];
-            scratch[(_e304 % 2i)] = (_e308 + 1i);
-            let _e311 = j;
-            if (_e311 == 1i) {
+            let _e276 = j;
+            let _e280 = scratch[(_e276 % 2i)];
+            scratch[(_e276 % 2i)] = (_e280 + 1i);
+            let _e283 = j;
+            if (_e283 == 1i) {
                 continue;
             }
-            let _e316 = scratch[0i];
-            let _e321 = scratch[1i];
-            let _e323 = total;
-            total = (_e323 + ((_e316 * 10i) + _e321));
+            let _e288 = scratch[0i];
+            let _e293 = scratch[1i];
+            let _e295 = total;
+            total = (_e295 + ((_e288 * 10i) + _e293));
             continuing {
-                let _e325 = j;
-                j = (_e325 + 1i);
+                let _e297 = j;
+                j = (_e297 + 1i);
             }
         }
     }
-    let _e328 = total;
-    local_17 = u32(15i);
-    let _e332 = local_17;
-    out[_e332] = _e328;
+    let _e300 = total;
+    out[u32(15i)] = _e300;
     zero_samples = array<f32, 2>();
-    let _e340 = zero_samples[0i];
-    let _e341 = zero_samples[1i];
-    local_18 = u32(16i);
-    let _e347 = local_18;
-    out[_e347] = i32((_e340 + _e341));
+    let _e310 = zero_samples[0i];
+    let _e311 = zero_samples[1i];
+    out[u32(16i)] = i32((_e310 + _e311));
     left = array<i32, 2>();
     right = array<i32, 2>();
     left[0i] = 5i;
     left[1i] = 7i;
     right[0i] = 11i;
     right[1i] = 13i;
-    let _e369 = left[0i];
-    let _e370 = right[0i];
-    local_19 = u32(17i);
-    let _e375 = local_19;
-    out[_e375] = (_e369 + _e370);
+    let _e337 = left[0i];
+    let _e338 = right[0i];
+    out[u32(17i)] = (_e337 + _e338);
     {
         temporary = array<i32, 2>();
-        let _e379 = seed;
-        temporary[0i] = _e379;
+        let _e345 = seed;
+        temporary[0i] = _e345;
         {
             temporary_1 = array<i32, 2>();
             temporary_1[1i] = 3i;
-            let _e391 = temporary_1[0i];
-            let _e392 = temporary_1[1i];
-            local_20 = u32(18i);
-            let _e397 = local_20;
-            local_31 = _e397;
-            let _e399 = local_31;
-            out[_e399] = (_e391 + _e392);
+            let _e357 = temporary_1[0i];
+            let _e358 = temporary_1[1i];
+            local_3 = u32(18i);
+            let _e363 = local_3;
+            local_9 = _e363;
+            let _e365 = local_9;
+            out[_e365] = (_e357 + _e358);
         }
-        let _e403 = temporary[0i];
-        local_21 = u32(19i);
-        let _e407 = local_21;
-        local_32 = _e407;
-        let _e409 = local_32;
-        out[_e409] = _e403;
+        let _e369 = temporary[0i];
+        local_4 = u32(19i);
+        let _e373 = local_4;
+        local_10 = _e373;
+        let _e375 = local_10;
+        out[_e375] = _e369;
     }
-    let _e411 = seed;
-    let choose = ((_e411 & 1i) == 0i);
+    let _e377 = seed;
+    let choose = ((_e377 & 1i) == 0i);
     index = 0i;
     rhs = 20i;
-    let _e420 = rhs;
-    rhs = (_e420 + 1i);
-    let _e423 = rhs;
+    let _e386 = rhs;
+    rhs = (_e386 + 1i);
+    let _e389 = rhs;
     if choose {
-        let _e424 = index;
-        index = (_e424 + 1i);
-        let _e428 = left[_e424];
-        left[_e424] = (_e428 + _e423);
-        let _e430 = left[_e424];
-        local_23 = _e430;
+        let _e390 = index;
+        index = (_e390 + 1i);
+        let _e394 = left[_e390];
+        left[_e390] = (_e394 + _e389);
+        let _e396 = left[_e390];
+        local_5 = _e396;
     } else {
-        let _e432 = index;
-        index = (_e432 + 1i);
-        let _e436 = right[_e432];
-        right[_e432] = (_e436 + _e423);
-        let _e438 = right[_e432];
-        local_23 = _e438;
+        let _e398 = index;
+        index = (_e398 + 1i);
+        let _e402 = right[_e398];
+        right[_e398] = (_e402 + _e389);
+        let _e404 = right[_e398];
+        local_5 = _e404;
     }
-    let _e441 = local_23;
-    local_22 = u32(20i);
-    let _e445 = local_22;
-    out[_e445] = _e441;
-    let _e447 = index;
-    local_24 = u32(21i);
-    let _e451 = local_24;
-    out[_e451] = _e447;
-    let _e455 = left[0i];
-    let _e460 = right[0i];
-    local_25 = u32(22i);
-    let _e465 = local_25;
-    out[_e465] = ((_e455 * 100i) + _e460);
+    let _e407 = local_5;
+    out[u32(20i)] = _e407;
+    let _e411 = index;
+    out[u32(21i)] = _e411;
+    let _e417 = left[0i];
+    let _e422 = right[0i];
+    out[u32(22i)] = ((_e417 * 100i) + _e422);
     if choose {
         right[1i] = 9i;
-        let _e470 = right[1i];
-        right[1i] = (_e470 + 1i);
-        local_27 = _e470;
+        let _e430 = right[1i];
+        right[1i] = (_e430 + 1i);
+        local_6 = _e430;
     } else {
         left[1i] = 9i;
-        let _e477 = left[1i];
-        left[1i] = (_e477 + 1i);
-        local_27 = _e477;
+        let _e437 = left[1i];
+        left[1i] = (_e437 + 1i);
+        local_6 = _e437;
     }
-    let _e482 = local_27;
-    local_26 = u32(23i);
-    let _e486 = local_26;
-    out[_e486] = _e482;
-    let _e490 = left[1i];
-    let _e495 = right[1i];
-    local_28 = u32(24i);
-    let _e500 = local_28;
-    out[_e500] = ((_e490 * 100i) + _e495);
+    let _e442 = local_6;
+    out[u32(23i)] = _e442;
+    let _e448 = left[1i];
+    let _e453 = right[1i];
+    out[u32(24i)] = ((_e448 * 100i) + _e453);
 }

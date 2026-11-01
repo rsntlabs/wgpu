@@ -45,21 +45,21 @@ int list_sum(
     int seed
 ) {
     type_2 values_1 = {};
-    uint local_35 = {};
+    uint local_4 = {};
     values_1.inner[0] = seed;
     values_1.inner[1] = as_type<int>(as_type<uint>(seed) + as_type<uint>(1));
-    local_35 = 2u;
+    local_4 = 2u;
     uint2 loop_bound = uint2(4294967295u);
     bool loop_init = true;
     while(true) {
         if (metal::all(loop_bound == uint2(0u))) { break; }
         loop_bound -= uint2(loop_bound.y == 0u, 1u);
         if (!loop_init) {
-            uint _e13 = local_35;
-            local_35 = _e13 + 1u;
+            uint _e13 = local_4;
+            local_4 = _e13 + 1u;
         }
         loop_init = false;
-        uint _e8 = local_35;
+        uint _e8 = local_4;
         if (_e8 >= 3u) {
             break;
         }
@@ -90,73 +90,40 @@ kernel void list_initialization(
   device type_4& out [[user(fake0)]]
 , constant _mslBufferSizes& _buffer_sizes [[user(fake0)]]
 ) {
-    uint local = {};
     int zero = {};
     int copy_zero = {};
     bool enabled = {};
     float sample = {};
     int Local = {};
     int Safe = {};
-    int local_1 = {};
+    int local = {};
     type_2 safe_values = {};
-    uint local_2 = {};
-    uint local_3 = {};
-    uint local_4 = {};
-    uint local_5 = {};
-    uint local_6 = {};
-    uint local_7 = {};
-    uint local_8 = {};
-    uint local_9 = {};
+    uint local_1 = {};
     type_2 values = {};
-    uint local_10 = {};
     type_2 changed = {};
-    uint local_11 = {};
-    uint local_12 = {};
     int3_ point = {};
-    uint local_13 = {};
     int3_ changed_point = {};
-    uint local_14 = {};
-    uint local_15 = {};
     type_6 nested = {};
-    uint local_16 = {};
     type_8 flat = {};
-    uint local_17 = {};
     int3_ original = {};
     int3_ copied = {};
     type_6 copies = {};
-    uint local_18 = {};
-    uint local_19 = {};
-    uint local_20 = {};
     int counter = {};
     type_2 ordered = {};
-    uint local_21 = {};
-    uint local_22 = {};
-    uint local_23 = {};
     int zero_total = {};
     int iteration = {};
     type_2 reset = {};
-    uint local_24 = {};
-    uint local_25 = {};
+    uint local_2 = {};
     int total = {};
     int iteration_1 = {};
     int limit = {};
-    uint local_26 = {};
     int Number = {};
     type_9 cached = {};
-    uint local_27 = {};
     type_2 frozen = {};
-    uint local_28 = {};
-    uint local_29 = {};
+    uint local_3 = {};
     float3_ floating = {};
-    uint local_30 = {};
-    uint local_31 = {};
     int3_ from_call = {};
-    uint local_32 = {};
-    uint local_33 = {};
-    uint local_34 = {};
-    local = static_cast<uint>(0);
-    uint _e3 = local;
-    int seed_2 = out[_e3];
+    int seed_2 = out[static_cast<uint>(0)];
     zero = 0;
     copy_zero = 0;
     enabled = true;
@@ -165,166 +132,124 @@ kernel void list_initialization(
     Local = 3;
     Safe = 3;
     safe_values.inner[0] = 1;
-    local_2 = 1u;
+    local_1 = 1u;
     uint2 loop_bound_1 = uint2(4294967295u);
     bool loop_init_1 = true;
     while(true) {
         if (metal::all(loop_bound_1 == uint2(0u))) { break; }
         loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
         if (!loop_init_1) {
-            uint _e31 = local_2;
-            local_2 = _e31 + 1u;
+            uint _e29 = local_1;
+            local_1 = _e29 + 1u;
         }
         loop_init_1 = false;
-        uint _e26 = local_2;
-        if (_e26 >= 3u) {
+        uint _e24 = local_1;
+        if (_e24 >= 3u) {
             break;
         }
-        safe_values.inner[_e26] = int {};
+        safe_values.inner[_e24] = int {};
     }
-    int _e34 = zero;
-    local_3 = static_cast<uint>(0);
-    uint _e38 = local_3;
-    out[_e38] = _e34;
-    int _e40 = copy_zero;
-    local_4 = static_cast<uint>(1);
-    uint _e44 = local_4;
-    out[_e44] = _e40;
-    bool _e46 = enabled;
-    local_5 = static_cast<uint>(2);
-    uint _e51 = local_5;
-    out[_e51] = static_cast<int>(_e46);
-    local_6 = static_cast<uint>(3);
-    uint _e57 = local_6;
-    out[_e57] = static_cast<int>(count);
-    float _e59 = sample;
-    local_7 = static_cast<uint>(4);
-    uint _e66 = local_7;
-    out[_e66] = naga_f2i32(_e59 * 2.0);
-    int _e68 = Local;
-    local_8 = static_cast<uint>(5);
-    uint _e74 = local_8;
-    out[_e74] = as_type<int>(as_type<uint>(Global) + as_type<uint>(_e68));
-    int _e78 = safe_values.inner[2];
-    local_9 = static_cast<uint>(6);
-    uint _e82 = local_9;
-    out[_e82] = _e78;
+    int _e32 = zero;
+    out[static_cast<uint>(0)] = _e32;
+    int _e36 = copy_zero;
+    out[static_cast<uint>(1)] = _e36;
+    bool _e40 = enabled;
+    out[static_cast<uint>(2)] = static_cast<int>(_e40);
+    out[static_cast<uint>(3)] = static_cast<int>(count);
+    float _e49 = sample;
+    out[static_cast<uint>(4)] = naga_f2i32(_e49 * 2.0);
+    int _e56 = Local;
+    out[static_cast<uint>(5)] = as_type<int>(as_type<uint>(Global) + as_type<uint>(_e56));
+    int _e64 = safe_values.inner[2];
+    out[static_cast<uint>(6)] = _e64;
     values.inner[0] = 1;
-    int _e90 = values.inner[0];
-    values.inner[1] = as_type<int>(as_type<uint>(_e90) + as_type<uint>(1));
-    int _e96 = values.inner[1];
-    values.inner[2] = as_type<int>(as_type<uint>(_e96) + as_type<uint>(1));
-    int _e103 = values.inner[0];
-    int _e104 = values.inner[1];
-    int _e108 = values.inner[2];
-    local_10 = static_cast<uint>(7);
-    uint _e113 = local_10;
-    out[_e113] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e103) + as_type<uint>(_e104))) + as_type<uint>(_e108));
+    int _e74 = values.inner[0];
+    values.inner[1] = as_type<int>(as_type<uint>(_e74) + as_type<uint>(1));
+    int _e80 = values.inner[1];
+    values.inner[2] = as_type<int>(as_type<uint>(_e80) + as_type<uint>(1));
+    int _e87 = values.inner[0];
+    int _e88 = values.inner[1];
+    int _e92 = values.inner[2];
+    out[static_cast<uint>(7)] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e87) + as_type<uint>(_e88))) + as_type<uint>(_e92));
     changed.inner[0] = 1;
     changed.inner[0] = 7;
     changed.inner[1] = 2;
-    int _e126 = changed.inner[0];
-    changed.inner[2] = _e126;
-    int _e129 = changed.inner[0];
-    local_11 = static_cast<uint>(8);
-    uint _e133 = local_11;
-    out[_e133] = _e129;
-    int _e137 = changed.inner[2];
-    local_12 = static_cast<uint>(9);
-    uint _e141 = local_12;
-    out[_e141] = _e137;
+    int _e108 = changed.inner[0];
+    changed.inner[2] = _e108;
+    int _e111 = changed.inner[0];
+    out[static_cast<uint>(8)] = _e111;
+    int _e117 = changed.inner[2];
+    out[static_cast<uint>(9)] = _e117;
     point.x = 1;
-    int _e147 = point.x;
-    point.y = as_type<int>(as_type<uint>(_e147) + as_type<uint>(1));
-    int _e152 = point.y;
-    point.z = as_type<int>(as_type<uint>(_e152) + as_type<uint>(1));
-    int _e157 = point.z;
-    local_13 = static_cast<uint>(10);
-    uint _e161 = local_13;
-    out[_e161] = _e157;
+    int _e125 = point.x;
+    point.y = as_type<int>(as_type<uint>(_e125) + as_type<uint>(1));
+    int _e130 = point.y;
+    point.z = as_type<int>(as_type<uint>(_e130) + as_type<uint>(1));
+    int _e135 = point.z;
+    out[static_cast<uint>(10)] = _e135;
     changed_point.x = 1;
     changed_point.x = 9;
     changed_point.y = 2;
-    int _e171 = changed_point.x;
-    changed_point.z = _e171;
-    int _e174 = changed_point.x;
-    local_14 = static_cast<uint>(11);
-    uint _e178 = local_14;
-    out[_e178] = _e174;
-    int _e181 = changed_point.z;
-    local_15 = static_cast<uint>(12);
-    uint _e185 = local_15;
-    out[_e185] = _e181;
+    int _e147 = changed_point.x;
+    changed_point.z = _e147;
+    int _e150 = changed_point.x;
+    out[static_cast<uint>(11)] = _e150;
+    int _e155 = changed_point.z;
+    out[static_cast<uint>(12)] = _e155;
     nested.inner[0].x = 1;
     nested.inner[0].y = 2;
     nested.inner[0].z = int {};
     nested.inner[1].x = 3;
     nested.inner[1].y = int {};
     nested.inner[1].z = int {};
-    int _e208 = nested.inner[0].z;
-    int _e209 = nested.inner[1].x;
-    local_16 = static_cast<uint>(13);
-    uint _e214 = local_16;
-    out[_e214] = as_type<int>(as_type<uint>(_e208) + as_type<uint>(_e209));
+    int _e180 = nested.inner[0].z;
+    int _e181 = nested.inner[1].x;
+    out[static_cast<uint>(13)] = as_type<int>(as_type<uint>(_e180) + as_type<uint>(_e181));
     flat.inner[0].x = 1;
     flat.inner[0].y = 2;
     flat.inner[1].x = 3;
     flat.inner[1].y = int {};
-    int _e233 = flat.inner[0].x;
-    int _e234 = flat.inner[0].y;
-    int _e239 = flat.inner[1].x;
-    int _e244 = flat.inner[1].y;
-    local_17 = static_cast<uint>(14);
-    uint _e249 = local_17;
-    out[_e249] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e233) + as_type<uint>(_e234))) + as_type<uint>(_e239))) + as_type<uint>(_e244));
+    int _e203 = flat.inner[0].x;
+    int _e204 = flat.inner[0].y;
+    int _e209 = flat.inner[1].x;
+    int _e214 = flat.inner[1].y;
+    out[static_cast<uint>(14)] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e203) + as_type<uint>(_e204))) + as_type<uint>(_e209))) + as_type<uint>(_e214));
     original.x = 2;
     original.y = 3;
     original.z = 4;
-    int3_ _e258 = original;
-    copied = _e258;
-    int3_ _e262 = original;
-    copies.inner[0] = _e262;
+    int3_ _e226 = original;
+    copied = _e226;
+    int3_ _e230 = original;
+    copies.inner[0] = _e230;
     copies.inner[1].x = 5;
     copies.inner[1].y = 6;
     copies.inner[1].z = int {};
     original.x = 99;
-    int _e273 = copied.x;
-    local_18 = static_cast<uint>(15);
-    uint _e277 = local_18;
-    out[_e277] = _e273;
-    int _e282 = copies.inner[0].x;
-    local_19 = static_cast<uint>(16);
-    uint _e286 = local_19;
-    out[_e286] = _e282;
-    int _e291 = copies.inner[1].z;
-    local_20 = static_cast<uint>(17);
-    uint _e295 = local_20;
-    out[_e295] = _e291;
+    int _e241 = copied.x;
+    out[static_cast<uint>(15)] = _e241;
+    int _e248 = copies.inner[0].x;
+    out[static_cast<uint>(16)] = _e248;
+    int _e255 = copies.inner[1].z;
+    out[static_cast<uint>(17)] = _e255;
     counter = seed_2;
-    int _e300 = counter;
-    counter = as_type<int>(as_type<uint>(_e300) + as_type<uint>(1));
-    ordered.inner[0] = _e300;
-    int _e304 = counter;
-    counter = as_type<int>(as_type<uint>(_e304) + as_type<uint>(1));
-    ordered.inner[1] = _e304;
-    int _e308 = counter;
-    ordered.inner[2] = _e308;
-    int _e311 = ordered.inner[0];
-    int _e316 = ordered.inner[1];
-    int _e322 = ordered.inner[2];
-    local_21 = static_cast<uint>(18);
-    uint _e327 = local_21;
-    out[_e327] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e311) * as_type<uint>(100))) + as_type<uint>(as_type<int>(as_type<uint>(_e316) * as_type<uint>(10))))) + as_type<uint>(_e322));
-    int _e329 = counter;
-    local_22 = static_cast<uint>(19);
-    uint _e333 = local_22;
-    out[_e333] = _e329;
-    int _e335 = counter;
-    counter = as_type<int>(as_type<uint>(_e335) + as_type<uint>(1));
-    int _e339 = pair(_e335, 4);
-    local_23 = static_cast<uint>(20);
-    uint _e343 = local_23;
-    out[_e343] = _e339;
+    int _e262 = counter;
+    counter = as_type<int>(as_type<uint>(_e262) + as_type<uint>(1));
+    ordered.inner[0] = _e262;
+    int _e266 = counter;
+    counter = as_type<int>(as_type<uint>(_e266) + as_type<uint>(1));
+    ordered.inner[1] = _e266;
+    int _e270 = counter;
+    ordered.inner[2] = _e270;
+    int _e273 = ordered.inner[0];
+    int _e278 = ordered.inner[1];
+    int _e284 = ordered.inner[2];
+    out[static_cast<uint>(18)] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e273) * as_type<uint>(100))) + as_type<uint>(as_type<int>(as_type<uint>(_e278) * as_type<uint>(10))))) + as_type<uint>(_e284));
+    int _e289 = counter;
+    out[static_cast<uint>(19)] = _e289;
+    int _e293 = counter;
+    counter = as_type<int>(as_type<uint>(_e293) + as_type<uint>(1));
+    int _e297 = pair(_e293, 4);
+    out[static_cast<uint>(20)] = _e297;
     zero_total = 0;
     {
         iteration = 0;
@@ -334,44 +259,42 @@ kernel void list_initialization(
             if (metal::all(loop_bound_2 == uint2(0u))) { break; }
             loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
             if (!loop_init_2) {
-                int _e373 = iteration;
-                iteration = as_type<int>(as_type<uint>(_e373) + as_type<uint>(1));
+                int _e329 = iteration;
+                iteration = as_type<int>(as_type<uint>(_e329) + as_type<uint>(1));
             }
             loop_init_2 = false;
-            int _e349 = iteration;
-            if (_e349 < 3) {
+            int _e305 = iteration;
+            if (_e305 < 3) {
             } else {
                 break;
             }
-            int _e354 = iteration;
-            reset.inner[0] = _e354;
-            local_24 = 1u;
+            int _e310 = iteration;
+            reset.inner[0] = _e310;
+            local_2 = 1u;
             uint2 loop_bound_3 = uint2(4294967295u);
             bool loop_init_3 = true;
             while(true) {
                 if (metal::all(loop_bound_3 == uint2(0u))) { break; }
                 loop_bound_3 -= uint2(loop_bound_3.y == 0u, 1u);
                 if (!loop_init_3) {
-                    uint _e362 = local_24;
-                    local_24 = _e362 + 1u;
+                    uint _e318 = local_2;
+                    local_2 = _e318 + 1u;
                 }
                 loop_init_3 = false;
-                uint _e357 = local_24;
-                if (_e357 >= 3u) {
+                uint _e313 = local_2;
+                if (_e313 >= 3u) {
                     break;
                 }
-                reset.inner[_e357] = int {};
+                reset.inner[_e313] = int {};
             }
-            int _e367 = reset.inner[2];
-            int _e368 = zero_total;
-            zero_total = as_type<int>(as_type<uint>(_e368) + as_type<uint>(_e367));
+            int _e323 = reset.inner[2];
+            int _e324 = zero_total;
+            zero_total = as_type<int>(as_type<uint>(_e324) + as_type<uint>(_e323));
             reset.inner[2] = 9;
         }
     }
-    int _e376 = zero_total;
-    local_25 = static_cast<uint>(21);
-    uint _e380 = local_25;
-    out[_e380] = _e376;
+    int _e332 = zero_total;
+    out[static_cast<uint>(21)] = _e332;
     total = 0;
     {
         iteration_1 = 0;
@@ -382,81 +305,65 @@ kernel void list_initialization(
             if (metal::all(loop_bound_4 == uint2(0u))) { break; }
             loop_bound_4 -= uint2(loop_bound_4.y == 0u, 1u);
             if (!loop_init_4) {
-                int _e394 = iteration_1;
-                iteration_1 = as_type<int>(as_type<uint>(_e394) + as_type<uint>(1));
+                int _e348 = iteration_1;
+                iteration_1 = as_type<int>(as_type<uint>(_e348) + as_type<uint>(1));
             }
             loop_init_4 = false;
-            int _e388 = iteration_1;
-            int _e389 = limit;
-            if (_e388 < _e389) {
+            int _e342 = iteration_1;
+            int _e343 = limit;
+            if (_e342 < _e343) {
             } else {
                 break;
             }
-            int _e391 = iteration_1;
-            int _e392 = total;
-            total = as_type<int>(as_type<uint>(_e392) + as_type<uint>(_e391));
+            int _e345 = iteration_1;
+            int _e346 = total;
+            total = as_type<int>(as_type<uint>(_e346) + as_type<uint>(_e345));
         }
     }
-    int _e397 = total;
-    local_26 = static_cast<uint>(22);
-    uint _e401 = local_26;
-    out[_e401] = _e397;
+    int _e351 = total;
+    out[static_cast<uint>(22)] = _e351;
     Number = 4;
-    int _e407 = Number;
-    cached.inner[0] = _e407;
-    int _e409 = Number;
-    cached.inner[1] = as_type<int>(as_type<uint>(_e409) + as_type<uint>(1));
-    int _e414 = cached.inner[1];
-    local_27 = static_cast<uint>(23);
-    uint _e418 = local_27;
-    out[_e418] = _e414;
+    int _e359 = Number;
+    cached.inner[0] = _e359;
+    int _e361 = Number;
+    cached.inner[1] = as_type<int>(as_type<uint>(_e361) + as_type<uint>(1));
+    int _e366 = cached.inner[1];
+    out[static_cast<uint>(23)] = _e366;
     frozen.inner[0] = 3;
-    local_28 = 1u;
+    local_3 = 1u;
     uint2 loop_bound_5 = uint2(4294967295u);
     bool loop_init_5 = true;
     while(true) {
         if (metal::all(loop_bound_5 == uint2(0u))) { break; }
         loop_bound_5 -= uint2(loop_bound_5.y == 0u, 1u);
         if (!loop_init_5) {
-            uint _e430 = local_28;
-            local_28 = _e430 + 1u;
+            uint _e380 = local_3;
+            local_3 = _e380 + 1u;
         }
         loop_init_5 = false;
-        uint _e425 = local_28;
-        if (_e425 >= 3u) {
+        uint _e375 = local_3;
+        if (_e375 >= 3u) {
             break;
         }
-        frozen.inner[_e425] = int {};
+        frozen.inner[_e375] = int {};
     }
-    int _e437 = frozen.inner[0];
-    int _e438 = frozen.inner[1];
-    int _e442 = frozen.inner[2];
-    local_29 = static_cast<uint>(24);
-    uint _e447 = local_29;
-    out[_e447] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e437) + as_type<uint>(_e438))) + as_type<uint>(_e442));
+    int _e387 = frozen.inner[0];
+    int _e388 = frozen.inner[1];
+    int _e392 = frozen.inner[2];
+    out[static_cast<uint>(24)] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e387) + as_type<uint>(_e388))) + as_type<uint>(_e392));
     floating.x = 1.5;
     floating.y = -(0.0);
     floating.z = float {};
-    float _e458 = floating.y;
-    local_30 = static_cast<uint>(25);
-    uint _e463 = local_30;
-    out[_e463] = as_type<int>(_e458);
-    float _e466 = floating.z;
-    local_31 = static_cast<uint>(26);
-    uint _e471 = local_31;
-    out[_e471] = as_type<int>(_e466);
-    int3_ _e474 = make_list(6);
-    from_call = _e474;
-    int _e478 = from_call.x;
-    int _e479 = from_call.z;
-    local_32 = static_cast<uint>(27);
-    uint _e484 = local_32;
-    out[_e484] = as_type<int>(as_type<uint>(_e478) + as_type<uint>(_e479));
-    local_33 = static_cast<uint>(28);
-    uint _e493 = local_33;
-    out[_e493] = naga_f2i32(Scale * 10.0);
-    int _e497 = list_sum(as_type<int>(as_type<uint>(seed_2) + as_type<uint>(3)));
-    local_34 = static_cast<uint>(29);
-    uint _e501 = local_34;
-    out[_e501] = _e497;
+    float _e406 = floating.y;
+    out[static_cast<uint>(25)] = as_type<int>(_e406);
+    float _e412 = floating.z;
+    out[static_cast<uint>(26)] = as_type<int>(_e412);
+    int3_ _e418 = make_list(6);
+    from_call = _e418;
+    int _e422 = from_call.x;
+    int _e423 = from_call.z;
+    out[static_cast<uint>(27)] = as_type<int>(as_type<uint>(_e422) + as_type<uint>(_e423));
+    out[static_cast<uint>(28)] = naga_f2i32(Scale * 10.0);
+    int _e437 = list_sum(as_type<int>(as_type<uint>(seed_2) + as_type<uint>(3)));
+    out[static_cast<uint>(29)] = _e437;
 }

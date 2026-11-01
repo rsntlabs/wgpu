@@ -122,9 +122,6 @@ void main() {
     uint local_63 = 0u;
     uint local_64 = 0u;
     uint local_65 = 0u;
-    uint local_66 = 0u;
-    uint local_67 = 0u;
-    uint local_68 = 0u;
     {
         original.x = 1;
         original.y = 2;
@@ -138,20 +135,20 @@ void main() {
         int _e24 = points[0][0].y;
         local = uint(0);
         uint _e28 = local;
-        local_42 = _e28;
-        uint _e30 = local_42;
+        local_39 = _e28;
+        uint _e30 = local_39;
         _group_0_binding_0_cs[_e30] = _e24;
         int _e38 = points[1][1].x;
         local_1 = uint(1);
         uint _e42 = local_1;
-        local_43 = _e42;
-        uint _e44 = local_43;
+        local_40 = _e42;
+        uint _e44 = local_40;
         _group_0_binding_0_cs[_e44] = _e38;
         int _e51 = points[1][1].y;
         local_2 = uint(2);
         uint _e55 = local_2;
-        local_44 = _e55;
-        uint _e57 = local_44;
+        local_41 = _e55;
+        uint _e57 = local_41;
         _group_0_binding_0_cs[_e57] = _e51;
     }
     {
@@ -169,20 +166,20 @@ void main() {
         int _e87 = points_1[0][0].z;
         local_3 = uint(3);
         uint _e91 = local_3;
-        local_45 = _e91;
-        uint _e93 = local_45;
+        local_42 = _e91;
+        uint _e93 = local_42;
         _group_0_binding_0_cs[_e93] = _e87;
         int _e100 = points_1[1][1].x;
         local_4 = uint(4);
         uint _e104 = local_4;
-        local_46 = _e104;
-        uint _e106 = local_46;
+        local_43 = _e104;
+        uint _e106 = local_43;
         _group_0_binding_0_cs[_e106] = _e100;
         int _e113 = points_1[1][1].z;
         local_5 = uint(5);
         uint _e117 = local_5;
-        local_47 = _e117;
-        uint _e119 = local_47;
+        local_44 = _e117;
+        uint _e119 = local_44;
         _group_0_binding_0_cs[_e119] = _e113;
     }
     {
@@ -202,20 +199,20 @@ void main() {
         int _e153 = points_2[0][0].w;
         local_6 = uint(6);
         uint _e157 = local_6;
-        local_48 = _e157;
-        uint _e159 = local_48;
+        local_45 = _e157;
+        uint _e159 = local_45;
         _group_0_binding_0_cs[_e159] = _e153;
         int _e166 = points_2[1][1].x;
         local_7 = uint(7);
         uint _e170 = local_7;
-        local_49 = _e170;
-        uint _e172 = local_49;
+        local_46 = _e170;
+        uint _e172 = local_46;
         _group_0_binding_0_cs[_e172] = _e166;
         int _e179 = points_2[1][1].w;
         local_8 = uint(8);
         uint _e183 = local_8;
-        local_50 = _e183;
-        uint _e185 = local_50;
+        local_47 = _e183;
+        uint _e185 = local_47;
         _group_0_binding_0_cs[_e185] = _e179;
     }
     {
@@ -231,20 +228,20 @@ void main() {
         uint _e214 = points_3[0][0].y;
         local_9 = uint(9);
         uint _e219 = local_9;
-        local_51 = _e219;
-        uint _e221 = local_51;
+        local_48 = _e219;
+        uint _e221 = local_48;
         _group_0_binding_0_cs[_e221] = int(_e214);
         uint _e228 = points_3[1][1].x;
         local_10 = uint(10);
         uint _e233 = local_10;
-        local_52 = _e233;
-        uint _e235 = local_52;
+        local_49 = _e233;
+        uint _e235 = local_49;
         _group_0_binding_0_cs[_e235] = int(_e228);
         uint _e242 = points_3[1][1].y;
         local_11 = uint(11);
         uint _e247 = local_11;
-        local_53 = _e247;
-        uint _e249 = local_53;
+        local_50 = _e247;
+        uint _e249 = local_50;
         _group_0_binding_0_cs[_e249] = int(_e242);
     }
     {
@@ -262,20 +259,20 @@ void main() {
         uint _e283 = points_4[0][0].z;
         local_12 = uint(12);
         uint _e288 = local_12;
-        local_54 = _e288;
-        uint _e290 = local_54;
+        local_51 = _e288;
+        uint _e290 = local_51;
         _group_0_binding_0_cs[_e290] = int(_e283);
         uint _e297 = points_4[1][1].x;
         local_13 = uint(13);
         uint _e302 = local_13;
-        local_55 = _e302;
-        uint _e304 = local_55;
+        local_52 = _e302;
+        uint _e304 = local_52;
         _group_0_binding_0_cs[_e304] = int(_e297);
         uint _e311 = points_4[1][1].z;
         local_14 = uint(14);
         uint _e316 = local_14;
-        local_56 = _e316;
-        uint _e318 = local_56;
+        local_53 = _e316;
+        uint _e318 = local_53;
         _group_0_binding_0_cs[_e318] = int(_e311);
     }
     {
@@ -295,20 +292,20 @@ void main() {
         uint _e357 = points_5[0][0].w;
         local_15 = uint(15);
         uint _e362 = local_15;
-        local_57 = _e362;
-        uint _e364 = local_57;
+        local_54 = _e362;
+        uint _e364 = local_54;
         _group_0_binding_0_cs[_e364] = int(_e357);
         uint _e371 = points_5[1][1].x;
         local_16 = uint(16);
         uint _e376 = local_16;
-        local_58 = _e376;
-        uint _e378 = local_58;
+        local_55 = _e376;
+        uint _e378 = local_55;
         _group_0_binding_0_cs[_e378] = int(_e371);
         uint _e385 = points_5[1][1].w;
         local_17 = uint(17);
         uint _e390 = local_17;
-        local_59 = _e390;
-        uint _e392 = local_59;
+        local_56 = _e390;
+        uint _e392 = local_56;
         _group_0_binding_0_cs[_e392] = int(_e385);
     }
     {
@@ -324,20 +321,20 @@ void main() {
         float _e421 = points_6[0][0].y;
         local_18 = uint(18);
         uint _e426 = local_18;
-        local_60 = _e426;
-        uint _e428 = local_60;
+        local_57 = _e426;
+        uint _e428 = local_57;
         _group_0_binding_0_cs[_e428] = int(_e421);
         float _e435 = points_6[1][1].x;
         local_19 = uint(19);
         uint _e440 = local_19;
-        local_61 = _e440;
-        uint _e442 = local_61;
+        local_58 = _e440;
+        uint _e442 = local_58;
         _group_0_binding_0_cs[_e442] = int(_e435);
         float _e449 = points_6[1][1].y;
         local_20 = uint(20);
         uint _e454 = local_20;
-        local_62 = _e454;
-        uint _e456 = local_62;
+        local_59 = _e454;
+        uint _e456 = local_59;
         _group_0_binding_0_cs[_e456] = int(_e449);
     }
     {
@@ -355,20 +352,20 @@ void main() {
         float _e490 = points_7[0][0].z;
         local_21 = uint(21);
         uint _e495 = local_21;
-        local_63 = _e495;
-        uint _e497 = local_63;
+        local_60 = _e495;
+        uint _e497 = local_60;
         _group_0_binding_0_cs[_e497] = int(_e490);
         float _e504 = points_7[1][1].x;
         local_22 = uint(22);
         uint _e509 = local_22;
-        local_64 = _e509;
-        uint _e511 = local_64;
+        local_61 = _e509;
+        uint _e511 = local_61;
         _group_0_binding_0_cs[_e511] = int(_e504);
         float _e518 = points_7[1][1].z;
         local_23 = uint(23);
         uint _e523 = local_23;
-        local_65 = _e523;
-        uint _e525 = local_65;
+        local_62 = _e523;
+        uint _e525 = local_62;
         _group_0_binding_0_cs[_e525] = int(_e518);
     }
     {
@@ -388,20 +385,20 @@ void main() {
         float _e564 = points_8[0][0].w;
         local_24 = uint(24);
         uint _e569 = local_24;
-        local_66 = _e569;
-        uint _e571 = local_66;
+        local_63 = _e569;
+        uint _e571 = local_63;
         _group_0_binding_0_cs[_e571] = int(_e564);
         float _e578 = points_8[1][1].x;
         local_25 = uint(25);
         uint _e583 = local_25;
-        local_67 = _e583;
-        uint _e585 = local_67;
+        local_64 = _e583;
+        uint _e585 = local_64;
         _group_0_binding_0_cs[_e585] = int(_e578);
         float _e592 = points_8[1][1].w;
         local_26 = uint(26);
         uint _e597 = local_26;
-        local_68 = _e597;
-        uint _e599 = local_68;
+        local_65 = _e597;
+        uint _e599 = local_65;
         _group_0_binding_0_cs[_e599] = int(_e592);
     }
     changed[0][0] = 1;
@@ -585,16 +582,10 @@ void main() {
     int _e780 = nested_empty[1][2];
     int _e786 = partial[1][2];
     int _e794 = volume[1][1][2];
-    local_39 = uint(27);
-    uint _e799 = local_39;
-    _group_0_binding_0_cs[_e799] = (((_e779 + _e780) + _e786) + _e794);
-    float _e806 = shared_points[1][0].x;
-    local_40 = uint(28);
-    uint _e811 = local_40;
-    _group_0_binding_0_cs[_e811] = int(_e806);
-    float _e818 = shared_points[1][0].y;
-    local_41 = uint(29);
-    uint _e823 = local_41;
-    _group_0_binding_0_cs[_e823] = int(_e818);
+    _group_0_binding_0_cs[uint(27)] = (((_e779 + _e780) + _e786) + _e794);
+    float _e804 = shared_points[1][0].x;
+    _group_0_binding_0_cs[uint(28)] = int(_e804);
+    float _e814 = shared_points[1][0].y;
+    _group_0_binding_0_cs[uint(29)] = int(_e814);
 }
 

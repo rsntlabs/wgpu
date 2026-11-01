@@ -510,13 +510,13 @@ float cosine_value(
 int sinf(
     bool value_4
 ) {
-    int local_33 = {};
+    int local_4 = {};
     if (value_4) {
-        local_33 = 17;
+        local_4 = 17;
     } else {
-        local_33 = 19;
+        local_4 = 19;
     }
-    int _e6 = local_33;
+    int _e6 = local_4;
     return _e6;
 }
 
@@ -568,193 +568,116 @@ kernel void trigonometry(
   device type_10& out [[user(fake0)]]
 , constant _mslBufferSizes& _buffer_sizes [[user(fake0)]]
 ) {
-    uint local = {};
-    uint local_1 = {};
-    uint local_2 = {};
-    uint local_3 = {};
-    uint local_4 = {};
-    uint local_5 = {};
-    uint local_6 = {};
-    uint local_7 = {};
-    uint local_8 = {};
-    uint local_9 = {};
-    uint local_10 = {};
-    uint local_11 = {};
     float value = {};
-    uint local_12 = {};
-    uint local_13 = {};
-    uint local_14 = {};
-    uint local_15 = {};
-    uint local_16 = {};
-    uint local_17 = {};
     bool choose = {};
     int counter = {};
-    uint local_18 = {};
-    bool local_19 = {};
-    uint local_20 = {};
-    bool local_21 = {};
-    uint local_22 = {};
-    float local_23 = {};
-    uint local_24 = {};
+    bool local = {};
+    bool local_1 = {};
+    float local_2 = {};
     type_11 values = {};
-    uint local_25 = {};
     int Count = {};
     type_11 scratch = {};
-    uint local_26 = {};
     int repeated = {};
     int index = {};
-    uint local_27 = {};
-    uint local_28 = {};
-    uint local_29 = {};
-    uint local_30 = {};
-    float local_31 = {};
-    uint local_32 = {};
+    float local_3 = {};
     uint _e3 = _naga_trigonometry(as_type<uint>(0.0), 0u);
-    local = static_cast<uint>(0);
-    uint _e9 = local;
-    out[_e9] = as_type<uint>(as_type<float>(_e3));
-    uint _e16 = _naga_trigonometry(as_type<uint>(-(0.0)), 0u);
-    local_1 = static_cast<uint>(1);
-    uint _e22 = local_1;
-    out[_e22] = as_type<uint>(as_type<float>(_e16));
-    uint _e27 = _naga_trigonometry(as_type<uint>(0.0), 1u);
-    local_2 = static_cast<uint>(2);
-    uint _e33 = local_2;
-    out[_e33] = as_type<uint>(as_type<float>(_e27));
-    uint _e39 = _naga_trigonometry(as_type<uint>(-(0.0)), 1u);
-    local_3 = static_cast<uint>(3);
-    uint _e45 = local_3;
-    out[_e45] = as_type<uint>(as_type<float>(_e39));
-    float _e49 = sine_value(static_cast<float>(0));
-    local_4 = static_cast<uint>(4);
-    uint _e54 = local_4;
-    out[_e54] = as_type<uint>(_e49);
-    float _e58 = cosine_value(static_cast<float>(0u));
-    local_5 = static_cast<uint>(5);
-    uint _e63 = local_5;
-    out[_e63] = as_type<uint>(_e58);
-    int _e66 = sinf(true);
-    local_6 = static_cast<uint>(6);
-    uint _e71 = local_6;
-    out[_e71] = static_cast<uint>(_e66);
-    int _e74 = sinf(false);
-    local_7 = static_cast<uint>(7);
-    uint _e79 = local_7;
-    out[_e79] = static_cast<uint>(_e74);
-    int _e82 = cosf(4);
-    local_8 = static_cast<uint>(8);
-    uint _e87 = local_8;
-    out[_e87] = static_cast<uint>(_e82);
-    uint _e92 = _naga_trigonometry(as_type<uint>(0.0), 1u);
-    local_9 = static_cast<uint>(9);
-    uint _e98 = local_9;
-    out[_e98] = as_type<uint>(as_type<float>(_e92));
-    float _e102 = sinf_1(2.0, 3.0);
-    local_10 = static_cast<uint>(10);
-    uint _e107 = local_10;
-    out[_e107] = as_type<uint>(_e102);
-    float _e112 = cosf_1(metal::float2(2.0, 3.0));
-    local_11 = static_cast<uint>(11);
-    uint _e117 = local_11;
-    out[_e117] = as_type<uint>(_e112);
+    out[static_cast<uint>(0)] = as_type<uint>(as_type<float>(_e3));
+    uint _e14 = _naga_trigonometry(as_type<uint>(-(0.0)), 0u);
+    out[static_cast<uint>(1)] = as_type<uint>(as_type<float>(_e14));
+    uint _e23 = _naga_trigonometry(as_type<uint>(0.0), 1u);
+    out[static_cast<uint>(2)] = as_type<uint>(as_type<float>(_e23));
+    uint _e33 = _naga_trigonometry(as_type<uint>(-(0.0)), 1u);
+    out[static_cast<uint>(3)] = as_type<uint>(as_type<float>(_e33));
+    float _e41 = sine_value(static_cast<float>(0));
+    out[static_cast<uint>(4)] = as_type<uint>(_e41);
+    float _e48 = cosine_value(static_cast<float>(0u));
+    out[static_cast<uint>(5)] = as_type<uint>(_e48);
+    int _e54 = sinf(true);
+    out[static_cast<uint>(6)] = static_cast<uint>(_e54);
+    int _e60 = sinf(false);
+    out[static_cast<uint>(7)] = static_cast<uint>(_e60);
+    int _e66 = cosf(4);
+    out[static_cast<uint>(8)] = static_cast<uint>(_e66);
+    uint _e74 = _naga_trigonometry(as_type<uint>(0.0), 1u);
+    out[static_cast<uint>(9)] = as_type<uint>(as_type<float>(_e74));
+    float _e82 = sinf_1(2.0, 3.0);
+    out[static_cast<uint>(10)] = as_type<uint>(_e82);
+    float _e90 = cosf_1(metal::float2(2.0, 3.0));
+    out[static_cast<uint>(11)] = as_type<uint>(_e90);
     value = 0.0;
-    float _e121 = value;
-    value = _e121 + static_cast<float>(1);
-    uint _e127 = _naga_trigonometry(as_type<uint>(_e121), 0u);
-    local_12 = static_cast<uint>(12);
-    uint _e133 = local_12;
-    out[_e133] = as_type<uint>(as_type<float>(_e127));
-    float _e135 = value;
-    local_13 = static_cast<uint>(13);
-    uint _e140 = local_13;
-    out[_e140] = as_type<uint>(_e135);
+    float _e97 = value;
+    value = _e97 + static_cast<float>(1);
+    uint _e103 = _naga_trigonometry(as_type<uint>(_e97), 0u);
+    out[static_cast<uint>(12)] = as_type<uint>(as_type<float>(_e103));
+    float _e109 = value;
+    out[static_cast<uint>(13)] = as_type<uint>(_e109);
     value = -(1.0);
-    float _e144 = value;
-    value = _e144 + static_cast<float>(1);
-    float _e148 = value;
-    uint _e151 = _naga_trigonometry(as_type<uint>(_e148), 1u);
-    local_14 = static_cast<uint>(14);
-    uint _e157 = local_14;
-    out[_e157] = as_type<uint>(as_type<float>(_e151));
-    float _e159 = value;
-    local_15 = static_cast<uint>(15);
-    uint _e164 = local_15;
-    out[_e164] = as_type<uint>(_e159);
-    float _e166 = value;
-    value = _e166 + static_cast<float>(1);
-    float _e170 = identity(_e166);
-    uint _e173 = _naga_trigonometry(as_type<uint>(_e170), 0u);
-    float _e175 = value;
-    value = _e175 + static_cast<float>(1);
-    float _e179 = pair(as_type<float>(_e173), _e175);
-    local_16 = static_cast<uint>(16);
-    uint _e184 = local_16;
-    out[_e184] = as_type<uint>(_e179);
-    float _e186 = value;
-    local_17 = static_cast<uint>(17);
-    uint _e191 = local_17;
-    out[_e191] = as_type<uint>(_e186);
+    float _e116 = value;
+    value = _e116 + static_cast<float>(1);
+    float _e120 = value;
+    uint _e123 = _naga_trigonometry(as_type<uint>(_e120), 1u);
+    out[static_cast<uint>(14)] = as_type<uint>(as_type<float>(_e123));
+    float _e129 = value;
+    out[static_cast<uint>(15)] = as_type<uint>(_e129);
+    float _e134 = value;
+    value = _e134 + static_cast<float>(1);
+    float _e138 = identity(_e134);
+    uint _e141 = _naga_trigonometry(as_type<uint>(_e138), 0u);
+    float _e143 = value;
+    value = _e143 + static_cast<float>(1);
+    float _e147 = pair(as_type<float>(_e141), _e143);
+    out[static_cast<uint>(16)] = as_type<uint>(_e147);
+    float _e152 = value;
+    out[static_cast<uint>(17)] = as_type<uint>(_e152);
     choose = false;
     counter = 0;
-    bool _e197 = choose;
-    local_19 = _e197;
-    if (_e197) {
-        int _e199 = counter;
-        counter = as_type<int>(as_type<uint>(_e199) + as_type<uint>(1));
-        uint _e205 = _naga_trigonometry(as_type<uint>(static_cast<float>(_e199)), 0u);
-        local_19 = as_type<float>(_e205) != 0.0;
+    bool _e161 = choose;
+    local = _e161;
+    if (_e161) {
+        int _e163 = counter;
+        counter = as_type<int>(as_type<uint>(_e163) + as_type<uint>(1));
+        uint _e169 = _naga_trigonometry(as_type<uint>(static_cast<float>(_e163)), 0u);
+        local = as_type<float>(_e169) != 0.0;
     }
-    bool _e209 = local_19;
-    local_18 = static_cast<uint>(18);
-    uint _e214 = local_18;
-    out[_e214] = static_cast<uint>(_e209);
-    local_21 = true;
+    bool _e173 = local;
+    out[static_cast<uint>(18)] = static_cast<uint>(_e173);
+    local_1 = true;
     if (true) {
     } else {
-        int _e218 = counter;
-        counter = as_type<int>(as_type<uint>(_e218) + as_type<uint>(1));
-        uint _e224 = _naga_trigonometry(as_type<uint>(static_cast<float>(_e218)), 1u);
-        local_21 = as_type<float>(_e224) != 0.0;
+        int _e180 = counter;
+        counter = as_type<int>(as_type<uint>(_e180) + as_type<uint>(1));
+        uint _e186 = _naga_trigonometry(as_type<uint>(static_cast<float>(_e180)), 1u);
+        local_1 = as_type<float>(_e186) != 0.0;
     }
-    bool _e228 = local_21;
-    local_20 = static_cast<uint>(19);
-    uint _e233 = local_20;
-    out[_e233] = static_cast<uint>(_e228);
-    bool _e235 = choose;
-    if (_e235) {
-        int _e236 = counter;
-        counter = as_type<int>(as_type<uint>(_e236) + as_type<uint>(1));
-        int _e239 = counter;
-        uint _e243 = _naga_trigonometry(as_type<uint>(static_cast<float>(_e239)), 0u);
-        local_23 = as_type<float>(_e243);
+    bool _e190 = local_1;
+    out[static_cast<uint>(19)] = static_cast<uint>(_e190);
+    bool _e195 = choose;
+    if (_e195) {
+        int _e196 = counter;
+        counter = as_type<int>(as_type<uint>(_e196) + as_type<uint>(1));
+        int _e199 = counter;
+        uint _e203 = _naga_trigonometry(as_type<uint>(static_cast<float>(_e199)), 0u);
+        local_2 = as_type<float>(_e203);
     } else {
-        int _e246 = counter;
-        uint _e250 = _naga_trigonometry(as_type<uint>(static_cast<float>(_e246)), 1u);
-        local_23 = as_type<float>(_e250);
+        int _e206 = counter;
+        uint _e210 = _naga_trigonometry(as_type<uint>(static_cast<float>(_e206)), 1u);
+        local_2 = as_type<float>(_e210);
     }
-    float _e254 = local_23;
-    local_22 = static_cast<uint>(20);
-    uint _e259 = local_22;
-    out[_e259] = naga_f2u32(_e254);
-    int _e261 = counter;
-    local_24 = static_cast<uint>(21);
-    uint _e266 = local_24;
-    out[_e266] = static_cast<uint>(_e261);
-    uint _e273 = _naga_trigonometry(as_type<uint>(0.0), 0u);
-    values.inner[0] = as_type<float>(_e273);
-    uint _e279 = _naga_trigonometry(as_type<uint>(0.0), 1u);
-    values.inner[1] = as_type<float>(_e279);
-    float _e285 = values.inner[0];
-    float _e286 = values.inner[1];
-    local_25 = static_cast<uint>(22);
-    uint _e292 = local_25;
-    out[_e292] = as_type<uint>(_e285 + _e286);
+    float _e214 = local_2;
+    out[static_cast<uint>(20)] = naga_f2u32(_e214);
+    int _e219 = counter;
+    out[static_cast<uint>(21)] = static_cast<uint>(_e219);
+    uint _e229 = _naga_trigonometry(as_type<uint>(0.0), 0u);
+    values.inner[0] = as_type<float>(_e229);
+    uint _e235 = _naga_trigonometry(as_type<uint>(0.0), 1u);
+    values.inner[1] = as_type<float>(_e235);
+    float _e241 = values.inner[0];
+    float _e242 = values.inner[1];
+    out[static_cast<uint>(22)] = as_type<uint>(_e241 + _e242);
     Count = 2;
     scratch = type_11 {};
-    float _e300 = scratch.inner[1];
-    local_26 = static_cast<uint>(23);
-    uint _e305 = local_26;
-    out[_e305] = as_type<uint>(_e300);
+    float _e254 = scratch.inner[1];
+    out[static_cast<uint>(23)] = as_type<uint>(_e254);
     repeated = 0;
     {
         index = 0;
@@ -764,56 +687,46 @@ kernel void trigonometry(
             if (metal::all(loop_bound_12 == uint2(0u))) { break; }
             loop_bound_12 -= uint2(loop_bound_12.y == 0u, 1u);
             if (!loop_init_12) {
-                int _e325 = index;
-                index = as_type<int>(as_type<uint>(_e325) + as_type<uint>(1));
+                int _e277 = index;
+                index = as_type<int>(as_type<uint>(_e277) + as_type<uint>(1));
             }
             loop_init_12 = false;
-            int _e311 = index;
-            if (_e311 < 3) {
+            int _e263 = index;
+            if (_e263 < 3) {
             } else {
                 break;
             }
-            int _e314 = index;
-            if (_e314 == 0) {
+            int _e266 = index;
+            if (_e266 == 0) {
                 continue;
             }
-            uint _e320 = _naga_trigonometry(as_type<uint>(0.0), 1u);
-            int _e323 = repeated;
-            repeated = as_type<int>(as_type<uint>(_e323) + as_type<uint>(naga_f2i32(as_type<float>(_e320))));
+            uint _e272 = _naga_trigonometry(as_type<uint>(0.0), 1u);
+            int _e275 = repeated;
+            repeated = as_type<int>(as_type<uint>(_e275) + as_type<uint>(naga_f2i32(as_type<float>(_e272))));
         }
     }
-    int _e328 = repeated;
-    local_27 = static_cast<uint>(24);
-    uint _e333 = local_27;
-    out[_e333] = static_cast<uint>(_e328);
+    int _e280 = repeated;
+    out[static_cast<uint>(24)] = static_cast<uint>(_e280);
     value = 0.0;
-    float _e336 = value;
-    value = _e336 + static_cast<float>(1);
-    uint _e342 = _naga_trigonometry(as_type<uint>(_e336), 0u);
-    float _e343 = value;
-    value = _e343 - static_cast<float>(1);
-    float _e347 = value;
-    uint _e350 = _naga_trigonometry(as_type<uint>(_e347), 1u);
-    local_28 = static_cast<uint>(25);
-    uint _e356 = local_28;
-    out[_e356] = as_type<uint>(as_type<float>(_e350));
-    float _e358 = value;
-    local_29 = static_cast<uint>(26);
-    uint _e363 = local_29;
-    out[_e363] = as_type<uint>(_e358);
+    float _e286 = value;
+    value = _e286 + static_cast<float>(1);
+    uint _e292 = _naga_trigonometry(as_type<uint>(_e286), 0u);
+    float _e293 = value;
+    value = _e293 - static_cast<float>(1);
+    float _e297 = value;
+    uint _e300 = _naga_trigonometry(as_type<uint>(_e297), 1u);
+    out[static_cast<uint>(25)] = as_type<uint>(as_type<float>(_e300));
+    float _e306 = value;
+    out[static_cast<uint>(26)] = as_type<uint>(_e306);
     if (true) {
-        uint _e369 = _naga_trigonometry(as_type<uint>(0.0), 1u);
-        local_31 = as_type<float>(_e369);
+        uint _e315 = _naga_trigonometry(as_type<uint>(0.0), 1u);
+        local_3 = as_type<float>(_e315);
     } else {
-        uint _e375 = _naga_trigonometry(as_type<uint>(99.0), 0u);
-        local_31 = as_type<float>(_e375);
+        uint _e321 = _naga_trigonometry(as_type<uint>(99.0), 0u);
+        local_3 = as_type<float>(_e321);
     }
-    float _e379 = local_31;
-    local_30 = static_cast<uint>(27);
-    uint _e384 = local_30;
-    out[_e384] = naga_f2u32(_e379);
-    float _e388 = cosine_value(static_cast<float>(false));
-    local_32 = static_cast<uint>(28);
-    uint _e393 = local_32;
-    out[_e393] = as_type<uint>(_e388);
+    float _e325 = local_3;
+    out[static_cast<uint>(27)] = naga_f2u32(_e325);
+    float _e332 = cosine_value(static_cast<float>(false));
+    out[static_cast<uint>(28)] = as_type<uint>(_e332);
 }

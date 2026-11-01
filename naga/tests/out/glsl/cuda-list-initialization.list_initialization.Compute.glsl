@@ -27,18 +27,18 @@ int pair(int first, int second) {
 
 int list_sum(int seed) {
     int values_1[3] = int[3](0, 0, 0);
-    uint local_35 = 0u;
+    uint local_4 = 0u;
     values_1[0] = seed;
     values_1[1] = (seed + 1);
-    local_35 = 2u;
+    local_4 = 2u;
     bool loop_init = true;
     while(true) {
         if (!loop_init) {
-            uint _e13 = local_35;
-            local_35 = (_e13 + 1u);
+            uint _e13 = local_4;
+            local_4 = (_e13 + 1u);
         }
         loop_init = false;
-        uint _e8 = local_35;
+        uint _e8 = local_4;
         if ((_e8 >= 3u)) {
             break;
         }
@@ -60,73 +60,40 @@ int3_ make_list(int seed_1) {
 }
 
 void main() {
-    uint local = 0u;
     int zero = 0;
     int copy_zero = 0;
     bool enabled = false;
     float sample_ = 0.0;
     int Local = 0;
     int Safe = 0;
-    int local_1 = 0;
+    int local = 0;
     int safe_values[3] = int[3](0, 0, 0);
-    uint local_2 = 0u;
-    uint local_3 = 0u;
-    uint local_4 = 0u;
-    uint local_5 = 0u;
-    uint local_6 = 0u;
-    uint local_7 = 0u;
-    uint local_8 = 0u;
-    uint local_9 = 0u;
+    uint local_1 = 0u;
     int values[3] = int[3](0, 0, 0);
-    uint local_10 = 0u;
     int changed[3] = int[3](0, 0, 0);
-    uint local_11 = 0u;
-    uint local_12 = 0u;
     int3_ point = int3_(0, 0, 0);
-    uint local_13 = 0u;
     int3_ changed_point = int3_(0, 0, 0);
-    uint local_14 = 0u;
-    uint local_15 = 0u;
     int3_ nested[2] = int3_[2](int3_(0, 0, 0), int3_(0, 0, 0));
-    uint local_16 = 0u;
     ivec2 flat_[2] = ivec2[2](ivec2(0), ivec2(0));
-    uint local_17 = 0u;
     int3_ original = int3_(0, 0, 0);
     int3_ copied = int3_(0, 0, 0);
     int3_ copies[2] = int3_[2](int3_(0, 0, 0), int3_(0, 0, 0));
-    uint local_18 = 0u;
-    uint local_19 = 0u;
-    uint local_20 = 0u;
     int counter = 0;
     int ordered[3] = int[3](0, 0, 0);
-    uint local_21 = 0u;
-    uint local_22 = 0u;
-    uint local_23 = 0u;
     int zero_total = 0;
     int iteration = 0;
     int reset[3] = int[3](0, 0, 0);
-    uint local_24 = 0u;
-    uint local_25 = 0u;
+    uint local_2 = 0u;
     int total = 0;
     int iteration_1 = 0;
     int limit = 0;
-    uint local_26 = 0u;
     int Number = 0;
     int cached[2] = int[2](0, 0);
-    uint local_27 = 0u;
     int frozen[3] = int[3](0, 0, 0);
-    uint local_28 = 0u;
-    uint local_29 = 0u;
+    uint local_3 = 0u;
     float3_ floating = float3_(0.0, 0.0, 0.0);
-    uint local_30 = 0u;
-    uint local_31 = 0u;
     int3_ from_call = int3_(0, 0, 0);
-    uint local_32 = 0u;
-    uint local_33 = 0u;
-    uint local_34 = 0u;
-    local = uint(0);
-    uint _e3 = local;
-    int seed_2 = _group_0_binding_0_cs[_e3];
+    int seed_2 = _group_0_binding_0_cs[uint(0)];
     zero = 0;
     copy_zero = 0;
     enabled = true;
@@ -135,204 +102,160 @@ void main() {
     Local = 3;
     Safe = 3;
     safe_values[0] = 1;
-    local_2 = 1u;
+    local_1 = 1u;
     bool loop_init_1 = true;
     while(true) {
         if (!loop_init_1) {
-            uint _e31 = local_2;
-            local_2 = (_e31 + 1u);
+            uint _e29 = local_1;
+            local_1 = (_e29 + 1u);
         }
         loop_init_1 = false;
-        uint _e26 = local_2;
-        if ((_e26 >= 3u)) {
+        uint _e24 = local_1;
+        if ((_e24 >= 3u)) {
             break;
         }
-        safe_values[_e26] = 0;
+        safe_values[_e24] = 0;
     }
-    int _e34 = zero;
-    local_3 = uint(0);
-    uint _e38 = local_3;
-    _group_0_binding_0_cs[_e38] = _e34;
-    int _e40 = copy_zero;
-    local_4 = uint(1);
-    uint _e44 = local_4;
-    _group_0_binding_0_cs[_e44] = _e40;
-    bool _e46 = enabled;
-    local_5 = uint(2);
-    uint _e51 = local_5;
-    _group_0_binding_0_cs[_e51] = int(_e46);
-    local_6 = uint(3);
-    uint _e57 = local_6;
-    _group_0_binding_0_cs[_e57] = int(count);
-    float _e59 = sample_;
-    local_7 = uint(4);
-    uint _e66 = local_7;
-    _group_0_binding_0_cs[_e66] = int((_e59 * 2.0));
-    int _e68 = Local;
-    local_8 = uint(5);
-    uint _e74 = local_8;
-    _group_0_binding_0_cs[_e74] = (Global + _e68);
-    int _e78 = safe_values[2];
-    local_9 = uint(6);
-    uint _e82 = local_9;
-    _group_0_binding_0_cs[_e82] = _e78;
+    int _e32 = zero;
+    _group_0_binding_0_cs[uint(0)] = _e32;
+    int _e36 = copy_zero;
+    _group_0_binding_0_cs[uint(1)] = _e36;
+    bool _e40 = enabled;
+    _group_0_binding_0_cs[uint(2)] = int(_e40);
+    _group_0_binding_0_cs[uint(3)] = int(count);
+    float _e49 = sample_;
+    _group_0_binding_0_cs[uint(4)] = int((_e49 * 2.0));
+    int _e56 = Local;
+    _group_0_binding_0_cs[uint(5)] = (Global + _e56);
+    int _e64 = safe_values[2];
+    _group_0_binding_0_cs[uint(6)] = _e64;
     values[0] = 1;
-    int _e90 = values[0];
-    values[1] = (_e90 + 1);
-    int _e96 = values[1];
-    values[2] = (_e96 + 1);
-    int _e103 = values[0];
-    int _e104 = values[1];
-    int _e108 = values[2];
-    local_10 = uint(7);
-    uint _e113 = local_10;
-    _group_0_binding_0_cs[_e113] = ((_e103 + _e104) + _e108);
+    int _e74 = values[0];
+    values[1] = (_e74 + 1);
+    int _e80 = values[1];
+    values[2] = (_e80 + 1);
+    int _e87 = values[0];
+    int _e88 = values[1];
+    int _e92 = values[2];
+    _group_0_binding_0_cs[uint(7)] = ((_e87 + _e88) + _e92);
     changed[0] = 1;
     changed[0] = 7;
     changed[1] = 2;
-    int _e126 = changed[0];
-    changed[2] = _e126;
-    int _e129 = changed[0];
-    local_11 = uint(8);
-    uint _e133 = local_11;
-    _group_0_binding_0_cs[_e133] = _e129;
-    int _e137 = changed[2];
-    local_12 = uint(9);
-    uint _e141 = local_12;
-    _group_0_binding_0_cs[_e141] = _e137;
+    int _e108 = changed[0];
+    changed[2] = _e108;
+    int _e111 = changed[0];
+    _group_0_binding_0_cs[uint(8)] = _e111;
+    int _e117 = changed[2];
+    _group_0_binding_0_cs[uint(9)] = _e117;
     point.x = 1;
-    int _e147 = point.x;
-    point.y = (_e147 + 1);
-    int _e152 = point.y;
-    point.z = (_e152 + 1);
-    int _e157 = point.z;
-    local_13 = uint(10);
-    uint _e161 = local_13;
-    _group_0_binding_0_cs[_e161] = _e157;
+    int _e125 = point.x;
+    point.y = (_e125 + 1);
+    int _e130 = point.y;
+    point.z = (_e130 + 1);
+    int _e135 = point.z;
+    _group_0_binding_0_cs[uint(10)] = _e135;
     changed_point.x = 1;
     changed_point.x = 9;
     changed_point.y = 2;
-    int _e171 = changed_point.x;
-    changed_point.z = _e171;
-    int _e174 = changed_point.x;
-    local_14 = uint(11);
-    uint _e178 = local_14;
-    _group_0_binding_0_cs[_e178] = _e174;
-    int _e181 = changed_point.z;
-    local_15 = uint(12);
-    uint _e185 = local_15;
-    _group_0_binding_0_cs[_e185] = _e181;
+    int _e147 = changed_point.x;
+    changed_point.z = _e147;
+    int _e150 = changed_point.x;
+    _group_0_binding_0_cs[uint(11)] = _e150;
+    int _e155 = changed_point.z;
+    _group_0_binding_0_cs[uint(12)] = _e155;
     nested[0].x = 1;
     nested[0].y = 2;
     nested[0].z = 0;
     nested[1].x = 3;
     nested[1].y = 0;
     nested[1].z = 0;
-    int _e208 = nested[0].z;
-    int _e209 = nested[1].x;
-    local_16 = uint(13);
-    uint _e214 = local_16;
-    _group_0_binding_0_cs[_e214] = (_e208 + _e209);
+    int _e180 = nested[0].z;
+    int _e181 = nested[1].x;
+    _group_0_binding_0_cs[uint(13)] = (_e180 + _e181);
     flat_[0].x = 1;
     flat_[0].y = 2;
     flat_[1].x = 3;
     flat_[1].y = 0;
-    int _e233 = flat_[0].x;
-    int _e234 = flat_[0].y;
-    int _e239 = flat_[1].x;
-    int _e244 = flat_[1].y;
-    local_17 = uint(14);
-    uint _e249 = local_17;
-    _group_0_binding_0_cs[_e249] = (((_e233 + _e234) + _e239) + _e244);
+    int _e203 = flat_[0].x;
+    int _e204 = flat_[0].y;
+    int _e209 = flat_[1].x;
+    int _e214 = flat_[1].y;
+    _group_0_binding_0_cs[uint(14)] = (((_e203 + _e204) + _e209) + _e214);
     original.x = 2;
     original.y = 3;
     original.z = 4;
-    int3_ _e258 = original;
-    copied = _e258;
-    int3_ _e262 = original;
-    copies[0] = _e262;
+    int3_ _e226 = original;
+    copied = _e226;
+    int3_ _e230 = original;
+    copies[0] = _e230;
     copies[1].x = 5;
     copies[1].y = 6;
     copies[1].z = 0;
     original.x = 99;
-    int _e273 = copied.x;
-    local_18 = uint(15);
-    uint _e277 = local_18;
-    _group_0_binding_0_cs[_e277] = _e273;
-    int _e282 = copies[0].x;
-    local_19 = uint(16);
-    uint _e286 = local_19;
-    _group_0_binding_0_cs[_e286] = _e282;
-    int _e291 = copies[1].z;
-    local_20 = uint(17);
-    uint _e295 = local_20;
-    _group_0_binding_0_cs[_e295] = _e291;
+    int _e241 = copied.x;
+    _group_0_binding_0_cs[uint(15)] = _e241;
+    int _e248 = copies[0].x;
+    _group_0_binding_0_cs[uint(16)] = _e248;
+    int _e255 = copies[1].z;
+    _group_0_binding_0_cs[uint(17)] = _e255;
     counter = seed_2;
-    int _e300 = counter;
-    counter = (_e300 + 1);
-    ordered[0] = _e300;
-    int _e304 = counter;
-    counter = (_e304 + 1);
-    ordered[1] = _e304;
-    int _e308 = counter;
-    ordered[2] = _e308;
-    int _e311 = ordered[0];
-    int _e316 = ordered[1];
-    int _e322 = ordered[2];
-    local_21 = uint(18);
-    uint _e327 = local_21;
-    _group_0_binding_0_cs[_e327] = (((_e311 * 100) + (_e316 * 10)) + _e322);
-    int _e329 = counter;
-    local_22 = uint(19);
-    uint _e333 = local_22;
-    _group_0_binding_0_cs[_e333] = _e329;
-    int _e335 = counter;
-    counter = (_e335 + 1);
-    int _e339 = pair(_e335, 4);
-    local_23 = uint(20);
-    uint _e343 = local_23;
-    _group_0_binding_0_cs[_e343] = _e339;
+    int _e262 = counter;
+    counter = (_e262 + 1);
+    ordered[0] = _e262;
+    int _e266 = counter;
+    counter = (_e266 + 1);
+    ordered[1] = _e266;
+    int _e270 = counter;
+    ordered[2] = _e270;
+    int _e273 = ordered[0];
+    int _e278 = ordered[1];
+    int _e284 = ordered[2];
+    _group_0_binding_0_cs[uint(18)] = (((_e273 * 100) + (_e278 * 10)) + _e284);
+    int _e289 = counter;
+    _group_0_binding_0_cs[uint(19)] = _e289;
+    int _e293 = counter;
+    counter = (_e293 + 1);
+    int _e297 = pair(_e293, 4);
+    _group_0_binding_0_cs[uint(20)] = _e297;
     zero_total = 0;
     {
         iteration = 0;
         bool loop_init_2 = true;
         while(true) {
             if (!loop_init_2) {
-                int _e373 = iteration;
-                iteration = (_e373 + 1);
+                int _e329 = iteration;
+                iteration = (_e329 + 1);
             }
             loop_init_2 = false;
-            int _e349 = iteration;
-            if ((_e349 < 3)) {
+            int _e305 = iteration;
+            if ((_e305 < 3)) {
             } else {
                 break;
             }
-            int _e354 = iteration;
-            reset[0] = _e354;
-            local_24 = 1u;
+            int _e310 = iteration;
+            reset[0] = _e310;
+            local_2 = 1u;
             bool loop_init_3 = true;
             while(true) {
                 if (!loop_init_3) {
-                    uint _e362 = local_24;
-                    local_24 = (_e362 + 1u);
+                    uint _e318 = local_2;
+                    local_2 = (_e318 + 1u);
                 }
                 loop_init_3 = false;
-                uint _e357 = local_24;
-                if ((_e357 >= 3u)) {
+                uint _e313 = local_2;
+                if ((_e313 >= 3u)) {
                     break;
                 }
-                reset[_e357] = 0;
+                reset[_e313] = 0;
             }
-            int _e367 = reset[2];
-            int _e368 = zero_total;
-            zero_total = (_e368 + _e367);
+            int _e323 = reset[2];
+            int _e324 = zero_total;
+            zero_total = (_e324 + _e323);
             reset[2] = 9;
         }
     }
-    int _e376 = zero_total;
-    local_25 = uint(21);
-    uint _e380 = local_25;
-    _group_0_binding_0_cs[_e380] = _e376;
+    int _e332 = zero_total;
+    _group_0_binding_0_cs[uint(21)] = _e332;
     total = 0;
     {
         iteration_1 = 0;
@@ -340,79 +263,63 @@ void main() {
         bool loop_init_4 = true;
         while(true) {
             if (!loop_init_4) {
-                int _e394 = iteration_1;
-                iteration_1 = (_e394 + 1);
+                int _e348 = iteration_1;
+                iteration_1 = (_e348 + 1);
             }
             loop_init_4 = false;
-            int _e388 = iteration_1;
-            int _e389 = limit;
-            if ((_e388 < _e389)) {
+            int _e342 = iteration_1;
+            int _e343 = limit;
+            if ((_e342 < _e343)) {
             } else {
                 break;
             }
-            int _e391 = iteration_1;
-            int _e392 = total;
-            total = (_e392 + _e391);
+            int _e345 = iteration_1;
+            int _e346 = total;
+            total = (_e346 + _e345);
         }
     }
-    int _e397 = total;
-    local_26 = uint(22);
-    uint _e401 = local_26;
-    _group_0_binding_0_cs[_e401] = _e397;
+    int _e351 = total;
+    _group_0_binding_0_cs[uint(22)] = _e351;
     Number = 4;
-    int _e407 = Number;
-    cached[0] = _e407;
-    int _e409 = Number;
-    cached[1] = (_e409 + 1);
-    int _e414 = cached[1];
-    local_27 = uint(23);
-    uint _e418 = local_27;
-    _group_0_binding_0_cs[_e418] = _e414;
+    int _e359 = Number;
+    cached[0] = _e359;
+    int _e361 = Number;
+    cached[1] = (_e361 + 1);
+    int _e366 = cached[1];
+    _group_0_binding_0_cs[uint(23)] = _e366;
     frozen[0] = 3;
-    local_28 = 1u;
+    local_3 = 1u;
     bool loop_init_5 = true;
     while(true) {
         if (!loop_init_5) {
-            uint _e430 = local_28;
-            local_28 = (_e430 + 1u);
+            uint _e380 = local_3;
+            local_3 = (_e380 + 1u);
         }
         loop_init_5 = false;
-        uint _e425 = local_28;
-        if ((_e425 >= 3u)) {
+        uint _e375 = local_3;
+        if ((_e375 >= 3u)) {
             break;
         }
-        frozen[_e425] = 0;
+        frozen[_e375] = 0;
     }
-    int _e437 = frozen[0];
-    int _e438 = frozen[1];
-    int _e442 = frozen[2];
-    local_29 = uint(24);
-    uint _e447 = local_29;
-    _group_0_binding_0_cs[_e447] = ((_e437 + _e438) + _e442);
+    int _e387 = frozen[0];
+    int _e388 = frozen[1];
+    int _e392 = frozen[2];
+    _group_0_binding_0_cs[uint(24)] = ((_e387 + _e388) + _e392);
     floating.x = 1.5;
     floating.y = -(0.0);
     floating.z = 0.0;
-    float _e458 = floating.y;
-    local_30 = uint(25);
-    uint _e463 = local_30;
-    _group_0_binding_0_cs[_e463] = floatBitsToInt(_e458);
-    float _e466 = floating.z;
-    local_31 = uint(26);
-    uint _e471 = local_31;
-    _group_0_binding_0_cs[_e471] = floatBitsToInt(_e466);
-    int3_ _e474 = make_list(6);
-    from_call = _e474;
-    int _e478 = from_call.x;
-    int _e479 = from_call.z;
-    local_32 = uint(27);
-    uint _e484 = local_32;
-    _group_0_binding_0_cs[_e484] = (_e478 + _e479);
-    local_33 = uint(28);
-    uint _e493 = local_33;
-    _group_0_binding_0_cs[_e493] = int((Scale * 10.0));
-    int _e497 = list_sum((seed_2 + 3));
-    local_34 = uint(29);
-    uint _e501 = local_34;
-    _group_0_binding_0_cs[_e501] = _e497;
+    float _e406 = floating.y;
+    _group_0_binding_0_cs[uint(25)] = floatBitsToInt(_e406);
+    float _e412 = floating.z;
+    _group_0_binding_0_cs[uint(26)] = floatBitsToInt(_e412);
+    int3_ _e418 = make_list(6);
+    from_call = _e418;
+    int _e422 = from_call.x;
+    int _e423 = from_call.z;
+    _group_0_binding_0_cs[uint(27)] = (_e422 + _e423);
+    _group_0_binding_0_cs[uint(28)] = int((Scale * 10.0));
+    int _e437 = list_sum((seed_2 + 3));
+    _group_0_binding_0_cs[uint(29)] = _e437;
 }
 

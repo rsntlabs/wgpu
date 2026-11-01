@@ -88,26 +88,19 @@ fn gen__naga_sqrtf(input_bits_2: u32) -> u32 {
 
 @compute @workgroup_size(64, 1, 1)
 fn particles(@builtin(workgroup_id) blockIdx: vec3<u32>, @builtin(local_invocation_id) threadIdx: vec3<u32>) {
-    var local: u32;
-    var local_1: u32;
-
     let i = ((blockIdx.x * 64u) + threadIdx.x);
-    local = u32(1i);
-    let _e10 = local;
-    let _e13 = params[_e10];
-    let count = u32(_e13);
+    let _e11 = params[u32(1i)];
+    let count = u32(_e11);
     if (i >= count) {
         return;
     }
-    local_1 = u32(0i);
-    let _e19 = local_1;
-    let time = params[_e19];
-    let _e24 = gen__naga_sqrtf(bitcast<u32>(f32(count)));
-    let side = u32(bitcast<f32>(_e24));
+    let time = params[u32(0i)];
+    let _e20 = gen__naga_sqrtf(bitcast<u32>(f32(count)));
+    let side = u32(bitcast<f32>(_e20));
     let x_1 = (((f32((i % side)) / f32(side)) * 2f) - 1f);
     let y_1 = (((f32((i / side)) / f32(side)) * 2f) - 1f);
-    let _e47 = gen__naga_sqrtf(bitcast<u32>(((x_1 * x_1) + (y_1 * y_1))));
-    let distance_ = bitcast<f32>(_e47);
+    let _e43 = gen__naga_sqrtf(bitcast<u32>(((x_1 * x_1) + (y_1 * y_1))));
+    let distance_ = bitcast<f32>(_e43);
     let ripple = wave(((distance_ * 14f) - (time * 2f)));
     points[i].x = (x_1 * 0.84f);
     points[i].y = ((y_1 * 0.72f) + (ripple * 0.13f));
