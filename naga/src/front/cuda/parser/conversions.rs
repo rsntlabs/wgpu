@@ -9,6 +9,9 @@ impl Parser<'_> {
         if self.module.compare_types(value.ty(), target) {
             return self.rvalue(value);
         }
+        if self.dimension_conversion(value.ty(), target) {
+            return self.convert_dimension(value, target);
+        }
         let scalar = self.require_scalar_type(target, value.span())?;
         self.convert_scalar(value, scalar)
     }

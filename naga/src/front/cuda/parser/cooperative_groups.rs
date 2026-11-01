@@ -212,10 +212,7 @@ impl<'a> Parser<'a> {
         name: QualifiedName,
     ) -> Result<ExpressionResult, ParseError> {
         match name.item {
-            QualifiedItem::Type(QualifiedType {
-                ty: TypeSpecifier::ThreadBlock,
-                ..
-            }) => self.thread_block_copy(),
+            QualifiedItem::Type(ty) => self.type_expression(ty.ty, name.span),
             QualifiedItem::Function(GroupFunction::Current) => {
                 self.lexer.expect_span(Token::Paren('('))?;
                 let end = self.lexer.expect_span(Token::Paren(')'))?;

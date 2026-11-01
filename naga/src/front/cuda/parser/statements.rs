@@ -294,6 +294,7 @@ impl<'a> Parser<'a> {
             let ty = array.as_ref().map_or(base, |array| array.ty);
             let array_count = array.as_ref().and_then(|array| array.count);
             let has_initializer = !matches!(self.lexer.peek()?.0, Token::Separator(',' | ';'));
+            let requires_default_constructor = self.requires_default_constructor(ty);
             let (local, pointer) = self.allocate_local(name, ty, span)?;
             let symbol = if is_array {
                 Symbol::Array {
@@ -321,6 +322,17 @@ impl<'a> Parser<'a> {
                 let literal = self.constant_initializer(&declared_ty)?;
                 self.function.constant_locals.insert(local, literal);
                 Some(self.append(Expression::Literal(literal), span)?)
+            } else if !has_initializer && requires_default_constructor {
+                if is_const && !self.const_default_constructible(ty) {
+                    return Err(ParseError {
+                        message: String::from("const variable requires an initializer"),
+                        span,
+                    });
+                }
+                self.store_default_initializer(pointer, ty, span)?;
+                None
+            } else if !is_array && matches!(specifier, TypeSpecifier::Dim3) {
+                Some(self.dim3_initializer()?.handle)
             } else if !is_const && matches!(self.lexer.peek()?.0, Token::Separator(',' | ';')) {
                 None
             } else if is_array
@@ -343,7 +355,7 @@ impl<'a> Parser<'a> {
             } else {
                 Some(self.value_initializer(&declared_ty)?.handle)
             };
-            if has_initializer {
+            if has_initializer || requires_default_constructor {
                 self.function.initialized_declarations.push(span);
             }
             let end = self.lexer.peek()?.1;
@@ -426,6 +438,12 @@ impl<'a> Parser<'a> {
         self.check_name(name, span)?;
         let declared_ty = self.lower_type(specifier, span)?;
         let base = self.type_handle(&declared_ty, span);
+        if self.requires_default_constructor(base) {
+            return Err(ParseError {
+                message: String::from("shared variables cannot require a constructor"),
+                span: type_span,
+            });
+        }
         let is_array = self.lexer.next_if(Token::Paren('['))?;
         let array = if is_array {
             Some(self.array_declaration(base, false, span)?)

@@ -297,39 +297,7 @@ impl Parser<'_> {
                     return Ok(value.into());
                 }
                 if let Some(target) = self.type_name(name) {
-                    if matches!(target.ty, TypeSpecifier::ThreadBlock) {
-                        return self.thread_block_copy();
-                    }
-                    if matches!(target.ty, TypeSpecifier::Pointer { .. }) {
-                        return Err(ParseError {
-                            message: String::from("pointer value constructors are unsupported"),
-                            span: token.1,
-                        });
-                    }
-                    if matches!(target.ty, TypeSpecifier::Structure(_)) {
-                        if self.lexer.peek()?.0 != Token::Paren('{') {
-                            return self.fail("structure values require a typed initializer list");
-                        }
-                        return self.aggregate_value(target.ty, token.1).map(Into::into);
-                    }
-                    if matches!(target.ty, TypeSpecifier::Vector { .. })
-                        && self.lexer.peek()?.0 == Token::Paren('{')
-                    {
-                        return self.aggregate_value(target.ty, token.1).map(Into::into);
-                    }
-                    self.lexer.expect_span(Token::Paren('('))?;
-                    let value = self.expression(0)?;
-                    let end = self.lexer.expect_span(Token::Paren(')'))?;
-                    if !matches!(target.ty, TypeSpecifier::Scalar(_)) {
-                        return Err(ParseError {
-                            message: String::from("vector casts are unsupported"),
-                            span: token.1.until(&end),
-                        });
-                    }
-                    let target = self.lower_type(target.ty, token.1)?;
-                    let mut value = self.cast_value(value, &target)?;
-                    value.span = token.1.until(&end);
-                    return Ok(value.into());
+                    return self.type_expression(target.ty, token.1);
                 }
                 if matches!(name, "true" | "false") {
                     let handle =
@@ -492,6 +460,62 @@ impl Parser<'_> {
             }
             _ => self.fail("expected a supported scalar expression"),
         }
+    }
+
+    pub(super) fn type_expression(
+        &mut self,
+        target: TypeSpecifier,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        if matches!(target, TypeSpecifier::ThreadBlock) {
+            return self.thread_block_copy();
+        }
+        if matches!(target, TypeSpecifier::Dim3) {
+            return self.dim3_constructor(span).map(Into::into);
+        }
+        if matches!(target, TypeSpecifier::Pointer { .. }) {
+            return Err(ParseError {
+                message: String::from("pointer value constructors are unsupported"),
+                span,
+            });
+        }
+        if matches!(target, TypeSpecifier::Structure(_)) {
+            if self.lexer.peek()?.0 != Token::Paren('{') {
+                return self.fail("structure values require a typed initializer list");
+            }
+            return self.aggregate_value(target, span).map(Into::into);
+        }
+        if matches!(target, TypeSpecifier::Vector { .. })
+            && self.lexer.peek()?.0 == Token::Paren('{')
+        {
+            return self.aggregate_value(target, span).map(Into::into);
+        }
+        self.lexer.expect_span(Token::Paren('('))?;
+        let value = self.expression(0)?;
+        let end = self.lexer.expect_span(Token::Paren(')'))?;
+        if matches!(
+            target,
+            TypeSpecifier::Vector {
+                size: VectorSize::Tri,
+                scalar: Scalar::U32
+            }
+        ) && self.is_dim3(value.ty())
+        {
+            let target = self.lower_type(target, span)?;
+            let mut value = self.convert_value(value, &target)?;
+            value.span = span.until(&end);
+            return Ok(value.into());
+        }
+        if !matches!(target, TypeSpecifier::Scalar(_)) {
+            return Err(ParseError {
+                message: String::from("vector casts are unsupported"),
+                span: span.until(&end),
+            });
+        }
+        let target = self.lower_type(target, span)?;
+        let mut value = self.cast_value(value, &target)?;
+        value.span = span.until(&end);
+        Ok(value.into())
     }
 
     fn address_operand(&mut self) -> Result<ExpressionValue, ParseError> {
