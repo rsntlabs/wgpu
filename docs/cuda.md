@@ -23,7 +23,8 @@ cargo run -p naga-cli -- input.cu output.wgsl --cuda-workgroup-size 64,1,1
 The library entry point is `naga::front::cuda::parse_str(source, &options)`, where
 `naga::front::cuda::Options::workgroup_size` supplies the CUDA launch block shape.
 The default is `[1, 1, 1]`; each dimension must be in `1..=16384`, and their
-product must fit in `u32`. Validate the returned module with
+product must fit in `u32`. One supplied shape applies to every kernel in the
+module. Validate the returned module with
 `naga::valid::Validator` before passing it to a backend, as with other frontends.
 Device and backend resource limits still apply.
 
@@ -49,16 +50,20 @@ behavior. Other operations can still produce temporary expressions.
 
 ## Kernel interface
 
-Each source contains one `__global__ void` kernel, optionally preceded by
-`extern "C"`. Device helper declarations and definitions can surround the kernel.
+Each source contains one or more `__global__ void` kernels, optionally preceded by
+`extern "C"`. Entry points preserve source order. Device helper declarations and
+definitions can surround the kernels and are shared across the module. Every
+kernel body is parsed and checked, including kernels a caller does not dispatch.
 Parameter types are `float`,
 `int`, or `unsigned int` (`unsigned` is also accepted), either by value or as
 flat pointers. Pointer parameters also accept `float2`, `float3`, `float4`,
 `int2`, `int3`, `int4`, `uint2`, `uint3`, and `uint4`. Aliases and pointee
 `const` qualification preserve the underlying element type.
 Pointer parameters also accept completed named structs described below.
-Parameter number `i` uses group 0, binding `i`, preserving source
-order across both parameter kinds.
+Parameter number `i` uses group 0, binding `i` independently for each kernel,
+preserving source order across both parameter kinds. Kernels can reuse binding
+numbers with different parameter types and access modes; each entry accesses its
+own parameter resources and shared declarations.
 The caller supplies these buffers and dispatches the resulting compute entry
 point by its original kernel name.
 

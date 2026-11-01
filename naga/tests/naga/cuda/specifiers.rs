@@ -378,13 +378,23 @@ fn cuda_function_specifiers_preserve_unsupported_signatures_and_bodies() {
 }
 
 #[test]
-fn cuda_function_specifiers_keep_sole_kernel_and_complete_source_checks() {
+fn cuda_function_specifiers_keep_required_kernels_and_complete_source_checks() {
     for source in [
         "static __device__ int helper() { return 1; }",
-        "static __global__ void first() {} static __global__ void second() {}",
+        "static __global__ void repeated() {} static __global__ void repeated() {}",
     ] {
         rejected(source);
     }
+    let (module, _) =
+        validate("static __global__ void first() {} static __global__ void second() {}");
+    assert_eq!(
+        module
+            .entry_points
+            .iter()
+            .map(|entry| entry.name.as_str())
+            .collect::<Vec<_>>(),
+        ["first", "second"]
+    );
     rejected_at("static __global__ void kernel() {} /* 漢 */ @", "@", 0);
     validate("static __device__ __noinline__ int helper() { return 1; } __global__ void kernel() { return; { helper(); } }");
     validate("static __global__ void kernel() {} static __device__ int helper() { return 1; }");

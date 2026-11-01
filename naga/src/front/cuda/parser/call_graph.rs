@@ -207,15 +207,19 @@ impl Parser<'_> {
                 span: call.span,
             })
         };
-        self.parameter_expansion_budget
-            .charge_work(self.kernel_calls.len(), span)?;
-        for &call in &self.kernel_calls {
-            if !retained[call.function.index()] {
-                return Err(missing_definition(
-                    &self.module,
-                    &mut self.parameter_expansion_budget,
-                    call,
-                )?);
+        let mut has_kernel_parameter_state = false;
+        for kernel in &self.kernels {
+            self.parameter_expansion_budget
+                .charge_work(1 + kernel.calls.len(), span)?;
+            has_kernel_parameter_state |= kernel.parameter_state.is_some();
+            for &call in &kernel.calls {
+                if !retained[call.function.index()] {
+                    return Err(missing_definition(
+                        &self.module,
+                        &mut self.parameter_expansion_budget,
+                        call,
+                    )?);
+                }
             }
         }
         self.parameter_expansion_budget
@@ -272,7 +276,7 @@ impl Parser<'_> {
                 .iter()
                 .any(|parameter| parameter.mode.is_indirect())
         }) || !self.parameter_states.is_empty()
-            || self.kernel_parameter_state.is_some()
+            || has_kernel_parameter_state
         {
             let templates = self.lower_indirect_parameters(&order)?;
             order.retain(|function| !templates[function.index()]);

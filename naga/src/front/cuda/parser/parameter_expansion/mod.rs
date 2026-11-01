@@ -141,13 +141,17 @@ impl Parser<'_> {
                 self.module.functions[handle] = function;
             }
         }
-        if let Some(state) = self.kernel_parameter_state.take() {
+        for index in 0..self.kernels.len() {
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            let Some(state) = self.kernels[index].parameter_state.take() else {
+                continue;
+            };
             let span = state
                 .deferred_calls
                 .values()
                 .next()
                 .map_or(span, |call| call.span);
-            let function = core::mem::take(&mut self.module.entry_points[0].function);
+            let function = core::mem::take(&mut self.module.entry_points[index].function);
             self.expand_parameter_function(function, state, Vec::new(), span)?;
             let function = core::mem::take(&mut self.function.ir);
             let state = self.function.take_parameter_state();
@@ -158,10 +162,10 @@ impl Parser<'_> {
                 let state = self.function.take_parameter_state();
                 self.validate_pointer_state(&state, &function, span)?;
                 self.check_no_live_pointer_accesses(&function, &state, span)?;
-                self.module.entry_points[0].function = function;
+                self.module.entry_points[index].function = function;
             } else {
                 self.check_no_live_pointer_accesses(&function, &state, span)?;
-                self.module.entry_points[0].function = function;
+                self.module.entry_points[index].function = function;
             }
         }
         self.function = FunctionContext::new(FunctionKind::Kernel);

@@ -42,6 +42,7 @@ mod local_pointers;
 mod logical_operators;
 mod loops;
 mod multidimensional_arrays;
+mod multiple_kernels;
 mod multiply24;
 mod operator_addition;
 mod operator_functions;
@@ -188,7 +189,7 @@ fn cuda_rejects_unsupported_or_invalid_source() {
         "__global__ void bad(unsigned int *out) { out[0] = atomicAdd_system(out, 1u); }",
         "__global__ void bad(unsigned int *out) { return 1u; }",
         "__global__ void empty() {} trailing",
-        "__global__ void first() {} __global__ void second() {}",
+        "__global__ void repeated() {} __global__ void repeated() {}",
         "__global__ void empty() { /* unterminated",
     ] {
         assert!(

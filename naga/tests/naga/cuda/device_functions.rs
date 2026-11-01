@@ -378,11 +378,20 @@ fn cuda_device_functions_reject_recursion_forward_calls_and_redefinitions() {
         "__device__ int first(int value) { return second(value); } __device__ int second(int value) { return value; } __global__ void kernel() {}",
         "__device__ int helper(int value) { return value; } __device__ int helper(int other) { return other; } __global__ void kernel() {}",
         "__device__ int helper(int value) { return value; } __global__ void helper() {}",
-        "__device__ int helper(int value) { return value; } __global__ void first() {} __global__ void second() {}",
+        "__device__ int helper(int value) { return value; } __global__ void repeated() {} __global__ void repeated() {}",
         "__device__ int helper(int value) { return value; }",
     ] {
         assert_rejected(source);
     }
+    let module = validate("__device__ int helper(int value) { return value; } __global__ void first() {} __global__ void second() {}");
+    assert_eq!(
+        module
+            .entry_points
+            .iter()
+            .map(|entry| entry.name.as_str())
+            .collect::<Vec<_>>(),
+        ["first", "second"]
+    );
     validate("__device__ int helper(int value); __device__ int helper(int value) { return value; } __global__ void kernel() {}");
     validate("__global__ void kernel() {} __device__ int helper() { return 1; }");
 }

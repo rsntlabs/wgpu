@@ -242,6 +242,12 @@ impl ExpressionResult {
     }
 }
 
+struct Kernel<'a> {
+    context: Option<FunctionContext<'a>>,
+    parameter_state: Option<FunctionParameterState>,
+    calls: Vec<FunctionCall>,
+}
+
 pub(super) struct Parser<'a> {
     lexer: Lexer<'a>,
     module: Module,
@@ -251,12 +257,10 @@ pub(super) struct Parser<'a> {
     function_declarations: FastHashMap<Handle<Function>, FunctionDeclaration>,
     intrinsic_declarations: Vec<IntrinsicDeclaration<'a>>,
     parameter_states: FastHashMap<Handle<Function>, FunctionParameterState>,
-    kernel_parameter_state: Option<FunctionParameterState>,
     parameter_expansion_budget: parameter_expansion::ExpansionBudget,
     atomic_storage: Option<atomics::AtomicStorage>,
     has_atomics: bool,
-    kernel_context: Option<FunctionContext<'a>>,
-    kernel_calls: Vec<FunctionCall>,
+    kernels: Vec<Kernel<'a>>,
     sqrtf_function: Option<Handle<Function>>,
     float_math_functions: [Option<Handle<Function>>; 3],
     trigonometry_function: Option<Handle<Function>>,
@@ -279,12 +283,10 @@ impl<'a> Parser<'a> {
             function_declarations: FastHashMap::default(),
             intrinsic_declarations: Vec::new(),
             parameter_states: FastHashMap::default(),
-            kernel_parameter_state: None,
             parameter_expansion_budget: parameter_expansion::ExpansionBudget::default(),
             atomic_storage: None,
             has_atomics: false,
-            kernel_context: None,
-            kernel_calls: Vec::new(),
+            kernels: Vec::new(),
             sqrtf_function: None,
             float_math_functions: [None; 3],
             trigonometry_function: None,
@@ -309,10 +311,10 @@ impl<'a> Parser<'a> {
                 self.function_definition()?;
             }
         }
-        if self.kernel_context.is_none() {
-            return self.fail("expected one CUDA kernel definition");
+        if self.kernels.is_empty() {
+            return self.fail("expected a CUDA kernel definition");
         }
-        self.finish_kernel()?;
+        self.finish_kernels()?;
         self.finish_functions()?;
         self.upgrade_atomic_storage()?;
         self.check_workgroup_barriers()?;
@@ -731,8 +733,17 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn finish_kernel(&mut self) -> Result<(), ParseError> {
-        self.function = self.kernel_context.take().unwrap();
+    fn finish_kernels(&mut self) -> Result<(), ParseError> {
+        for index in 0..self.kernels.len() {
+            self.parameter_expansion_budget
+                .charge_work(1, self.lexer.span_from(0))?;
+            self.finish_kernel(index)?;
+        }
+        Ok(())
+    }
+
+    fn finish_kernel(&mut self, index: usize) -> Result<(), ParseError> {
+        self.function = self.kernels[index].context.take().unwrap();
         if self
             .helper_builtin_globals
             .iter()
@@ -744,7 +755,7 @@ impl<'a> Parser<'a> {
             let (_, initializers) = self.capture_block(Self::initialize_helper_builtins)?;
             self.prepend_block(initializers);
         }
-        self.kernel_calls = core::mem::take(&mut self.function.calls);
+        self.kernels[index].calls = core::mem::take(&mut self.function.calls);
         if self.parameter_state_needed() {
             let span = self
                 .function
@@ -756,9 +767,9 @@ impl<'a> Parser<'a> {
             self.prepare_parameter_bindings(span)?;
             self.parameter_expansion_budget
                 .charge_slice::<u32>(self.function.expression_graph_depths.len(), span)?;
-            self.kernel_parameter_state = Some(self.function.take_parameter_state());
+            self.kernels[index].parameter_state = Some(self.function.take_parameter_state());
         }
-        self.module.entry_points[0].function = core::mem::take(&mut self.function.ir);
+        self.module.entry_points[index].function = core::mem::take(&mut self.function.ir);
         Ok(())
     }
 

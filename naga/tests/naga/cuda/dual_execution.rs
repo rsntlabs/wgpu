@@ -418,13 +418,22 @@ fn cuda_dual_execution_keeps_existing_helper_body_and_signature_restrictions() {
 }
 
 #[test]
-fn cuda_dual_execution_keeps_sole_kernel_and_complete_source_requirements() {
+fn cuda_dual_execution_keeps_required_kernels_and_complete_source_requirements() {
     for source in [
         "__host__ __device__ int helper() { return 1; }",
-        "__host__ __device__ int helper() { return 1; } __global__ void first() {} __global__ void second() {}",
+        "__host__ __device__ int helper() { return 1; } __global__ void repeated() {} __global__ void repeated() {}",
         "__host__ __device__ int helper() { return 1; } __global__ void kernel() {} /* 漢 */ @",
         "__host__ __device__ int helper() { return 1; @ } __global__ void kernel() {}",
     ] { rejected(source); }
+    let (module, _) = validate("__host__ __device__ int helper() { return 1; } __global__ void first() {} __global__ void second() {}");
+    assert_eq!(
+        module
+            .entry_points
+            .iter()
+            .map(|entry| entry.name.as_str())
+            .collect::<Vec<_>>(),
+        ["first", "second"]
+    );
     validate("__host__ __device__ int helper() { return 1; } __global__ void kernel() { return; { helper(); } }");
     validate("__global__ void kernel() {} __host__ __device__ int later() { return 1; }");
 }

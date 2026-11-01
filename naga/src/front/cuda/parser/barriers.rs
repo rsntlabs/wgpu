@@ -16,27 +16,36 @@ impl Parser<'_> {
     }
 
     pub(super) fn check_workgroup_barriers(&mut self) -> Result<(), ParseError> {
-        let error =
-            match check_control_flow(&self.module.entry_points[0].function.body, false, false) {
-                Ok(_) => return Ok(()),
+        for index in 0..self.module.entry_points.len() {
+            self.parameter_expansion_budget
+                .charge_work(1, self.lexer.span_from(0))?;
+            let error = match check_control_flow(
+                &self.module.entry_points[index].function.body,
+                false,
+                false,
+            ) {
+                Ok(_) => continue,
                 Err(error) => error,
             };
-        self.activate_parameter_expansion(error.span)?;
-        if self.parameter_expansion_budget.is_exhausted() {
-            return Err(ParseError {
-                message: String::from("CUDA barrier uniformity analysis resource limit exceeded"),
-                span: error.span,
-            });
+            self.activate_parameter_expansion(error.span)?;
+            if self.parameter_expansion_budget.is_exhausted() {
+                return Err(ParseError {
+                    message: String::from(
+                        "CUDA barrier uniformity analysis resource limit exceeded",
+                    ),
+                    span: error.span,
+                });
+            }
+            let function = &self.module.entry_points[index].function;
+            let mut proof = UniformLoops::new(
+                &self.module,
+                function,
+                &mut self.parameter_expansion_budget,
+                error.span,
+            )?;
+            proof.analyze()?;
+            proof.check(&function.body, false, false, &mut 0)?;
         }
-        let function = &self.module.entry_points[0].function;
-        let mut proof = UniformLoops::new(
-            &self.module,
-            function,
-            &mut self.parameter_expansion_budget,
-            error.span,
-        )?;
-        proof.analyze()?;
-        proof.check(&function.body, false, false, &mut 0)?;
         Ok(())
     }
 }

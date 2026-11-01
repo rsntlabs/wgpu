@@ -44,6 +44,7 @@ mod local_declarators;
 mod local_pointers;
 mod logical_operators;
 mod multidimensional_arrays;
+mod multiple_kernels;
 mod multiply24;
 mod operator_addition;
 mod operator_functions;
@@ -118,6 +119,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_LOCAL_DECLARATORS,
         CUDA_LOCAL_POINTERS,
         CUDA_MULTIDIMENSIONAL_ARRAYS,
+        CUDA_MULTIPLE_KERNELS,
         CUDA_MULTIPLY24,
         CUDA_OPERATOR_ADDITION,
         CUDA_OPERATOR_FUNCTIONS,
@@ -249,6 +251,12 @@ fn parse_module(name: &str, source: &str, workgroup_size: [u32; 3]) -> naga::Mod
 }
 
 fn write_module(name: &str, module: &naga::Module) -> (String, String) {
+    assert_eq!(module.entry_points.len(), 1, "{name}");
+    let (wgsl, entries) = write_module_entries(name, module);
+    (wgsl, entries[0].clone())
+}
+
+fn write_module_entries(name: &str, module: &naga::Module) -> (String, Vec<String>) {
     let info = Validator::new(ValidationFlags::all(), Capabilities::empty())
         .validate(module)
         .unwrap_or_else(|error| panic!("{name}: {error}"));
@@ -263,7 +271,49 @@ fn write_module(name: &str, module: &naga::Module) -> (String, String) {
     Validator::new(ValidationFlags::all(), Capabilities::empty())
         .validate(&roundtrip)
         .unwrap_or_else(|error| panic!("{name}: {error}"));
-    (wgsl, roundtrip.entry_points[0].name.clone())
+    assert_eq!(
+        roundtrip.entry_points.len(),
+        module.entry_points.len(),
+        "{name}"
+    );
+    for (original, emitted) in module.entry_points.iter().zip(&roundtrip.entry_points) {
+        assert_eq!(original.stage, emitted.stage, "{name}");
+        assert_eq!(original.workgroup_size, emitted.workgroup_size, "{name}");
+    }
+    (
+        wgsl,
+        roundtrip
+            .entry_points
+            .iter()
+            .map(|entry| entry.name.clone())
+            .collect(),
+    )
+}
+
+fn module_entry_case<O: bytemuck::Pod + std::fmt::Debug + PartialEq>(
+    name: &str,
+    source: &str,
+    workgroup_size: [u32; 3],
+    entry_name: &str,
+    expected: &[O],
+) -> ShaderTest {
+    let module = parse_str(source, &Options { workgroup_size })
+        .unwrap_or_else(|error| panic!("{name}: {error}"));
+    assert!(module.entry_points.len() > 1, "{name}");
+    let selected = module
+        .entry_points
+        .iter()
+        .position(|entry| entry.name == entry_name)
+        .unwrap_or_else(|| panic!("{name}: missing entry {entry_name}"));
+    let (wgsl, entries) = write_module_entries(name, &module);
+    ShaderTest::new(
+        name.into(),
+        String::new(),
+        String::new(),
+        &[0_u32],
+        expected,
+    )
+    .module_source(wgsl, entries[selected].clone())
 }
 
 fn module_case<O: bytemuck::Pod + std::fmt::Debug + PartialEq>(
@@ -358,6 +408,8 @@ static CUDA_LOCAL_POINTERS: GpuTestConfiguration = configuration(local_pointers:
 #[apply(gpu_test!)]
 static CUDA_MULTIDIMENSIONAL_ARRAYS: GpuTestConfiguration =
     configuration(multidimensional_arrays::cases);
+#[apply(gpu_test!)]
+static CUDA_MULTIPLE_KERNELS: GpuTestConfiguration = configuration(multiple_kernels::cases);
 #[apply(gpu_test!)]
 static CUDA_MULTIPLY24: GpuTestConfiguration = configuration(multiply24::cases);
 #[apply(gpu_test!)]

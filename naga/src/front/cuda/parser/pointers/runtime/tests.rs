@@ -10,7 +10,7 @@ fn parsed_state(source: &'static str) -> (Parser<'static>, Function, FunctionPar
         parser.function_definition().unwrap(),
         FunctionKind::Kernel
     ));
-    let mut context = parser.kernel_context.take().unwrap();
+    let mut context = parser.kernels[0].context.take().unwrap();
     let state = context.take_parameter_state();
     (parser, context.ir, state)
 }
