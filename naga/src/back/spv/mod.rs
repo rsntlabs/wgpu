@@ -108,6 +108,7 @@ mod ray;
 mod reclaimable;
 mod selection;
 mod subgroup;
+mod workgroup_layout;
 mod writer;
 
 pub use nt::spv::*;
@@ -626,6 +627,10 @@ enum WrappedFunction {
     MatCx2GetColumn {
         r#type: Handle<crate::Type>,
     },
+    WorkgroupLayout {
+        r#type: Handle<crate::Type>,
+        conversion: workgroup_layout::Conversion,
+    },
 }
 
 /// A map from evaluated [`Expression`](crate::Expression)s to their SPIR-V ids.
@@ -961,6 +966,7 @@ pub struct Writer {
     cached_constants: crate::FastHashMap<CachedConstant, Word>,
     global_variables: HandleVec<crate::GlobalVariable, GlobalVariable>,
     std140_compat_uniform_types: crate::FastHashMap<Handle<crate::Type>, Std140CompatTypeInfo>,
+    workgroup_type_ids: HandleVec<crate::Type, Word>,
     fake_missing_bindings: bool,
     binding_map: BindingMap,
 

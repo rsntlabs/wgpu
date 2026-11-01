@@ -12,8 +12,8 @@ struct InUniform
     vec4 a[20];
 };
 
-const float _34[40] = float[](0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-const vec4 _52[2] = vec4[](vec4(0.7070000171661376953125, 0.0, 0.0, 1.0), vec4(0.0, 0.7070000171661376953125, 0.0, 1.0));
+const float _35[40] = float[](0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+const vec4 _53[2] = vec4[](vec4(0.7070000171661376953125, 0.0, 0.0, 1.0), vec4(0.0, 0.7070000171661376953125, 0.0, 1.0));
 
 layout(set = 0, binding = 0, std430) readonly buffer in_storage
 {
@@ -31,24 +31,24 @@ shared float in_workgroup[30];
 
 vec4 mock_function(ivec2 c, int i, int l)
 {
-    ivec3 _66 = ivec3(c, i);
-    vec4 _79;
+    ivec3 _67 = ivec3(c, i);
+    vec4 _80;
     if (uint(l) < uint(textureQueryLevels(image_2d_array)))
     {
-        if (all(lessThan(uvec3(_66), uvec3(textureSize(image_2d_array, l)))))
+        if (all(lessThan(uvec3(_67), uvec3(textureSize(image_2d_array, l)))))
         {
-            _79 = texelFetch(image_2d_array, _66, l);
+            _80 = texelFetch(image_2d_array, _67, l);
         }
         else
         {
-            _79 = vec4(0.0);
+            _80 = vec4(0.0);
         }
     }
     else
     {
-        _79 = vec4(0.0);
+        _80 = vec4(0.0);
     }
-    return ((((in_storage_1._m0.a[i] + in_uniform_1._m0.a[i]) + _79) + vec4(in_workgroup[min(uint(i), 29u)])) + vec4(_34[min(uint(i), 39u)])) + _52[min(uint(i), 1u)];
+    return ((((in_storage_1._m0.a[i] + in_uniform_1._m0.a[i]) + _80) + vec4(in_workgroup[min(uint(i), 29u)])) + vec4(_35[min(uint(i), 39u)])) + _53[min(uint(i), 1u)];
 }
 
 void main()

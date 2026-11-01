@@ -17,70 +17,91 @@ struct _7
     vec4 _m1;
 };
 
-struct _10
+struct _8
+{
+    vec4 _m0;
+    vec4 _m1;
+};
+
+struct _11
 {
     uvec3 _m0;
     bool _m1;
     vec4 _m2;
 };
 
-struct _11
+struct _12
+{
+    uvec3 _m0;
+    bool _m1;
+    vec4 _m2;
+};
+
+struct _13
 {
     vec4 _m0;
 };
 
-struct _16
+struct _20
 {
     _7 _m0[3];
-    _10 _m1[1];
+    _11 _m1[1];
     uint _m2;
     uint _m3;
 };
 
-struct _68
+struct _21
+{
+    _8 _m0[3];
+    _12 _m1[1];
+    uint _m2;
+    uint _m3;
+};
+
+struct _73
 {
     uint _m0;
     uint _m1;
 };
 
-taskPayloadSharedEXT _6 _17;
-shared float _19;
+taskPayloadSharedEXT _6 _22;
+shared float _24;
 
-void _32(bool _31)
+void _37(bool _36)
 {
-    _17._m1 = _31;
+    _22._m1 = _36;
 }
 
-bool _24()
+bool _29()
 {
-    return _17._m1;
+    return _22._m1;
 }
 
-uvec3 _37()
+uvec3 _42()
 {
     if (gl_LocalInvocationIndex == 0u)
     {
-        _17 = _6(vec4(0.0), false);
-        _19 = 0.0;
+        _22 = _6(vec4(0.0), false);
+        _24 = 0.0;
     }
     barrier();
-    _19 = 1.0;
-    _17._m0 = vec4(1.0, 1.0, 0.0, 1.0);
-    _32(true);
-    _17._m1 = _24();
+    _24 = 1.0;
+    _22._m0 = vec4(1.0, 1.0, 0.0, 1.0);
+    _37(true);
+    _22._m1 = _29();
     return uvec3(1u);
 }
 
 void main()
 {
-    uvec3 _65 = _37();
+    uvec3 _70 = _42();
     barrier();
-    _68 _75;
-    umulExtended(_65.x, _65.y, _75._m1, _75._m0);
-    _68 _77;
-    umulExtended(_75._m0, _65.z, _77._m1, _77._m0);
-    uvec3 _90 = ((((((_77._m0 > 1024u) || (_65.x > 256u)) || (_65.y > 256u)) || (_65.z > 256u)) || (_75._m1 != 0u)) || (_77._m1 != 0u)) ? uvec3(0u) : _65;
-    EmitMeshTasksEXT(_90.x, _90.y, _90.z);
+    _73 _80;
+    umulExtended(_70.x, _70.y, _80._m1, _80._m0);
+    _73 _82;
+    umulExtended(_80._m0, _70.z, _82._m1, _82._m0);
+    uvec3 _95 = ((((((_82._m0 > 1024u) || (_70.x > 256u)) || (_70.y > 256u)) || (_70.z > 256u)) || (_80._m1 != 0u)) || (_82._m1 != 0u)) ? uvec3(0u) : _70;
+    EmitMeshTasksEXT(_95.x, _95.y, _95.z);
 }
 
 
@@ -103,45 +124,66 @@ struct _7
     vec4 _m1;
 };
 
-struct _10
+struct _8
+{
+    vec4 _m0;
+    vec4 _m1;
+};
+
+struct _11
 {
     uvec3 _m0;
     bool _m1;
     vec4 _m2;
 };
 
-struct _11
+struct _12
+{
+    uvec3 _m0;
+    bool _m1;
+    vec4 _m2;
+};
+
+struct _13
 {
     vec4 _m0;
 };
 
-struct _16
+struct _20
 {
     _7 _m0[3];
-    _10 _m1[1];
+    _11 _m1[1];
     uint _m2;
     uint _m3;
 };
 
-struct _68
+struct _21
+{
+    _8 _m0[3];
+    _12 _m1[1];
+    uint _m2;
+    uint _m3;
+};
+
+struct _73
 {
     uint _m0;
     uint _m1;
 };
 
-taskPayloadSharedEXT _6 _17;
+taskPayloadSharedEXT _6 _22;
 
-uvec3 _98()
+uvec3 _103()
 {
     if (gl_LocalInvocationIndex == 0u)
     {
-        _17 = _6(vec4(0.0), false);
+        _22 = _6(vec4(0.0), false);
     }
     barrier();
     if (gl_LocalInvocationID.x == 0u)
     {
-        _17._m0 = vec4(1.0, 1.0, 0.0, 1.0);
-        _17._m1 = true;
+        _22._m0 = vec4(1.0, 1.0, 0.0, 1.0);
+        _22._m1 = true;
         return uvec3(1u);
     }
     return uvec3(2u);
@@ -149,14 +191,14 @@ uvec3 _98()
 
 void main()
 {
-    uvec3 _115 = _98();
+    uvec3 _120 = _103();
     barrier();
-    _68 _122;
-    umulExtended(_115.x, _115.y, _122._m1, _122._m0);
-    _68 _124;
-    umulExtended(_122._m0, _115.z, _124._m1, _124._m0);
-    uvec3 _137 = ((((((_124._m0 > 1024u) || (_115.x > 256u)) || (_115.y > 256u)) || (_115.z > 256u)) || (_122._m1 != 0u)) || (_124._m1 != 0u)) ? uvec3(0u) : _115;
-    EmitMeshTasksEXT(_137.x, _137.y, _137.z);
+    _73 _127;
+    umulExtended(_120.x, _120.y, _127._m1, _127._m0);
+    _73 _129;
+    umulExtended(_127._m0, _120.z, _129._m1, _129._m0);
+    uvec3 _142 = ((((((_129._m0 > 1024u) || (_120.x > 256u)) || (_120.y > 256u)) || (_120.z > 256u)) || (_127._m1 != 0u)) || (_129._m1 != 0u)) ? uvec3(0u) : _120;
+    EmitMeshTasksEXT(_142.x, _142.y, _142.z);
 }
 
 
@@ -180,82 +222,103 @@ struct _7
     vec4 _m1;
 };
 
-struct _10
+struct _8
+{
+    vec4 _m0;
+    vec4 _m1;
+};
+
+struct _11
 {
     uvec3 _m0;
     bool _m1;
     vec4 _m2;
 };
 
-struct _11
+struct _12
+{
+    uvec3 _m0;
+    bool _m1;
+    vec4 _m2;
+};
+
+struct _13
 {
     vec4 _m0;
 };
 
-struct _16
+struct _20
 {
     _7 _m0[3];
-    _10 _m1[1];
+    _11 _m1[1];
     uint _m2;
     uint _m3;
 };
 
-struct _68
+struct _21
+{
+    _8 _m0[3];
+    _12 _m1[1];
+    uint _m2;
+    uint _m3;
+};
+
+struct _73
 {
     uint _m0;
     uint _m1;
 };
 
-layout(location = 0) out vec4 _154[3];
-layout(location = 1) perprimitiveEXT out vec4 _160[1];
-taskPayloadSharedEXT _6 _17;
-shared float _19;
-shared _16 _21;
+layout(location = 0) out vec4 _159[3];
+layout(location = 1) perprimitiveEXT out vec4 _165[1];
+taskPayloadSharedEXT _6 _22;
+shared float _24;
+shared _21 _26;
 
-bool _24()
+bool _29()
 {
-    return _17._m1;
+    return _22._m1;
 }
 
-void _161()
+void _166()
 {
     if (gl_LocalInvocationIndex == 0u)
     {
-        _19 = 0.0;
-        _21 = _16(_7[](_7(vec4(0.0), vec4(0.0)), _7(vec4(0.0), vec4(0.0)), _7(vec4(0.0), vec4(0.0))), _10[](_10(uvec3(0u), false, vec4(0.0))), 0u, 0u);
+        _24 = 0.0;
+        _26 = _21(_8[](_8(vec4(0.0), vec4(0.0)), _8(vec4(0.0), vec4(0.0)), _8(vec4(0.0), vec4(0.0))), _12[](_12(uvec3(0u), false, vec4(0.0))), 0u, 0u);
     }
     barrier();
-    _21._m2 = 3u;
-    _21._m3 = 1u;
-    _19 = 2.0;
-    _21._m0[0u]._m0 = vec4(0.0, 1.0, 0.0, 1.0);
-    _21._m0[0u]._m1 = vec4(0.0, 1.0, 0.0, 1.0) * _17._m0;
-    _21._m0[1u]._m0 = vec4(-1.0, -1.0, 0.0, 1.0);
-    _21._m0[1u]._m1 = vec4(0.0, 0.0, 1.0, 1.0) * _17._m0;
-    _21._m0[2u]._m0 = vec4(1.0, -1.0, 0.0, 1.0);
-    _21._m0[2u]._m1 = vec4(1.0, 0.0, 0.0, 1.0) * _17._m0;
-    _21._m1[0u]._m0 = uvec3(0u, 1u, 2u);
-    _21._m1[0u]._m1 = !_24();
-    _21._m1[0u]._m2 = vec4(1.0, 0.0, 1.0, 1.0);
+    _26._m2 = 3u;
+    _26._m3 = 1u;
+    _24 = 2.0;
+    _26._m0[0u]._m0 = vec4(0.0, 1.0, 0.0, 1.0);
+    _26._m0[0u]._m1 = vec4(0.0, 1.0, 0.0, 1.0) * _22._m0;
+    _26._m0[1u]._m0 = vec4(-1.0, -1.0, 0.0, 1.0);
+    _26._m0[1u]._m1 = vec4(0.0, 0.0, 1.0, 1.0) * _22._m0;
+    _26._m0[2u]._m0 = vec4(1.0, -1.0, 0.0, 1.0);
+    _26._m0[2u]._m1 = vec4(1.0, 0.0, 0.0, 1.0) * _22._m0;
+    _26._m1[0u]._m0 = uvec3(0u, 1u, 2u);
+    _26._m1[0u]._m1 = !_29();
+    _26._m1[0u]._m2 = vec4(1.0, 0.0, 1.0, 1.0);
 }
 
 void main()
 {
-    _161();
+    _166();
     barrier();
-    uint _216 = min(_21._m2, 3u);
-    uint _219 = min(_21._m3, 1u);
-    SetMeshOutputsEXT(_216, _219);
-    for (uint _209 = gl_LocalInvocationIndex; _209 < _216; _209++)
+    uint _221 = min(_26._m2, 3u);
+    uint _224 = min(_26._m3, 1u);
+    SetMeshOutputsEXT(_221, _224);
+    for (uint _214 = gl_LocalInvocationIndex; _214 < _221; _214++)
     {
-        gl_MeshVerticesEXT[_209].gl_Position = _21._m0[_209]._m0;
-        _154[_209] = _21._m0[_209]._m1;
+        gl_MeshVerticesEXT[_214].gl_Position = _26._m0[_214]._m0;
+        _159[_214] = _26._m0[_214]._m1;
     }
-    for (uint _210 = gl_LocalInvocationIndex; _210 < _219; _210++)
+    for (uint _215 = gl_LocalInvocationIndex; _215 < _224; _215++)
     {
-        gl_PrimitiveTriangleIndicesEXT[_210] = _21._m1[_210]._m0;
-        gl_MeshPrimitivesEXT[_210].gl_CullPrimitiveEXT = _21._m1[_210]._m1;
-        _160[_210] = _21._m1[_210]._m2;
+        gl_PrimitiveTriangleIndicesEXT[_215] = _26._m1[_215]._m0;
+        gl_MeshPrimitivesEXT[_215].gl_CullPrimitiveEXT = _26._m1[_215]._m1;
+        _165[_215] = _26._m1[_215]._m2;
     }
 }
 
@@ -280,76 +343,97 @@ struct _7
     vec4 _m1;
 };
 
-struct _10
+struct _8
+{
+    vec4 _m0;
+    vec4 _m1;
+};
+
+struct _11
 {
     uvec3 _m0;
     bool _m1;
     vec4 _m2;
 };
 
-struct _11
+struct _12
+{
+    uvec3 _m0;
+    bool _m1;
+    vec4 _m2;
+};
+
+struct _13
 {
     vec4 _m0;
 };
 
-struct _16
+struct _20
 {
     _7 _m0[3];
-    _10 _m1[1];
+    _11 _m1[1];
     uint _m2;
     uint _m3;
 };
 
-struct _68
+struct _21
+{
+    _8 _m0[3];
+    _12 _m1[1];
+    uint _m2;
+    uint _m3;
+};
+
+struct _73
 {
     uint _m0;
     uint _m1;
 };
 
-layout(location = 0) out vec4 _273[3];
-layout(location = 1) perprimitiveEXT out vec4 _279[1];
-shared float _19;
-shared _16 _21;
+layout(location = 0) out vec4 _278[3];
+layout(location = 1) perprimitiveEXT out vec4 _284[1];
+shared float _24;
+shared _21 _26;
 
-void _280()
+void _285()
 {
     if (gl_LocalInvocationIndex == 0u)
     {
-        _19 = 0.0;
-        _21 = _16(_7[](_7(vec4(0.0), vec4(0.0)), _7(vec4(0.0), vec4(0.0)), _7(vec4(0.0), vec4(0.0))), _10[](_10(uvec3(0u), false, vec4(0.0))), 0u, 0u);
+        _24 = 0.0;
+        _26 = _21(_8[](_8(vec4(0.0), vec4(0.0)), _8(vec4(0.0), vec4(0.0)), _8(vec4(0.0), vec4(0.0))), _12[](_12(uvec3(0u), false, vec4(0.0))), 0u, 0u);
     }
     barrier();
-    _21._m2 = 3u;
-    _21._m3 = 1u;
-    _19 = 2.0;
-    _21._m0[0u]._m0 = vec4(0.0, 1.0, 0.0, 1.0);
-    _21._m0[0u]._m1 = vec4(0.0, 1.0, 0.0, 1.0);
-    _21._m0[1u]._m0 = vec4(-1.0, -1.0, 0.0, 1.0);
-    _21._m0[1u]._m1 = vec4(0.0, 0.0, 1.0, 1.0);
-    _21._m0[2u]._m0 = vec4(1.0, -1.0, 0.0, 1.0);
-    _21._m0[2u]._m1 = vec4(1.0, 0.0, 0.0, 1.0);
-    _21._m1[0u]._m0 = uvec3(0u, 1u, 2u);
-    _21._m1[0u]._m1 = false;
-    _21._m1[0u]._m2 = vec4(1.0, 0.0, 1.0, 1.0);
+    _26._m2 = 3u;
+    _26._m3 = 1u;
+    _24 = 2.0;
+    _26._m0[0u]._m0 = vec4(0.0, 1.0, 0.0, 1.0);
+    _26._m0[0u]._m1 = vec4(0.0, 1.0, 0.0, 1.0);
+    _26._m0[1u]._m0 = vec4(-1.0, -1.0, 0.0, 1.0);
+    _26._m0[1u]._m1 = vec4(0.0, 0.0, 1.0, 1.0);
+    _26._m0[2u]._m0 = vec4(1.0, -1.0, 0.0, 1.0);
+    _26._m0[2u]._m1 = vec4(1.0, 0.0, 0.0, 1.0);
+    _26._m1[0u]._m0 = uvec3(0u, 1u, 2u);
+    _26._m1[0u]._m1 = false;
+    _26._m1[0u]._m2 = vec4(1.0, 0.0, 1.0, 1.0);
 }
 
 void main()
 {
-    _280();
+    _285();
     barrier();
-    uint _306 = min(_21._m2, 3u);
-    uint _309 = min(_21._m3, 1u);
-    SetMeshOutputsEXT(_306, _309);
-    for (uint _300 = gl_LocalInvocationIndex; _300 < _306; _300++)
+    uint _311 = min(_26._m2, 3u);
+    uint _314 = min(_26._m3, 1u);
+    SetMeshOutputsEXT(_311, _314);
+    for (uint _305 = gl_LocalInvocationIndex; _305 < _311; _305++)
     {
-        gl_MeshVerticesEXT[_300].gl_Position = _21._m0[_300]._m0;
-        _273[_300] = _21._m0[_300]._m1;
+        gl_MeshVerticesEXT[_305].gl_Position = _26._m0[_305]._m0;
+        _278[_305] = _26._m0[_305]._m1;
     }
-    for (uint _301 = gl_LocalInvocationIndex; _301 < _309; _301++)
+    for (uint _306 = gl_LocalInvocationIndex; _306 < _314; _306++)
     {
-        gl_PrimitiveTriangleIndicesEXT[_301] = _21._m1[_301]._m0;
-        gl_MeshPrimitivesEXT[_301].gl_CullPrimitiveEXT = _21._m1[_301]._m1;
-        _279[_301] = _21._m1[_301]._m2;
+        gl_PrimitiveTriangleIndicesEXT[_306] = _26._m1[_306]._m0;
+        gl_MeshPrimitivesEXT[_306].gl_CullPrimitiveEXT = _26._m1[_306]._m1;
+        _284[_306] = _26._m1[_306]._m2;
     }
 }
 
@@ -374,59 +458,80 @@ struct _7
     vec4 _m1;
 };
 
-struct _10
+struct _8
+{
+    vec4 _m0;
+    vec4 _m1;
+};
+
+struct _11
 {
     uvec3 _m0;
     bool _m1;
     vec4 _m2;
 };
 
-struct _11
+struct _12
+{
+    uvec3 _m0;
+    bool _m1;
+    vec4 _m2;
+};
+
+struct _13
 {
     vec4 _m0;
 };
 
-struct _16
+struct _20
 {
     _7 _m0[3];
-    _10 _m1[1];
+    _11 _m1[1];
     uint _m2;
     uint _m3;
 };
 
-struct _68
+struct _21
+{
+    _8 _m0[3];
+    _12 _m1[1];
+    uint _m2;
+    uint _m3;
+};
+
+struct _73
 {
     uint _m0;
     uint _m1;
 };
 
-layout(location = 0) out vec4 _362[3];
-layout(location = 1) perprimitiveEXT out vec4 _368[1];
-shared float _19;
-shared _16 _21;
+layout(location = 0) out vec4 _367[3];
+layout(location = 1) perprimitiveEXT out vec4 _373[1];
+shared float _24;
+shared _21 _26;
 
-void _369()
+void _374()
 {
     if (gl_LocalInvocationIndex == 0u)
     {
-        _19 = 0.0;
-        _21 = _16(_7[](_7(vec4(0.0), vec4(0.0)), _7(vec4(0.0), vec4(0.0)), _7(vec4(0.0), vec4(0.0))), _10[](_10(uvec3(0u), false, vec4(0.0))), 0u, 0u);
+        _24 = 0.0;
+        _26 = _21(_8[](_8(vec4(0.0), vec4(0.0)), _8(vec4(0.0), vec4(0.0)), _8(vec4(0.0), vec4(0.0))), _12[](_12(uvec3(0u), false, vec4(0.0))), 0u, 0u);
     }
     barrier();
     if (gl_LocalInvocationID.x == 0u)
     {
-        _21._m2 = 3u;
-        _21._m3 = 1u;
-        _19 = 2.0;
-        _21._m0[0u]._m0 = vec4(0.0, 1.0, 0.0, 1.0);
-        _21._m0[0u]._m1 = vec4(0.0, 1.0, 0.0, 1.0);
-        _21._m0[1u]._m0 = vec4(-1.0, -1.0, 0.0, 1.0);
-        _21._m0[1u]._m1 = vec4(0.0, 0.0, 1.0, 1.0);
-        _21._m0[2u]._m0 = vec4(1.0, -1.0, 0.0, 1.0);
-        _21._m0[2u]._m1 = vec4(1.0, 0.0, 0.0, 1.0);
-        _21._m1[0u]._m0 = uvec3(0u, 1u, 2u);
-        _21._m1[0u]._m1 = false;
-        _21._m1[0u]._m2 = vec4(1.0, 0.0, 1.0, 1.0);
+        _26._m2 = 3u;
+        _26._m3 = 1u;
+        _24 = 2.0;
+        _26._m0[0u]._m0 = vec4(0.0, 1.0, 0.0, 1.0);
+        _26._m0[0u]._m1 = vec4(0.0, 1.0, 0.0, 1.0);
+        _26._m0[1u]._m0 = vec4(-1.0, -1.0, 0.0, 1.0);
+        _26._m0[1u]._m1 = vec4(0.0, 0.0, 1.0, 1.0);
+        _26._m0[2u]._m0 = vec4(1.0, -1.0, 0.0, 1.0);
+        _26._m0[2u]._m1 = vec4(1.0, 0.0, 0.0, 1.0);
+        _26._m1[0u]._m0 = uvec3(0u, 1u, 2u);
+        _26._m1[0u]._m1 = false;
+        _26._m1[0u]._m2 = vec4(1.0, 0.0, 1.0, 1.0);
         return;
     }
     else
@@ -437,21 +542,21 @@ void _369()
 
 void main()
 {
-    _369();
+    _374();
     barrier();
-    uint _399 = min(_21._m2, 3u);
-    uint _402 = min(_21._m3, 1u);
-    SetMeshOutputsEXT(_399, _402);
-    for (uint _393 = gl_LocalInvocationIndex; _393 < _399; _393 += 2u)
+    uint _404 = min(_26._m2, 3u);
+    uint _407 = min(_26._m3, 1u);
+    SetMeshOutputsEXT(_404, _407);
+    for (uint _398 = gl_LocalInvocationIndex; _398 < _404; _398 += 2u)
     {
-        gl_MeshVerticesEXT[_393].gl_Position = _21._m0[_393]._m0;
-        _362[_393] = _21._m0[_393]._m1;
+        gl_MeshVerticesEXT[_398].gl_Position = _26._m0[_398]._m0;
+        _367[_398] = _26._m0[_398]._m1;
     }
-    for (uint _394 = gl_LocalInvocationIndex; _394 < _402; _394 += 2u)
+    for (uint _399 = gl_LocalInvocationIndex; _399 < _407; _399 += 2u)
     {
-        gl_PrimitiveTriangleIndicesEXT[_394] = _21._m1[_394]._m0;
-        gl_MeshPrimitivesEXT[_394].gl_CullPrimitiveEXT = _21._m1[_394]._m1;
-        _368[_394] = _21._m1[_394]._m2;
+        gl_PrimitiveTriangleIndicesEXT[_399] = _26._m1[_399]._m0;
+        gl_MeshPrimitivesEXT[_399].gl_CullPrimitiveEXT = _26._m1[_399]._m1;
+        _373[_399] = _26._m1[_399]._m2;
     }
 }
 
@@ -474,38 +579,59 @@ struct _7
     vec4 _m1;
 };
 
-struct _10
+struct _8
+{
+    vec4 _m0;
+    vec4 _m1;
+};
+
+struct _11
 {
     uvec3 _m0;
     bool _m1;
     vec4 _m2;
 };
 
-struct _11
+struct _12
+{
+    uvec3 _m0;
+    bool _m1;
+    vec4 _m2;
+};
+
+struct _13
 {
     vec4 _m0;
 };
 
-struct _16
+struct _20
 {
     _7 _m0[3];
-    _10 _m1[1];
+    _11 _m1[1];
     uint _m2;
     uint _m3;
 };
 
-struct _68
+struct _21
+{
+    _8 _m0[3];
+    _12 _m1[1];
+    uint _m2;
+    uint _m3;
+};
+
+struct _73
 {
     uint _m0;
     uint _m1;
 };
 
-layout(location = 0) in vec4 _445;
-layout(location = 1) perprimitiveEXT in vec4 _448;
-layout(location = 0) out vec4 _450;
+layout(location = 0) in vec4 _450;
+layout(location = 1) perprimitiveEXT in vec4 _453;
+layout(location = 0) out vec4 _455;
 
 void main()
 {
-    _450 = _7(gl_FragCoord, _445)._m1 * _11(_448)._m0;
+    _455 = _7(gl_FragCoord, _450)._m1 * _13(_453)._m0;
 }
 

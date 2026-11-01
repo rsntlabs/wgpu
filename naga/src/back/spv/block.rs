@@ -2901,12 +2901,23 @@ impl BlockContext<'_> {
                 };
             };
 
-            let (load_type_id, access_type_adjustment) = match wrapped_load {
+            let (mut load_type_id, access_type_adjustment) = match wrapped_load {
                 Some(ref wrapped_load) => (
                     self.writer.std140_compat_uniform_types[&wrapped_load.r#type].type_id,
                     wrapped_load.access_type_adjustment,
                 ),
                 None => (result_type_id, access_type_adjustment),
+            };
+            let workgroup_type = match *self.fun_info[pointer].ty.inner_with(&self.ir_module.types)
+            {
+                crate::TypeInner::Pointer {
+                    base,
+                    space: crate::AddressSpace::WorkGroup,
+                } => {
+                    load_type_id = self.writer.get_workgroup_type_id(base);
+                    Some(base)
+                }
+                _ => None,
             };
 
             let load_id = match self.write_access_chain(pointer, block, access_type_adjustment)? {
@@ -2962,6 +2973,15 @@ impl BlockContext<'_> {
                 }
             };
 
+            if let Some(ty) = workgroup_type {
+                return self.writer.convert_workgroup_value(
+                    self.ir_module,
+                    ty,
+                    super::workgroup_layout::Conversion::FromWorkgroup,
+                    load_id,
+                    block,
+                );
+            }
             match wrapped_load {
                 Some(ref wrapped_load) => {
                     // If we loaded a std140 compat type then we must call the
@@ -3872,7 +3892,20 @@ impl BlockContext<'_> {
                     self.writer.write_memory_barrier(flags, &mut block);
                 }
                 Statement::Store { pointer, value } => {
-                    let value_id = self.cached[value];
+                    let mut value_id = self.cached[value];
+                    if let crate::TypeInner::Pointer {
+                        base,
+                        space: crate::AddressSpace::WorkGroup,
+                    } = *self.fun_info[pointer].ty.inner_with(&self.ir_module.types)
+                    {
+                        value_id = self.writer.convert_workgroup_value(
+                            self.ir_module,
+                            base,
+                            super::workgroup_layout::Conversion::ToWorkgroup,
+                            value_id,
+                            &mut block,
+                        )?;
+                    }
                     match self.write_access_chain(
                         pointer,
                         &mut block,

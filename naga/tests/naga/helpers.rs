@@ -2,12 +2,20 @@ use std::io::Write as _;
 use std::process::{Command, Stdio};
 
 pub fn validate_spirv(words: &[u32]) {
+    validate_spirv_with_target_env(words, None);
+}
+
+pub fn validate_spirv_with_target_env(words: &[u32], target_env: Option<&str>) {
     let mut bytes = Vec::with_capacity(words.len() * 4);
     for word in words {
         bytes.extend_from_slice(&word.to_le_bytes());
     }
 
-    let mut child = Command::new("spirv-val")
+    let mut command = Command::new("spirv-val");
+    if let Some(target_env) = target_env {
+        command.args(["--target-env", target_env]);
+    }
+    let mut child = command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

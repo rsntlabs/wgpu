@@ -107,6 +107,7 @@ impl Writer {
             cached_constants: crate::FastHashMap::default(),
             global_variables: HandleVec::new(),
             std140_compat_uniform_types: crate::FastHashMap::default(),
+            workgroup_type_ids: HandleVec::new(),
             fake_missing_bindings: options.fake_missing_bindings,
             binding_map: options.binding_map.clone(),
             saved_cached: CachedExpressions::default(),
@@ -206,6 +207,7 @@ impl Writer {
             cached_constants: take(&mut self.cached_constants).reclaim(),
             global_variables: take(&mut self.global_variables).reclaim(),
             std140_compat_uniform_types: take(&mut self.std140_compat_uniform_types).reclaim(),
+            workgroup_type_ids: take(&mut self.workgroup_type_ids).reclaim(),
             saved_cached: take(&mut self.saved_cached).reclaim(),
             temp_list: take(&mut self.temp_list).reclaim(),
             ray_query_functions: take(&mut self.ray_query_functions).reclaim(),
@@ -356,7 +358,11 @@ impl Writer {
         base: Handle<crate::Type>,
         class: spirv::StorageClass,
     ) -> Word {
-        let base_id = self.get_handle_type_id(base);
+        let base_id = if class == spirv::StorageClass::Workgroup {
+            self.get_workgroup_type_id(base)
+        } else {
+            self.get_handle_type_id(base)
+        };
         self.get_pointer_type_id(base_id, class)
     }
 
@@ -485,7 +491,11 @@ impl Writer {
                 LocalType::Cooperative(CooperativeType::from_inner(inner).unwrap())
             }
             crate::TypeInner::Pointer { base, space } => {
-                let base_type_id = self.get_handle_type_id(base);
+                let base_type_id = if space == crate::AddressSpace::WorkGroup {
+                    self.get_workgroup_type_id(base)
+                } else {
+                    self.get_handle_type_id(base)
+                };
                 LocalType::Pointer {
                     base: base_type_id,
                     class: map_storage_class(space),
@@ -2902,7 +2912,11 @@ impl Writer {
                 // variables in the `Uniform` and `StorageBuffer` address spaces
                 // get wrapped, and we're initializing `WorkGroup` variables.
                 let var_id = self.global_variables[handle].var_id;
-                let var_type_id = self.get_handle_type_id(var.ty);
+                let var_type_id = if var.space == crate::AddressSpace::WorkGroup {
+                    self.get_workgroup_type_id(var.ty)
+                } else {
+                    self.get_handle_type_id(var.ty)
+                };
                 let init_word = self.get_constant_null(var_type_id);
                 Instruction::store(var_id, init_word, None)
             })
@@ -3561,9 +3575,13 @@ impl Writer {
         let init_word = global_variable
             .init
             .map(|constant| self.constant_ids[constant]);
-        let inner_type_id = self.get_type_id(
-            substitute_inner_type_lookup.unwrap_or(LookupType::Handle(global_variable.ty)),
-        );
+        let inner_type_id = if global_variable.space == crate::AddressSpace::WorkGroup {
+            self.get_workgroup_type_id(global_variable.ty)
+        } else {
+            self.get_type_id(
+                substitute_inner_type_lookup.unwrap_or(LookupType::Handle(global_variable.ty)),
+            )
+        };
 
         // generate the wrapping structure if needed
         let pointer_type_id = if global_needs_wrapper(ir_module, global_variable) {
@@ -3840,8 +3858,10 @@ impl Writer {
         }
 
         // write all types
+        let workgroup_types = super::workgroup_layout::required_types(ir_module);
         for (handle, _) in ir_module.types.iter() {
             self.write_type_declaration_arena(ir_module, handle)?;
+            self.write_workgroup_type_declaration(ir_module, handle, &workgroup_types)?;
         }
 
         // write std140 layout compatible types required by uniforms
