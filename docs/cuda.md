@@ -695,8 +695,7 @@ Shared storage containing `dim3` is rejected because its constructor is nonempty
 Aggregate `constexpr` declarations and constant member evaluation remain
 unsupported. Pure constant construction can be discarded in a scalar constant
 comma expression, such as `(dim3(3), 4)`.
-Whole built-in values such as `blockDim`, and Cooperative Groups dimension
-queries returning `dim3`, remain unsupported.
+Whole built-in values such as `blockDim` remain unsupported.
 
 Nonmember binary operators `+`, `-`, `*`, `/`, `%`, `&`, `|`, `^`, `<<`, and `>>`
 take two parameters, using the helper value, reference, and pointer binding rules above.
@@ -1157,16 +1156,28 @@ remains unsupported. These operations follow CUDA's
 They accept member or type-qualified calls, including calls on a temporary from
 `this_thread_block()`. Rank is `threadIdx.x + blockDim.x * (threadIdx.y +
 blockDim.y * threadIdx.z)`; size is the product of the launch block dimensions.
-Queries remain runtime expressions and cannot supply `constexpr` values or
-array bounds, even when the launch shape is fixed. Device helpers can create
-local handles and use these scalar queries.
+
+The following zero-argument queries return nominal `dim3` values:
+
+| Query | Coordinates |
+| --- | --- |
+| `group_index()` | Current block's `blockIdx` coordinates |
+| `thread_index()` | Current thread's `threadIdx` coordinates |
+| `dim_threads()` | Launch block dimensions (`blockDim`) |
+| `group_dim()` | Alias of `dim_threads()` |
+
+Dimension queries accept member, type-qualified, and temporary-handle calls,
+including through namespace and type aliases. Their results are independent
+values: modifying a copy leaves subsequent queries and the launch coordinates
+unchanged. Device helpers can create local handles and use both scalar and
+dimension queries. All queries remain runtime expressions and cannot supply
+`constexpr` values or array bounds, even when the launch shape is fixed.
 
 Handles do not consume shader variables or buffer bindings. Group parameters,
 function results, pointers, references, arrays, struct members, shared storage,
-and `constexpr` handles remain unsupported. Dimension queries returning `dim3`,
-split-phase barriers, grid and cluster groups, coalesced groups, partitions, and
-partial-block collectives are not yet supported. The scalar and synchronization
-operations are described in CUDA's
+and `constexpr` handles remain unsupported. Split-phase barriers, grid and
+cluster groups, coalesced groups, partitions, and partial-block collectives are
+not yet supported. These operations are described in CUDA's
 [`thread_block` API](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/device-callable-apis.html#class-thread-block).
 
 Unsupported syntax produces a parse error with a source span. This includes

@@ -70,6 +70,7 @@ mod streaming;
 mod structures;
 mod switches;
 mod thread_block;
+mod thread_block_dimensions;
 mod trigonometry;
 mod type_aliases;
 mod uninitialized;

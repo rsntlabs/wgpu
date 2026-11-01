@@ -28,6 +28,9 @@ pub(super) enum GroupMethod {
     Sync,
     Rank,
     Size,
+    GroupIndex,
+    ThreadIndex,
+    Dimensions,
 }
 
 pub(super) struct QualifiedName {
@@ -40,6 +43,9 @@ fn method(name: &str, span: Span) -> Result<GroupMethod, ParseError> {
         "sync" => Ok(GroupMethod::Sync),
         "thread_rank" => Ok(GroupMethod::Rank),
         "size" | "num_threads" => Ok(GroupMethod::Size),
+        "group_index" => Ok(GroupMethod::GroupIndex),
+        "thread_index" => Ok(GroupMethod::ThreadIndex),
+        "dim_threads" | "group_dim" => Ok(GroupMethod::Dimensions),
         _ => Err(ParseError {
             message: format!("unsupported thread_block method `{name}`"),
             span,
@@ -339,6 +345,12 @@ impl<'a> Parser<'a> {
             self.emit_workgroup_barrier(span)?;
             return Ok(ExpressionResult::Void(span));
         }
+        if matches!(
+            method,
+            GroupMethod::GroupIndex | GroupMethod::ThreadIndex | GroupMethod::Dimensions
+        ) {
+            return self.thread_block_dimensions(method, span).map(Into::into);
+        }
         let handle = match method {
             GroupMethod::Size => self.append(
                 Expression::Literal(Literal::U32(self.workgroup_size.into_iter().product())),
@@ -394,7 +406,10 @@ impl<'a> Parser<'a> {
                     span,
                 )?
             }
-            GroupMethod::Sync => unreachable!(),
+            GroupMethod::Sync
+            | GroupMethod::GroupIndex
+            | GroupMethod::ThreadIndex
+            | GroupMethod::Dimensions => unreachable!(),
         };
         Ok(Value {
             handle,
@@ -403,5 +418,44 @@ impl<'a> Parser<'a> {
             constant: ConstantValue::default(),
         }
         .into())
+    }
+
+    fn thread_block_dimensions(
+        &mut self,
+        method: GroupMethod,
+        span: Span,
+    ) -> Result<Value, ParseError> {
+        let mut components = Vec::with_capacity(3);
+        match method {
+            GroupMethod::GroupIndex | GroupMethod::ThreadIndex => {
+                let slot = match method {
+                    GroupMethod::GroupIndex => 1,
+                    GroupMethod::ThreadIndex => 0,
+                    _ => unreachable!(),
+                };
+                let base = if self.function.kind == FunctionKind::Device {
+                    self.helper_builtin_value(slot, span)?
+                } else {
+                    self.builtin_input(slot, span)?
+                };
+                for index in 0..3 {
+                    components.push(self.append(Expression::AccessIndex { base, index }, span)?);
+                }
+            }
+            GroupMethod::Dimensions => {
+                for extent in self.workgroup_size {
+                    components.push(self.append(Expression::Literal(Literal::U32(extent)), span)?);
+                }
+            }
+            GroupMethod::Sync | GroupMethod::Rank | GroupMethod::Size => unreachable!(),
+        }
+        let ty = self.dim3_type(span);
+        let handle = self.append(Expression::Compose { ty, components }, span)?;
+        Ok(Value {
+            handle,
+            ty: TypeResolution::Handle(ty),
+            span,
+            constant: ConstantValue::default(),
+        })
     }
 }
