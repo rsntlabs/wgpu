@@ -11,6 +11,7 @@ mod context;
 mod conversions;
 mod cooperative_groups;
 mod declarations;
+mod dim3;
 mod expressions;
 mod float_helpers;
 mod function_declarations;
@@ -260,6 +261,8 @@ pub(super) struct Parser<'a> {
     float_math_functions: [Option<Handle<Function>>; 3],
     trigonometry_function: Option<Handle<Function>>,
     structures: FastHashMap<Handle<Type>, structures::Structure>,
+    dim3_type: Option<Handle<Type>>,
+    uint3_type: Option<Handle<Type>>,
     next_structure_id: u32,
     helper_builtin_globals: [Option<Handle<GlobalVariable>>; 3],
     workgroup_size: [u32; 3],
@@ -286,6 +289,8 @@ impl<'a> Parser<'a> {
             float_math_functions: [None; 3],
             trigonometry_function: None,
             structures: FastHashMap::default(),
+            dim3_type: None,
+            uint3_type: None,
             next_structure_id: 0,
             helper_builtin_globals: [None; 3],
             workgroup_size: options.workgroup_size,
@@ -402,11 +407,13 @@ impl<'a> Parser<'a> {
             && !matches!(specifier, TypeSpecifier::Scalar(_))
         {
             return Err(ParseError {
-                message: String::from(if matches!(specifier, TypeSpecifier::Structure(_)) {
-                    "structure kernel value parameters are unsupported"
-                } else {
-                    "vector kernel parameters are unsupported"
-                }),
+                message: String::from(
+                    if matches!(specifier, TypeSpecifier::Dim3 | TypeSpecifier::Structure(_)) {
+                        "structure kernel value parameters are unsupported"
+                    } else {
+                        "vector kernel parameters are unsupported"
+                    },
+                ),
                 span: type_span,
             });
         }

@@ -22,6 +22,7 @@ mod conditionals;
 mod constant_expressions;
 mod control_flow;
 mod declarations;
+mod dim3;
 mod dual_execution;
 mod fabs;
 mod float_math;
@@ -93,6 +94,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_CONSTANT_EXPRESSIONS,
         CUDA_CONTROL_FLOW,
         CUDA_DECLARATIONS,
+        CUDA_DIM3,
         CUDA_DUAL_EXECUTION,
         CUDA_FABS,
         CUDA_FLOAT_MATH,
@@ -306,6 +308,8 @@ static CUDA_CONSTANT_EXPRESSIONS: GpuTestConfiguration = configuration(constant_
 static CUDA_CONTROL_FLOW: GpuTestConfiguration = configuration(control_flow::cases);
 #[apply(gpu_test!)]
 static CUDA_DECLARATIONS: GpuTestConfiguration = configuration(declarations::cases);
+#[apply(gpu_test!)]
+static CUDA_DIM3: GpuTestConfiguration = configuration(dim3::cases);
 #[apply(gpu_test!)]
 static CUDA_DUAL_EXECUTION: GpuTestConfiguration = configuration(dual_execution::cases);
 #[apply(gpu_test!)]

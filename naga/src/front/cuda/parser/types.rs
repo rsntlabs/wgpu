@@ -3,6 +3,7 @@ use super::*;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) enum TypeSpecifier {
     ThreadBlock,
+    Dim3,
     Scalar(Scalar),
     Vector {
         size: VectorSize,
@@ -251,6 +252,7 @@ impl<'a> Parser<'a> {
                 })
             }
             TypeSpecifier::Scalar(scalar) => return Ok(scalar_resolution(scalar)),
+            TypeSpecifier::Dim3 => return Ok(TypeResolution::Handle(self.dim3_type(span))),
             TypeSpecifier::Structure(handle) => return Ok(TypeResolution::Handle(handle)),
             TypeSpecifier::Pointer { pointee, .. } => return Ok(self.pointer_type(pointee, span)),
             TypeSpecifier::Vector { size, scalar } => (size, scalar),
@@ -275,13 +277,17 @@ impl<'a> Parser<'a> {
                 offset: index as u32 * 4,
             })
             .collect();
-        Ok(TypeResolution::Handle(self.module.types.insert(
+        let handle = self.module.types.insert(
             Type {
                 name: Some(String::from(name)),
                 inner: TypeInner::Struct { members, span: 12 },
             },
             span,
-        )))
+        );
+        if scalar == Scalar::U32 {
+            self.uint3_type = Some(handle);
+        }
+        Ok(TypeResolution::Handle(handle))
     }
 
     pub(super) fn type_handle(&mut self, ty: &TypeResolution, span: Span) -> Handle<Type> {

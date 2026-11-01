@@ -149,6 +149,13 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             "cooperative_groups",
             GlobalDeclaration::Namespace(Namespace::CooperativeGroups),
         )))
+        .chain(core::iter::once((
+            "dim3",
+            GlobalDeclaration::Type(QualifiedType {
+                ty: TypeSpecifier::Dim3,
+                is_const: false,
+            }),
+        )))
         .chain(
             VECTOR_TYPES
                 .into_iter()
@@ -227,6 +234,7 @@ fn conversion_rank(
     source: &TypeResolution,
     target: &TypeResolution,
     module: &Module,
+    user_conversion: bool,
 ) -> Option<u8> {
     if module.compare_types(source, target) {
         return Some(0);
@@ -242,7 +250,7 @@ fn conversion_rank(
                 2
             })
         }
-        _ => None,
+        _ => user_conversion.then_some(3),
     }
 }
 
@@ -1521,7 +1529,12 @@ impl<'a> Parser<'a> {
             return (base == pointee && (!source_const || is_const))
                 .then_some(u8::from(is_const && !source_const));
         }
-        let rank = conversion_rank(argument.ty(), &target, &self.module)?;
+        let rank = conversion_rank(
+            argument.ty(),
+            &target,
+            &self.module,
+            self.dimension_conversion(argument.ty(), &target),
+        )?;
         match self.candidate_mode(candidate, index) {
             ParameterMode::Value | ParameterMode::Reference { is_const: true } => Some(rank),
             ParameterMode::Reference { is_const: false } => {

@@ -665,10 +665,38 @@ These types follow CUDA's [built-in vector definitions](https://docs.nvidia.com/
 In particular, three-component arrays have a 12-byte element stride and
 4-byte alignment. Vector comparisons, truthiness, indexing, and swizzles remain
 unsupported. Vector arithmetic requires a visible source-defined operator.
-Vector casts and parenthesized aggregate initialization remain unsupported. By-value kernel
+Vector casts and parenthesized aggregate initialization remain unsupported,
+apart from the `dim3` conversions below. By-value kernel
 parameters require the scalar types described in the kernel interface.
 Typed vector temporaries such as `float2{1.0f, 2.0f}` use the same list
 initialization and narrowing rules as vector declarations.
+
+`dim3` is distinct from `uint3`, with unsigned `.x`, `.y`, and `.z` fields,
+12-byte size and array stride, and 4-byte alignment. It supports aliases, `auto`,
+mutable fields, value copies, local arrays, record members, helper value results,
+and helper value, reference, and pointer parameters. Kernel parameters require pointers.
+
+Default construction produces `(1, 1, 1)`, including `dim3 shape;`,
+`dim3{}`, and `dim3()`. Constructors accept zero to three scalar arguments;
+omitted components are one. For example, `dim3 shape = 2u;` produces `(2, 1, 1)`.
+Parenthesized arguments use the existing scalar conversions; explicit
+`dim3{...}` arguments enforce list-initialization narrowing checks.
+Array and record scalar initializer clauses use copy initialization for a
+`dim3` subobject; explicit inner braces retain narrowing checks.
+
+Conversions between `dim3` and `uint3` are implicit. `dim3{packed}` and
+`uint3(shape)` are accepted; `uint3{shape}` and `uint3 packed = {shape};`
+are rejected. Overloads retain both types' identities and prefer standard
+conversions over a user conversion. Pointer types remain distinct.
+
+Default construction recurses through bare local arrays, omitted array elements,
+and nested records. Numeric subobjects retain their existing initialization rules.
+Shared storage containing `dim3` is rejected because its constructor is nonempty.
+Aggregate `constexpr` declarations and constant member evaluation remain
+unsupported. Pure constant construction can be discarded in a scalar constant
+comma expression, such as `(dim3(3), 4)`.
+Whole built-in values such as `blockDim`, and Cooperative Groups dimension
+queries returning `dim3`, remain unsupported.
 
 Nonmember binary operators `+`, `-`, `*`, `/`, `%`, `&`, `|`, `^`, `<<`, and `>>`
 take two parameters, using the helper value, reference, and pointer binding rules above.
@@ -741,7 +769,8 @@ fields match. Local definitions can hide outer type names.
 
 Locals support same-type copies, assignments, and braced initialization,
 including partial initialization and brace elision for nested aggregates.
-Omitted fields are zero-initialized. Typed expressions such as `Sample{}` can
+Omitted fields use zero initialization, with `dim3` subobjects using their
+constructor defaults. Typed expressions such as `Sample{}` can
 be passed to helpers, returned, grouped in parentheses, discarded as statements,
 or read through their fields. Copying a struct
 also copies its fixed-array fields. Standalone arrays still cannot be copied
@@ -769,7 +798,8 @@ declaration, including inside loops.
 
 Mutable scalar and vector locals can omit an initializer and be assigned before
 reading.
-Const locals, including const-qualified aliases, require an initializer.
+Const `dim3` locals, and const arrays or records containing only such subobjects,
+support default construction. Other const locals require an initializer.
 Local declarations can list comma-separated names, as in
 `int first = 1, next = first + 1;`. Each initializer finishes before the next
 declarator, and all names share the declared type and qualification.

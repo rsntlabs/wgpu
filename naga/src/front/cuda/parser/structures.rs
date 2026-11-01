@@ -2,6 +2,8 @@ use super::*;
 
 pub(super) struct Structure {
     pub(super) depth: u32,
+    pub(super) requires_default_constructor: bool,
+    pub(super) const_default_constructible: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -23,7 +25,7 @@ impl<'a> Parser<'a> {
         self.function.symbol_table.add(name, Symbol::Member);
         let definition = self.structure_members();
         self.function.pop_scope(initialization_start);
-        let (members, size, depth) = definition?;
+        let (members, size, structure) = definition?;
         self.lexer.expect_span(Token::Separator(';'))?;
         let declaration_id = self.next_structure_id;
         self.next_structure_id = declaration_id.checked_add(1).ok_or_else(|| ParseError {
@@ -41,7 +43,7 @@ impl<'a> Parser<'a> {
             },
             self.lexer.span_from(start.to_range().unwrap().start),
         );
-        self.structures.insert(handle, Structure { depth });
+        self.structures.insert(handle, structure);
         self.insert_type(
             name,
             QualifiedType {
@@ -53,12 +55,14 @@ impl<'a> Parser<'a> {
         )
     }
 
-    fn structure_members(&mut self) -> Result<(Vec<StructMember>, u32, u32), ParseError> {
+    fn structure_members(&mut self) -> Result<(Vec<StructMember>, u32, Structure), ParseError> {
         let mut members = Vec::new();
         let mut names = crate::FastHashSet::default();
         let mut offset = 0;
         let mut alignment = crate::proc::Alignment::ONE;
         let mut depth = 1u32;
+        let mut requires_default_constructor = false;
+        let mut const_default_constructible = true;
         while !self.lexer.next_if(Token::Paren('}'))? {
             let type_span = self.lexer.peek()?.1;
             let QualifiedType {
@@ -98,6 +102,8 @@ impl<'a> Parser<'a> {
                     base
                 };
                 let member_depth = self.structure_field_depth(ty);
+                requires_default_constructor |= self.requires_default_constructor(ty);
+                const_default_constructible &= self.const_default_constructible(ty);
                 depth = depth.max(1 + member_depth);
                 if depth > 64 {
                     return Err(ParseError {
@@ -139,7 +145,33 @@ impl<'a> Parser<'a> {
         }
         let span = self.lexer.peek()?.1;
         let size = Self::structure_aligned_offset(offset, alignment, span)?;
-        Ok((members, size, depth))
+        Ok((
+            members,
+            size,
+            Structure {
+                depth,
+                requires_default_constructor,
+                const_default_constructible,
+            },
+        ))
+    }
+
+    pub(super) fn requires_default_constructor(&self, mut ty: Handle<Type>) -> bool {
+        while let TypeInner::Array { base, .. } = self.module.types[ty].inner {
+            ty = base;
+        }
+        self.structures
+            .get(&ty)
+            .is_some_and(|structure| structure.requires_default_constructor)
+    }
+
+    pub(super) fn const_default_constructible(&self, mut ty: Handle<Type>) -> bool {
+        while let TypeInner::Array { base, .. } = self.module.types[ty].inner {
+            ty = base;
+        }
+        self.structures
+            .get(&ty)
+            .is_some_and(|structure| structure.const_default_constructible)
     }
 
     fn structure_field_depth(&self, mut ty: Handle<Type>) -> u32 {

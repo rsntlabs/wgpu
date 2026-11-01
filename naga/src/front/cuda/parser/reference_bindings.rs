@@ -120,6 +120,11 @@ impl<'a> Parser<'a> {
         let opening = self.lexer.expect_span(Token::Paren('{'))?;
         let actual_ty = self.type_handle(ty, opening);
         if self.lexer.next_if(Token::Paren('}'))? {
+            if self.requires_default_constructor(actual_ty) {
+                let pointer = self.temporary_pointer(ty, opening)?;
+                self.store_default_initializer(pointer, actual_ty, opening)?;
+                return Ok(self.load_pointer(pointer, ty, opening)?.into());
+            }
             let handle = self.append(Expression::ZeroValue(actual_ty), opening)?;
             return Ok(Value {
                 handle,

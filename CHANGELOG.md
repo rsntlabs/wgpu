@@ -176,6 +176,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 - Support CUDA floating-point `min`, `max`, `fminf`, and `fmaxf` with numeric selection for NaN operands.
 - Support fixed-size CUDA local scalar arrays, including empty initialization, aliases, and indexed updates.
 - Support CUDA numeric vector values, component updates, constructors, local arrays, and helper parameters and results.
+- Support CUDA `dim3` values with constructor defaults, `uint3` conversions, and recursive local initialization.
 - Support named CUDA structs with nested fields, fixed arrays, value copies, device helpers, and storage-buffer pointers.
 - Support CUDA local reference declarations with live aliases, const views, and temporary initialization.
 - Support CUDA device helper reference parameters with live aliases, const temporaries, and overlapping arguments.

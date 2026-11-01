@@ -14,6 +14,17 @@ impl Parser<'_> {
         target: &TypeResolution,
     ) -> Result<Value, ParseError> {
         let has_equals = self.lexer.next_if(Token::Operation('='))?;
+        if !has_equals && self.is_uint3(target) && self.lexer.next_if(Token::Paren('('))? {
+            let value = self.expression(0)?;
+            let end = self.lexer.expect_span(Token::Paren(')'))?;
+            if !self.is_dim3(value.ty()) {
+                return Err(ParseError {
+                    message: String::from("parenthesized uint3 initialization requires dim3"),
+                    span: value.span().until(&end),
+                });
+            }
+            return self.convert_value(value, target);
+        }
         if self.lexer.peek()?.0 == Token::Paren('{') {
             let span = self.lexer.peek()?.1;
             let scalar = self.require_scalar_type(target, span)?;
@@ -36,6 +47,9 @@ impl Parser<'_> {
         self.lexer.next_if(Token::Operation('='))?;
         let span = self.lexer.expect_span(Token::Paren('{'))?;
         if self.lexer.next_if(Token::Paren('}'))? {
+            if self.requires_default_constructor(actual_ty) {
+                return self.store_default_initializer(pointer, actual_ty, span);
+            }
             match self.module.types[actual_ty].inner {
                 TypeInner::Array {
                     base,
@@ -219,7 +233,7 @@ impl Parser<'_> {
                         pointer, specifier, actual_ty, has_braces, opening,
                     )?;
                 }
-                TypeSpecifier::Structure(_) => {
+                TypeSpecifier::Dim3 | TypeSpecifier::Structure(_) => {
                     let opening = self.lexer.peek()?.1;
                     let has_braces = self.lexer.next_if(Token::Paren('{'))?;
                     self.record_aggregate_initializer(
@@ -263,7 +277,33 @@ impl Parser<'_> {
         span: Span,
         pending_value: Option<Value>,
     ) -> Result<(), ParseError> {
+        if Some(ty) == self.dim3_type {
+            let value = if has_braces {
+                self.dim3_list_initializer(span, pending_value)?
+            } else {
+                let value = match pending_value {
+                    Some(value) => value,
+                    None => {
+                        let value = self.expression(0)?;
+                        self.rvalue(value)?
+                    }
+                };
+                let span = value.span;
+                self.construct_dim3(alloc::vec![value], false, span)?
+            };
+            self.push_statement(
+                Statement::Store {
+                    pointer,
+                    value: value.handle,
+                },
+                value.span,
+            );
+            return Ok(());
+        }
         if pending_value.is_none() && has_braces && self.lexer.next_if(Token::Paren('}'))? {
+            if self.requires_default_constructor(ty) {
+                return self.store_default_initializer(pointer, ty, span);
+            }
             let value = self.append(Expression::ZeroValue(ty), span)?;
             self.push_statement(Statement::Store { pointer, value }, span);
             return Ok(());
@@ -277,10 +317,14 @@ impl Parser<'_> {
             };
         if let Some(ref value) = pending_value {
             if !matches!(self.module.types[ty].inner, TypeInner::Array { .. })
-                && self
+                && (self
                     .module
                     .compare_types(&value.ty, &TypeResolution::Handle(ty))
+                    || (!has_braces
+                        && self.dimension_conversion(&value.ty, &TypeResolution::Handle(ty))))
             {
+                let value = pending_value.take().unwrap();
+                let value = self.convert_value(value.into(), &TypeResolution::Handle(ty))?;
                 self.push_statement(
                     Statement::Store {
                         pointer,
@@ -350,14 +394,7 @@ impl Parser<'_> {
                     },
                     span,
                 )?;
-                let value = self.append(Expression::ZeroValue(member_ty), span)?;
-                self.push_statement(
-                    Statement::Store {
-                        pointer: member,
-                        value,
-                    },
-                    span,
-                );
+                self.store_default_initializer(member, member_ty, span)?;
             }
         }
         Ok(())
@@ -509,7 +546,10 @@ impl Parser<'_> {
             if self
                 .module
                 .compare_types(&value.ty, &TypeResolution::Handle(actual_ty))
+                || (!has_braces
+                    && self.dimension_conversion(&value.ty, &TypeResolution::Handle(actual_ty)))
             {
+                let value = self.convert_value(value.into(), &TypeResolution::Handle(actual_ty))?;
                 self.push_statement(
                     Statement::Store {
                         pointer,
@@ -584,6 +624,68 @@ impl Parser<'_> {
         Ok(())
     }
 
+    pub(super) fn store_default_initializer(
+        &mut self,
+        pointer: Handle<Expression>,
+        ty: Handle<Type>,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        let value = if self.requires_default_constructor(ty) {
+            self.constructor_default_value(ty, &mut FastHashMap::default(), span)?
+        } else {
+            self.append(Expression::ZeroValue(ty), span)?
+        };
+        self.push_statement(Statement::Store { pointer, value }, span);
+        Ok(())
+    }
+
+    fn constructor_default_value(
+        &mut self,
+        ty: Handle<Type>,
+        values: &mut FastHashMap<Handle<Type>, Handle<Expression>>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.parameter_expansion_budget.charge_work(1, span)?;
+        if let Some(&value) = values.get(&ty) {
+            return Ok(value);
+        }
+        let value = if Some(ty) == self.dim3_type {
+            self.construct_dim3(Vec::new(), false, span)?.handle
+        } else if self.requires_default_constructor(ty) {
+            match self.module.types[ty].inner {
+                TypeInner::Array {
+                    base,
+                    size: ArraySize::Constant(count),
+                    ..
+                } => {
+                    let value = self.constructor_default_value(base, values, span)?;
+                    let pointer = self.temporary_pointer(&TypeResolution::Handle(ty), span)?;
+                    self.fill_array_tail(pointer, base, 0..count.get(), Some(value), span)?;
+                    self.append(Expression::Load { pointer }, span)?
+                }
+                TypeInner::Struct { ref members, .. } => {
+                    self.parameter_expansion_budget
+                        .charge_slice::<Handle<Type>>(members.len(), span)?;
+                    self.parameter_expansion_budget
+                        .charge_slice::<Handle<Expression>>(members.len(), span)?;
+                    let member_types: Vec<_> = members.iter().map(|member| member.ty).collect();
+                    let mut components = Vec::with_capacity(member_types.len());
+                    for member in member_types {
+                        components.push(self.constructor_default_value(member, values, span)?);
+                    }
+                    self.append(Expression::Compose { ty, components }, span)?
+                }
+                _ => unreachable!(),
+            }
+        } else {
+            self.append(Expression::ZeroValue(ty), span)?
+        };
+        self.parameter_expansion_budget
+            .charge_map_entry::<Handle<Type>, Handle<Expression>>(1, span)?;
+        values.insert(ty, value);
+        Ok(value)
+    }
+
     fn zero_array_tail(
         &mut self,
         pointer: Handle<Expression>,
@@ -592,8 +694,25 @@ impl Parser<'_> {
         array_count: NonZeroU32,
         span: Span,
     ) -> Result<(), ParseError> {
+        self.fill_array_tail(
+            pointer,
+            element_ty,
+            initialized_count..array_count.get(),
+            None,
+            span,
+        )
+    }
+
+    fn fill_array_tail(
+        &mut self,
+        pointer: Handle<Expression>,
+        element_ty: Handle<Type>,
+        indices: core::ops::Range<u32>,
+        default_value: Option<Handle<Expression>>,
+        span: Span,
+    ) -> Result<(), ParseError> {
         let counter = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
-        let initial = self.append(Expression::Literal(Literal::U32(initialized_count)), span)?;
+        let initial = self.append(Expression::Literal(Literal::U32(indices.start)), span)?;
         self.push_statement(
             Statement::Store {
                 pointer: counter,
@@ -601,7 +720,7 @@ impl Parser<'_> {
             },
             span,
         );
-        let limit = self.append(Expression::Literal(Literal::U32(array_count.get())), span)?;
+        let limit = self.append(Expression::Literal(Literal::U32(indices.end)), span)?;
         let ((), body) = self.capture_block(|parser| {
             let index = parser.append(Expression::Load { pointer: counter }, span)?;
             let condition = parser.append(
@@ -629,21 +748,22 @@ impl Parser<'_> {
                 },
                 span,
             )?;
-            match parser.module.types[element_ty].inner {
-                TypeInner::Array {
-                    base,
-                    size: ArraySize::Constant(count),
-                    ..
-                } => parser.zero_array_tail(element, base, 0, count, span)?,
-                _ => {
-                    let value = parser.append(Expression::ZeroValue(element_ty), span)?;
-                    parser.push_statement(
-                        Statement::Store {
-                            pointer: element,
-                            value,
-                        },
-                        span,
-                    );
+            if let Some(value) = default_value {
+                parser.push_statement(
+                    Statement::Store {
+                        pointer: element,
+                        value,
+                    },
+                    span,
+                );
+            } else {
+                match parser.module.types[element_ty].inner {
+                    TypeInner::Array {
+                        base,
+                        size: ArraySize::Constant(count),
+                        ..
+                    } => parser.zero_array_tail(element, base, 0, count, span)?,
+                    _ => parser.store_default_initializer(element, element_ty, span)?,
                 }
             }
             Ok(())
