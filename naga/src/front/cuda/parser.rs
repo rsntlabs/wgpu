@@ -12,6 +12,7 @@ mod conversions;
 mod cooperative_groups;
 mod declarations;
 mod dim3;
+mod dynamic_shared;
 mod expressions;
 mod float_helpers;
 mod function_declarations;
@@ -39,6 +40,7 @@ mod updates;
 use crate::proc::TypeResolution;
 use context::{FunctionContext, FunctionKind};
 use cooperative_groups::{Namespace, ThreadBlockValue};
+use dynamic_shared::{DynamicShared, DynamicSharedDeclaration};
 use function_declarations::{FunctionCall, FunctionDeclaration, IntrinsicDeclaration};
 use parameter_calls::{
     CallArgument, CapturedArgument, DeferredCall, FunctionParameterState, ParameterMode,
@@ -79,6 +81,7 @@ enum Symbol {
     PendingAuto,
     PendingThreadBlock,
     Pointer(Handle<PointerValue>),
+    DynamicShared(DynamicSharedDeclaration),
     Reference {
         binding: Handle<BoundReference>,
         ty: TypeResolution,
@@ -270,6 +273,8 @@ pub(super) struct Parser<'a> {
     next_structure_id: u32,
     helper_builtin_globals: [Option<Handle<GlobalVariable>>; 3],
     workgroup_size: [u32; 3],
+    dynamic_shared_memory_size: u32,
+    dynamic_shared: DynamicShared<'a>,
 }
 
 impl<'a> Parser<'a> {
@@ -296,12 +301,16 @@ impl<'a> Parser<'a> {
             next_structure_id: 0,
             helper_builtin_globals: [None; 3],
             workgroup_size: options.workgroup_size,
+            dynamic_shared_memory_size: options.dynamic_shared_memory_size,
+            dynamic_shared: DynamicShared::default(),
         }
     }
 
     pub fn parse(mut self) -> Result<Module, ParseError> {
         while self.lexer.peek()?.0 != Token::End {
-            if self.lexer.peek()?.0 == Token::Word("struct") {
+            if self.starts_dynamic_shared_declaration()? {
+                self.dynamic_shared_declaration(true)?;
+            } else if self.lexer.peek()?.0 == Token::Word("struct") {
                 self.structure_declaration(true)?;
             } else if self.starts_alias()? {
                 self.alias_declaration(true)?;
@@ -317,6 +326,7 @@ impl<'a> Parser<'a> {
         self.finish_kernels()?;
         self.finish_functions()?;
         self.upgrade_atomic_storage()?;
+        self.check_dynamic_shared_views()?;
         self.check_workgroup_barriers()?;
         self.promote_scalar_locals()?;
         // Remove call results from source statements discarded after a jump.
@@ -569,6 +579,7 @@ impl<'a> Parser<'a> {
             Expression::GlobalVariable(global) => (self.module.global_variables[global].ty, false),
             _ => unreachable!(),
         };
+        let dynamic = matches!(self.function.ir.expressions[base], Expression::GlobalVariable(global) if self.is_dynamic_shared_global(global));
         let mut count = if is_pending {
             None
         } else {
@@ -583,8 +594,12 @@ impl<'a> Parser<'a> {
         let mut is_discardable = self.pointer_constant(base).is_discardable;
         loop {
             self.lexer.expect_span(Token::Paren('['))?;
-            let index = self.expression(0)?;
-            let index = self.rvalue(index)?;
+            let index = if dynamic {
+                self.dynamic_shared_index()?
+            } else {
+                let index = self.expression(0)?;
+                self.rvalue(index)?
+            };
             let scalar = self.require_scalar_type(&index.ty, index.span)?;
             if !matches!(scalar.kind, ScalarKind::Sint | ScalarKind::Uint) {
                 return Err(ParseError {
@@ -593,7 +608,11 @@ impl<'a> Parser<'a> {
                 });
             }
             let end = self.lexer.expect_span(Token::Paren(']'))?;
-            is_discardable = Self::constant_array_address(is_discardable, count, index.constant);
+            is_discardable = if dynamic {
+                is_discardable && index.constant.is_discardable
+            } else {
+                Self::constant_array_address(is_discardable, count, index.constant)
+            };
             base = self.append(
                 Expression::Access {
                     base,
@@ -980,6 +999,9 @@ impl<'a> Parser<'a> {
                     Some(Symbol::Namespace(namespace))
                 }
                 Some(&GlobalDeclaration::PendingAuto) => Some(Symbol::PendingAuto),
+                Some(&GlobalDeclaration::DynamicShared(declaration)) => {
+                    Some(Symbol::DynamicShared(declaration))
+                }
                 Some(&GlobalDeclaration::Constant {
                     handle,
                     scalar,

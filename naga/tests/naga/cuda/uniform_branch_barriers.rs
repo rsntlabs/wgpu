@@ -10,6 +10,7 @@ fn roundtrip(source: &str) {
         source,
         &Options {
             workgroup_size: WORKGROUP,
+            ..Options::default()
         },
     );
     #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
@@ -26,6 +27,7 @@ fn rejected(source: &str) {
         source,
         &Options {
             workgroup_size: WORKGROUP,
+            ..Options::default()
         },
     )
     .unwrap_err();
@@ -90,6 +92,7 @@ fn cuda_uniform_branch_barriers_accept_nested_switches_fallthrough_and_uniform_e
         FIXTURE,
         &Options {
             workgroup_size: WORKGROUP,
+            ..Options::default()
         },
     );
     let mut barriers = Vec::new();

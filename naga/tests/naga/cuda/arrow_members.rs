@@ -128,6 +128,7 @@ fn cuda_arrow_members_preserve_storage_workgroup_roots_and_bindings() {
         SHARED_SOURCE,
         &Options {
             workgroup_size: [4, 1, 1],
+            ..Options::default()
         },
     );
     assert_eq!(

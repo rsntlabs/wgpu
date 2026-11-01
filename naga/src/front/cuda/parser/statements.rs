@@ -6,8 +6,8 @@ use super::super::preprocess::UnrollPragma;
 
 pub(super) struct ArrayDeclaration {
     pub(super) ty: Handle<Type>,
-    element_ty: Handle<Type>,
-    count: Option<NonZeroU32>,
+    pub(super) element_ty: Handle<Type>,
+    pub(super) count: Option<NonZeroU32>,
 }
 
 impl<'a> Parser<'a> {
@@ -208,7 +208,7 @@ impl<'a> Parser<'a> {
         if self.starts_alias()?
             || matches!(
                 self.lexer.peek()?.0,
-                Token::Word("__shared__" | "struct" | "auto")
+                Token::Word("extern" | "__shared__" | "struct" | "auto")
             )
         {
             return Ok(true);
@@ -243,6 +243,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn local_declaration(&mut self) -> Result<(), ParseError> {
+        if self.starts_dynamic_shared_declaration()? {
+            return self.dynamic_shared_declaration(false);
+        }
         if self.lexer.peek()?.0 == Token::Word("struct") {
             return self.structure_declaration(false);
         }

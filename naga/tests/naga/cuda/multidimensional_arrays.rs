@@ -396,7 +396,6 @@ fn cuda_multidimensional_arrays_reject_incomplete_shapes_and_value_copies() {
         "__shared__ const int matrix[2][2];",
         "__shared__ int matrix[2][2]{};",
         "__shared__ int matrix[2][2] = {};",
-        "extern __shared__ int matrix[][2];",
     ] {
         rejected(&format!(
             "__global__ void kernel(int runtime) {{ {declaration} }}"

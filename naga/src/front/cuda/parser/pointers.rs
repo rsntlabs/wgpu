@@ -33,8 +33,8 @@ pub(super) enum PointerValueCategory {
 
 #[derive(Clone, Copy, Debug)]
 pub(super) struct ConstantPointerAddress {
-    pub(super) extent: u32,
-    pub(super) offset: i64,
+    pub(super) extent: Option<u32>,
+    pub(super) offset: Option<i64>,
 }
 
 #[derive(Clone, Debug)]
@@ -323,8 +323,16 @@ impl<'a> Parser<'a> {
         let (pointer, index) = if left_pointer {
             let pointer = self.borrowed_pointer(value)?;
             self.lexer.expect_span(Token::Paren('['))?;
-            let index = self.expression(0)?;
-            (pointer, self.integral_operand(index)?)
+            let index = if pointer
+                .constant_address
+                .is_some_and(|address| address.extent.is_none())
+            {
+                self.dynamic_shared_index()?
+            } else {
+                let index = self.expression(0)?;
+                self.integral_operand(index)?
+            };
+            (pointer, index)
         } else {
             let index = self.integral_operand(value)?;
             self.lexer.expect_span(Token::Paren('['))?;
@@ -358,8 +366,13 @@ impl<'a> Parser<'a> {
         }
         let pointer = if left_pointer {
             let pointer = self.borrowed_pointer(left)?;
+            let pure_offset = pointer
+                .constant_address
+                .is_some_and(|address| address.extent.is_none())
+                && self.dynamic_shared_index_is_pure(&right_body)?;
             self.append_block(right_body);
-            let offset = self.integral_operand(right)?;
+            let mut offset = self.integral_operand(right)?;
+            offset.constant.is_discardable |= pure_offset;
             self.offset_pointer(pointer, offset, operator == BinaryOperator::Subtract, span)?
         } else {
             let offset = self.integral_operand(left)?;
@@ -522,14 +535,15 @@ impl<'a> Parser<'a> {
         };
         let span = reference.span;
         let is_const = !reference.writable;
+        let dynamic = self.reference_is_dynamic_shared(&reference)?;
         let constant_address = if self.reference_has_static_address(&reference)? {
             match *reference.ty.inner_with(&self.module.types) {
                 TypeInner::Array {
                     size: ArraySize::Constant(extent),
                     ..
                 } => Some(ConstantPointerAddress {
-                    extent: extent.get(),
-                    offset: 0,
+                    extent: (!dynamic).then_some(extent.get()),
+                    offset: Some(0),
                 }),
                 _ => None,
             }
@@ -577,11 +591,12 @@ impl<'a> Parser<'a> {
         }
         let pointee = self.type_handle(&reference.ty, span);
         let is_const = !reference.writable;
+        let dynamic = self.reference_is_dynamic_shared(&reference)?;
         let constant_address =
             self.reference_has_static_address(&reference)?
                 .then_some(ConstantPointerAddress {
-                    extent: 1,
-                    offset: 0,
+                    extent: (!dynamic).then_some(1),
+                    offset: Some(0),
                 });
         let constant = ConstantValue {
             literal: None,
@@ -630,21 +645,27 @@ impl<'a> Parser<'a> {
         let mut pointer = self.pointer_rvalue(pointer)?;
         pointer.constant_address = pointer.constant_address.and_then(|address| {
             let delta = match offset.constant.literal {
-                Some(Literal::I32(value)) => i64::from(value),
-                Some(Literal::U32(value)) => i64::from(value),
-                _ => return None,
+                Some(Literal::I32(value)) => Some(i64::from(value)),
+                Some(Literal::U32(value)) => Some(i64::from(value)),
+                _ => None,
             };
-            let position = if subtract {
-                address.offset.checked_sub(delta)
-            } else {
-                address.offset.checked_add(delta)
-            }?;
-            (position >= 0 && position <= i64::from(address.extent)).then_some(
-                ConstantPointerAddress {
-                    offset: position,
-                    ..address
-                },
-            )
+            let position = address.offset.zip(delta).and_then(|(position, delta)| {
+                if subtract {
+                    position.checked_sub(delta)
+                } else {
+                    position.checked_add(delta)
+                }
+            });
+            if let Some(extent) = address.extent {
+                if !position.is_some_and(|position| position >= 0 && position <= i64::from(extent))
+                {
+                    return None;
+                }
+            }
+            Some(ConstantPointerAddress {
+                offset: position,
+                ..address
+            })
         });
         let captured = self.freeze_reference_index(offset.handle, offset.span)?;
         let pointee = self.function.pointers.expressions[pointer.expression].pointee;
@@ -683,9 +704,13 @@ impl<'a> Parser<'a> {
         let constant = ConstantValue {
             literal: None,
             is_discardable: pointer.constant.is_discardable
-                && pointer
-                    .constant_address
-                    .is_some_and(|address| address.offset < i64::from(address.extent)),
+                && pointer.constant_address.is_some_and(|address| {
+                    address.extent.is_none_or(|extent| {
+                        address
+                            .offset
+                            .is_some_and(|offset| offset < i64::from(extent))
+                    })
+                }),
         };
         let access = self.function.pointers.accesses.append(
             PointerAccess {
@@ -712,9 +737,13 @@ impl<'a> Parser<'a> {
         let pointee = self.function.pointers.expressions[pointer.expression].pointee;
         let span = pointer.span;
         let discardable = pointer.constant.is_discardable
-            && pointer
-                .constant_address
-                .is_some_and(|address| address.offset < i64::from(address.extent));
+            && pointer.constant_address.is_some_and(|address| {
+                address.extent.is_none_or(|extent| {
+                    address
+                        .offset
+                        .is_some_and(|offset| offset < i64::from(extent))
+                })
+            });
         let mut reference =
             self.retain_pointer_access(pointer, Vec::new(), TypeResolution::Handle(pointee), span)?;
         reference.constant.is_discardable = discardable;

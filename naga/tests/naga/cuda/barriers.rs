@@ -7,6 +7,7 @@ fn validate(source: &str) -> naga::Module {
         source,
         &Options {
             workgroup_size: [64, 1, 1],
+            ..Options::default()
         },
     )
     .0

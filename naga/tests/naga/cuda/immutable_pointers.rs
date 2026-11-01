@@ -184,6 +184,7 @@ fn cuda_immutable_particles_resources_need_no_pointer_bookkeeping() {
         include_str!("../../in/cuda/particles.cu"),
         &naga::front::cuda::Options {
             workgroup_size: [64, 1, 1],
+            ..naga::front::cuda::Options::default()
         },
     );
     assert_particles_resource_abi(&module);

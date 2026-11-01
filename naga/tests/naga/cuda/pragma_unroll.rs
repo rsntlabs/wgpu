@@ -36,6 +36,7 @@ fn cuda_pragma_unroll_preserves_loop_values_launch_and_resource_bindings() {
         FIXTURE,
         &Options {
             workgroup_size: [4, 1, 1],
+            ..Options::default()
         },
     );
     assert_eq!(module.entry_points[0].name, "loops");

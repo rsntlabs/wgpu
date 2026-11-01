@@ -150,7 +150,7 @@ impl ExpansionBudget {
         Ok(())
     }
 
-    pub(super) fn inventory_module(
+    pub(in super::super) fn inventory_module(
         &mut self,
         module: &Module,
         span: Span,

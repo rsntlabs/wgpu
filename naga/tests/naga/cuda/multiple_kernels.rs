@@ -6,7 +6,13 @@ const FIXTURE: &str = include_str!("../../in/cuda/multiple-kernels.cu");
 const WORKGROUP: [u32; 3] = [4, 1, 1];
 
 fn roundtrip(source: &str, workgroup_size: [u32; 3]) -> (naga::Module, naga::valid::ModuleInfo) {
-    let (module, info) = validate_with_options(source, &Options { workgroup_size });
+    let (module, info) = validate_with_options(
+        source,
+        &Options {
+            workgroup_size,
+            ..Options::default()
+        },
+    );
     #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
     {
         let (_, reparsed) = super::helpers::wgsl_roundtrip(
@@ -38,6 +44,7 @@ fn rejected(source: &str) {
         source,
         &Options {
             workgroup_size: WORKGROUP,
+            ..Options::default()
         },
     )
     .unwrap_err();

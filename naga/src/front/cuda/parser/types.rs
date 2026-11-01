@@ -46,6 +46,7 @@ pub(super) enum GlobalDeclaration {
     Type(QualifiedType),
     Functions(Vec<Handle<Function>>),
     Kernel,
+    DynamicShared(DynamicSharedDeclaration),
     Constant {
         handle: Option<Handle<crate::Constant>>,
         scalar: Scalar,
@@ -458,6 +459,9 @@ impl<'a> Parser<'a> {
         global: bool,
     ) -> Result<(), ParseError> {
         self.check_name(name, span)?;
+        if global {
+            self.check_dynamic_shared_linkage(name, span)?;
+        }
         let compatible = if global {
             match self
                 .global_declarations

@@ -20,6 +20,7 @@ mod declarations;
 mod device_functions;
 mod dim3;
 mod dual_execution;
+mod dynamic_shared;
 mod fabs;
 mod float_math;
 mod float_separators;
@@ -94,6 +95,7 @@ use helpers::validate_with_options as validate;
 fn cuda_vector_add_has_compute_entry_and_storage_bindings() {
     let options = Options {
         workgroup_size: [64, 1, 1],
+        ..Options::default()
     };
     let (module, _) = validate(VECTOR_ADD, &options);
     assert_eq!(module.entry_points.len(), 1);
@@ -123,7 +125,7 @@ fn cuda_vector_add_has_compute_entry_and_storage_bindings() {
 fn cuda_grid_builtins_map_to_compute_inputs() {
     let (module, _) = validate(
         "__global__ void ids(unsigned int *out) { out[threadIdx.z] = blockIdx.y + gridDim.z + blockDim.y; }",
-        &Options { workgroup_size: [4, 8, 2] },
+        &Options { workgroup_size: [4, 8, 2], ..Options::default() },
     );
     let arguments = &module.entry_points[0].function.arguments;
     for builtin in [
@@ -212,7 +214,14 @@ fn cuda_error_span_points_into_original_source() {
 #[test]
 fn cuda_rejects_zero_workgroup_dimension() {
     for workgroup_size in [[0, 1, 1], [1, 0, 1], [1, 1, 0]] {
-        assert!(parse_str("__global__ void empty() {}", &Options { workgroup_size }).is_err());
+        assert!(parse_str(
+            "__global__ void empty() {}",
+            &Options {
+                workgroup_size,
+                ..Options::default()
+            }
+        )
+        .is_err());
     }
 }
 

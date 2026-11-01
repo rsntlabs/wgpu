@@ -341,7 +341,14 @@ impl Parser<'_> {
                     message: format!("unknown variable `{name}`"),
                     span: token.1,
                 })?;
+                let symbol = match symbol {
+                    Symbol::DynamicShared(declaration) => {
+                        self.dynamic_shared_symbol(name, declaration, token.1)?
+                    }
+                    symbol => symbol,
+                };
                 let (pointer, ty, writable, span, constant) = match symbol {
+                    Symbol::DynamicShared(_) => unreachable!(),
                     Symbol::Namespace(_) => {
                         return Err(ParseError {
                             message: String::from("namespace cannot be used as a value"),

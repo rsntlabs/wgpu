@@ -378,7 +378,7 @@ fn cuda_switch_barriers_accept_uniform_control_and_preserve_return_rules() {
     ] {
         let (module, info) = super::helpers::validate_with_options(
             &kernel(body),
-            &Options { workgroup_size: [4, 1, 1] },
+            &Options { workgroup_size: [4, 1, 1], ..Options::default() },
         );
         #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
         super::helpers::wgsl_roundtrip(&module, &info, naga::back::wgsl::WriterFlags::EXPLICIT_TYPES);

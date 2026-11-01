@@ -128,6 +128,7 @@ __global__ void kernel(const Record *input, Record *output, int *out) {
 "#,
         &Options {
             workgroup_size: [1, 1, 1],
+            ..Options::default()
         },
     );
     let input = module

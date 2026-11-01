@@ -5,7 +5,13 @@ use super::helpers::{source_binding_initializer, validate_with_options};
 const FIXTURE: &str = include_str!("../../in/cuda/thread-block.cu");
 
 fn roundtrip(source: &str, workgroup_size: [u32; 3]) {
-    let (module, info) = validate_with_options(source, &Options { workgroup_size });
+    let (module, info) = validate_with_options(
+        source,
+        &Options {
+            workgroup_size,
+            ..Options::default()
+        },
+    );
     #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
     super::helpers::wgsl_roundtrip(
         &module,
@@ -149,6 +155,7 @@ fn cuda_thread_block_free_and_member_sync_keep_memory_scope_and_barrier_safety()
         FIXTURE,
         &Options {
             workgroup_size: [4, 1, 1],
+            ..Options::default()
         },
     );
     let function = &module.entry_points[0].function;
@@ -273,6 +280,7 @@ fn cuda_thread_block_scalar_queries_return_runtime_unsigned_values_in_three_dime
         source,
         &Options {
             workgroup_size: [4, 3, 2],
+            ..Options::default()
         },
     );
     let function = &module.entry_points[0].function;

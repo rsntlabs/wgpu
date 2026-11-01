@@ -245,7 +245,6 @@ fn cuda_shared_storage_rejects_unsupported_declarations_and_uses() {
         "__shared__ int values[2] = {1, 2};",
         "__shared__ int values[2][];",
         "__shared__ int values[];",
-        "extern __shared__ int values[];",
         "__shared__ int values[-1];",
         "__shared__ int values[+];",
         "__shared__ int values[1 +];",

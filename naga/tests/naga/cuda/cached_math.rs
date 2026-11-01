@@ -231,6 +231,7 @@ fn cuda_cached_math_keeps_the_exact_particle_wave_compact_and_source_named() {
         PARTICLES,
         &Options {
             workgroup_size: [64, 1, 1],
+            ..Options::default()
         },
     );
     let (wave_handle, wave) = module

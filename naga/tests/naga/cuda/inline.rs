@@ -184,6 +184,7 @@ fn cuda_inline_headers_preserve_kernel_resources_workgroup_size_and_helper_bindi
         source,
         &Options {
             workgroup_size: [4, 2, 1],
+            ..Options::default()
         },
     )
     .unwrap();
