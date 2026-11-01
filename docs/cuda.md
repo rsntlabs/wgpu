@@ -20,6 +20,11 @@ Convert this kernel with:
 cargo run -p naga-cli -- input.cu output.wgsl --cuda-workgroup-size 64,1,1
 ```
 
+For a source with several kernels, add `--entry-point add` to emit only that
+kernel. Add `--compact` to require removal of declarations unreachable from it.
+WGSL output without an entry-point selection preserves all kernels. Selection
+does not skip parsing or validation of the other CUDA kernel bodies.
+
 The library entry point is `naga::front::cuda::parse_str(source, &options)`, where
 `naga::front::cuda::Options::workgroup_size` supplies the CUDA launch block shape.
 The default is `[1, 1, 1]`; each dimension must be in `1..=16384`, and their

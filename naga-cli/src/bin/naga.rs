@@ -42,6 +42,8 @@ struct Args {
 
     /// the shader entrypoint.
     ///
+    /// Shader output is selected; raw module dumps retain all entry points.
+    ///
     /// When specified along with the `--compact` option, anything not reachable
     /// from the selected entry point will not appear in the output module.
     ///
@@ -475,14 +477,6 @@ struct Parameters<'a> {
     shader_stage: Option<ShaderStage>,
     defines: FastHashMap<String, String>,
     capabilities: naga::valid::Capabilities,
-
-    /// We use this copy of `args.compact` to know whether we should pass the
-    /// entrypoint to `process_overrides`, which will result in removal from
-    /// the module of anything not reachable from that entry point.
-    ///
-    /// When we don't know an entrypoint, we still compact the module as a whole
-    /// if `args.compact` is set, but we don't use this copy for anything.
-    compact: bool,
 }
 
 trait PrettyResult {
@@ -632,7 +626,6 @@ fn run() -> anyhow::Result<()> {
         !params.keep_coordinate_space,
     );
 
-    params.compact = args.compact;
     params.capabilities = args.capabilities.0;
 
     params.spv_out.mesh_shader_primitive_indices_clamp = args.validate_mesh_output;
@@ -910,15 +903,16 @@ fn write_output(
     params: &Parameters,
     output_path: &str,
 ) -> anyhow::Result<()> {
-    let entry_point = params.entry_point.as_deref().map(|name| {
-        let ep_index = module
+    let entry_point = if let Some(name) = params.entry_point.as_deref() {
+        let entry = module
             .entry_points
             .iter()
-            .position(|ep| ep.name == *name)
-            .expect("Unable to find the entry point");
-
-        (module.entry_points[ep_index].stage, name)
-    });
+            .find(|entry| entry.name == name)
+            .ok_or_else(|| anyhow!("Unable to find the entry point `{name}`"))?;
+        Some((entry.stage, name))
+    } else {
+        None
+    };
 
     match Path::new(&output_path)
         .extension()
@@ -954,7 +948,7 @@ fn write_output(
             let (module, info) = naga::back::pipeline_constants::process_overrides(
                 module,
                 info,
-                entry_point.filter(|_| params.compact),
+                entry_point,
                 &params.overrides,
             )
             .unwrap_pretty();
@@ -980,7 +974,7 @@ fn write_output(
             let (module, info) = naga::back::pipeline_constants::process_overrides(
                 module,
                 info,
-                entry_point.filter(|_| params.compact),
+                entry_point,
                 &params.overrides,
             )
             .unwrap_pretty();
@@ -1034,7 +1028,7 @@ fn write_output(
             let (module, info) = naga::back::pipeline_constants::process_overrides(
                 module,
                 info,
-                entry_point.filter(|_| params.compact),
+                entry_point,
                 &params.overrides,
             )
             .unwrap_pretty();
@@ -1069,7 +1063,7 @@ fn write_output(
             let (module, info) = naga::back::pipeline_constants::process_overrides(
                 module,
                 info,
-                entry_point.filter(|_| params.compact),
+                entry_point,
                 &params.overrides,
             )
             .unwrap_pretty();
@@ -1082,16 +1076,39 @@ fn write_output(
         }
         "wgsl" => {
             use naga::back::wgsl;
+            use std::borrow::Cow;
 
-            let wgsl = wgsl::write_string(
-                module,
-                info.as_ref().ok_or(CliError(
-                    "Generating wgsl output requires validation to \
-                     succeed, and it failed in a previous step",
-                ))?,
-                wgsl::WriterFlags::empty(),
-            )
-            .unwrap_pretty();
+            let info = info.as_ref().ok_or(CliError(
+                "Generating wgsl output requires validation to \
+                 succeed, and it failed in a previous step",
+            ))?;
+            let (module, info) = if entry_point.is_some() {
+                let (module, info) = naga::back::pipeline_constants::process_overrides(
+                    module,
+                    info,
+                    entry_point,
+                    &params.overrides,
+                )
+                .unwrap_pretty();
+                if module.overrides.is_empty() {
+                    (module, info)
+                } else {
+                    let mut module = module.into_owned();
+                    naga::compact::compact(&mut module, KeepUnused::No);
+                    let info = naga::valid::Validator::new(
+                        naga::valid::ValidationFlags::all(),
+                        naga::valid::Capabilities::all(),
+                    )
+                    .validate_resolved_overrides(&module)
+                    .unwrap_pretty();
+                    (Cow::Owned(module), Cow::Owned(info))
+                }
+            } else {
+                (Cow::Borrowed(module), Cow::Borrowed(info))
+            };
+
+            let wgsl =
+                wgsl::write_string(&module, &info, wgsl::WriterFlags::empty()).unwrap_pretty();
             fs::write(output_path, wgsl)?;
         }
         other => {
