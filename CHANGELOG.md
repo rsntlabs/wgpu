@@ -180,6 +180,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 #### Naga
 
 - Preserve unused reads from volatile storage buffers during compaction and shader generation.
+- Treat volatile storage loads as nonuniform when validating resource indices and generating SPIR-V.
 - Add an experimental `cuda-in` frontend for a restricted subset of CUDA compute kernels, with `.cu` input support in `naga-cli`.
 - Support multiple CUDA kernels per module with independent parameter bindings and a shared workgroup-size option.
 - Honor CLI entry-point selection in WGSL, HLSL, and Metal output and resolve overrides consistently for selected shader entries.
