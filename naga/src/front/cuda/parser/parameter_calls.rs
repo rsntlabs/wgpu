@@ -128,6 +128,16 @@ impl CallArgument for CapturedArgument {
 impl Parser<'_> {
     pub(super) fn activate_parameter_expansion(&mut self, span: Span) -> Result<(), ParseError> {
         if self.parameter_expansion_budget.activate() {
+            self.parameter_expansion_budget
+                .charge_slice::<Kernel<'_>>(self.kernels.len(), span)?;
+            self.parameter_expansion_budget
+                .charge_slice::<EntryPoint>(self.kernels.len(), span)?;
+            self.parameter_expansion_budget
+                .charge_work(self.kernels.len(), span)?;
+            for entry in &self.module.entry_points {
+                self.parameter_expansion_budget
+                    .charge_bytes(entry.name.len(), span)?;
+            }
             for declaration in self.function_declarations.values() {
                 self.parameter_expansion_budget
                     .charge_slice::<SourceParameter>(declaration.parameters.len(), span)?;

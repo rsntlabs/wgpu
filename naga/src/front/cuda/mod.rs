@@ -7,10 +7,10 @@ mod number;
 mod parser;
 mod preprocess;
 
-/// Options supplied by the CUDA kernel's launch configuration.
+/// Options used to specialize CUDA kernel source.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Options {
-    /// CUDA launch block dimensions, used for both the entry point and `blockDim`.
+    /// CUDA launch block dimensions, used for every entry point and `blockDim`.
     pub workgroup_size: [u32; 3],
 }
 
@@ -30,7 +30,7 @@ pub struct ParseError {
     pub span: crate::Span,
 }
 
-/// Parse a CUDA kernel into Naga's intermediate representation.
+/// Parse CUDA kernel source into Naga's intermediate representation.
 pub fn parse_str(source: &str, options: &Options) -> Result<crate::Module, ParseError> {
     // Match the validator's maximum workgroup dimension.
     const MAX_WORKGROUP_DIMENSION: u32 = 0x4000;

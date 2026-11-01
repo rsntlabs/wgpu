@@ -392,14 +392,24 @@ fn cuda_inline_does_not_enable_other_function_directives_or_signatures() {
 }
 
 #[test]
-fn cuda_inline_preserves_the_required_sole_kernel_and_complete_source_checks() {
+fn cuda_inline_preserves_required_kernels_and_complete_source_checks() {
     for source in [
         "__device__ inline int helper() { return 1; }",
-        "inline __global__ void first() {} __global__ inline void second() {}",
+        "inline __global__ void repeated() {} __global__ inline void repeated() {}",
         "inline __global__ void kernel() {} /* 漢 */ @",
     ] {
         rejected(source);
     }
+    let (module, _) =
+        validate("inline __global__ void first() {} __global__ inline void second() {}");
+    assert_eq!(
+        module
+            .entry_points
+            .iter()
+            .map(|entry| entry.name.as_str())
+            .collect::<Vec<_>>(),
+        ["first", "second"]
+    );
     validate("__global__ void kernel() {} __device__ inline int later() { return 1; }");
 }
 

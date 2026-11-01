@@ -281,11 +281,15 @@ impl Parser<'_> {
                 self.parameter_states.insert(handle, state);
             }
         }
-        if let Some(state) = self.kernel_parameter_state.take() {
-            let function = core::mem::take(&mut self.module.entry_points[0].function);
+        for index in 0..self.kernels.len() {
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            let Some(state) = self.kernels[index].parameter_state.take() else {
+                continue;
+            };
+            let function = core::mem::take(&mut self.module.entry_points[index].function);
             self.validate_pointer_state(&state, &function, span)?;
-            self.module.entry_points[0].function = function;
-            self.kernel_parameter_state = Some(state);
+            self.module.entry_points[index].function = function;
+            self.kernels[index].parameter_state = Some(state);
         }
         self.parameter_expansion_budget
             .inventory_module(&self.module, span)?;

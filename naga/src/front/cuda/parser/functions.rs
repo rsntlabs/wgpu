@@ -493,11 +493,8 @@ impl<'a> Parser<'a> {
     }
 
     fn kernel(&mut self, header: FunctionHeader<'a>) -> Result<(), ParseError> {
-        if self.kernel_context.is_some() {
-            return Err(ParseError {
-                message: String::from("only one CUDA kernel is supported"),
-                span: header.name_span,
-            });
+        if !self.kernels.is_empty() {
+            self.activate_parameter_expansion(header.name_span)?;
         }
         if !matches!(header.result, ReturnType::Void) {
             return Err(ParseError {
@@ -514,6 +511,14 @@ impl<'a> Parser<'a> {
             &mut self.function,
             FunctionContext::new(FunctionKind::Kernel),
         );
+        self.parameter_expansion_budget
+            .charge_slice::<Kernel<'_>>(1, header.name_span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<EntryPoint>(1, header.name_span)?;
+        self.parameter_expansion_budget
+            .charge_bytes(header.name.len(), header.name_span)?;
+        self.parameter_expansion_budget
+            .charge_work(1, header.name_span)?;
         self.module.entry_points.push(EntryPoint {
             name: String::from(header.name),
             stage: ShaderStage::Compute,
@@ -525,7 +530,11 @@ impl<'a> Parser<'a> {
             task_payload: None,
             incoming_ray_payload: None,
         });
-        self.kernel_context = Some(function);
+        self.kernels.push(Kernel {
+            context: Some(function),
+            parameter_state: None,
+            calls: Vec::new(),
+        });
         self.global_declarations
             .insert(header.name, GlobalDeclaration::Kernel);
         Ok(())

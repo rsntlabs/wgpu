@@ -18,7 +18,7 @@ fn branch_cache_rematerializes_values_and_deferred_references() {
         parser.function_definition().unwrap(),
         FunctionKind::Kernel
     ));
-    let mut context = parser.kernel_context.take().unwrap();
+    let mut context = parser.kernels[0].context.take().unwrap();
     let state = context.take_parameter_state();
     let function = context.ir;
     parser
