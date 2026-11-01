@@ -22,6 +22,7 @@ mod conditionals;
 mod constant_expressions;
 mod control_flow;
 mod declarations;
+mod device_helper_barriers;
 mod dim3;
 mod dual_execution;
 mod dynamic_shared;
@@ -100,6 +101,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_CONSTANT_EXPRESSIONS,
         CUDA_CONTROL_FLOW,
         CUDA_DECLARATIONS,
+        CUDA_DEVICE_HELPER_BARRIERS,
         CUDA_DIM3,
         CUDA_DUAL_EXECUTION,
         CUDA_DYNAMIC_SHARED,
@@ -410,6 +412,9 @@ static CUDA_CONSTANT_EXPRESSIONS: GpuTestConfiguration = configuration(constant_
 static CUDA_CONTROL_FLOW: GpuTestConfiguration = configuration(control_flow::cases);
 #[apply(gpu_test!)]
 static CUDA_DECLARATIONS: GpuTestConfiguration = configuration(declarations::cases);
+#[apply(gpu_test!)]
+static CUDA_DEVICE_HELPER_BARRIERS: GpuTestConfiguration =
+    configuration(device_helper_barriers::cases);
 #[apply(gpu_test!)]
 static CUDA_DIM3: GpuTestConfiguration = configuration(dim3::cases);
 #[apply(gpu_test!)]

@@ -398,7 +398,7 @@ fn cuda_switch_barriers_accept_uniform_control_and_preserve_return_rules() {
     validate(&kernel(
         "switch (selector) { default: return; } __syncthreads();",
     ));
-    rejected("__device__ void helper(int selector) { switch (selector) { default: __syncthreads(); } } __global__ void kernel() {}");
+    validate("__device__ void helper(int selector) { switch (selector) { default: __syncthreads(); } } __global__ void kernel() {}");
 }
 
 #[test]

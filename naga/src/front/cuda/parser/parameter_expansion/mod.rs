@@ -5,6 +5,7 @@ use super::*;
 mod atomic_validation;
 mod atomics;
 mod budget;
+mod builtins;
 mod compare_exchange;
 mod expressions;
 mod promotions;
@@ -32,6 +33,7 @@ struct Invocation<'a> {
     source: &'a Function,
     source_state: Option<&'a FunctionParameterState>,
     promotions: Option<&'a ScalarPromotions>,
+    builtins: Option<builtins::BuiltinArguments<'a>>,
     arguments: Vec<MappedExpression>,
     expressions: Vec<Option<CachedExpression>>,
     mapped_handles: Vec<Handle<Expression>>,
@@ -206,6 +208,18 @@ impl Parser<'_> {
         promotions: Option<&ScalarPromotions>,
         span: Span,
     ) -> Result<(), ParseError> {
+        self.clone_function(source, state, parameters, promotions, None, span)
+    }
+
+    fn clone_function(
+        &mut self,
+        source: &Function,
+        state: FunctionParameterState,
+        parameters: Vec<SourceParameter>,
+        promotions: Option<&ScalarPromotions>,
+        builtin_remapping: Option<builtins::BuiltinRemapping<'_>>,
+        span: Span,
+    ) -> Result<(), ParseError> {
         self.parameter_expansion_budget
             .charge_bytes(source.name.as_ref().map_or(0, String::len), span)?;
         self.parameter_expansion_budget
@@ -242,6 +256,9 @@ impl Parser<'_> {
             };
             arguments.push(mapped);
         }
+        let builtins = builtin_remapping
+            .map(|remapping| self.prepare_builtin_arguments(source, &arguments, remapping, span))
+            .transpose()?;
         let locals = self.clone_invocation_locals(source, Some(&state), promotions, span)?;
         self.parameter_expansion_budget
             .charge_slice::<Option<CachedExpression>>(source.expressions.len(), span)?;
@@ -249,6 +266,7 @@ impl Parser<'_> {
             source,
             source_state: Some(&state),
             promotions,
+            builtins,
             arguments,
             expressions: alloc::vec![None; source.expressions.len()],
             mapped_handles: Vec::new(),
@@ -412,6 +430,7 @@ impl Parser<'_> {
             source: &source,
             source_state: source_state.as_ref(),
             promotions: None,
+            builtins: None,
             arguments,
             expressions: alloc::vec![None; source.expressions.len()],
             mapped_handles: Vec::new(),

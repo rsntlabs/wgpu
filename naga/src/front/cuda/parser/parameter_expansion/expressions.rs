@@ -214,6 +214,15 @@ impl Parser<'_> {
                 }
             }
             Expression::Load { pointer } => {
+                if let Some(value) = self.invocation_builtin_load(invocation, pointer, span)? {
+                    let mapped = self.cache_invocation_expression(
+                        invocation,
+                        handle,
+                        MappedExpression::Value(value),
+                    )?;
+                    self.name_invocation_expression(source, handle, value, span)?;
+                    return Ok(mapped);
+                }
                 let initializer = invocation.promotions.and_then(|promotions| {
                     if let Expression::LocalVariable(local) = source.expressions[pointer] {
                         promotions.initializer(local)

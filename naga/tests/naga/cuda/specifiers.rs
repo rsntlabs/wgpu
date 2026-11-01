@@ -365,12 +365,12 @@ fn cuda_function_specifiers_preserve_unsupported_signatures_and_bodies() {
         "__device__ __forceinline__ int helper(int value) { return helper(value); } __global__ void kernel() {}",
         "static __device__ int helper(int value) { return value; } static __device__ int helper(int other) { return other; } __global__ void kernel() {}",
         "static __device__ void helper() { __shared__ int value; } __global__ void kernel() {}",
-        "static __device__ void helper() { __syncthreads(); } __global__ void kernel() {}",
         "static __device__ int helper() { return threadIdx.w; } __global__ void kernel() {}",
     ] {
         rejected(source);
     }
     validate("static __device__ int helper(int value); __global__ void kernel() {}");
+    validate("static __device__ void helper() { __syncthreads(); } __global__ void kernel() {}");
     rejected_at(
         "/* λ */ static __host__ int helper() { return 1; } __global__ void kernel() {}",
         "__host__",

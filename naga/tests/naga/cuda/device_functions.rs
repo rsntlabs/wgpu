@@ -404,7 +404,6 @@ fn cuda_device_functions_reject_unsupported_signatures_and_captures() {
         "__device__ int helper(int value = 1) { return value; } __global__ void kernel() {}",
         "__device__ int helper(int value, ...) { return value; } __global__ void kernel() {}",
         "__device__ int helper() { __shared__ int value; return 1; } __global__ void kernel() {}",
-        "__device__ int helper() { __syncthreads(); return 1; } __global__ void kernel() {}",
         "__device__ int helper() { return output[0]; } __global__ void kernel(int *output) {}",
     ] {
         assert_rejected(source);
@@ -424,7 +423,6 @@ fn cuda_device_helpers_preserve_source_checks_in_unreachable_code() {
     for body in [
         "return value; missing(value);",
         "return value; { missing(value); }",
-        "return value; __syncthreads();",
         "return value; __shared__ int storage;",
         "return value; const int fixed = 1; fixed = 2;",
     ] {
@@ -432,6 +430,7 @@ fn cuda_device_helpers_preserve_source_checks_in_unreachable_code() {
             "__device__ int helper(int value) {{ {body} }} __global__ void kernel() {{}}"
         ));
     }
+    validate("__device__ int helper(int value) { return value; __syncthreads(); } __global__ void kernel() {}");
 }
 
 #[test]

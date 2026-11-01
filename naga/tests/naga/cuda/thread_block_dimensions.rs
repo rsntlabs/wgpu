@@ -279,9 +279,8 @@ fn cuda_thread_block_dimension_queries_preserve_existing_barrier_restrictions() 
             ));
             assert!(error.message.contains("straight-line"));
         }
-        let error = rejected(&format!("namespace cg = cooperative_groups;
+        roundtrip(&format!("namespace cg = cooperative_groups;
             __device__ dim3 helper() {{ auto group = cg::this_thread_block(); {sync} return group.thread_index(); }}
             __global__ void kernel(dim3 *output) {{ output[0] = helper(); }}"));
-        assert!(error.message.contains("helper"));
     }
 }

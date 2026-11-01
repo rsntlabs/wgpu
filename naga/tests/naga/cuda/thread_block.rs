@@ -224,7 +224,7 @@ fn cuda_thread_block_free_and_member_sync_keep_memory_scope_and_barrier_safety()
         let source = format!("namespace cg = cooperative_groups; using Block = cg::thread_block;
             __device__ void helper() {{ auto group = cg::this_thread_block(); unsigned counter = 0u; {sync} }}
             __global__ void kernel() {{ helper(); }}");
-        assert!(rejected(&source).message.contains("helper"));
+        roundtrip(&source, [4, 1, 1]);
     }
     roundtrip(
         "namespace cg = cooperative_groups;

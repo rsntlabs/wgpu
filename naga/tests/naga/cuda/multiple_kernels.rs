@@ -329,7 +329,8 @@ fn cuda_multiple_kernels_validate_unsafe_alternate_entries_and_complete_source()
         }
     }
     rejected("__device__ int missing(); __global__ void first() {} __global__ void second(int *output) { output[0] = missing(); }");
-    rejected("__device__ void helper() { __syncthreads(); } __global__ void first() {} __global__ void second() { helper(); }");
+    roundtrip("__device__ void helper() { __syncthreads(); } __global__ void first() {} __global__ void second() { helper(); }", WORKGROUP);
+    rejected("__device__ void helper() { __syncthreads(); } __global__ void first() {} __global__ void second() { if (threadIdx.x) helper(); }");
     rejected("__global__ void first(int *output) { output[0] = 1; } __global__ void second(const int *output) { output[0] = 2; }");
     rejected("__global__ void first() {} __global__ void second() {} /* 漢 */ @");
     roundtrip("__global__ void first() { for (unsigned iteration = 0u; iteration < 2u; ++iteration) __syncthreads(); } __global__ void second() { __syncthreads(); }", WORKGROUP);
