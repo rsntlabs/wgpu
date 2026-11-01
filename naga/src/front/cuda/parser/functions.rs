@@ -153,7 +153,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             "dim3",
             GlobalDeclaration::Type(QualifiedType {
                 ty: TypeSpecifier::Dim3,
-                is_const: false,
+                qualifiers: Qualifiers::NONE,
             }),
         )))
         .chain(
@@ -165,7 +165,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
                             name,
                             GlobalDeclaration::Type(QualifiedType {
                                 ty: TypeSpecifier::Vector { size, scalar },
-                                is_const: false,
+                                qualifiers: Qualifiers::NONE,
                             }),
                         ),
                         (constructor, GlobalDeclaration::Functions(Vec::new())),
@@ -842,24 +842,20 @@ impl<'a> Parser<'a> {
         let Some(name) = name else {
             return Ok(());
         };
-        if let ParameterMode::Pointer {
-            is_const: pointee_const,
-        } = mode
-        {
-            let pointer =
-                self.parameter_pointer(argument_index, parameter_ty, pointee_const, span)?;
+        if let ParameterMode::Pointer { qualifiers } = mode {
+            let pointer = self.parameter_pointer(argument_index, parameter_ty, qualifiers, span)?;
             let pointer = self.source_pointer_variable(name, pointer, is_const, span)?;
             let pointer = self.retain_pointer_symbol(pointer)?;
             return self.insert_symbol(name, Symbol::Pointer(pointer), span);
         }
         let value = self.append(Expression::FunctionArgument(argument_index), span)?;
-        if matches!(mode, ParameterMode::Reference { .. }) {
+        if let ParameterMode::Reference { qualifiers } = mode {
             self.insert_symbol(
                 name,
                 Symbol::Variable {
                     pointer: value,
                     ty: parameter_ty.clone(),
-                    writable: !is_const,
+                    qualifiers,
                 },
                 span,
             )
@@ -1527,7 +1523,9 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::WrappingAtomic(_)
                 if logical_index == 0 =>
             {
-                ParameterMode::Pointer { is_const: false }
+                ParameterMode::Pointer {
+                    qualifiers: Qualifiers::NONE,
+                }
             }
             _ => ParameterMode::Value,
         }
@@ -1555,22 +1553,24 @@ impl<'a> Parser<'a> {
         if let Some(scalar) = atomic_scalar {
             if logical_index == 0 {
                 let pointer = argument.pointer_type(&self.module)?;
-                return (!pointer.is_const
+                return (pointer.qualifiers == Qualifiers::NONE
                     && self.module.types[pointer.pointee].inner == TypeInner::Scalar(scalar))
                 .then_some(0);
             }
         }
         let target = target?;
-        if let ParameterMode::Pointer { is_const } = self.candidate_mode(candidate, logical_index) {
+        if let ParameterMode::Pointer { qualifiers } = self.candidate_mode(candidate, logical_index)
+        {
             let parameter_calls::SourcePointerType {
                 pointee,
-                is_const: source_const,
+                qualifiers: source_qualifiers,
             } = argument.pointer_type(&self.module)?;
             let TypeInner::Pointer { base, .. } = *target.inner_with(&self.module.types) else {
                 return None;
             };
-            return (base == pointee && (!source_const || is_const))
-                .then_some(u8::from(is_const && !source_const));
+            return (base == pointee)
+                .then(|| qualifiers.qualification_rank(source_qualifiers))
+                .flatten();
         }
         let rank = conversion_rank(
             argument.ty()?,
@@ -1579,9 +1579,14 @@ impl<'a> Parser<'a> {
             self.dimension_conversion(argument.ty()?, &target),
         )?;
         match self.candidate_mode(candidate, logical_index) {
-            ParameterMode::Value | ParameterMode::Reference { is_const: true } => Some(rank),
-            ParameterMode::Reference { is_const: false } => {
-                (rank == 0 && argument.reference_writable() == Some(true)).then_some(rank)
+            ParameterMode::Value => Some(rank),
+            ParameterMode::Reference { qualifiers } => {
+                if rank == 0 {
+                    if let Some(source) = argument.reference_qualifiers() {
+                        return qualifiers.contains(source).then_some(rank);
+                    }
+                }
+                (qualifiers.is_const && !qualifiers.is_volatile).then_some(rank)
             }
             ParameterMode::Pointer { .. } => unreachable!(),
         }
@@ -1606,20 +1611,16 @@ impl<'a> Parser<'a> {
             has_better_conversion |= left_rank < right_rank;
             if left_rank == right_rank {
                 if let (
-                    ParameterMode::Reference {
-                        is_const: left_const,
-                    },
-                    ParameterMode::Reference {
-                        is_const: right_const,
-                    },
+                    ParameterMode::Reference { qualifiers: left },
+                    ParameterMode::Reference { qualifiers: right },
                 ) = (
                     self.candidate_mode(left_candidate, index),
                     self.candidate_mode(right_candidate, index),
                 ) {
-                    if left_const && !right_const {
+                    if left != right && left.contains(right) {
                         return false;
                     }
-                    has_better_conversion |= !left_const && right_const;
+                    has_better_conversion |= left != right && right.contains(left);
                 }
             }
         }

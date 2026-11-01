@@ -24,6 +24,7 @@ mod operators;
 mod parameter_calls;
 mod parameter_expansion;
 mod pointers;
+mod qualifiers;
 mod reference_bindings;
 mod references;
 mod rounding;
@@ -47,6 +48,7 @@ use parameter_calls::{
     SourceParameter,
 };
 use pointers::{PointerAccess, PointerState, PointerValue};
+use qualifiers::Qualifiers;
 use reference_bindings::{BoundAddress, BoundReference};
 use scalar_promotions::ScalarPromotions;
 use types::scalar_resolution;
@@ -85,18 +87,18 @@ enum Symbol {
     Reference {
         binding: Handle<BoundReference>,
         ty: TypeResolution,
-        writable: bool,
+        qualifiers: Qualifiers,
         constant: ConstantValue,
     },
     Array {
         pointer: Handle<Expression>,
         ty: TypeResolution,
-        writable: bool,
+        qualifiers: Qualifiers,
     },
     Variable {
         pointer: Handle<Expression>,
         ty: TypeResolution,
-        writable: bool,
+        qualifiers: Qualifiers,
     },
     Constant {
         handle: Option<Handle<crate::Constant>>,
@@ -138,10 +140,17 @@ impl ConstantValue {
 #[derive(Clone, Debug)]
 struct ReferenceValue {
     reference: Reference,
-    writable: bool,
+    qualifiers: Qualifiers,
+    discard_read: bool,
     ty: TypeResolution,
     span: Span,
     constant: ConstantValue,
+}
+
+impl ReferenceValue {
+    fn writable(&self) -> bool {
+        !self.qualifiers.is_const
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -351,22 +360,23 @@ impl<'a> Parser<'a> {
         let type_span = self.lexer.peek()?.1;
         let QualifiedType {
             ty: specifier,
-            is_const,
+            qualifiers,
         } = self.parse_type()?;
         if matches!(specifier, TypeSpecifier::ThreadBlock) {
             return self.thread_block_parameter(type_span);
         }
-        let (ty, is_const, aliased_pointer_const) = match specifier {
+        let (ty, qualifiers, aliased_pointer_qualifiers) = match specifier {
             TypeSpecifier::Pointer {
                 pointee,
-                pointee_const,
+                pointee_qualifiers,
             } => (
                 TypeResolution::Handle(pointee),
-                pointee_const,
-                Some(is_const),
+                pointee_qualifiers,
+                Some(qualifiers),
             ),
-            _ => (self.lower_type(specifier, type_span)?, is_const, None),
+            _ => (self.lower_type(specifier, type_span)?, qualifiers, None),
         };
+        let is_const = qualifiers.is_const;
         if self.function.kind == FunctionKind::Kernel
             && self
                 .module
@@ -376,15 +386,17 @@ impl<'a> Parser<'a> {
         }
         let pointer_span = self.lexer.peek()?.1;
         let explicit_pointer = self.lexer.next_if(Token::Operation('*'))?;
-        if explicit_pointer && aliased_pointer_const.is_some() {
+        if explicit_pointer && aliased_pointer_qualifiers.is_some() {
             return self.fail("nested pointer parameters are unsupported");
         }
-        let is_pointer = explicit_pointer || aliased_pointer_const.is_some();
-        let pointer_const = match aliased_pointer_const {
-            Some(is_const) => is_const,
-            None => explicit_pointer && types::pointer_qualifiers(&mut self.lexer)?,
+        let is_pointer = explicit_pointer || aliased_pointer_qualifiers.is_some();
+        let pointer_qualifiers = match aliased_pointer_qualifiers {
+            Some(qualifiers) => qualifiers,
+            None if explicit_pointer => types::pointer_qualifiers(&mut self.lexer)?,
+            None => Qualifiers::NONE,
         };
-        if aliased_pointer_const.is_some() && self.lexer.peek()?.0 == Token::Paren('[') {
+        let pointer_const = pointer_qualifiers.is_const;
+        if aliased_pointer_qualifiers.is_some() && self.lexer.peek()?.0 == Token::Paren('[') {
             return self.fail("arrays of pointers are unsupported");
         }
         if self.function.kind == FunctionKind::Device && is_pointer {
@@ -416,7 +428,7 @@ impl<'a> Parser<'a> {
                 type_span,
                 &pointer_ty,
                 pointer_const,
-                ParameterMode::Pointer { is_const },
+                ParameterMode::Pointer { qualifiers },
             );
         }
         let mode = if self.lexer.next_if(Token::Operation('&'))? {
@@ -427,7 +439,7 @@ impl<'a> Parser<'a> {
                 });
             }
             self.activate_parameter_expansion(pointer_span)?;
-            ParameterMode::Reference { is_const }
+            ParameterMode::Reference { qualifiers }
         } else {
             ParameterMode::Value
         };
@@ -447,7 +459,7 @@ impl<'a> Parser<'a> {
             });
         }
         if self.function.kind == FunctionKind::Device && self.lexer.peek()?.0 == Token::Paren('[') {
-            return self.array_parameter(None, type_span, &ty, is_const, mode);
+            return self.array_parameter(None, type_span, &ty, qualifiers, mode);
         }
         if self.function.kind == FunctionKind::Device
             && matches!(
@@ -459,12 +471,12 @@ impl<'a> Parser<'a> {
         }
         let (name, span) = self.identifier()?;
         self.check_name(name, span)?;
-        if aliased_pointer_const.is_some() && self.lexer.peek()?.0 == Token::Paren('[') {
+        if aliased_pointer_qualifiers.is_some() && self.lexer.peek()?.0 == Token::Paren('[') {
             return self.fail("arrays of pointers are unsupported");
         }
         if self.function.kind == FunctionKind::Device {
             if self.lexer.peek()?.0 == Token::Paren('[') {
-                return self.array_parameter(Some(name), span, &ty, is_const, mode);
+                return self.array_parameter(Some(name), span, &ty, qualifiers, mode);
             }
             return self.device_parameter(Some(name), span, &ty, is_const, mode);
         }
@@ -494,8 +506,9 @@ impl<'a> Parser<'a> {
         );
         let pointer = self.append(Expression::GlobalVariable(global), span)?;
         let pointer = self.decay_array(ReferenceValue {
+            discard_read: true,
             reference: Reference::Pointer(pointer),
-            writable: !is_const,
+            qualifiers,
             ty: TypeResolution::Handle(array_ty),
             span,
             constant: ConstantValue::default(),
@@ -574,7 +587,10 @@ impl<'a> Parser<'a> {
             Symbol::Variable {
                 pointer,
                 ty: ty.clone(),
-                writable: !is_const,
+                qualifiers: Qualifiers {
+                    is_const,
+                    ..Qualifiers::NONE
+                },
             },
             span,
         )?;

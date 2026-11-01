@@ -347,7 +347,7 @@ impl Parser<'_> {
                     }
                     symbol => symbol,
                 };
-                let (pointer, ty, writable, span, constant) = match symbol {
+                let (pointer, ty, qualifiers, span, constant) = match symbol {
                     Symbol::DynamicShared(_) => unreachable!(),
                     Symbol::Namespace(_) => {
                         return Err(ParseError {
@@ -398,13 +398,14 @@ impl Parser<'_> {
                     Symbol::Reference {
                         binding,
                         ty,
-                        writable,
+                        qualifiers,
                         constant,
                     } => {
                         return Ok(ExpressionResult::Value(ExpressionValue::Reference(
                             ReferenceValue {
+                                discard_read: true,
                                 reference: Reference::Bound(binding),
-                                writable,
+                                qualifiers,
                                 ty,
                                 span: token.1,
                                 constant,
@@ -426,19 +427,19 @@ impl Parser<'_> {
                     Symbol::Array {
                         pointer,
                         ty,
-                        writable,
+                        qualifiers,
                     } => {
                         if self.function.address_operand
                             || self.lexer.peek()?.0 != Token::Paren('[')
                         {
-                            return self.borrowed_array_value(pointer, writable, token.1);
+                            return self.borrowed_array_value(pointer, qualifiers, token.1);
                         }
                         let (pointer, ty, is_discardable) =
                             self.array_element(pointer, ty, token.1)?;
                         (
                             pointer,
                             ty,
-                            writable,
+                            qualifiers,
                             self.function.ir.expressions.get_span(pointer),
                             ConstantValue {
                                 literal: None,
@@ -449,11 +450,11 @@ impl Parser<'_> {
                     Symbol::Variable {
                         pointer,
                         ty,
-                        writable,
+                        qualifiers,
                     } => (
                         pointer,
                         ty,
-                        writable,
+                        qualifiers,
                         token.1,
                         self.pointer_constant(pointer),
                     ),
@@ -464,8 +465,9 @@ impl Parser<'_> {
                     } => {
                         return Ok(ExpressionResult::Value(ExpressionValue::Reference(
                             ReferenceValue {
+                                discard_read: true,
                                 reference: Reference::Constant(handle),
-                                writable: false,
+                                qualifiers: Qualifiers::CONST,
                                 ty: scalar_resolution(scalar),
                                 span: token.1,
                                 constant: ConstantValue {
@@ -478,8 +480,9 @@ impl Parser<'_> {
                 };
                 Ok(ExpressionResult::Value(ExpressionValue::Reference(
                     ReferenceValue {
+                        discard_read: true,
                         reference: Reference::Pointer(pointer),
-                        writable,
+                        qualifiers,
                         ty,
                         span,
                         constant,

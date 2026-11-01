@@ -600,7 +600,8 @@ impl PointerRuntime {
             parser
                 .parameter_expansion_budget
                 .charge_work(family.projections.len() + projections.len() + 1, span)?;
-            if !access.pointer.is_const && !inventory::writable_root(parser, family.root) {
+            if !access.pointer.qualifiers.is_const && !inventory::writable_root(parser, family.root)
+            {
                 return Err(runtime_error(span));
             }
             let root = mapped_value(parser, mapper, family.root_expression, span)?;
@@ -643,8 +644,9 @@ impl PointerRuntime {
         let selector = (targets.len() > 1).then_some(selector);
         let binding = parser.retain_bound_reference(selector, targets, span)?;
         Ok(ReferenceValue {
+            discard_read: true,
             reference: Reference::Bound(binding),
-            writable: !access.pointer.is_const,
+            qualifiers: access.pointer.qualifiers,
             ty: access.ty.clone(),
             span,
             constant: ConstantValue::default(),

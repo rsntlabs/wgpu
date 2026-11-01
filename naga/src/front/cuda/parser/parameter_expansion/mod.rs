@@ -251,9 +251,9 @@ impl Parser<'_> {
         for (index, argument) in source.arguments.iter().enumerate() {
             let parameter = self.function.parameters.get(index).copied();
             let mapped = match parameter.map(SourceParameter::mode) {
-                Some(ParameterMode::Pointer { is_const }) => {
+                Some(ParameterMode::Pointer { qualifiers }) => {
                     let ty = TypeResolution::Handle(argument.ty);
-                    let pointer = self.parameter_pointer(index as u32, &ty, is_const, span)?;
+                    let pointer = self.parameter_pointer(index as u32, &ty, qualifiers, span)?;
                     MappedExpression::Pointer(self.boxed_pointer_value(pointer)?)
                 }
                 _ => MappedExpression::Value(

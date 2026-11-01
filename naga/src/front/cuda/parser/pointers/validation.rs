@@ -299,7 +299,7 @@ impl Parser<'_> {
         if base != expression.pointee {
             return Err(pointer_state_error(value.span));
         }
-        self.validate_pointer_rvalue(state, value.expression, value.is_const, value.span)?;
+        self.validate_pointer_rvalue(state, value.expression, value.qualifiers, value.span)?;
         if let Some(address) = value.constant_address {
             if let Some(extent) = address.extent {
                 if extent == 0

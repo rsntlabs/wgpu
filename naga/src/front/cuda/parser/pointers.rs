@@ -41,7 +41,7 @@ pub(super) struct ConstantPointerAddress {
 pub(super) struct PointerValue {
     pub(super) expression: Handle<PointerExpression>,
     pub(super) ty: TypeResolution,
-    pub(super) is_const: bool,
+    pub(super) qualifiers: Qualifiers,
     pub(super) span: Span,
     pub(super) constant: ConstantValue,
     pub(super) constant_address: Option<ConstantPointerAddress>,
@@ -127,7 +127,7 @@ impl<'a> Parser<'a> {
     pub(super) fn local_pointer_declaration(
         &mut self,
         specifier: TypeSpecifier,
-        pointee_const: bool,
+        pointee_qualifiers: Qualifiers,
         pointer_const: bool,
     ) -> Result<(Span, bool), ParseError> {
         if matches!(
@@ -160,14 +160,14 @@ impl<'a> Parser<'a> {
                 self.lexer.expect_span(Token::Paren('}'))?;
             }
             let value_span = value.span();
-            let pointer = self.convert_pointer(value, &ty, pointee_const, value_span)?;
+            let pointer = self.convert_pointer(value, &ty, pointee_qualifiers, value_span)?;
             self.bind_local_pointer(name, pointer, pointer_const, span)?;
             return Ok((span, true));
         } else {
             if pointer_const {
                 return self.fail("pointer declaration requires an initializer");
             }
-            self.uninitialized_pointer_variable(name, &ty, pointee_const, span)?
+            self.uninitialized_pointer_variable(name, &ty, pointee_qualifiers, span)?
         };
         let pointer = self.retain_pointer_symbol(pointer)?;
         self.function
@@ -232,7 +232,7 @@ impl<'a> Parser<'a> {
     pub(super) fn borrowed_array_value(
         &mut self,
         pointer: Handle<Expression>,
-        writable: bool,
+        qualifiers: Qualifiers,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
         let array_ty = match self.function.ir.expressions[pointer] {
@@ -242,8 +242,9 @@ impl<'a> Parser<'a> {
         };
         let constant = self.pointer_constant(pointer);
         let reference = ReferenceValue {
+            discard_read: true,
             reference: Reference::Pointer(pointer),
-            writable,
+            qualifiers,
             ty: TypeResolution::Handle(array_ty),
             span,
             constant,
@@ -285,7 +286,7 @@ impl<'a> Parser<'a> {
         name: Option<&'a str>,
         span: Span,
         ty: &TypeResolution,
-        is_const: bool,
+        qualifiers: Qualifiers,
         mode: ParameterMode,
     ) -> Result<(), ParseError> {
         if mode != ParameterMode::Value {
@@ -310,7 +311,7 @@ impl<'a> Parser<'a> {
             span,
             &pointer_ty,
             false,
-            ParameterMode::Pointer { is_const },
+            ParameterMode::Pointer { qualifiers },
         )
     }
 
@@ -438,7 +439,7 @@ impl<'a> Parser<'a> {
         &mut self,
         index: u32,
         ty: &TypeResolution,
-        is_const: bool,
+        qualifiers: Qualifiers,
         span: Span,
     ) -> Result<PointerValue, ParseError> {
         let TypeInner::Pointer { base, .. } = *ty.inner_with(&self.module.types) else {
@@ -452,7 +453,7 @@ impl<'a> Parser<'a> {
         Ok(PointerValue {
             expression,
             ty: ty.clone(),
-            is_const,
+            qualifiers,
             span,
             constant: ConstantValue {
                 literal: None,
@@ -471,7 +472,7 @@ impl<'a> Parser<'a> {
             let pointee = self.function.pointers.expressions[pointer.expression].pointee;
             let snapshot = self.pointer_cell(
                 pointee,
-                pointer.is_const,
+                pointer.qualifiers,
                 PointerCellKind::Snapshot,
                 pointer.span,
             )?;
@@ -534,7 +535,7 @@ impl<'a> Parser<'a> {
             });
         };
         let span = reference.span;
-        let is_const = !reference.writable;
+        let qualifiers = reference.qualifiers;
         let dynamic = self.reference_is_dynamic_shared(&reference)?;
         let constant_address = if self.reference_has_static_address(&reference)? {
             match *reference.ty.inner_with(&self.module.types) {
@@ -561,7 +562,7 @@ impl<'a> Parser<'a> {
         Ok(PointerValue {
             expression,
             ty,
-            is_const,
+            qualifiers,
             span,
             constant,
             constant_address,
@@ -590,7 +591,7 @@ impl<'a> Parser<'a> {
             }
         }
         let pointee = self.type_handle(&reference.ty, span);
-        let is_const = !reference.writable;
+        let qualifiers = reference.qualifiers;
         let dynamic = self.reference_is_dynamic_shared(&reference)?;
         let constant_address =
             self.reference_has_static_address(&reference)?
@@ -609,7 +610,7 @@ impl<'a> Parser<'a> {
         Ok(PointerValue {
             expression,
             ty,
-            is_const,
+            qualifiers,
             span,
             constant,
             constant_address,
@@ -621,17 +622,19 @@ impl<'a> Parser<'a> {
         &mut self,
         value: ExpressionValue,
         target: &TypeResolution,
-        is_const: bool,
+        qualifiers: Qualifiers,
         span: Span,
     ) -> Result<PointerValue, ParseError> {
         let mut pointer = self.borrowed_pointer(value)?;
-        if !self.module.compare_types(&pointer.ty, target) || (pointer.is_const && !is_const) {
+        if !self.module.compare_types(&pointer.ty, target)
+            || !qualifiers.contains(pointer.qualifiers)
+        {
             return Err(ParseError {
                 message: String::from("incompatible CUDA pointer type"),
                 span,
             });
         }
-        pointer.is_const = is_const;
+        pointer.qualifiers = qualifiers;
         Ok(pointer)
     }
 
@@ -700,7 +703,7 @@ impl<'a> Parser<'a> {
             .charge_slice::<(PointerAccess, Span)>(1, span)?;
         self.parameter_expansion_budget
             .charge_slice::<AddressProjection>(projections.len(), span)?;
-        let writable = !pointer.is_const;
+        let qualifiers = pointer.qualifiers;
         let constant = ConstantValue {
             literal: None,
             is_discardable: pointer.constant.is_discardable
@@ -721,8 +724,9 @@ impl<'a> Parser<'a> {
             span,
         );
         Ok(ReferenceValue {
+            discard_read: true,
             reference: Reference::PointerAccess(access),
-            writable,
+            qualifiers,
             ty,
             span,
             constant,
@@ -838,7 +842,7 @@ impl<'a> Parser<'a> {
     ) -> Result<PointerValue, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
-        let variable = matches!((&accept, &reject), (ExpressionValue::Pointer(accept), ExpressionValue::Pointer(reject)) if matches!(accept.category, PointerValueCategory::Variable { .. }) && matches!(reject.category, PointerValueCategory::Variable { .. }) && accept.is_const == reject.is_const && self.module.compare_types(&accept.ty, &reject.ty));
+        let variable = matches!((&accept, &reject), (ExpressionValue::Pointer(accept), ExpressionValue::Pointer(reject)) if matches!(accept.category, PointerValueCategory::Variable { .. }) && matches!(reject.category, PointerValueCategory::Variable { .. }) && accept.qualifiers == reject.qualifiers && self.module.compare_types(&accept.ty, &reject.ty));
         let selector = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
         let selected = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
         let mut addresses = Vec::new();
@@ -972,7 +976,7 @@ impl<'a> Parser<'a> {
         Ok(PointerValue {
             expression,
             ty: accept.ty,
-            is_const: accept.is_const || reject.is_const,
+            qualifiers: accept.qualifiers.union(reject.qualifiers),
             span,
             constant,
             constant_address,
@@ -1042,6 +1046,7 @@ impl<'a> Parser<'a> {
             binding = self.project_bound_reference(binding, projection, reference.span)?;
         }
         Ok(ReferenceValue {
+            discard_read: true,
             reference: Reference::Bound(binding),
             ..reference
         })
@@ -1176,8 +1181,9 @@ impl<'a> Parser<'a> {
                     span,
                 );
                 Ok(ReferenceValue {
+                    discard_read: true,
                     reference: Reference::Conditional(handle),
-                    writable: true,
+                    qualifiers: Qualifiers::NONE,
                     ty,
                     span,
                     constant: ConstantValue::default(),
@@ -1245,8 +1251,9 @@ impl<'a> Parser<'a> {
                 }
                 let binding = self.retain_bound_reference(view.selector, targets, span)?;
                 Ok(ReferenceValue {
+                    discard_read: true,
                     reference: Reference::Bound(binding),
-                    writable: true,
+                    qualifiers: Qualifiers::NONE,
                     ty,
                     span,
                     constant: ConstantValue::default(),

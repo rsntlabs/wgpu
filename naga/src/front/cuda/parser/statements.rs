@@ -258,13 +258,14 @@ impl<'a> Parser<'a> {
         let (declaration, is_constexpr) = self.declaration_type()?;
         let QualifiedType {
             ty: specifier,
-            is_const,
+            qualifiers,
         } = match declaration {
             DeclarationType::Explicit(ty) => ty,
-            DeclarationType::Inferred { is_const } => {
-                return self.inferred_local_declaration(is_const, is_constexpr);
+            DeclarationType::Inferred { qualifiers } => {
+                return self.inferred_local_declaration(qualifiers, is_constexpr);
             }
         };
+        let is_const = qualifiers.is_const;
         if is_constexpr && !matches!(specifier, TypeSpecifier::Scalar(_)) {
             return self.fail("constexpr requires a scalar variable");
         }
@@ -274,7 +275,9 @@ impl<'a> Parser<'a> {
         loop {
             let explicit_pointer = self.lexer.next_if(Token::Operation('*'))?;
             let pointer_alias = match specifier {
-                TypeSpecifier::Pointer { pointee_const, .. } => Some(pointee_const),
+                TypeSpecifier::Pointer {
+                    pointee_qualifiers, ..
+                } => Some(pointee_qualifiers),
                 _ => None,
             };
             if explicit_pointer && pointer_alias.is_some() {
@@ -284,13 +287,17 @@ impl<'a> Parser<'a> {
                 if is_constexpr {
                     return self.fail("constexpr pointer declarations are unsupported");
                 }
-                let (pointee_const, pointer_const) = if let Some(pointee_const) = pointer_alias {
-                    (pointee_const, is_const)
-                } else {
-                    (is_const, types::pointer_qualifiers(&mut self.lexer)?)
-                };
+                let (pointee_qualifiers, pointer_const) =
+                    if let Some(pointee_qualifiers) = pointer_alias {
+                        (pointee_qualifiers, is_const)
+                    } else {
+                        (
+                            qualifiers,
+                            types::pointer_qualifiers(&mut self.lexer)?.is_const,
+                        )
+                    };
                 let (span, has_initializer) =
-                    self.local_pointer_declaration(specifier, pointee_const, pointer_const)?;
+                    self.local_pointer_declaration(specifier, pointee_qualifiers, pointer_const)?;
                 if has_initializer {
                     self.function.initialized_declarations.push(span);
                 }
@@ -306,7 +313,7 @@ impl<'a> Parser<'a> {
                 }
                 let (name, span) = self.identifier()?;
                 self.check_name(name, span)?;
-                self.local_reference_declaration(name, span, specifier, is_const)?;
+                self.local_reference_declaration(name, span, specifier, qualifiers)?;
                 self.function.initialized_declarations.push(span);
                 if self.lexer.next_if(Token::Separator(','))? {
                     continue;
@@ -336,13 +343,19 @@ impl<'a> Parser<'a> {
                 Symbol::Array {
                     pointer,
                     ty: TypeResolution::Handle(array.as_ref().unwrap().element_ty),
-                    writable: !is_const,
+                    qualifiers: Qualifiers {
+                        is_const,
+                        ..Qualifiers::NONE
+                    },
                 }
             } else {
                 Symbol::Variable {
                     pointer,
                     ty: declared_ty.clone(),
-                    writable: !is_const,
+                    qualifiers: Qualifiers {
+                        is_const,
+                        ..Qualifiers::NONE
+                    },
                 }
             };
             self.insert_symbol(name, symbol, span)?;
@@ -454,8 +467,9 @@ impl<'a> Parser<'a> {
         let type_span = self.lexer.peek()?.1;
         let QualifiedType {
             ty: specifier,
-            is_const,
+            qualifiers,
         } = self.parse_type()?;
+        let is_const = qualifiers.is_const;
         if matches!(specifier, TypeSpecifier::Pointer { .. }) {
             return Err(ParseError {
                 message: String::from("shared pointer variables are unsupported"),
@@ -507,13 +521,13 @@ impl<'a> Parser<'a> {
             Symbol::Array {
                 pointer,
                 ty: TypeResolution::Handle(array.as_ref().unwrap().element_ty),
-                writable: true,
+                qualifiers: Qualifiers::NONE,
             }
         } else {
             Symbol::Variable {
                 pointer,
                 ty: declared_ty,
-                writable: true,
+                qualifiers: Qualifiers::NONE,
             }
         };
         self.insert_symbol(name, symbol, span)

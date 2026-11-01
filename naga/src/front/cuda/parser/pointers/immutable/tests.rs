@@ -145,7 +145,13 @@ fn immutable_pointer_proof_falls_back_for_const_qualification_loss() {
             matches!(cell.kind, PointerCellKind::Object { .. }).then_some(local)
         })
         .unwrap();
-    state.pointers.cells.get_mut(&object).unwrap().is_const = true;
+    state
+        .pointers
+        .cells
+        .get_mut(&object)
+        .unwrap()
+        .qualifiers
+        .is_const = true;
     assert_fallback(&mut parser, &function, &state);
 }
 

@@ -241,8 +241,9 @@ impl Parser<'_> {
                 match self.invocation_expression(invocation, pointer)? {
                     MappedExpression::Reference { binding, ty } => {
                         let reference = ReferenceValue {
+                            discard_read: true,
                             reference: Reference::Bound(binding),
-                            writable: true,
+                            qualifiers: Qualifiers::NONE,
                             ty,
                             span,
                             constant: ConstantValue::default(),

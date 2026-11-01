@@ -141,7 +141,7 @@ impl Inventory<'_> {
         parser: &mut Parser<'_>,
         destination: Handle<LocalVariable>,
         values: &[u32],
-        value_const: bool,
+        value_qualifiers: Qualifiers,
         span: Span,
     ) -> Result<bool, ParseError> {
         let cell = self
@@ -150,7 +150,7 @@ impl Inventory<'_> {
             .cells
             .get(&destination)
             .ok_or_else(|| runtime_error(span))?;
-        if value_const && !cell.is_const {
+        if !cell.qualifiers.contains(value_qualifiers) {
             return Err(runtime_error(span));
         }
         for &family in values {
@@ -160,7 +160,7 @@ impl Inventory<'_> {
                 .get(family as usize)
                 .ok_or_else(|| runtime_error(span))?;
             if family.pointee != cell.pointee
-                || (!cell.is_const && !writable_root(parser, family.root))
+                || (!cell.qualifiers.is_const && !writable_root(parser, family.root))
             {
                 return Err(runtime_error(span));
             }
@@ -454,7 +454,7 @@ impl Inventory<'_> {
                     return Err(runtime_error(span));
                 }
                 let families = self.expression(parser, value.expression, 1, span)?;
-                self.add_cell_families(parser, destination, &families, value.is_const, span)
+                self.add_cell_families(parser, destination, &families, value.qualifiers, span)
             }
             PointerOperation::Assign {
                 destination,
@@ -473,7 +473,7 @@ impl Inventory<'_> {
                         parser,
                         destination,
                         &families,
-                        value.is_const,
+                        value.qualifiers,
                         span,
                     )?;
                 }
@@ -494,12 +494,14 @@ impl Inventory<'_> {
                 }
                 for source in self.binding_cells(parser, source, span)? {
                     let actual = &self.source.pointers.cells[&source];
-                    if actual.pointee != cell.pointee || (actual.is_const && !cell.is_const) {
+                    if actual.pointee != cell.pointee
+                        || !cell.qualifiers.contains(actual.qualifiers)
+                    {
                         return Err(runtime_error(span));
                     }
                 }
                 let families = self.binding_families(parser, source, span)?;
-                self.add_cell_families(parser, destination, &families, false, span)
+                self.add_cell_families(parser, destination, &families, Qualifiers::NONE, span)
             }
             PointerOperation::Update { destination, .. } => {
                 for local in self.binding_cells(parser, destination, span)? {

@@ -440,6 +440,7 @@ impl Parser<'_> {
         };
         let mut conditional = self.function.conditional_references[handle].take().unwrap();
         for branch in [&mut conditional.accept, &mut conditional.reject] {
+            branch.reference.qualifiers = reference.qualifiers;
             let ((), body) = self.capture_block(|parser| {
                 parser.append_block(core::mem::take(&mut branch.body));
                 parser.decorate_reference(&mut branch.reference, action)
@@ -474,7 +475,9 @@ impl Parser<'_> {
             }
             Reference::Conditional(handle) => handle,
         };
-        let conditional = self.function.conditional_references[handle].take().unwrap();
+        let mut conditional = self.function.conditional_references[handle].take().unwrap();
+        conditional.accept.reference.qualifiers = reference.qualifiers;
+        conditional.reject.reference.qualifiers = reference.qualifiers;
         let ((), accept) = self.capture_block(|parser| {
             parser.append_block(conditional.accept.body);
             parser.consume_reference(conditional.accept.reference, action)

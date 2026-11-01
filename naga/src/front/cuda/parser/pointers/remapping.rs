@@ -454,8 +454,9 @@ impl Parser<'_> {
     ) -> Result<ReferenceValue, ParseError> {
         let binding = self.remap_bound_binding(source, binding, mapper, span)?;
         Ok(ReferenceValue {
+            discard_read: true,
             reference: Reference::Bound(binding),
-            writable: true,
+            qualifiers: Qualifiers::NONE,
             ty: ty.clone(),
             span,
             constant: ConstantValue::default(),

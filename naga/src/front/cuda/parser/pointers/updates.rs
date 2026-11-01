@@ -5,13 +5,13 @@ impl Parser<'_> {
         &mut self,
         name: &str,
         pointee: Handle<Type>,
-        pointee_const: bool,
+        pointee_qualifiers: Qualifiers,
         pointer_const: bool,
         span: Span,
     ) -> Result<(Handle<LocalVariable>, Handle<BoundReference>), ParseError> {
         let cell = self.pointer_cell(
             pointee,
-            pointee_const,
+            pointee_qualifiers,
             PointerCellKind::Object {
                 writable: !pointer_const,
             },
@@ -22,8 +22,9 @@ impl Parser<'_> {
         self.function.ir.local_variables[cell].name = Some(String::from(name));
         let expression = self.function.pointers.cells[&cell].expression;
         let binding = self.freeze_reference(ReferenceValue {
+            discard_read: true,
             reference: Reference::Pointer(expression),
-            writable: true,
+            qualifiers: Qualifiers::NONE,
             ty: scalar_resolution(Scalar::U32),
             span,
             constant: ConstantValue::default(),
@@ -35,7 +36,7 @@ impl Parser<'_> {
         &mut self,
         name: &str,
         ty: &TypeResolution,
-        is_const: bool,
+        qualifiers: Qualifiers,
         span: Span,
     ) -> Result<PointerValue, ParseError> {
         let TypeInner::Pointer {
@@ -48,13 +49,13 @@ impl Parser<'_> {
                 span,
             });
         };
-        let (_, binding) = self.pointer_object(name, pointee, is_const, false, span)?;
+        let (_, binding) = self.pointer_object(name, pointee, qualifiers, false, span)?;
         let expression =
             self.retain_pointer_expression(PointerExpressionKind::Object(binding), pointee, span)?;
         Ok(PointerValue {
             expression,
             ty: ty.clone(),
-            is_const,
+            qualifiers,
             span,
             constant: ConstantValue {
                 literal: None,
@@ -78,7 +79,7 @@ impl Parser<'_> {
         let mut pointer = self.pointer_rvalue(pointer)?;
         let pointee = self.function.pointers.expressions[pointer.expression].pointee;
         let (cell, binding) =
-            self.pointer_object(name, pointee, pointer.is_const, is_const, span)?;
+            self.pointer_object(name, pointee, pointer.qualifiers, is_const, span)?;
         self.pointer_operation(
             PointerOperation::Initialize {
                 destination: cell,
@@ -171,7 +172,7 @@ impl Parser<'_> {
             let (right, body) = self.capture_block(|parser| {
                 let right = parser.expression(0)?;
                 let span = right.span();
-                parser.convert_pointer(right, &pointer.ty, pointer.is_const, span)
+                parser.convert_pointer(right, &pointer.ty, pointer.qualifiers, span)
             })?;
             let span = pointer.span.until(&right.span);
             self.prepend_block(body);

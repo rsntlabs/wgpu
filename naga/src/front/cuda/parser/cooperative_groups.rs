@@ -113,7 +113,7 @@ fn qualified_name(
             QualifiedItem::Namespace(Namespace::CooperativeGroups) => match name {
                 "thread_block" if !namespace_only => QualifiedItem::Type(QualifiedType {
                     ty: TypeSpecifier::ThreadBlock,
-                    is_const: false,
+                    qualifiers: Qualifiers::NONE,
                 }),
                 "this_thread_block" if !namespace_only => {
                     QualifiedItem::Function(GroupFunction::Current)

@@ -27,7 +27,10 @@ impl Parser<'_> {
             (
                 ExpressionResult::Value(ExpressionValue::Reference(accept)),
                 ExpressionResult::Value(ExpressionValue::Reference(reject)),
-            ) if self.module.compare_types(&accept.ty, &reject.ty) => {
+            ) if self.module.compare_types(&accept.ty, &reject.ty)
+                && (accept.qualifiers.contains(reject.qualifiers)
+                    || reject.qualifiers.contains(accept.qualifiers)) =>
+            {
                 let depth = 1 + self
                     .reference_depth(&accept)
                     .max(self.reference_depth(&reject));
@@ -38,7 +41,8 @@ impl Parser<'_> {
                     });
                 }
                 let ty = accept.ty.clone();
-                let writable = accept.writable && reject.writable;
+                let qualifiers = accept.qualifiers.union(reject.qualifiers);
+                let discard_read = accept.discard_read && reject.discard_read;
                 let constant = match condition.constant.literal {
                     Some(Literal::Bool(true)) => accept.constant,
                     Some(Literal::Bool(false)) => reject.constant,
@@ -65,8 +69,9 @@ impl Parser<'_> {
                 );
                 Ok(ExpressionResult::Value(ExpressionValue::Reference(
                     ReferenceValue {
+                        discard_read,
                         reference: Reference::Conditional(handle),
-                        writable,
+                        qualifiers,
                         ty,
                         span,
                         constant,

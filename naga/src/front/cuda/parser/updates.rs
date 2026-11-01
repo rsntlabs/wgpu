@@ -3,7 +3,7 @@ use super::*;
 impl Parser<'_> {
     fn mutable_reference(&self, expression: ExpressionValue) -> Result<ReferenceValue, ParseError> {
         match expression {
-            ExpressionValue::Reference(reference) if reference.writable => Ok(reference),
+            ExpressionValue::Reference(reference) if reference.writable() => Ok(reference),
             ExpressionValue::Reference(reference) => Err(ParseError {
                 message: String::from("cannot modify a const value"),
                 span: reference.span,
@@ -53,6 +53,7 @@ impl Parser<'_> {
             Ok(())
         })?;
         Ok(ExpressionValue::Reference(ReferenceValue {
+            discard_read: false,
             span,
             constant: ConstantValue::default(),
             ..left
@@ -82,6 +83,7 @@ impl Parser<'_> {
                 Ok(())
             })?;
             return Ok(ExpressionValue::Reference(ReferenceValue {
+                discard_read: false,
                 span,
                 constant: ConstantValue::default(),
                 ..value

@@ -469,8 +469,9 @@ impl Parser<'_> {
                         }
                         MappedExpression::Reference { binding, ty } => {
                             let mut reference = ReferenceValue {
+                                discard_read: true,
                                 reference: Reference::Bound(binding),
-                                writable: true,
+                                qualifiers: Qualifiers::NONE,
                                 ty,
                                 span,
                                 constant: ConstantValue::default(),
