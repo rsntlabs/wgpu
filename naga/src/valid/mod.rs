@@ -232,6 +232,8 @@ bitflags::bitflags! {
         /// Only useful together with [`Capabilities::RAY_TRACING_PIPELINE`], since
         /// hit objects exist only in ray tracing pipeline stages.
         const RAY_TRACING_INVOCATION_REORDER = 1 << 46;
+        /// Support for `@volatile` on copyable, non-cooperative workgroup data.
+        const MEMORY_DECORATION_VOLATILE_WORKGROUP = 1 << 47;
     }
 }
 

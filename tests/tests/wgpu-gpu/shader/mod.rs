@@ -26,6 +26,7 @@ pub mod numeric_builtins;
 pub mod struct_layout;
 pub mod switch_fallthrough;
 pub mod workgroup_size_overrides;
+pub mod workgroup_volatile;
 pub mod zero_init_workgroup_mem;
 
 pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
@@ -39,6 +40,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
     struct_layout::all_tests(tests);
     switch_fallthrough::all_tests(tests);
     workgroup_size_overrides::all_tests(tests);
+    workgroup_volatile::all_tests(tests);
     zero_init_workgroup_mem::all_tests(tests);
 }
 

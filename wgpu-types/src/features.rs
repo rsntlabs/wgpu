@@ -919,7 +919,16 @@ features! {
         #[name("wgpu-shader-int64-atomic-all-ops")]
         const SHADER_INT64_ATOMIC_ALL_OPS = 1 << 43;
 
-        // Bit 44 is available.
+        /// Enables `@volatile` on workgroup variables containing copyable,
+        /// non-cooperative data. Atomic types and cooperative matrix accesses
+        /// are not supported.
+        ///
+        /// Backend mapping:
+        /// - Vulkan
+        ///
+        /// This is a native only feature.
+        #[name("wgpu-memory-decoration-volatile-workgroup")]
+        const MEMORY_DECORATION_VOLATILE_WORKGROUP = 1 << 44;
 
         // Bit 45 is available.
 

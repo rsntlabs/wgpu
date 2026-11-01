@@ -10,6 +10,7 @@ mod experimental;
 mod external_texture;
 mod immediates;
 mod instance;
+mod memory_decorations;
 mod mesh_shader;
 mod overrides;
 mod ray_tracing_pipeline;

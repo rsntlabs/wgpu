@@ -4,11 +4,13 @@ use crate::{
 
 #[derive(Debug, Default)]
 pub(crate) struct ExpressionEffects {
+    #[cfg(spv_out)]
+    volatile_pointers: HandleSet<Expression>,
     volatile_reads: HandleSet<Expression>,
 }
 
 impl ExpressionEffects {
-    /// Requires validated IR, whose storage pointers are derived only from globals.
+    /// Requires validated IR, whose storage and workgroup pointers derive only from globals.
     pub(crate) fn new(function: &Function, globals: &Arena<GlobalVariable>) -> Self {
         let mut volatile_pointers = HandleSet::for_arena(&function.expressions);
         let mut volatile_reads = HandleSet::for_arena(&function.expressions);
@@ -32,10 +34,19 @@ impl ExpressionEffects {
                 _ => {}
             }
         }
-        Self { volatile_reads }
+        Self {
+            #[cfg(spv_out)]
+            volatile_pointers,
+            volatile_reads,
+        }
     }
 
     pub(crate) fn must_evaluate(&self, expression: Handle<Expression>) -> bool {
         self.volatile_reads.contains(expression)
+    }
+
+    #[cfg(spv_out)]
+    pub(crate) fn is_volatile_pointer(&self, expression: Handle<Expression>) -> bool {
+        self.volatile_pointers.contains(expression)
     }
 }

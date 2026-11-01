@@ -16,3 +16,4 @@ mod wgsl_named_atomic_results;
 mod wgsl_named_call_results;
 mod wgsl_predeclared_result_types;
 mod wgsl_switch_fallthrough;
+mod workgroup_volatile;

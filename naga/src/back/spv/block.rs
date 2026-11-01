@@ -2883,6 +2883,19 @@ impl BlockContext<'_> {
         }
     }
 
+    fn volatile_workgroup_access(
+        &self,
+        pointer: Handle<crate::Expression>,
+    ) -> Option<spirv::MemoryAccess> {
+        (self.expression_effects.is_volatile_pointer(pointer)
+            && self.fun_info[pointer]
+                .ty
+                .inner_with(&self.ir_module.types)
+                .pointer_space()
+                == Some(crate::AddressSpace::WorkGroup))
+        .then_some(spirv::MemoryAccess::VOLATILE)
+    }
+
     fn write_checked_load(
         &mut self,
         pointer: Handle<crate::Expression>,
@@ -2890,6 +2903,7 @@ impl BlockContext<'_> {
         access_type_adjustment: AccessTypeAdjustment,
         result_type_id: Word,
     ) -> Result<Word, Error> {
+        let memory_access = self.volatile_workgroup_access(pointer);
         if let Some(result_id) = self.maybe_write_immediate_vector_dynamic_access(pointer, block)? {
             Ok(result_id)
         } else if let Some(result_id) =
@@ -2972,7 +2986,7 @@ impl BlockContext<'_> {
                             semantics_id,
                         )
                     } else {
-                        Instruction::load(load_type_id, id, pointer_id, None)
+                        Instruction::load(load_type_id, id, pointer_id, memory_access)
                     };
                     block.body.push(instruction);
                     id
@@ -2992,7 +3006,7 @@ impl BlockContext<'_> {
                                 load_type_id,
                                 value_id,
                                 pointer_id,
-                                None,
+                                memory_access,
                             ));
                             value_id
                         },
@@ -3919,6 +3933,7 @@ impl BlockContext<'_> {
                     self.writer.write_memory_barrier(flags, &mut block);
                 }
                 Statement::Store { pointer, value } => {
+                    let memory_access = self.volatile_workgroup_access(pointer);
                     let mut value_id = self.cached[value];
                     if let crate::TypeInner::Pointer {
                         base,
@@ -3962,7 +3977,7 @@ impl BlockContext<'_> {
                                     value_id,
                                 )
                             } else {
-                                Instruction::store(pointer_id, value_id, None)
+                                Instruction::store(pointer_id, value_id, memory_access)
                             };
                             block.body.push(instruction);
                         }
@@ -3973,10 +3988,11 @@ impl BlockContext<'_> {
                             // The in-bounds path. Perform the access and the store.
                             let pointer_id = access.result_id.unwrap();
                             selection.block().body.push(access);
-                            selection
-                                .block()
-                                .body
-                                .push(Instruction::store(pointer_id, value_id, None));
+                            selection.block().body.push(Instruction::store(
+                                pointer_id,
+                                value_id,
+                                memory_access,
+                            ));
 
                             // Finish the in-bounds block and start the merge block. This
                             // is the block we'll leave current on return.

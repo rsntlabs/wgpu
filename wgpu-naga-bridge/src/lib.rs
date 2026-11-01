@@ -180,6 +180,10 @@ pub fn features_to_naga_capabilities(
         features.contains(wgt::Features::MEMORY_DECORATION_VOLATILE),
     );
     caps.set(
+        Caps::MEMORY_DECORATION_VOLATILE_WORKGROUP,
+        features.contains(wgt::Features::MEMORY_DECORATION_VOLATILE_WORKGROUP),
+    );
+    caps.set(
         Caps::RAY_TRACING_PIPELINE,
         features.intersects(wgt::Features::EXPERIMENTAL_RAY_TRACING_PIPELINES),
     );
