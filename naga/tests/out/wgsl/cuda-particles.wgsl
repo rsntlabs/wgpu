@@ -3,31 +3,30 @@ var<storage, read_write> points: array<vec4<f32>>;
 @group(0) @binding(1)
 var<storage> params: array<f32>;
 
-fn wave(angle: f32) -> f32 {
-    var local_2: u32;
-    var local_3: u32;
-    var local_4: u32;
-
-    let _e5 = bitcast<u32>(((angle / 6.2831855f) + 0.5f));
-    let _e7 = (_e5 & 2147483647u);
-    let _e11 = ((_e5 & 2147483648u) != 0u);
-    let _e19 = (1u << ((150u - (_e7 >> 23u)) & 31u));
-    let _e20 = (_e19 - 1u);
-    let _e24 = (_e5 & ~(_e20));
-    local_2 = select(select(select(select(_e24, (_e24 + _e19), (_e11 && ((_e5 & _e20) != 0u))), select(select(0u, 3212836864u, _e11), _e5, (_e7 == 0u)), (_e7 < 1065353216u)), _e5, (_e7 >= 1258291200u)), 2143289344u, (_e7 > 2139095040u));
-    let _e43 = local_2;
-    let x = (angle - (bitcast<f32>(_e43) * 6.2831855f));
-    let _e54 = (bitcast<u32>(x) & 2147483647u);
-    local_3 = select(_e54, 2143289344u, (_e54 > 2139095040u));
-    let _e60 = local_3;
-    let y = ((1.2732395f * x) - ((0.4052847f * x) * bitcast<f32>(_e60)));
-    let _e66 = (bitcast<u32>(y) & 2147483647u);
-    local_4 = select(_e66, 2143289344u, (_e66 > 2139095040u));
-    let _e72 = local_4;
-    return (y + (0.225f * ((y * bitcast<f32>(_e72)) - y)));
+fn gen__naga_floorf(input_bits: u32) -> u32 {
+    let _e5 = (input_bits & 2147483647u);
+    let _e7 = ((input_bits & 2147483648u) != 0u);
+    let _e14 = (1u << ((150u - (_e5 >> 23u)) & 31u));
+    let _e15 = (_e14 - 1u);
+    let _e19 = (input_bits & ~(_e15));
+    return select(select(select(select(_e19, (_e19 + _e14), (_e7 && ((input_bits & _e15) != 0u))), select(select(0u, 3212836864u, _e7), input_bits, (_e5 == 0u)), (_e5 < 1065353216u)), input_bits, (_e5 >= 1258291200u)), 2143289344u, (_e5 > 2139095040u));
 }
 
-fn gen__naga_sqrtf(input_bits: u32) -> u32 {
+fn gen__naga_fabsf(input_bits_1: u32) -> u32 {
+    let _e2 = (input_bits_1 & 2147483647u);
+    return select(_e2, 2143289344u, (_e2 > 2139095040u));
+}
+
+fn wave(angle: f32) -> f32 {
+    let _e6 = gen__naga_floorf(bitcast<u32>(((angle / 6.2831855f) + 0.5f)));
+    let x = (angle - (bitcast<f32>(_e6) * 6.2831855f));
+    let _e16 = gen__naga_fabsf(bitcast<u32>(x));
+    let y = ((1.2732395f * x) - ((0.4052847f * x) * bitcast<f32>(_e16)));
+    let _e21 = gen__naga_fabsf(bitcast<u32>(y));
+    return (y + (0.225f * ((y * bitcast<f32>(_e21)) - y)));
+}
+
+fn gen__naga_sqrtf(input_bits_2: u32) -> u32 {
     var significand: u32;
     var adjusted_exponent: u32;
     var upper_word: u32;
@@ -36,14 +35,14 @@ fn gen__naga_sqrtf(input_bits: u32) -> u32 {
     var remainder: u32;
     var iteration: u32;
 
-    let _e5 = (input_bits & 2147483647u);
-    if ((_e5 == 0u) || (input_bits == 2139095040u)) {
-        return input_bits;
+    let _e5 = (input_bits_2 & 2147483647u);
+    if ((_e5 == 0u) || (input_bits_2 == 2139095040u)) {
+        return input_bits_2;
     }
-    if (((input_bits & 2147483648u) != 0u) || (_e5 > 2139095040u)) {
+    if (((input_bits_2 & 2147483648u) != 0u) || (_e5 > 2139095040u)) {
         return 2143289344u;
     }
-    let _e19 = (input_bits & 8388607u);
+    let _e19 = (input_bits_2 & 8388607u);
     let _e20 = (_e5 >> 23u);
     significand = (_e19 | 8388608u);
     adjusted_exponent = (_e20 + 127u);

@@ -12,6 +12,7 @@ mod conversions;
 mod cooperative_groups;
 mod declarations;
 mod expressions;
+mod float_helpers;
 mod function_declarations;
 mod functions;
 mod inferred_declarations;
@@ -256,6 +257,7 @@ pub(super) struct Parser<'a> {
     kernel_context: Option<FunctionContext<'a>>,
     kernel_calls: Vec<FunctionCall>,
     sqrtf_function: Option<Handle<Function>>,
+    float_math_functions: [Option<Handle<Function>>; 3],
     trigonometry_function: Option<Handle<Function>>,
     structures: FastHashMap<Handle<Type>, structures::Structure>,
     next_structure_id: u32,
@@ -281,6 +283,7 @@ impl<'a> Parser<'a> {
             kernel_context: None,
             kernel_calls: Vec::new(),
             sqrtf_function: None,
+            float_math_functions: [None; 3],
             trigonometry_function: None,
             structures: FastHashMap::default(),
             next_structure_id: 0,

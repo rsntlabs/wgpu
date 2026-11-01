@@ -242,8 +242,57 @@ fn cuda_prototypes_ordinary_overloads_coexist_with_intrinsics() {
         __device__ int fabs(int value) { return 100 - value; }
         __device__ int floorf(int value) { return 200 + value; }",
     );
-    assert_eq!(module.functions.len(), 2);
-    assert_eq!(calls(&module.entry_points[0].function).len(), 2);
+    let ordinary_overloads: Vec<_> = module
+        .functions
+        .iter()
+        .filter(|&(_, function)| matches!(function.name.as_deref(), Some("fabs" | "floorf")))
+        .collect();
+    assert_eq!(ordinary_overloads.len(), 2);
+    let source_targets = ["fabs", "floorf"].map(|name| {
+        let (handle, function) = module
+            .functions
+            .iter()
+            .find(|&(_, function)| function.name.as_deref() == Some(name))
+            .unwrap();
+        assert_eq!(function.arguments.len(), 1);
+        assert_eq!(
+            module.types[function.arguments[0].ty].inner,
+            naga::TypeInner::Scalar(naga::Scalar::I32)
+        );
+        assert_eq!(
+            module.types[function.result.as_ref().unwrap().ty].inner,
+            naga::TypeInner::Scalar(naga::Scalar::I32)
+        );
+        handle
+    });
+    assert!(
+        !module.functions.iter().any(|(_, function)| {
+            function.arguments.len() == 1
+                && module.types[function.arguments[0].ty].inner
+                    == naga::TypeInner::Scalar(naga::Scalar::F32)
+                && function.result.as_ref().is_some_and(|result| {
+                    module.types[result.ty].inner == naga::TypeInner::Scalar(naga::Scalar::F32)
+                })
+        }),
+        "intrinsic float prototypes must not emit function stubs"
+    );
+    let selected = calls(&module.entry_points[0].function);
+    assert_eq!(selected.len(), 4);
+    assert_eq!(selected[..2], source_targets);
+    assert_ne!(selected[2], selected[3]);
+    for &target in &selected[2..] {
+        assert!(!source_targets.contains(&target));
+        let function = &module.functions[target];
+        assert_eq!(function.arguments.len(), 1);
+        assert_eq!(
+            module.types[function.arguments[0].ty].inner,
+            naga::TypeInner::Scalar(naga::Scalar::U32)
+        );
+        assert_eq!(
+            module.types[function.result.as_ref().unwrap().ty].inner,
+            naga::TypeInner::Scalar(naga::Scalar::U32)
+        );
+    }
 }
 
 #[test]

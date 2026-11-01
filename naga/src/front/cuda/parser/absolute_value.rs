@@ -1,19 +1,11 @@
 use super::*;
 
 impl Parser<'_> {
-    pub(super) fn absolute_value(
+    pub(super) fn absolute_value_bits(
         &mut self,
-        value: Handle<Expression>,
+        input_bits: Handle<Expression>,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
-        let input_bits = self.append(
-            Expression::As {
-                expr: value,
-                kind: ScalarKind::Uint,
-                convert: None,
-            },
-            span,
-        )?;
         let magnitude_mask = self.append(Expression::Literal(Literal::U32(0x7fff_ffff)), span)?;
         let magnitude = self.append(
             Expression::Binary {
@@ -41,23 +33,6 @@ impl Parser<'_> {
             },
             span,
         )?;
-        // Keep non-finite results out of WGSL constant evaluation.
-        let pointer = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
-        self.push_statement(
-            Statement::Store {
-                pointer,
-                value: result_bits,
-            },
-            span,
-        );
-        let result_bits = self.append(Expression::Load { pointer }, span)?;
-        self.append(
-            Expression::As {
-                expr: result_bits,
-                kind: ScalarKind::Float,
-                convert: None,
-            },
-            span,
-        )
+        Ok(result_bits)
     }
 }

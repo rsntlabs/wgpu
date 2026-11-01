@@ -9,6 +9,7 @@ mod atomic_wrap;
 mod auto_declarations;
 mod barriers;
 mod bitcasts;
+mod cached_math;
 mod ceilf;
 mod comma;
 mod conditionals;
