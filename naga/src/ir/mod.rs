@@ -14,9 +14,8 @@ The central structure of the IR, and the crate, is [`Module`]. A `Module` contai
 
 The body of an `EntryPoint` or `Function` is represented using two types:
 
-- An [`Expression`] produces a value, but has no side effects or control flow.
-  `Expressions` include variable references, unary and binary operators, and so
-  on.
+- An [`Expression`] produces a value and has no control flow. Except for loads
+  from volatile globals, expressions have no side effects.
 
 - A [`Statement`] can have side effects and structured control flow.
   `Statement`s do not produce a value, other than by storing one in some
@@ -25,10 +24,10 @@ The body of an `EntryPoint` or `Function` is represented using two types:
 
 `Statement`s form a tree, with pointers into the DAG of `Expression`s.
 
-Restricting side effects to statements simplifies analysis and code generation.
-A Naga backend can generate code to evaluate an `Expression` however and
-whenever it pleases, as long as it is certain to observe the side effects of all
-previously executed `Statement`s.
+Restricting most side effects to statements simplifies analysis and code generation.
+A Naga backend can generate code to evaluate a nonvolatile `Expression` however
+and whenever it pleases, as long as it is certain to observe the side effects of
+all previously executed `Statement`s. Volatile loads must execute at their `Emit`.
 
 Many `Statement` variants use the [`Block`] type, which is `Vec<Statement>`,
 with optional span info, representing a series of statements executed in order. The body of an
@@ -131,7 +130,7 @@ that we _always_ generate a temporary variable and save their value, then the
 same code that manages multiply referenced expressions will take care of
 introducing temporaries for time-sensitive expressions as well. The
 `Expression::bake_ref_count` method (private to the back ends) is meant to help
-with this.
+with this. Volatile loads must also be evaluated when their reference count is zero.
 
 ## `Expression` scope
 
@@ -1704,6 +1703,8 @@ pub enum Expression {
     ///
     /// For [`TypeInner::Atomic`] the result is a corresponding scalar.
     /// For other types behind the `pointer<T>`, the result is `T`.
+    /// Loads from globals with [`MemoryDecorations::VOLATILE`] must execute at
+    /// their [`Statement::Emit`], even if their results are unused.
     Load { pointer: Handle<Expression> },
     /// Sample a point from a sampled or a depth image.
     ImageSample {
@@ -1808,8 +1809,8 @@ pub enum Expression {
     },
     /// Select between two values based on a condition.
     ///
-    /// Note that, because expressions have no side effects, it is unobservable
-    /// whether the non-selected branch is evaluated.
+    /// Operands are already evaluated; selecting a value does not make their
+    /// evaluation conditional.
     Select {
         /// Boolean expression
         condition: Handle<Expression>,
@@ -2031,6 +2032,8 @@ pub enum RayQueryFunction {
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub enum Statement {
     /// Emit a range of expressions, visible to all statements that follow in this block.
+    ///
+    /// Volatile loads in the range must execute once in order, even if unused.
     ///
     /// See the [module-level documentation][emit] for details.
     ///

@@ -85,6 +85,7 @@ pub struct Writer<W> {
     names: crate::FastHashMap<NameKey, String>,
     namer: proc::Namer,
     named_expressions: crate::NamedExpressions,
+    expression_effects: proc::ExpressionEffects,
     required_polyfills: crate::FastIndexSet<InversePolyfill>,
 }
 
@@ -96,6 +97,7 @@ impl<W: Write> Writer<W> {
             names: crate::FastHashMap::default(),
             namer: proc::Namer::default(),
             named_expressions: crate::NamedExpressions::default(),
+            expression_effects: proc::ExpressionEffects::default(),
             required_polyfills: crate::FastIndexSet::default(),
         }
     }
@@ -112,6 +114,7 @@ impl<W: Write> Writer<W> {
             &mut self.names,
         );
         self.named_expressions.clear();
+        self.expression_effects = proc::ExpressionEffects::default();
         self.required_polyfills.clear();
     }
 
@@ -502,6 +505,7 @@ impl<W: Write> Writer<W> {
         func: &crate::Function,
         func_ctx: &back::FunctionCtx<'_>,
     ) -> BackendResult {
+        self.expression_effects = proc::ExpressionEffects::new(func, &module.global_variables);
         let func_name = match func_ctx.ty {
             back::FunctionType::EntryPoint(index) => &self.names[&NameKey::EntryPoint(index)],
             back::FunctionType::Function(handle) => &self.names[&NameKey::Function(handle)],
@@ -851,7 +855,10 @@ impl<W: Write> Writer<W> {
                             | Expression::ImageSample { .. } => true,
                             _ => false,
                         };
-                        if min_ref_count <= info.ref_count || required_baking_expr {
+                        if min_ref_count <= info.ref_count
+                            || required_baking_expr
+                            || self.expression_effects.must_evaluate(handle)
+                        {
                             Some(Baked(handle).to_string())
                         } else {
                             None

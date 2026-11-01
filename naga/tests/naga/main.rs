@@ -8,6 +8,7 @@ mod spirv_debug_info;
 mod spirv_roundtrip;
 mod spirv_switch_fallthrough;
 mod validation;
+mod volatile_loads;
 mod wgsl_errors;
 mod wgsl_named_atomic_results;
 mod wgsl_named_call_results;

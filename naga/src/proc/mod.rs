@@ -4,6 +4,7 @@
 
 mod constant_evaluator;
 mod emitter;
+mod expression_effects;
 pub mod index;
 mod keyword_set;
 mod layouter;
@@ -18,6 +19,7 @@ pub use constant_evaluator::{
     ExpressionKindTracker,
 };
 pub use emitter::Emitter;
+pub(crate) use expression_effects::ExpressionEffects;
 pub use index::{BoundsCheckPolicies, BoundsCheckPolicy, IndexableLength, IndexableLengthError};
 pub use keyword_set::{CaseInsensitiveKeywordSet, KeywordSet};
 pub use layouter::{Alignment, LayoutError, LayoutErrorInner, Layouter, TypeLayout};

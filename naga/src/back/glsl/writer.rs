@@ -846,10 +846,12 @@ impl<'a, W: Write> Writer<'a, W> {
     fn update_expressions_to_bake(&mut self, func: &crate::Function, info: &valid::FunctionInfo) {
         use crate::Expression;
         self.need_bake_expressions.clear();
+        let expression_effects = proc::ExpressionEffects::new(func, &self.module.global_variables);
         for (fun_handle, expr) in func.expressions.iter() {
             let expr_info = &info[fun_handle];
             let min_ref_count = func.expressions[fun_handle].bake_ref_count();
-            if min_ref_count <= expr_info.ref_count {
+            if min_ref_count <= expr_info.ref_count || expression_effects.must_evaluate(fun_handle)
+            {
                 self.need_bake_expressions.insert(fun_handle);
             }
 
@@ -1749,7 +1751,7 @@ impl<'a, W: Write> Writer<'a, W> {
                         writeln!(self.out, "{level}bool {variable} = false;",)?;
                     };
                     writeln!(self.out, "{level}do {{")?;
-                    // Note: Expressions have no side-effects so we don't need to emit selector expression.
+                    // Volatile reads in the selector were already evaluated by Emit.
 
                     // Body
                     if let Some(case) = cases.last() {
@@ -2029,7 +2031,7 @@ impl<'a, W: Write> Writer<'a, W> {
 
                 let result_name = Baked(result).to_string();
                 write!(self.out, "{level}")?;
-                // Expressions cannot have side effects, so just writing the expression here is fine.
+                // Effectful operand reads were already evaluated by Emit.
                 self.write_named_expr(pointer, result_name, result, ctx)?;
 
                 self.write_control_barrier(crate::Barrier::WORK_GROUP, level)?;

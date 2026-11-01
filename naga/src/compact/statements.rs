@@ -12,12 +12,12 @@ impl FunctionTracer<'_> {
             for stmt in last {
                 use crate::Statement as St;
                 match *stmt {
-                    St::Emit(ref _range) => {
-                        // If we come across a statement that actually uses an
-                        // expression in this range, it'll get traced from
-                        // there. But since evaluating expressions has no
-                        // effect, we don't need to assume that everything
-                        // emitted is live.
+                    St::Emit(ref range) => {
+                        for expression in range.clone() {
+                            if self.expression_effects.must_evaluate(expression) {
+                                self.expressions_used.insert(expression);
+                            }
+                        }
                     }
                     St::Block(ref block) => worklist.push(block),
                     St::If {

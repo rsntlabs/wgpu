@@ -1623,6 +1623,10 @@ impl Writer {
             expression_constness: super::ExpressionConstnessTracker::from_arena(
                 &ir_function.expressions,
             ),
+            expression_effects: crate::proc::ExpressionEffects::new(
+                ir_function,
+                &ir_module.global_variables,
+            ),
             ray_query_tracker_expr: crate::FastHashMap::default(),
         };
 

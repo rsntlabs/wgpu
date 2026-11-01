@@ -564,6 +564,10 @@ impl<'module> ModuleTracer<'module> {
             overrides_used: &mut self.overrides_used,
             global_expressions_used: &mut self.global_expressions_used,
             expressions_used: HandleSet::for_arena(&function.expressions),
+            expression_effects: crate::proc::ExpressionEffects::new(
+                function,
+                &self.module.global_variables,
+            ),
         }
     }
 }

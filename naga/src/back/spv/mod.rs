@@ -847,6 +847,7 @@ struct BlockContext<'w> {
 
     /// Tracks the constness of `Expression`s residing in `self.ir_function.expressions`
     expression_constness: ExpressionConstnessTracker,
+    expression_effects: crate::proc::ExpressionEffects,
 
     force_loop_bounding: bool,
 
