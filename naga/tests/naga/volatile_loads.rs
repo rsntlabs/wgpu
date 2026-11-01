@@ -156,6 +156,11 @@ pub(super) fn global_accesses(
                     visit(function, accept, global, Scope::Conditional, output);
                     visit(function, reject, global, Scope::Conditional, output);
                 }
+                naga::Statement::Switch { ref cases, .. } => {
+                    for case in cases {
+                        visit(function, &case.body, global, Scope::Conditional, output);
+                    }
+                }
                 naga::Statement::Loop {
                     ref body,
                     ref continuing,
@@ -246,6 +251,32 @@ fn arena_reads(module: &naga::Module, binding: u32) -> usize {
 
 #[test]
 fn volatile_reads_survive_compaction_without_retaining_ordinary_unused_reads() {
+    let mut switched = naga::front::wgsl::parse_str(
+        "@group(0) @binding(0) @volatile var<storage, read_write> watched: array<u32>;
+        @compute @workgroup_size(4) fn main(@builtin(local_invocation_id) lane: vec3<u32>) {
+            switch lane.x {
+                case 0u: { _ = watched[0]; }
+                case 1u: { watched[1] = 7u; }
+                default: { _ = watched[2]; }
+            }
+        }",
+    )
+    .unwrap();
+    clear_names(&mut switched);
+    validate(&switched);
+    for keep_unused in [KeepUnused::Yes, KeepUnused::No] {
+        let mut module = switched.clone();
+        compact(&mut module, keep_unused);
+        validate(&module);
+        assert_eq!(
+            accesses(&module, 0),
+            [(false, 0), (true, 1), (false, 2)].map(|(write, index)| Access {
+                write,
+                index: Some(index),
+                scope: Scope::Conditional,
+            })
+        );
+    }
     let mut source = unnamed_module();
     assert_volatile_accesses(&source);
     assert_eq!(accesses(&source, 1).len(), 2);
