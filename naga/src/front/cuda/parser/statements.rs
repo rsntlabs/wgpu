@@ -2,6 +2,8 @@ use super::*;
 
 use core::num::NonZeroU32;
 
+use super::super::preprocess::UnrollPragma;
+
 pub(super) struct ArrayDeclaration {
     pub(super) ty: Handle<Type>,
     element_ty: Handle<Type>,
@@ -50,6 +52,11 @@ impl<'a> Parser<'a> {
 
     fn statement_inner(&mut self) -> Result<bool, ParseError> {
         let token = self.lexer.peek()?;
+        if matches!(token.0, Token::Word("for" | "while" | "do")) {
+            for pragma in self.lexer.pragmas_before() {
+                self.unroll_pragma(pragma)?;
+            }
+        }
         let start = token.1;
         if self.lexer.next_if(Token::Separator(';'))? {
             return Ok(false);
@@ -169,6 +176,32 @@ impl<'a> Parser<'a> {
         self.discard_expression()?;
         self.lexer.expect_span(Token::Separator(';'))?;
         Ok(false)
+    }
+
+    fn unroll_pragma(&mut self, pragma: &'a UnrollPragma) -> Result<(), ParseError> {
+        let payload = self.lexer.pragma_payload(pragma);
+        let caller = core::mem::replace(&mut self.lexer, payload);
+        let result = self.capture_block(|parser| {
+            if parser.lexer.next_if(Token::End)? {
+                return Ok(());
+            }
+            let expression = parser.conditional_expression()?;
+            let value = parser.rvalue(expression)?;
+            let literal = Self::required_constant(&value)?;
+            if !matches!(
+                literal,
+                Literal::Bool(_) | Literal::I32(_) | Literal::U32(_)
+            ) {
+                return Err(ParseError {
+                    message: String::from("unroll factor requires an integral constant expression"),
+                    span: value.span,
+                });
+            }
+            while parser.lexer.next()?.0 != Token::End {}
+            Ok(())
+        });
+        self.lexer = caller;
+        result.map(|_| ())
     }
 
     pub(super) fn starts_declaration(&mut self) -> Result<bool, ParseError> {

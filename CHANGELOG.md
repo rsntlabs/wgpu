@@ -186,6 +186,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Accept CUDA `signed`, `signed int`, and `int signed` as spellings of 32-bit `int`.
 - Support CUDA assignment expressions, compound arithmetic assignments, and prefix/postfix updates.
 - Support CUDA `for`, `while`, and `do`/`while` loops with `break` and `continue`.
+- Accept CUDA `#pragma unroll` hints with source constant factors while preserving loop semantics.
 - Support CUDA switches with constant case labels, fallthrough, and scoped declarations.
 - Support CUDA integer remainder, bitwise operators, shifts, and their compound assignments.
 - Support static CUDA `__shared__` scalars and fixed one-dimensional arrays.

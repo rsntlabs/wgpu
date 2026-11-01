@@ -2,7 +2,10 @@ use alloc::{format, string::String};
 
 use crate::{front::consume_any, Span};
 
-use super::{preprocess::PreparedSource, ParseError};
+use super::{
+    preprocess::{PreparedSource, UnrollPragma},
+    ParseError,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) enum Token<'a> {
@@ -38,6 +41,7 @@ pub(super) struct Lexer<'a> {
     source: &'a str,
     input: &'a str,
     prepared: Option<&'a PreparedSource>,
+    pragma: Option<&'a UnrollPragma>,
     prepared_index: usize,
     last_end_offset: usize,
     lookahead: Option<ScannedToken<'a>>,
@@ -50,6 +54,7 @@ impl<'a> Lexer<'a> {
             source,
             input: source,
             prepared: None,
+            pragma: None,
             prepared_index: 0,
             last_end_offset: 0,
             lookahead: None,
@@ -61,8 +66,34 @@ impl<'a> Lexer<'a> {
             source,
             input: source,
             prepared: Some(prepared),
+            pragma: None,
             prepared_index: 0,
             last_end_offset: 0,
+            lookahead: None,
+        }
+    }
+
+    pub(super) fn pragmas_before(&self) -> &'a [UnrollPragma] {
+        let Some(prepared) = self.prepared else {
+            return &[];
+        };
+        let start = prepared
+            .pragmas
+            .partition_point(|pragma| pragma.token_index < self.prepared_index);
+        let end = prepared
+            .pragmas
+            .partition_point(|pragma| pragma.token_index <= self.prepared_index);
+        &prepared.pragmas[start..end]
+    }
+
+    pub(super) fn pragma_payload(&self, pragma: &'a UnrollPragma) -> Self {
+        Self {
+            source: self.source,
+            input: self.input,
+            prepared: None,
+            pragma: Some(pragma),
+            prepared_index: 0,
+            last_end_offset: pragma.span.to_range().unwrap().start,
             lookahead: None,
         }
     }
@@ -79,6 +110,37 @@ impl<'a> Lexer<'a> {
     }
 
     fn scan(&self) -> Result<ScannedToken<'a>, ParseError> {
+        if let Some(pragma) = self.pragma {
+            let Some(raw) = pragma.tokens.get(self.prepared_index) else {
+                return Ok(ScannedToken {
+                    token: (Token::End, pragma.span),
+                    input: self.input,
+                    prepared_index: self.prepared_index,
+                    end_offset: pragma.span.to_range().unwrap().end,
+                });
+            };
+            let token = if raw.is_quoted {
+                Token::String(&raw.spelling)
+            } else {
+                let (token, rest) = consume_token(&raw.spelling).map_err(|mut error| {
+                    error.span = raw.span;
+                    error
+                })?;
+                if !rest.is_empty() || matches!(token, Token::Trivia | Token::End) {
+                    return Err(ParseError {
+                        message: String::from("unsupported CUDA pragma token"),
+                        span: raw.span,
+                    });
+                }
+                token
+            };
+            return Ok(ScannedToken {
+                token: (token, raw.span),
+                input: self.input,
+                prepared_index: self.prepared_index + 1,
+                end_offset: raw.span.to_range().unwrap().end,
+            });
+        }
         if let Some(prepared) = self.prepared {
             let Some(raw) = prepared.tokens.get(self.prepared_index) else {
                 return Ok(ScannedToken {

@@ -1,5 +1,5 @@
 use alloc::{string::String, vec::Vec};
-use core::ops::Range;
+use core::{mem::size_of, ops::Range};
 
 use crate::{FastHashMap, Span};
 
@@ -37,10 +37,23 @@ pub(super) struct PreparedToken {
     pub(super) span: Span,
 }
 
+pub(super) struct PragmaToken {
+    pub(super) spelling: String,
+    pub(super) span: Span,
+    pub(super) is_quoted: bool,
+}
+
+pub(super) struct UnrollPragma {
+    pub(super) token_index: usize,
+    pub(super) tokens: Vec<PragmaToken>,
+    pub(super) span: Span,
+}
+
 #[derive(Default)]
 pub(super) struct PreparedSource {
     pub(super) spelling: String,
     pub(super) tokens: Vec<PreparedToken>,
+    pub(super) pragmas: Vec<UnrollPragma>,
 }
 
 #[derive(Default)]
@@ -376,6 +389,7 @@ impl Preprocessor<'_> {
             }
             _ if !self.active() => {}
             "define" => self.define(payload, directive.span)?,
+            "pragma" => self.pragma(payload, span)?,
             "undef" => {
                 let operand = Self::operand(payload, directive.span)?;
                 self.budget.visit(operand.spelling.len(), operand.span)?;
@@ -404,6 +418,43 @@ impl Preprocessor<'_> {
             }
             _ => Err(error("expected one CUDA preprocessing macro name", span)),
         }
+    }
+
+    fn pragma(&mut self, payload: &[RawToken], start: Span) -> Result<(), ParseError> {
+        let Some((name, payload)) = payload.split_first() else {
+            return Err(error("CUDA preprocessing pragma is unsupported", start));
+        };
+        if name.kind != Kind::Word || name.spelling != "unroll" {
+            return Err(error("CUDA preprocessing pragma is unsupported", name.span));
+        }
+        let end = payload.last().map_or(name.span, |token| token.span);
+        let span = start.until(&end);
+        let mut tokens = Vec::new();
+        for token in payload {
+            self.budget.emit(token.span)?;
+            self.budget.own(size_of::<PragmaToken>(), token.span)?;
+            self.budget.own(token.spelling.len(), token.span)?;
+            self.budget.push(
+                &mut tokens,
+                PragmaToken {
+                    spelling: token.spelling.clone(),
+                    span: token.span,
+                    is_quoted: token.kind == Kind::Quoted,
+                },
+                token.span,
+            )?;
+        }
+        self.budget.emit(span)?;
+        self.budget.own(size_of::<UnrollPragma>(), span)?;
+        self.budget.push(
+            &mut self.output.pragmas,
+            UnrollPragma {
+                token_index: self.output.tokens.len(),
+                tokens,
+                span,
+            },
+            span,
+        )
     }
 
     fn define(&mut self, payload: &[RawToken], span: Span) -> Result<(), ParseError> {

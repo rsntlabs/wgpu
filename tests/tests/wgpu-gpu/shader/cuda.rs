@@ -52,6 +52,7 @@ mod pointer_aliases;
 mod pointer_assignments;
 mod pointer_parameters;
 mod pointer_updates;
+mod pragma_unroll;
 mod preprocessing;
 mod preprocessing_conditions;
 mod prototypes;
@@ -124,6 +125,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_POINTER_ASSIGNMENTS,
         CUDA_POINTER_PARAMETERS,
         CUDA_POINTER_UPDATES,
+        CUDA_PRAGMA_UNROLL,
         CUDA_PREPROCESSING,
         CUDA_PREPROCESSING_CONDITIONS,
         CUDA_PROTOTYPES,
@@ -375,6 +377,8 @@ static CUDA_POINTER_ASSIGNMENTS: GpuTestConfiguration = configuration(pointer_as
 static CUDA_POINTER_PARAMETERS: GpuTestConfiguration = configuration(pointer_parameters::cases);
 #[apply(gpu_test!)]
 static CUDA_POINTER_UPDATES: GpuTestConfiguration = configuration(pointer_updates::cases);
+#[apply(gpu_test!)]
+static CUDA_PRAGMA_UNROLL: GpuTestConfiguration = configuration(pragma_unroll::cases);
 #[apply(gpu_test!)]
 static CUDA_PROTOTYPES: GpuTestConfiguration = configuration(prototypes::cases);
 #[apply(gpu_test!)]
