@@ -48,7 +48,7 @@ impl<'a> Parser<'a> {
             name,
             QualifiedType {
                 ty: TypeSpecifier::Structure(handle),
-                is_const: false,
+                qualifiers: Qualifiers::NONE,
             },
             name_span,
             global,
@@ -67,8 +67,9 @@ impl<'a> Parser<'a> {
             let type_span = self.lexer.peek()?.1;
             let QualifiedType {
                 ty: specifier,
-                is_const,
+                qualifiers,
             } = self.parse_type()?;
+            let is_const = qualifiers.is_const;
             if matches!(specifier, TypeSpecifier::Pointer { .. }) {
                 return Err(ParseError {
                     message: String::from("pointer structure members are unsupported"),

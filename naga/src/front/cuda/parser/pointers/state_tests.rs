@@ -121,7 +121,7 @@ fn parsed_pointer_state_preserves_objects_snapshots_and_added_const_qualificatio
         else {
             return false;
         };
-        value.is_const && !state.pointers.cells[&local].is_const
+        value.qualifiers.is_const && !state.pointers.cells[&local].qualifiers.is_const
     }));
 }
 

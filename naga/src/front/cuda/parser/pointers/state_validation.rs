@@ -66,7 +66,7 @@ impl Parser<'_> {
             {
                 return Err(pointer_state_error(span));
             }
-            let current = (cell.pointee, cell.is_const);
+            let current = (cell.pointee, cell.qualifiers);
             if qualification.is_some_and(|expected| expected != current) {
                 return Err(pointer_state_error(span));
             }
@@ -80,7 +80,7 @@ impl Parser<'_> {
         &mut self,
         state: &PointerState,
         expression: Handle<PointerExpression>,
-        is_const: bool,
+        qualifiers: Qualifiers,
         span: Span,
     ) -> Result<(), ParseError> {
         self.parameter_expansion_budget
@@ -99,7 +99,9 @@ impl Parser<'_> {
                         .cells
                         .get(&local)
                         .ok_or_else(|| pointer_state_error(span))?;
-                    if cell.kind != PointerCellKind::Snapshot || (cell.is_const && !is_const) {
+                    if cell.kind != PointerCellKind::Snapshot
+                        || !qualifiers.contains(cell.qualifiers)
+                    {
                         return Err(pointer_state_error(span));
                     }
                 }
@@ -174,7 +176,7 @@ impl Parser<'_> {
                     }
                     self.validate_source_pointer_value(&state.pointers, function, value)?;
                     if cell.pointee != state.pointers.expressions[value.expression].pointee
-                        || (value.is_const && !cell.is_const)
+                        || !cell.qualifiers.contains(value.qualifiers)
                     {
                         return Err(pointer_state_error(span));
                     }
@@ -188,7 +190,7 @@ impl Parser<'_> {
                     self.validate_pointer_objects(state, function, destination, span, |cell| {
                         if cell.kind != (PointerCellKind::Object { writable: true })
                             || cell.pointee != pointee
-                            || (value.is_const && !cell.is_const)
+                            || !cell.qualifiers.contains(value.qualifiers)
                         {
                             return Err(pointer_state_error(span));
                         }
@@ -208,7 +210,8 @@ impl Parser<'_> {
                         return Err(pointer_state_error(span));
                     }
                     self.validate_pointer_objects(state, function, source, span, |cell| {
-                        if cell.pointee != captured.pointee || (cell.is_const && !captured.is_const)
+                        if cell.pointee != captured.pointee
+                            || !captured.qualifiers.contains(cell.qualifiers)
                         {
                             return Err(pointer_state_error(span));
                         }

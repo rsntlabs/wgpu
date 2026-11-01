@@ -12,7 +12,7 @@ pub(super) enum TypeSpecifier {
     Structure(Handle<Type>),
     Pointer {
         pointee: Handle<Type>,
-        pointee_const: bool,
+        pointee_qualifiers: Qualifiers,
     },
 }
 
@@ -31,12 +31,12 @@ pub(super) const VECTOR_TYPES: [(&str, &str, VectorSize, Scalar); 9] = [
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct QualifiedType {
     pub ty: TypeSpecifier,
-    pub is_const: bool,
+    pub qualifiers: Qualifiers,
 }
 
 pub(super) enum DeclarationType {
     Explicit(QualifiedType),
-    Inferred { is_const: bool },
+    Inferred { qualifiers: Qualifiers },
 }
 
 #[derive(Clone, Debug)]
@@ -104,26 +104,26 @@ fn type_name(
     };
     Some(QualifiedType {
         ty: TypeSpecifier::Scalar(scalar),
-        is_const: false,
+        qualifiers: Qualifiers::NONE,
     })
 }
 
-pub(super) fn pointer_qualifiers(lexer: &mut Lexer<'_>) -> Result<bool, ParseError> {
-    let mut is_const = false;
+pub(super) fn pointer_qualifiers(lexer: &mut Lexer<'_>) -> Result<Qualifiers, ParseError> {
+    let mut qualifiers = Qualifiers::NONE;
     loop {
         let token = lexer.peek()?;
         match token.0 {
             Token::Word("const") => {
-                if is_const {
+                if qualifiers.is_const {
                     return Err(ParseError {
                         message: String::from("duplicate const qualifier"),
                         span: token.1,
                     });
                 }
-                is_const = true;
+                qualifiers.is_const = true;
             }
             Token::Word("__restrict__" | "__restrict") => {}
-            _ => return Ok(is_const),
+            _ => return Ok(qualifiers),
         }
         lexer.next()?;
     }
@@ -206,7 +206,7 @@ fn declaration_type(
                     .ok_or_else(|| invalid("incompatible or repeated type specifier"))?;
                 ty = Some(QualifiedType {
                     ty: TypeSpecifier::Scalar(scalar),
-                    is_const: false,
+                    qualifiers: Qualifiers::NONE,
                 });
             }
             Token::Word(name) if ty.is_none() && !inferred => {
@@ -222,7 +222,10 @@ fn declaration_type(
     if inferred {
         return Ok((
             DeclarationType::Inferred {
-                is_const: explicit_const || is_constexpr,
+                qualifiers: Qualifiers {
+                    is_const: explicit_const || is_constexpr,
+                    ..Qualifiers::NONE
+                },
             },
             is_constexpr,
         ));
@@ -233,7 +236,7 @@ fn declaration_type(
             span: lexer.peek()?.1,
         });
     };
-    ty.is_const |= explicit_const || is_constexpr;
+    ty.qualifiers.is_const |= explicit_const || is_constexpr;
     Ok((DeclarationType::Explicit(ty), is_constexpr))
 }
 
@@ -433,7 +436,7 @@ impl<'a> Parser<'a> {
         if matches!(ty.ty, TypeSpecifier::Pointer { .. }) {
             return self.fail("nested pointer aliases are unsupported");
         }
-        let pointer_const = pointer_qualifiers(&mut self.lexer)?;
+        let pointer_qualifiers = pointer_qualifiers(&mut self.lexer)?;
         if matches!(
             self.lexer.peek()?.0,
             Token::Operation('*' | '&') | Token::LogicalOperation('&')
@@ -445,9 +448,9 @@ impl<'a> Parser<'a> {
         Ok(QualifiedType {
             ty: TypeSpecifier::Pointer {
                 pointee,
-                pointee_const: ty.is_const,
+                pointee_qualifiers: ty.qualifiers,
             },
-            is_const: pointer_const,
+            qualifiers: pointer_qualifiers,
         })
     }
 

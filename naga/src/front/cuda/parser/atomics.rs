@@ -66,7 +66,7 @@ impl Parser<'_> {
         let destination = arguments.next().ok_or_else(|| atomic_error(span))?;
         self.append_block(destination.body);
         let pointer = self.borrowed_pointer(destination.value.require_value()?)?;
-        if pointer.is_const {
+        if pointer.qualifiers.is_const {
             return Err(atomic_error(span));
         }
         let mut reference = self.pointer_reference(pointer)?;

@@ -106,7 +106,7 @@ impl<'a> Analysis<'a> {
         cell: &PointerCell,
     ) -> Option<Handle<PointerExpression>> {
         if value.category != (PointerValueCategory::Value { position: None })
-            || (value.is_const && !cell.is_const)
+            || !cell.qualifiers.contains(value.qualifiers)
         {
             return None;
         }
@@ -145,7 +145,7 @@ impl<'a> Analysis<'a> {
         };
         if global.binding.is_none()
             || !access.contains(StorageAccess::LOAD)
-            || (!value.is_const && !access.contains(StorageAccess::STORE))
+            || (!value.qualifiers.is_const && !access.contains(StorageAccess::STORE))
         {
             return None;
         }
@@ -217,7 +217,7 @@ impl<'a> Analysis<'a> {
                 if captured.kind != PointerCellKind::Snapshot
                     || !matches!(cell.kind, PointerCellKind::Object { .. })
                     || captured.pointee != cell.pointee
-                    || (cell.is_const && !captured.is_const)
+                    || !captured.qualifiers.contains(cell.qualifiers)
                 {
                     return Ok(false);
                 }

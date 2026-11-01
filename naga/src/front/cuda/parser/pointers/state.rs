@@ -9,7 +9,7 @@ pub(in super::super) enum PointerCellKind {
 #[derive(Clone, Copy, Debug)]
 pub(in super::super) struct PointerCell {
     pub(in super::super) pointee: Handle<Type>,
-    pub(in super::super) is_const: bool,
+    pub(in super::super) qualifiers: Qualifiers,
     pub(in super::super) kind: PointerCellKind,
     pub(in super::super) expression: Handle<Expression>,
 }
@@ -51,7 +51,7 @@ impl Parser<'_> {
     pub(super) fn pointer_cell(
         &mut self,
         pointee: Handle<Type>,
-        is_const: bool,
+        qualifiers: Qualifiers,
         kind: PointerCellKind,
         span: Span,
     ) -> Result<Handle<LocalVariable>, ParseError> {
@@ -65,7 +65,7 @@ impl Parser<'_> {
             local,
             PointerCell {
                 pointee,
-                is_const,
+                qualifiers,
                 kind,
                 expression,
             },

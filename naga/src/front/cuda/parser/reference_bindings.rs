@@ -31,7 +31,7 @@ impl<'a> Parser<'a> {
         name: &'a str,
         span: Span,
         specifier: TypeSpecifier,
-        is_const: bool,
+        qualifiers: Qualifiers,
     ) -> Result<(), ParseError> {
         self.insert_symbol(name, Symbol::PendingReference, span)?;
         let ty = self.lower_type(specifier, span)?;
@@ -44,7 +44,7 @@ impl<'a> Parser<'a> {
             }
             self.expression(0)?
         };
-        self.bind_local_reference(name, span, ty, is_const, value)
+        self.bind_local_reference(name, span, ty, qualifiers, value)
     }
 
     pub(super) fn bind_local_reference(
@@ -52,14 +52,14 @@ impl<'a> Parser<'a> {
         name: &'a str,
         span: Span,
         ty: TypeResolution,
-        is_const: bool,
+        qualifiers: Qualifiers,
         value: ExpressionValue,
     ) -> Result<(), ParseError> {
         let (binding, constant) = match value {
             ExpressionValue::Reference(reference)
                 if self.module.compare_types(&reference.ty, &ty) =>
             {
-                if !is_const && !reference.writable {
+                if !qualifiers.contains(reference.qualifiers) {
                     return Err(ParseError {
                         message: String::from("mutable reference requires a writable lvalue"),
                         span: reference.span,
@@ -76,7 +76,7 @@ impl<'a> Parser<'a> {
                 )
             }
             value => {
-                if !is_const {
+                if !qualifiers.is_const || qualifiers.is_volatile {
                     return Err(ParseError {
                         message: String::from("mutable reference requires an exact-type lvalue"),
                         span: value.span(),
@@ -92,8 +92,9 @@ impl<'a> Parser<'a> {
                     span.until(&value.span),
                 );
                 let binding = self.freeze_reference(ReferenceValue {
+                    discard_read: true,
                     reference: Reference::Pointer(pointer),
-                    writable: false,
+                    qualifiers: Qualifiers::CONST,
                     ty: ty.clone(),
                     span,
                     constant: ConstantValue::default(),
@@ -106,7 +107,7 @@ impl<'a> Parser<'a> {
             Symbol::Reference {
                 binding,
                 ty,
-                writable: !is_const,
+                qualifiers,
                 constant,
             },
         );

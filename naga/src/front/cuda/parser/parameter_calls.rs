@@ -4,8 +4,8 @@ use super::*;
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub(super) enum ParameterMode {
     Value,
-    Reference { is_const: bool },
-    Pointer { is_const: bool },
+    Reference { qualifiers: Qualifiers },
+    Pointer { qualifiers: Qualifiers },
 }
 
 impl ParameterMode {
@@ -83,14 +83,14 @@ pub(super) struct CapturedArgument {
 #[derive(Clone, Copy)]
 pub(super) struct SourcePointerType {
     pub(super) pointee: Handle<Type>,
-    pub(super) is_const: bool,
+    pub(super) qualifiers: Qualifiers,
 }
 
 pub(super) trait CallArgument {
     fn ty(&self) -> Option<&TypeResolution>;
     fn is_thread_block(&self) -> bool;
     fn span(&self) -> Span;
-    fn reference_writable(&self) -> Option<bool>;
+    fn reference_qualifiers(&self) -> Option<Qualifiers>;
     fn pointer_type(&self, module: &Module) -> Option<SourcePointerType>;
 }
 
@@ -104,7 +104,7 @@ impl CallArgument for Value {
     fn span(&self) -> Span {
         self.span
     }
-    fn reference_writable(&self) -> Option<bool> {
+    fn reference_qualifiers(&self) -> Option<Qualifiers> {
         None
     }
     fn pointer_type(&self, _module: &Module) -> Option<SourcePointerType> {
@@ -129,10 +129,10 @@ impl CallArgument for CapturedArgument {
             ExpressionResult::Void(span) => span,
         }
     }
-    fn reference_writable(&self) -> Option<bool> {
+    fn reference_qualifiers(&self) -> Option<Qualifiers> {
         match self.value {
             ExpressionResult::Value(ExpressionValue::Reference(ref reference)) => {
-                Some(reference.writable)
+                Some(reference.qualifiers)
             }
             _ => None,
         }
@@ -143,7 +143,7 @@ impl CallArgument for CapturedArgument {
                 match *pointer.ty.inner_with(&module.types) {
                     TypeInner::Pointer { base, .. } => Some(SourcePointerType {
                         pointee: base,
-                        is_const: pointer.is_const,
+                        qualifiers: pointer.qualifiers,
                     }),
                     _ => None,
                 }
@@ -152,7 +152,7 @@ impl CallArgument for CapturedArgument {
                 match *reference.ty.inner_with(&module.types) {
                     TypeInner::Array { base, .. } => Some(SourcePointerType {
                         pointee: base,
-                        is_const: !reference.writable,
+                        qualifiers: reference.qualifiers,
                     }),
                     _ => None,
                 }
@@ -310,7 +310,7 @@ impl Parser<'_> {
                 ParameterMode::Value => {
                     DeferredArgument::Value(self.convert_value(value, &target)?.handle)
                 }
-                ParameterMode::Reference { is_const } => {
+                ParameterMode::Reference { qualifiers } => {
                     let reference = match value {
                         ExpressionValue::Reference(reference)
                             if self.module.compare_types(&reference.ty, &target) =>
@@ -328,21 +328,22 @@ impl Parser<'_> {
                                 value.span,
                             );
                             ReferenceValue {
+                                discard_read: true,
                                 reference: Reference::Pointer(pointer),
-                                writable: false,
+                                qualifiers: Qualifiers::CONST,
                                 ty: target,
                                 span: value.span,
                                 constant: ConstantValue::default(),
                             }
                         }
                     };
-                    if !is_const && !reference.writable {
+                    if !qualifiers.contains(reference.qualifiers) {
                         return self.fail("mutable reference requires a writable lvalue");
                     }
                     DeferredArgument::Reference(self.freeze_reference(reference)?)
                 }
-                ParameterMode::Pointer { is_const } => {
-                    let pointer = self.convert_pointer(value, &target, is_const, span)?;
+                ParameterMode::Pointer { qualifiers } => {
+                    let pointer = self.convert_pointer(value, &target, qualifiers, span)?;
                     DeferredArgument::Pointer(self.boxed_pointer_value(pointer)?)
                 }
             };

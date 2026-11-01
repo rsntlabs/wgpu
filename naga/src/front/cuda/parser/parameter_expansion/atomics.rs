@@ -85,8 +85,9 @@ impl Parser<'_> {
         }
         let pointer = self.address_of(
             ExpressionValue::Reference(ReferenceValue {
+                discard_read: true,
                 reference: Reference::Bound(binding),
-                writable: true,
+                qualifiers: Qualifiers::NONE,
                 ty,
                 span,
                 constant: ConstantValue::default(),
@@ -147,8 +148,9 @@ impl Parser<'_> {
                         .map(|ty| self.temporary_pointer(&TypeResolution::Handle(ty), span))
                         .transpose()?;
                     let mut reference = ReferenceValue {
+                        discard_read: true,
                         reference: Reference::Bound(binding),
-                        writable: true,
+                        qualifiers: Qualifiers::NONE,
                         ty: pointee,
                         span,
                         constant: ConstantValue::default(),

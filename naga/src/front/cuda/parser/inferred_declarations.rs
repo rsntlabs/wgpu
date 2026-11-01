@@ -3,15 +3,15 @@ use super::*;
 #[derive(Clone, Copy)]
 enum Declarator {
     Value,
-    Pointer { is_const: bool },
+    Pointer { qualifiers: Qualifiers },
     Reference,
 }
 
 enum DeducedType {
     Value {
         ty: TypeResolution,
-        is_const: bool,
-        pointee_const: Option<bool>,
+        qualifiers: Qualifiers,
+        pointee_qualifiers: Option<Qualifiers>,
     },
     ThreadBlock,
 }
@@ -21,19 +21,19 @@ enum InferredBinding {
     Value(Value),
     Pointer {
         pointer: PointerValue,
-        is_const: bool,
+        qualifiers: Qualifiers,
     },
     Reference {
         value: ExpressionValue,
         ty: TypeResolution,
-        is_const: bool,
+        qualifiers: Qualifiers,
     },
 }
 
 impl<'a> Parser<'a> {
     pub(super) fn inferred_local_declaration(
         &mut self,
-        is_const: bool,
+        qualifiers: Qualifiers,
         is_constexpr: bool,
     ) -> Result<(), ParseError> {
         let mut deduced_type = None;
@@ -47,7 +47,7 @@ impl<'a> Parser<'a> {
             }
             let ((deduced, binding), body) = self.capture_block(|parser| {
                 let value = parser.inferred_initializer()?;
-                parser.deduce_initializer(value, declarator, is_const, is_constexpr)
+                parser.deduce_initializer(value, declarator, qualifiers, is_constexpr)
             })?;
             self.check_deduced_type(&mut deduced_type, deduced, span)?;
             match binding {
@@ -56,19 +56,22 @@ impl<'a> Parser<'a> {
                     self.function.symbol_table.add(name, Symbol::ThreadBlock);
                 }
                 InferredBinding::Value(value) => {
-                    self.bind_inferred_value(name, span, value, body, is_const, is_constexpr)?;
+                    self.bind_inferred_value(name, span, value, body, qualifiers, is_constexpr)?;
                 }
-                InferredBinding::Pointer { pointer, is_const } => {
+                InferredBinding::Pointer {
+                    pointer,
+                    qualifiers,
+                } => {
                     self.append_block(body);
-                    self.bind_local_pointer(name, pointer, is_const, span)?;
+                    self.bind_local_pointer(name, pointer, qualifiers.is_const, span)?;
                 }
                 InferredBinding::Reference {
                     value,
                     ty,
-                    is_const,
+                    qualifiers,
                 } => {
                     self.append_block(body);
-                    self.bind_local_reference(name, span, ty, is_const, value)?;
+                    self.bind_local_reference(name, span, ty, qualifiers, value)?;
                 }
             }
             self.function.initialized_declarations.push(span);
@@ -96,7 +99,7 @@ impl<'a> Parser<'a> {
                 .insert(name, GlobalDeclaration::PendingAuto);
             let ((deduced, binding), _) = self.capture_block(|parser| {
                 let value = parser.inferred_initializer()?;
-                parser.deduce_initializer(value, declarator, true, true)
+                parser.deduce_initializer(value, declarator, Qualifiers::CONST, true)
             })?;
             self.check_deduced_type(&mut deduced_type, deduced, span)?;
             let InferredBinding::Value(value) = binding else {
@@ -114,7 +117,7 @@ impl<'a> Parser<'a> {
 
     fn inferred_declarator(&mut self) -> Result<Declarator, ParseError> {
         if self.lexer.next_if(Token::Operation('*'))? {
-            let is_const = types::pointer_qualifiers(&mut self.lexer)?;
+            let qualifiers = types::pointer_qualifiers(&mut self.lexer)?;
             if matches!(
                 self.lexer.peek()?.0,
                 Token::Operation('*' | '&') | Token::LogicalOperation('&')
@@ -122,7 +125,7 @@ impl<'a> Parser<'a> {
                 return self
                     .fail("nested pointer and pointer reference declarators are unsupported");
             }
-            Ok(Declarator::Pointer { is_const })
+            Ok(Declarator::Pointer { qualifiers })
         } else if self.lexer.next_if(Token::Operation('&'))? {
             Ok(Declarator::Reference)
         } else if self.lexer.peek()?.0 == Token::LogicalOperation('&') {
@@ -165,7 +168,7 @@ impl<'a> Parser<'a> {
         &mut self,
         result: ExpressionResult,
         declarator: Declarator,
-        is_const: bool,
+        qualifiers: Qualifiers,
         is_constexpr: bool,
     ) -> Result<(DeducedType, InferredBinding), ParseError> {
         let value = match result {
@@ -201,24 +204,26 @@ impl<'a> Parser<'a> {
                     });
                 }
                 self.require_inferred_value_type(value.ty(), value.span())?;
-                let source_const =
-                    matches!(&value, ExpressionValue::Reference(reference) if !reference.writable);
+                let source_qualifiers = match &value {
+                    ExpressionValue::Reference(reference) => reference.qualifiers,
+                    _ => Qualifiers::NONE,
+                };
                 let ty = value.ty().clone();
                 Ok((
                     DeducedType::Value {
                         ty: ty.clone(),
-                        is_const: source_const && !is_const,
-                        pointee_const: None,
+                        qualifiers: source_qualifiers.without(qualifiers),
+                        pointee_qualifiers: None,
                     },
                     InferredBinding::Reference {
                         value,
                         ty,
-                        is_const: is_const || source_const,
+                        qualifiers: qualifiers.union(source_qualifiers),
                     },
                 ))
             }
             Declarator::Pointer {
-                is_const: pointer_const,
+                qualifiers: pointer_qualifiers,
             } => {
                 if is_constexpr {
                     return self.fail("constexpr pointer declarations are unsupported");
@@ -230,15 +235,15 @@ impl<'a> Parser<'a> {
                 };
                 let deduced = DeducedType::Value {
                     ty: TypeResolution::Handle(base),
-                    is_const: pointer.is_const && !is_const,
-                    pointee_const: None,
+                    qualifiers: pointer.qualifiers.without(qualifiers),
+                    pointee_qualifiers: None,
                 };
-                pointer.is_const |= is_const;
+                pointer.qualifiers = pointer.qualifiers.union(qualifiers);
                 Ok((
                     deduced,
                     InferredBinding::Pointer {
                         pointer,
-                        is_const: pointer_const,
+                        qualifiers: pointer_qualifiers,
                     },
                 ))
             }
@@ -249,10 +254,16 @@ impl<'a> Parser<'a> {
                 let pointer = self.borrowed_pointer(value)?;
                 let deduced = DeducedType::Value {
                     ty: pointer.ty.clone(),
-                    is_const: false,
-                    pointee_const: Some(pointer.is_const),
+                    qualifiers: Qualifiers::NONE,
+                    pointee_qualifiers: Some(pointer.qualifiers),
                 };
-                Ok((deduced, InferredBinding::Pointer { pointer, is_const }))
+                Ok((
+                    deduced,
+                    InferredBinding::Pointer {
+                        pointer,
+                        qualifiers,
+                    },
+                ))
             }
             Declarator::Value => {
                 let value = self.rvalue(value)?;
@@ -263,8 +274,8 @@ impl<'a> Parser<'a> {
                 Ok((
                     DeducedType::Value {
                         ty: value.ty.clone(),
-                        is_const: false,
-                        pointee_const: None,
+                        qualifiers: Qualifiers::NONE,
+                        pointee_qualifiers: None,
                     },
                     InferredBinding::Value(value),
                 ))
@@ -302,17 +313,17 @@ impl<'a> Parser<'a> {
                 (
                     &DeducedType::Value {
                         ty: ref previous,
-                        is_const: previous_const,
-                        pointee_const: previous_pointee,
+                        qualifiers: previous_qualifiers,
+                        pointee_qualifiers: previous_pointee,
                     },
                     &DeducedType::Value {
                         ref ty,
-                        is_const,
-                        pointee_const,
+                        qualifiers,
+                        pointee_qualifiers,
                     },
                 ) => {
-                    previous_const == is_const
-                        && previous_pointee == pointee_const
+                    previous_qualifiers == qualifiers
+                        && previous_pointee == pointee_qualifiers
                         && self.module.compare_types(previous, ty)
                 }
                 _ => false,
@@ -335,7 +346,7 @@ impl<'a> Parser<'a> {
         span: Span,
         value: Value,
         body: crate::Block,
-        is_const: bool,
+        qualifiers: Qualifiers,
         is_constexpr: bool,
     ) -> Result<(), ParseError> {
         if is_constexpr {
@@ -349,12 +360,12 @@ impl<'a> Parser<'a> {
             Symbol::Variable {
                 pointer,
                 ty: ty.clone(),
-                writable: !is_const,
+                qualifiers,
             },
         );
         let end = value.span;
         let initializer = if is_constexpr
-            || (is_const
+            || (qualifiers.is_const
                 && matches!(
                     *ty.inner_with(&self.module.types),
                     TypeInner::Scalar(Scalar::BOOL | Scalar::I32 | Scalar::U32)

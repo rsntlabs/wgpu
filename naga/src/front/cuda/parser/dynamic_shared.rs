@@ -123,7 +123,7 @@ impl<'a> Parser<'a> {
             ));
         }
         let qualified = qualified.unwrap();
-        if qualified.is_const || matches!(qualified.ty, TypeSpecifier::Pointer { .. }) {
+        if qualified.qualifiers.is_const || matches!(qualified.ty, TypeSpecifier::Pointer { .. }) {
             return Err(shared_error(
                 "dynamic shared arrays require a non-const supported value type",
                 span,
@@ -332,7 +332,7 @@ impl<'a> Parser<'a> {
         Ok(Symbol::Array {
             pointer,
             ty: TypeResolution::Handle(declaration.element),
-            writable: true,
+            qualifiers: Qualifiers::NONE,
         })
     }
 
