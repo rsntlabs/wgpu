@@ -7,6 +7,17 @@ impl Parser<'_> {
     ) -> Result<ExpressionResult, ParseError> {
         let arrow = self.lexer.next()?.0 == Token::Arrow;
         let (field, span) = self.identifier()?;
+        if let ExpressionResult::ThreadBlock(group) = value {
+            if arrow {
+                return Err(ParseError {
+                    message: String::from(
+                        "thread_block handles do not support pointer member access",
+                    ),
+                    span: group.span.until(&span),
+                });
+            }
+            return self.thread_block_member(field, group.span.until(&span));
+        }
         let value = value.require_value()?;
         let value = if arrow {
             let pointer = self.borrowed_pointer(value)?;

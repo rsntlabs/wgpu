@@ -65,6 +65,7 @@ mod sqrt;
 mod sqrtf;
 mod structures;
 mod switches;
+mod thread_block;
 mod trigonometry;
 mod type_aliases;
 mod uninitialized;
@@ -133,6 +134,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_SQRTF,
         CUDA_STRUCTURES,
         CUDA_SWITCHES,
+        CUDA_THREAD_BLOCK,
         CUDA_TRIGONOMETRY,
         CUDA_TYPE_ALIASES,
         CUDA_UNINITIALIZED,
@@ -389,6 +391,8 @@ static CUDA_SQRTF: GpuTestConfiguration = configuration(sqrtf::cases);
 static CUDA_STRUCTURES: GpuTestConfiguration = configuration(structures::cases);
 #[apply(gpu_test!)]
 static CUDA_SWITCHES: GpuTestConfiguration = configuration(switches::cases);
+#[apply(gpu_test!)]
+static CUDA_THREAD_BLOCK: GpuTestConfiguration = configuration(thread_block::cases);
 #[apply(gpu_test!)]
 static CUDA_TRIGONOMETRY: GpuTestConfiguration = configuration(trigonometry::cases);
 #[apply(gpu_test!)]

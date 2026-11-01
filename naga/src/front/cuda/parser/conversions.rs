@@ -198,7 +198,7 @@ impl Parser<'_> {
                 span,
             });
         }
-        Ok(self.lower_type(ty, span))
+        self.lower_type(ty, span)
     }
 
     pub(super) fn cast_value(

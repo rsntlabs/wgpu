@@ -67,6 +67,7 @@ mod sqrtf;
 mod streaming;
 mod structures;
 mod switches;
+mod thread_block;
 mod trigonometry;
 mod type_aliases;
 mod uninitialized;

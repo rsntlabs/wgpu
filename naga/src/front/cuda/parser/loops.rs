@@ -52,6 +52,9 @@ impl Parser<'_> {
     fn for_loop_body(&mut self, start: Span) -> Result<crate::Block, ParseError> {
         let ((), mut init) = self.capture_block(|parser| {
             if !parser.lexer.next_if(Token::Separator(';'))? {
+                if parser.lexer.peek()?.0 == Token::Word("namespace") {
+                    return parser.fail("namespace aliases are unsupported in for initializers");
+                }
                 if parser.starts_declaration()? {
                     parser.local_declaration()?;
                 } else {

@@ -1091,6 +1091,52 @@ until control-barrier uniformity analysis is available. Conditions and loops
 without returns may precede a barrier; returns after the last barrier are
 allowed. Synchronization does not extend across workgroups.
 
+## Cooperative Groups
+
+`cooperative_groups::thread_block` represents the current thread block.
+`this_thread_block()` creates its handle. Handles support typed, `const`, and
+`auto` locals, aliases, and copies, including one-argument copy construction.
+They require an initializer; default construction is unsupported. This follows
+CUDA's [group-handle rules](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cooperative-groups.html).
+
+Namespace aliases can appear at file or block scope and can name earlier aliases:
+
+```cuda
+namespace cg = cooperative_groups;
+namespace blocks = cg;
+using Block = blocks::thread_block;
+```
+
+Qualification also supports a leading `::`. Lookup before `::` ignores ordinary
+value bindings and respects intervening type or namespace bindings, following
+C++20 [qualified lookup](https://timsong-cpp.github.io/cppwp/n4861/basic.lookup.qual).
+Namespace-alias targets use namespace-only lookup. Repeating an alias for the
+same namespace is allowed; general namespace definitions and `using namespace`
+directives remain unsupported.
+
+`cg::sync(group)`, `group.sync()`, and `Block::sync()` synchronize the whole
+block with the same workgroup and storage-memory barriers as `__syncthreads()`.
+Every spelling retains the straight-line kernel placement rules above, including
+rejection after a possible earlier return. Synchronization in device helpers
+remains unsupported. These operations follow CUDA's
+[full-block synchronization semantics](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cooperative-groups.html#sync).
+
+`thread_rank()`, `num_threads()`, and its alias `size()` return `unsigned int`.
+They accept member or type-qualified calls, including calls on a temporary from
+`this_thread_block()`. Rank is `threadIdx.x + blockDim.x * (threadIdx.y +
+blockDim.y * threadIdx.z)`; size is the product of the launch block dimensions.
+Queries remain runtime expressions and cannot supply `constexpr` values or
+array bounds, even when the launch shape is fixed. Device helpers can create
+local handles and use these scalar queries.
+
+Handles do not consume shader variables or buffer bindings. Group parameters,
+function results, pointers, references, arrays, struct members, shared storage,
+and `constexpr` handles remain unsupported. Dimension queries returning `dim3`,
+split-phase barriers, grid and cluster groups, coalesced groups, partitions, and
+partial-block collectives are not yet supported. The scalar and synchronization
+operations are described in CUDA's
+[`thread_block` API](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/device-callable-apis.html#class-thread-block).
+
 Unsupported syntax produces a parse error with a source span. This includes
 includes and other preprocessing forms outside the subset above, host code and launch syntax,
 pointer operations outside the borrowed subset above,

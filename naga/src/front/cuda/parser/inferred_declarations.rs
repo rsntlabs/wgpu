@@ -7,13 +7,17 @@ enum Declarator {
     Reference,
 }
 
-struct DeducedType {
-    ty: TypeResolution,
-    is_const: bool,
-    pointee_const: Option<bool>,
+enum DeducedType {
+    Value {
+        ty: TypeResolution,
+        is_const: bool,
+        pointee_const: Option<bool>,
+    },
+    ThreadBlock,
 }
 
 enum InferredBinding {
+    ThreadBlock,
     Value(Value),
     Pointer {
         pointer: PointerValue,
@@ -47,6 +51,10 @@ impl<'a> Parser<'a> {
             })?;
             self.check_deduced_type(&mut deduced_type, deduced, span)?;
             match binding {
+                InferredBinding::ThreadBlock => {
+                    self.append_block(body);
+                    self.function.symbol_table.add(name, Symbol::ThreadBlock);
+                }
                 InferredBinding::Value(value) => {
                     self.bind_inferred_value(name, span, value, body, is_const, is_constexpr)?;
                 }
@@ -125,7 +133,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn inferred_initializer(&mut self) -> Result<ExpressionValue, ParseError> {
+    fn inferred_initializer(&mut self) -> Result<ExpressionResult, ParseError> {
         let has_equals = self.lexer.next_if(Token::Operation('='))?;
         let delimiter = match self.lexer.peek()?.0 {
             Token::Paren('{') if has_equals => {
@@ -141,24 +149,38 @@ impl<'a> Parser<'a> {
             if matches!(self.lexer.peek()?.0, Token::Paren('{' | '}' | ')')) {
                 return self.fail("auto deduction requires a single expression initializer");
             }
-            let value = self.expression(0)?;
+            let value = self.expression_result(0)?;
             if closing == '}' {
                 self.lexer.next_if(Token::Separator(','))?;
             }
             self.lexer.expect_span(Token::Paren(closing))?;
             Ok(value)
         } else {
-            self.expression(0)
+            self.expression_result(0)
         }
     }
 
     fn deduce_initializer(
         &mut self,
-        value: ExpressionValue,
+        result: ExpressionResult,
         declarator: Declarator,
         is_const: bool,
         is_constexpr: bool,
     ) -> Result<(DeducedType, InferredBinding), ParseError> {
+        let value = match result {
+            ExpressionResult::ThreadBlock(value) => {
+                if is_constexpr || !matches!(declarator, Declarator::Value) {
+                    return Err(ParseError {
+                        message: String::from(
+                            "thread_block handles require non-constexpr value declarations",
+                        ),
+                        span: value.span,
+                    });
+                }
+                return Ok((DeducedType::ThreadBlock, InferredBinding::ThreadBlock));
+            }
+            result => result.require_value()?,
+        };
         match declarator {
             Declarator::Reference => {
                 if is_constexpr {
@@ -182,7 +204,7 @@ impl<'a> Parser<'a> {
                     matches!(&value, ExpressionValue::Reference(reference) if !reference.writable);
                 let ty = value.ty().clone();
                 Ok((
-                    DeducedType {
+                    DeducedType::Value {
                         ty: ty.clone(),
                         is_const: source_const && !is_const,
                         pointee_const: None,
@@ -205,7 +227,7 @@ impl<'a> Parser<'a> {
                 else {
                     return self.fail("expected a CUDA source pointer type");
                 };
-                let deduced = DeducedType {
+                let deduced = DeducedType::Value {
                     ty: TypeResolution::Handle(base),
                     is_const: pointer.is_const && !is_const,
                     pointee_const: None,
@@ -224,7 +246,7 @@ impl<'a> Parser<'a> {
                     return self.fail("constexpr pointer declarations are unsupported");
                 }
                 let pointer = self.borrowed_pointer(value)?;
-                let deduced = DeducedType {
+                let deduced = DeducedType::Value {
                     ty: pointer.ty.clone(),
                     is_const: false,
                     pointee_const: Some(pointer.is_const),
@@ -238,7 +260,7 @@ impl<'a> Parser<'a> {
                     self.require_scalar_type(&value.ty, value.span)?;
                 }
                 Ok((
-                    DeducedType {
+                    DeducedType::Value {
                         ty: value.ty.clone(),
                         is_const: false,
                         pointee_const: None,
@@ -274,10 +296,27 @@ impl<'a> Parser<'a> {
         span: Span,
     ) -> Result<(), ParseError> {
         if let Some(previous) = previous.as_ref() {
-            if previous.is_const != deduced.is_const
-                || previous.pointee_const != deduced.pointee_const
-                || !self.module.compare_types(&previous.ty, &deduced.ty)
-            {
+            let consistent = match (previous, &deduced) {
+                (&DeducedType::ThreadBlock, &DeducedType::ThreadBlock) => true,
+                (
+                    &DeducedType::Value {
+                        ty: ref previous,
+                        is_const: previous_const,
+                        pointee_const: previous_pointee,
+                    },
+                    &DeducedType::Value {
+                        ref ty,
+                        is_const,
+                        pointee_const,
+                    },
+                ) => {
+                    previous_const == is_const
+                        && previous_pointee == pointee_const
+                        && self.module.compare_types(previous, ty)
+                }
+                _ => false,
+            };
+            if !consistent {
                 return Err(ParseError {
                     message: String::from("inconsistent deduced auto types in declaration"),
                     span,

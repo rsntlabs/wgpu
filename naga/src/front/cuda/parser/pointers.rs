@@ -145,7 +145,7 @@ impl<'a> Parser<'a> {
         let pointee = match specifier {
             TypeSpecifier::Pointer { pointee, .. } => pointee,
             _ => {
-                let pointee = self.lower_type(specifier, span);
+                let pointee = self.lower_type(specifier, span)?;
                 self.type_handle(&pointee, span)
             }
         };

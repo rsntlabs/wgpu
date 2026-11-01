@@ -145,6 +145,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
                 .into_iter()
                 .map(|(name, _)| (name, GlobalDeclaration::Functions(Vec::new()))),
         )
+        .chain(core::iter::once((
+            "cooperative_groups",
+            GlobalDeclaration::Namespace(Namespace::CooperativeGroups),
+        )))
         .chain(
             VECTOR_TYPES
                 .into_iter()
@@ -299,6 +303,16 @@ impl<'a> Parser<'a> {
         let mut integers = IntegerSpecifiers::default();
         loop {
             let token = self.lexer.peek()?;
+            if result.is_none() {
+                if let Some(name) = self.qualified_item()? {
+                    let cooperative_groups::QualifiedItem::Type(ty) = name.item else {
+                        return self.fail("expected a supported function return type");
+                    };
+                    result = Some(ReturnType::Value(ty.ty));
+                    result_span.get_or_insert(name.span);
+                    continue;
+                }
+            }
             match token.0 {
                 Token::Word("inline") => {
                     if inlining == Some(Inlining::Inline) {
@@ -399,6 +413,9 @@ impl<'a> Parser<'a> {
         let Some(result) = result else {
             return self.fail("expected a supported function return type");
         };
+        if matches!(result, ReturnType::Value(TypeSpecifier::ThreadBlock)) {
+            return self.fail("thread_block return types are unsupported");
+        }
         if matches!(result, ReturnType::Value(TypeSpecifier::Pointer { .. })) {
             return self.fail("pointer return types are unsupported");
         }
@@ -510,7 +527,7 @@ impl<'a> Parser<'a> {
     fn device_function(&mut self, header: FunctionHeader<'a>) -> Result<(), ParseError> {
         self.function.ir.name = Some(String::from(header.name));
         if let ReturnType::Value(ty) = header.result {
-            let ty = self.lower_type(ty, header.result_span);
+            let ty = self.lower_type(ty, header.result_span)?;
             self.function.ir.result = Some(crate::FunctionResult {
                 ty: self.type_handle(&ty, header.result_span),
                 binding: None,
@@ -549,7 +566,7 @@ impl<'a> Parser<'a> {
                     span: header.name_span,
                 });
             }
-            let result = self.candidate_result(candidate, header.result_span);
+            let result = self.candidate_result(candidate, header.result_span)?;
             if self.function.ir.result.as_ref().map(|result| result.ty) != result {
                 return Err(ParseError {
                     message: format!("incompatible builtin result type `{}`", header.name),
@@ -732,16 +749,16 @@ impl<'a> Parser<'a> {
         &mut self,
         candidate: FunctionCandidate,
         span: Span,
-    ) -> Option<Handle<Type>> {
+    ) -> Result<Option<Handle<Type>>, ParseError> {
         let ty = match candidate {
             FunctionCandidate::Defined(function) => {
-                return self.module.functions[function]
+                return Ok(self.module.functions[function]
                     .result
                     .as_ref()
-                    .map(|result| result.ty)
+                    .map(|result| result.ty))
             }
             FunctionCandidate::Current => {
-                return self.function.ir.result.as_ref().map(|result| result.ty)
+                return Ok(self.function.ir.result.as_ref().map(|result| result.ty))
             }
             FunctionCandidate::Builtin(builtin) => TypeSpecifier::Scalar(builtin.result),
             FunctionCandidate::Multiply24(result)
@@ -756,8 +773,8 @@ impl<'a> Parser<'a> {
                 TypeSpecifier::Vector { size, scalar }
             }
         };
-        let ty = self.lower_type(ty, span);
-        Some(self.type_handle(&ty, span))
+        let ty = self.lower_type(ty, span)?;
+        Ok(Some(self.type_handle(&ty, span)))
     }
 
     pub(super) fn device_parameter(
@@ -888,7 +905,7 @@ impl<'a> Parser<'a> {
                         .map(|value| value.handle)
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            let ty = self.lower_type(TypeSpecifier::Vector { size, scalar }, span);
+            let ty = self.lower_type(TypeSpecifier::Vector { size, scalar }, span)?;
             let handle_ty = self.type_handle(&ty, span);
             let handle = self.append(
                 Expression::Compose {
