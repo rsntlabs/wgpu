@@ -42,18 +42,36 @@ impl Parser<'_> {
         &mut self,
         minimum_precedence: u8,
     ) -> Result<ExpressionResult, ParseError> {
+        self.expression_result_with_assignment(minimum_precedence, true)
+    }
+
+    pub(super) fn conditional_expression(&mut self) -> Result<ExpressionValue, ParseError> {
+        self.expression_result_with_assignment(0, false)?
+            .require_value()
+    }
+
+    fn expression_result_with_assignment(
+        &mut self,
+        minimum_precedence: u8,
+        allow_assignment: bool,
+    ) -> Result<ExpressionResult, ParseError> {
         self.function.expression_depth += 1;
         if self.function.expression_depth > 64 {
             return self.fail("CUDA expression nesting limit exceeded");
         }
-        let result = self.capture_block(|parser| parser.expression_inner(minimum_precedence));
+        let result = self
+            .capture_block(|parser| parser.expression_inner(minimum_precedence, allow_assignment));
         self.function.expression_depth -= 1;
         let (value, body) = result?;
         self.append_block(body);
         Ok(value)
     }
 
-    fn expression_inner(&mut self, minimum_precedence: u8) -> Result<ExpressionResult, ParseError> {
+    fn expression_inner(
+        &mut self,
+        minimum_precedence: u8,
+        allow_assignment: bool,
+    ) -> Result<ExpressionResult, ParseError> {
         let start = self.lexer.peek()?.1.to_range().unwrap().start;
         let mut left = self.primary()?;
         loop {
@@ -100,6 +118,9 @@ impl Parser<'_> {
         if minimum_precedence == 0 {
             if self.lexer.next_if(Token::Operation('?'))? {
                 left = self.conditional(left, start)?;
+            }
+            if !allow_assignment {
+                return Ok(left);
             }
             let operator = match self.lexer.peek()?.0 {
                 Token::Operation('=') => Some(None),

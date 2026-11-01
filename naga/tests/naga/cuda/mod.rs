@@ -52,6 +52,7 @@ mod pointer_assignments;
 mod pointer_names;
 mod pointer_parameters;
 mod pointer_updates;
+mod pragma_unroll;
 mod preprocessing;
 mod preprocessing_conditions;
 mod prototypes;

@@ -1061,6 +1061,28 @@ definition, or removal of standard predefined names such as `__LINE__`, `__cplus
 inside a short-circuited expression. Preparation bounds source size, condition
 nesting, expansion depth, stored and emitted tokens, and expansion work.
 
+Loop hints accept `#pragma unroll` with an optional integral constant expression
+before a `for`, `while`, or `do` loop, following NVIDIA's
+[`unroll` pragma](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-c-programming-guide/index.html#pragma-unroll).
+Factors use the existing `bool`, `int`, and `unsigned int` constant-expression
+subset, including scalar casts and source `const` or `constexpr` bindings.
+Floating-point results, runtime values, and invalid constant expressions remain
+errors. Existing constant-expression limits, including rejection of signed
+overflow, still apply.
+
+Pragma payloads are not macro-expanded. A factor name resolves its source
+binding even when a macro has the same name; a macro alone does not provide a
+factor. Lookup precedes the loop initializer's scope. The loop itself and its
+body retain normal macro expansion. The frontend preserves ordinary loop
+lowering and does not guarantee unrolling. Factors that are zero, negative, or
+greater than `2147483647` are accepted as ignored hints.
+
+Misplaced hints are ignored without evaluating their payloads. Trailing tokens
+after a complete integral factor are also ignored without resolving names or
+evaluating effects, while invalid tokens still produce lexical errors. Each
+stacked hint immediately before a loop has its factor checked. Inactive
+preprocessing groups continue to skip pragma payloads.
+
 Kernel integer literals support decimal, leading-zero octal, `0x`/`0X`
 hexadecimal, and `0b`/`0B` binary notation. Apostrophes may separate digits, as in
 `1'000` or `0xffff'ffff`. Unsuffixed decimal literals must fit `int`; unsuffixed nondecimal
