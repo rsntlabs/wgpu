@@ -315,6 +315,7 @@ impl<'a> Parser<'a> {
         self.finish_kernel()?;
         self.finish_functions()?;
         self.upgrade_atomic_storage()?;
+        self.check_workgroup_barriers()?;
         self.promote_scalar_locals()?;
         // Remove call results from source statements discarded after a jump.
         crate::compact::compact(&mut self.module, crate::compact::KeepUnused::Yes);

@@ -510,7 +510,6 @@ impl<'a> Parser<'a> {
         self.initialize_helper_builtins()?;
         self.block_contents()?;
         self.flush_emitter();
-        barriers::check_control_flow(&self.function.ir.body, false, false)?;
         let function = core::mem::replace(
             &mut self.function,
             FunctionContext::new(FunctionKind::Kernel),
