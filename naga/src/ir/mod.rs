@@ -1164,8 +1164,9 @@ pub struct GlobalVariable {
     pub init: Option<Handle<Expression>>,
     /// Memory decorations for this variable.
     ///
-    /// These are meaningful for storage address space variables in SPIR-V,
-    /// where they map to SPIR-V memory decorations on the variable.
+    /// Storage variables map these to SPIR-V decorations. Copyable,
+    /// non-cooperative workgroup data supports only `VOLATILE`, which maps to
+    /// volatile memory access operands instead.
     ///
     /// In WGSL, these can be set with attributes like `@coherent` or `@volatile`.
     pub memory_decorations: MemoryDecorations,

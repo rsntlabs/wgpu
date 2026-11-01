@@ -226,6 +226,8 @@ bitflags::bitflags! {
         const LINEAR_INTERPOLATION = 1 << 44;
         /// Support for `debugPrintf`.
         const DEBUG_PRINTF = 1 << 45;
+        /// Support for `@volatile` on copyable, non-cooperative workgroup data.
+        const MEMORY_DECORATION_VOLATILE_WORKGROUP = 1 << 46;
     }
 }
 

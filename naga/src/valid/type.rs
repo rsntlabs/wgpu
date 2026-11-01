@@ -243,6 +243,7 @@ const fn ptr_space_argument_flag(space: crate::AddressSpace) -> TypeFlags {
 #[derive(Clone, Debug)]
 pub(super) struct TypeInfo {
     pub flags: TypeFlags,
+    pub contains_cooperative_matrix: bool,
     pub uniform_layout: LayoutCompatibility,
     pub storage_layout: LayoutCompatibility,
     pub immediates_compatibility: ImmediateCompatibility,
@@ -252,6 +253,7 @@ impl TypeInfo {
     const fn dummy() -> Self {
         TypeInfo {
             flags: TypeFlags::empty(),
+            contains_cooperative_matrix: false,
             uniform_layout: Ok(Alignment::ONE),
             storage_layout: Ok(Alignment::ONE),
             immediates_compatibility: Ok(()),
@@ -261,6 +263,7 @@ impl TypeInfo {
     const fn new(flags: TypeFlags, alignment: Alignment) -> Self {
         TypeInfo {
             flags,
+            contains_cooperative_matrix: false,
             uniform_layout: Ok(alignment),
             storage_layout: Ok(alignment),
             immediates_compatibility: Ok(()),
@@ -462,7 +465,7 @@ impl super::Validator {
                 {
                     return Err(TypeError::MatrixElementNotFloat);
                 }
-                TypeInfo::new(
+                let mut type_info = TypeInfo::new(
                     TypeFlags::DATA
                         | TypeFlags::SIZED
                         | TypeFlags::COPY
@@ -471,7 +474,9 @@ impl super::Validator {
                         | TypeFlags::CONSTRUCTIBLE
                         | TypeFlags::CREATION_RESOLVED,
                     Alignment::from_width(scalar.width),
-                )
+                );
+                type_info.contains_cooperative_matrix = true;
+                type_info
             }
             Ti::Atomic(scalar) => {
                 match scalar {
@@ -661,6 +666,7 @@ impl super::Validator {
 
                 TypeInfo {
                     flags: base_info.flags & type_info_mask,
+                    contains_cooperative_matrix: base_info.contains_cooperative_matrix,
                     uniform_layout,
                     storage_layout,
                     immediates_compatibility: Err(ImmediateError::InvalidArray),
@@ -706,6 +712,7 @@ impl super::Validator {
                         }
                     }
                     ti.flags &= base_info.flags;
+                    ti.contains_cooperative_matrix |= base_info.contains_cooperative_matrix;
 
                     match member.binding {
                         Some(ir::Binding::Location {

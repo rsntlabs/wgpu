@@ -2918,7 +2918,12 @@ impl Writer {
                     self.get_handle_type_id(var.ty)
                 };
                 let init_word = self.get_constant_null(var_type_id);
-                Instruction::store(var_id, init_word, None)
+                let memory_access = (var.space == crate::AddressSpace::WorkGroup
+                    && var
+                        .memory_decorations
+                        .contains(crate::MemoryDecorations::VOLATILE))
+                .then_some(spirv::MemoryAccess::VOLATILE);
+                Instruction::store(var_id, init_word, memory_access)
             })
             .collect::<Vec<_>>();
 
@@ -3517,6 +3522,7 @@ impl Writer {
         if global_variable
             .memory_decorations
             .contains(crate::MemoryDecorations::VOLATILE)
+            && matches!(global_variable.space, crate::AddressSpace::Storage { .. })
         {
             self.decorate(id, Decoration::Volatile, &[]);
         }

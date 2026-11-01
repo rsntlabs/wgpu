@@ -1232,6 +1232,7 @@ pub fn supported_capabilities() -> crate::valid::Capabilities {
         | Caps::DRAW_INDEX
         | Caps::MEMORY_DECORATION_COHERENT
         | Caps::MEMORY_DECORATION_VOLATILE
+        | Caps::MEMORY_DECORATION_VOLATILE_WORKGROUP
         | Caps::LINEAR_INTERPOLATION
         | Caps::DEBUG_PRINTF
 }

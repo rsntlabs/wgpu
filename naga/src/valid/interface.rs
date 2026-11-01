@@ -47,12 +47,14 @@ pub enum GlobalVariableError {
     InvalidImmediateType(#[source] ImmediateError),
     #[error("Task payload must not be zero-sized")]
     ZeroSizedTaskPayload,
-    #[error("Memory decorations (`@coherent`, `@volatile`) are only valid for variables in the `storage` address space")]
+    #[error("Memory decorations are not valid for this address space")]
     InvalidMemoryDecorationsAddressSpace,
     #[error("`@coherent` requires the MEMORY_DECORATION_COHERENT capability")]
     CoherentNotSupported,
     #[error("`@volatile` requires the MEMORY_DECORATION_VOLATILE capability")]
     VolatileNotSupported,
+    #[error("Volatile workgroup memory cannot contain cooperative matrices")]
+    VolatileWorkgroupCooperativeType,
 }
 
 #[derive(Clone, Debug, thiserror::Error)]
@@ -1094,7 +1096,19 @@ impl super::Validator {
                 TypeFlags::CONSTRUCTIBLE | TypeFlags::CREATION_RESOLVED,
                 false,
             ),
-            crate::AddressSpace::WorkGroup => (TypeFlags::DATA | TypeFlags::SIZED, false),
+            crate::AddressSpace::WorkGroup => {
+                let mut required = TypeFlags::DATA | TypeFlags::SIZED;
+                if var
+                    .memory_decorations
+                    .contains(crate::MemoryDecorations::VOLATILE)
+                {
+                    required |= TypeFlags::COPY;
+                    if type_info.contains_cooperative_matrix {
+                        return Err(GlobalVariableError::VolatileWorkgroupCooperativeType);
+                    }
+                }
+                (required, false)
+            }
             crate::AddressSpace::TaskPayload => {
                 if !self.capabilities.contains(Capabilities::MESH_SHADER) {
                     return Err(GlobalVariableError::UnsupportedCapability(
@@ -1156,6 +1170,8 @@ impl super::Validator {
 
         if !var.memory_decorations.is_empty()
             && !matches!(var.space, crate::AddressSpace::Storage { .. })
+            && !(var.space == crate::AddressSpace::WorkGroup
+                && var.memory_decorations == crate::MemoryDecorations::VOLATILE)
         {
             return Err(GlobalVariableError::InvalidMemoryDecorationsAddressSpace);
         }
@@ -1171,11 +1187,22 @@ impl super::Validator {
         if var
             .memory_decorations
             .contains(crate::MemoryDecorations::VOLATILE)
-            && !self
+        {
+            if var.space == crate::AddressSpace::WorkGroup {
+                if !self
+                    .capabilities
+                    .contains(Capabilities::MEMORY_DECORATION_VOLATILE_WORKGROUP)
+                {
+                    return Err(GlobalVariableError::UnsupportedCapability(
+                        Capabilities::MEMORY_DECORATION_VOLATILE_WORKGROUP,
+                    ));
+                }
+            } else if !self
                 .capabilities
                 .contains(Capabilities::MEMORY_DECORATION_VOLATILE)
-        {
-            return Err(GlobalVariableError::VolatileNotSupported);
+            {
+                return Err(GlobalVariableError::VolatileNotSupported);
+            }
         }
 
         if let Some(init) = var.init {

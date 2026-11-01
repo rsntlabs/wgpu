@@ -130,6 +130,16 @@ impl<'a, W: Write> Writer<'a, W> {
     /// # Panics
     /// Might panic if the module is invalid
     pub fn write(&mut self) -> Result<ReflectionInfo, Error> {
+        if self.module.global_variables.iter().any(|(_, variable)| {
+            variable.space == crate::AddressSpace::WorkGroup
+                && variable
+                    .memory_decorations
+                    .contains(crate::MemoryDecorations::VOLATILE)
+        }) {
+            return Err(Error::Custom(String::from(
+                "volatile workgroup memory is unsupported by GLSL",
+            )));
+        }
         // We use `writeln!(self.out)` throughout the write to add newlines
         // to make the output more readable
 

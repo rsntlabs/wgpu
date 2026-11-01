@@ -218,6 +218,8 @@ pub enum FunctionError {
     InvalidCooperativeStoreTarget(Handle<crate::Expression>),
     #[error("Cooperative load/store data pointer has invalid type")]
     InvalidCooperativeDataPointer(Handle<crate::Expression>),
+    #[error("Cooperative stores to volatile workgroup memory are unsupported")]
+    VolatileWorkgroupCooperativeStore,
     #[error("Emit statement should not cover \"result\" expressions like {0:?}")]
     EmitResult(Handle<crate::Expression>),
     #[error("Expression not visited by the appropriate statement")]
@@ -1674,6 +1676,13 @@ impl super::Validator {
                 }
                 S::CooperativeStore { target, ref data } => {
                     stages &= super::ShaderStages::COMPUTE;
+                    if context
+                        .info
+                        .is_volatile_workgroup_pointer(data.pointer, context.global_vars)
+                    {
+                        return Err(FunctionError::VolatileWorkgroupCooperativeStore
+                            .with_span_handle(data.pointer, context.expressions));
+                    }
 
                     let target_scalar =
                         match *context.resolve_type_inner(target, &self.valid_expression_set)? {

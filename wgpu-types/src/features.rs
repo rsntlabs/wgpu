@@ -1145,7 +1145,16 @@ features! {
         #[name("wgpu-memory-decoration-volatile")]
         const MEMORY_DECORATION_VOLATILE = 1 << 62;
 
-        // Bit 63 is available.
+        /// Enables `@volatile` on workgroup variables containing copyable,
+        /// non-cooperative data. Atomic types and cooperative matrix accesses
+        /// are not supported.
+        ///
+        /// Backend mapping:
+        /// - Vulkan
+        ///
+        /// This is a native only feature.
+        #[name("wgpu-memory-decoration-volatile-workgroup")]
+        const MEMORY_DECORATION_VOLATILE_WORKGROUP = 1 << 63;
 
         // Search for "is available" to check for free bits earlier in the list.
     }

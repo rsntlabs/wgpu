@@ -154,6 +154,8 @@ pub enum ExpressionError {
     UnsupportedWidth(crate::MathFunction, crate::ScalarKind, crate::Bytes),
     #[error("Invalid operand for cooperative op")]
     InvalidCooperativeOperand(Handle<crate::Expression>),
+    #[error("Cooperative loads from volatile workgroup memory are unsupported")]
+    VolatileWorkgroupCooperativeLoad,
     #[error("Shift amount exceeds the bit width of {lhs_type:?}")]
     ShiftAmountTooLarge {
         lhs_type: crate::TypeInner,
@@ -1401,6 +1403,9 @@ impl super::Validator {
             },
             E::SubgroupBallotResult | E::SubgroupOperationResult { .. } => self.subgroup_stages,
             E::CooperativeLoad { ref data, .. } => {
+                if info.is_volatile_workgroup_pointer(data.pointer, &module.global_variables) {
+                    return Err(ExpressionError::VolatileWorkgroupCooperativeLoad);
+                }
                 if resolver[data.pointer]
                     .pointer_base_type()
                     .and_then(|tr| tr.inner_with(&module.types).scalar())

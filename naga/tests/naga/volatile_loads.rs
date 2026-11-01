@@ -6,17 +6,17 @@ use naga::valid::{Capabilities, ModuleInfo, ValidationFlags, Validator};
 const SOURCE: &str = include_str!("../in/wgsl/volatile-loads.wgsl");
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum Scope {
+pub(super) enum Scope {
     Root,
     Conditional,
     Loop,
 }
 
 #[derive(Debug, PartialEq)]
-struct Access {
-    write: bool,
-    index: Option<u32>,
-    scope: Scope,
+pub(super) struct Access {
+    pub(super) write: bool,
+    pub(super) index: Option<u32>,
+    pub(super) scope: Scope,
 }
 
 fn validate(module: &naga::Module) -> ModuleInfo {
@@ -36,7 +36,7 @@ fn unnamed_module() -> naga::Module {
     module
 }
 
-fn clear_names(module: &mut naga::Module) {
+pub(super) fn clear_names(module: &mut naga::Module) {
     for (_, function) in module.functions.iter_mut() {
         function.named_expressions.clear();
     }
@@ -107,7 +107,10 @@ fn pointer_root(
     }
 }
 
-fn accesses(module: &naga::Module, binding: u32) -> Vec<Access> {
+pub(super) fn global_accesses(
+    module: &naga::Module,
+    global: naga::Handle<naga::GlobalVariable>,
+) -> Vec<Access> {
     fn visit(
         function: &naga::Function,
         block: &naga::Block,
@@ -165,6 +168,14 @@ fn accesses(module: &naga::Module, binding: u32) -> Vec<Access> {
             }
         }
     }
+    let mut output = Vec::new();
+    for function in functions(module) {
+        visit(function, &function.body, global, Scope::Root, &mut output);
+    }
+    output
+}
+
+fn accesses(module: &naga::Module, binding: u32) -> Vec<Access> {
     let Some((global, _)) = module.global_variables.iter().find(|(_, variable)| {
         variable
             .binding
@@ -173,11 +184,7 @@ fn accesses(module: &naga::Module, binding: u32) -> Vec<Access> {
     }) else {
         return Vec::new();
     };
-    let mut output = Vec::new();
-    for function in functions(module) {
-        visit(function, &function.body, global, Scope::Root, &mut output);
-    }
-    output
+    global_accesses(module, global)
 }
 
 fn assert_volatile_accesses(module: &naga::Module) {

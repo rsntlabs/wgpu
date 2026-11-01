@@ -350,6 +350,20 @@ pub enum UniformityDisruptor {
 }
 
 impl FunctionInfo {
+    pub(super) fn is_volatile_workgroup_pointer(
+        &self,
+        pointer: Handle<crate::Expression>,
+        globals: &Arena<crate::GlobalVariable>,
+    ) -> bool {
+        self[pointer].assignable_global.is_some_and(|global| {
+            let variable = &globals[global];
+            variable.space == crate::AddressSpace::WorkGroup
+                && variable
+                    .memory_decorations
+                    .contains(crate::MemoryDecorations::VOLATILE)
+        })
+    }
+
     /// Record a use of `expr` of the sort given by `global_use`.
     ///
     /// Bump `expr`'s reference count, and return its uniformity.

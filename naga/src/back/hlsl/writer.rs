@@ -327,6 +327,16 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
         module_info: &valid::ModuleInfo,
         fragment_entry_point: Option<&FragmentEntryPoint<'_>>,
     ) -> Result<super::ReflectionInfo, Error> {
+        if module.global_variables.iter().any(|(_, variable)| {
+            variable.space == crate::AddressSpace::WorkGroup
+                && variable
+                    .memory_decorations
+                    .contains(crate::MemoryDecorations::VOLATILE)
+        }) {
+            return Err(Error::Custom(String::from(
+                "volatile workgroup memory is unsupported by HLSL",
+            )));
+        }
         self.reset(module);
 
         if module.uses_mesh_shaders() && self.options.shader_model < ShaderModel::V6_5 {

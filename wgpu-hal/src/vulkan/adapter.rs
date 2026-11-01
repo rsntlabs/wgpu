@@ -679,6 +679,7 @@ impl PhysicalDeviceFeatures {
             | F::MAPPABLE_PRIMARY_BUFFERS
             | F::MEMORY_DECORATION_COHERENT
             | F::MEMORY_DECORATION_VOLATILE
+            | F::MEMORY_DECORATION_VOLATILE_WORKGROUP
             | F::PASSTHROUGH_SHADERS
             | F::PIPELINE_CACHE
             | F::SHADER_EARLY_DEPTH_TEST

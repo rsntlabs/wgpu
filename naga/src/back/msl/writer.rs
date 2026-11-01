@@ -4557,6 +4557,16 @@ impl<W: Write> Writer<W> {
         options: &Options,
         pipeline_options: &PipelineOptions,
     ) -> Result<TranslationInfo, Error> {
+        if module.global_variables.iter().any(|(_, variable)| {
+            variable.space == crate::AddressSpace::WorkGroup
+                && variable
+                    .memory_decorations
+                    .contains(crate::MemoryDecorations::VOLATILE)
+        }) {
+            return Err(Error::CapabilityNotSupported(
+                valid::Capabilities::MEMORY_DECORATION_VOLATILE_WORKGROUP,
+            ));
+        }
         self.emit_int_div_checks = options.emit_int_div_checks;
         self.names.clear();
         self.namer.reset(
