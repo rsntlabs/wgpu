@@ -11,6 +11,11 @@ impl Parser<'_> {
         let mut result = self.expression_result(0)?;
         while self.lexer.next_if(Token::Separator(','))? {
             let earlier = match result {
+                ExpressionResult::Value(ExpressionValue::Reference(ref reference))
+                    if self.has_discarded_volatile_read(reference) =>
+                {
+                    ConstantValue::default()
+                }
                 ExpressionResult::Value(ref value) => value.constant(),
                 ExpressionResult::ThreadBlock(ref value) => value.constant,
                 ExpressionResult::Void(_) => ConstantValue::default(),
@@ -318,6 +323,11 @@ impl Parser<'_> {
                     return Ok(value.into());
                 }
                 if let Some(target) = self.type_name(name) {
+                    if target.qualifiers.is_volatile
+                        && !matches!(target.ty, TypeSpecifier::Scalar(_))
+                    {
+                        return self.fail("volatile class value construction is unsupported");
+                    }
                     return self.type_expression(target.ty, token.1);
                 }
                 if matches!(name, "true" | "false") {

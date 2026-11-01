@@ -62,6 +62,9 @@ impl<'a> Parser<'a> {
                     pointer,
                     qualifiers,
                 } => {
+                    if qualifiers.is_volatile {
+                        return self.fail("volatile pointer objects are unsupported");
+                    }
                     self.append_block(body);
                     self.bind_local_pointer(name, pointer, qualifiers.is_const, span)?;
                 }
@@ -173,6 +176,9 @@ impl<'a> Parser<'a> {
     ) -> Result<(DeducedType, InferredBinding), ParseError> {
         let value = match result {
             ExpressionResult::ThreadBlock(value) => {
+                if qualifiers.is_volatile {
+                    return self.fail("volatile thread_block objects are unsupported");
+                }
                 if is_constexpr || !matches!(declarator, Declarator::Value) {
                     return Err(ParseError {
                         message: String::from(
@@ -204,8 +210,8 @@ impl<'a> Parser<'a> {
                     });
                 }
                 self.require_inferred_value_type(value.ty(), value.span())?;
-                let source_qualifiers = match &value {
-                    ExpressionValue::Reference(reference) => reference.qualifiers,
+                let source_qualifiers = match value {
+                    ExpressionValue::Reference(ref reference) => reference.qualifiers,
                     _ => Qualifiers::NONE,
                 };
                 let ty = value.ty().clone();
@@ -349,6 +355,9 @@ impl<'a> Parser<'a> {
         qualifiers: Qualifiers,
         is_constexpr: bool,
     ) -> Result<(), ParseError> {
+        if qualifiers.is_volatile {
+            return self.fail("volatile automatic objects are unsupported");
+        }
         if is_constexpr {
             Self::required_constant(&value)?;
         }

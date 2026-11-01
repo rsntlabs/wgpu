@@ -122,6 +122,15 @@ pub(super) fn pointer_qualifiers(lexer: &mut Lexer<'_>) -> Result<Qualifiers, Pa
                 }
                 qualifiers.is_const = true;
             }
+            Token::Word("volatile") => {
+                if qualifiers.is_volatile {
+                    return Err(ParseError {
+                        message: String::from("duplicate volatile qualifier"),
+                        span: token.1,
+                    });
+                }
+                qualifiers.is_volatile = true;
+            }
             Token::Word("__restrict__" | "__restrict") => {}
             _ => return Ok(qualifiers),
         }
@@ -149,6 +158,7 @@ fn declaration_type(
     let mut ty: Option<QualifiedType> = None;
     let mut inferred = false;
     let mut explicit_const = false;
+    let mut explicit_volatile = false;
     let mut is_constexpr = false;
     let mut integers = IntegerSpecifiers::default();
     loop {
@@ -178,6 +188,12 @@ fn declaration_type(
                     return Err(invalid("duplicate const qualifier"));
                 }
                 explicit_const = true;
+            }
+            Token::Word("volatile") => {
+                if explicit_volatile {
+                    return Err(invalid("duplicate volatile qualifier"));
+                }
+                explicit_volatile = true;
             }
             Token::Word("constexpr") => {
                 if !is_variable_declaration {
@@ -224,7 +240,7 @@ fn declaration_type(
             DeclarationType::Inferred {
                 qualifiers: Qualifiers {
                     is_const: explicit_const || is_constexpr,
-                    ..Qualifiers::NONE
+                    is_volatile: explicit_volatile,
                 },
             },
             is_constexpr,
@@ -236,7 +252,10 @@ fn declaration_type(
             span: lexer.peek()?.1,
         });
     };
-    ty.qualifiers.is_const |= explicit_const || is_constexpr;
+    ty.qualifiers = ty.qualifiers.union(Qualifiers {
+        is_const: explicit_const || is_constexpr,
+        is_volatile: explicit_volatile,
+    });
     Ok((DeclarationType::Explicit(ty), is_constexpr))
 }
 
@@ -389,7 +408,7 @@ impl<'a> Parser<'a> {
             ));
         }
         Ok(match self.lexer.peek()?.0 {
-            Token::Word("const" | "constexpr") => true,
+            Token::Word("const" | "volatile" | "constexpr") => true,
             Token::Word(name) => self.type_name(name).is_some(),
             _ => false,
         })

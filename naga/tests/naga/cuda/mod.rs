@@ -86,6 +86,7 @@ mod updates;
 mod vector_resources;
 mod vector_values;
 mod void_functions;
+mod volatile;
 
 use naga::front::cuda::{parse_str, Options};
 

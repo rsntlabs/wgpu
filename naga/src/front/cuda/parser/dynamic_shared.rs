@@ -5,6 +5,7 @@ use core::num::NonZeroU32;
 pub(super) struct DynamicSharedDeclaration {
     element: Handle<Type>,
     count: NonZeroU32,
+    qualifiers: Qualifiers,
 }
 
 #[derive(Default)]
@@ -78,7 +79,9 @@ impl<'a> Parser<'a> {
             Token::Word("__shared__") => loop {
                 match lexer.peek()?.0 {
                     Token::Word("extern") => return Ok(true),
-                    Token::Word("__shared__" | "const" | "int" | "signed" | "unsigned") => {}
+                    Token::Word(
+                        "__shared__" | "const" | "volatile" | "int" | "signed" | "unsigned",
+                    ) => {}
                     Token::Word(name) if self.type_name(name).is_some() => {}
                     _ => return Ok(false),
                 }
@@ -142,7 +145,8 @@ impl<'a> Parser<'a> {
                     name_span,
                 ));
             }
-            let declaration = self.dynamic_shared_layout(array.element_ty, name_span)?;
+            let mut declaration = self.dynamic_shared_layout(array.element_ty, name_span)?;
+            declaration.qualifiers = qualified.qualifiers;
             self.declare_dynamic_shared(name, declaration, global, name_span)?;
             if !self.lexer.next_if(Token::Separator(','))? {
                 self.lexer.expect_span(Token::Separator(';'))?;
@@ -187,6 +191,7 @@ impl<'a> Parser<'a> {
         Ok(DynamicSharedDeclaration {
             element,
             count: NonZeroU32::new(count).unwrap(),
+            qualifiers: Qualifiers::NONE,
         })
     }
 
@@ -332,7 +337,7 @@ impl<'a> Parser<'a> {
         Ok(Symbol::Array {
             pointer,
             ty: TypeResolution::Handle(declaration.element),
-            qualifiers: Qualifiers::NONE,
+            qualifiers: declaration.qualifiers,
         })
     }
 

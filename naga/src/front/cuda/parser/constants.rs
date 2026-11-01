@@ -6,7 +6,7 @@ impl<'a> Parser<'a> {
         loop {
             match lexer.peek()?.0 {
                 Token::Word("constexpr") => return Ok(true),
-                Token::Word("const" | "int" | "unsigned" | "auto") => {}
+                Token::Word("const" | "volatile" | "int" | "unsigned" | "auto") => {}
                 Token::Word(name) if self.type_name(name).is_some() => {}
                 _ => return Ok(false),
             }
@@ -18,10 +18,16 @@ impl<'a> Parser<'a> {
         let (declaration, _) = self.declaration_type()?;
         let ty = match declaration {
             DeclarationType::Explicit(ty) => ty,
-            DeclarationType::Inferred { .. } => {
+            DeclarationType::Inferred { qualifiers } => {
+                if qualifiers.is_volatile {
+                    return self.fail("volatile constexpr objects are unsupported");
+                }
                 return self.inferred_global_constant_declaration();
             }
         };
+        if ty.qualifiers.is_volatile {
+            return self.fail("volatile constexpr objects are unsupported");
+        }
         let TypeSpecifier::Scalar(scalar) = ty.ty else {
             return self.fail("constexpr requires a scalar variable");
         };

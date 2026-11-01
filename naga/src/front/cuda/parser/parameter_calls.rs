@@ -73,6 +73,7 @@ pub(super) struct FunctionParameterState {
     pub(super) bound_references: Arena<BoundReference>,
     pub(super) reference_binding_work: u32,
     pub(super) pointers: PointerState,
+    pub(super) volatile_accesses: VolatileAccesses,
 }
 
 pub(super) struct CapturedArgument {
@@ -213,6 +214,7 @@ impl Parser<'_> {
             budget
                 .charge_slice::<reference_bindings::BoundTarget>(reference.targets.len(), span)?;
         }
+        self.function.volatile_accesses.inventory(budget, span)?;
         self.function.parameter_state_charged = true;
         Ok(())
     }
@@ -220,6 +222,7 @@ impl Parser<'_> {
     pub(super) fn parameter_state_needed(&self) -> bool {
         !self.function.deferred_calls.is_empty()
             || !self.function.pointers.is_empty()
+            || !self.function.volatile_accesses.is_empty()
             || self
                 .function
                 .parameters
@@ -405,6 +408,7 @@ impl FunctionContext<'_> {
             bound_references: core::mem::take(&mut self.bound_references),
             reference_binding_work: core::mem::take(&mut self.reference_binding_work),
             pointers: core::mem::take(&mut self.pointers),
+            volatile_accesses: core::mem::take(&mut self.volatile_accesses),
         }
     }
 
@@ -416,6 +420,7 @@ impl FunctionContext<'_> {
         self.bound_references = state.bound_references;
         self.reference_binding_work = state.reference_binding_work;
         self.pointers = state.pointers;
+        self.volatile_accesses = state.volatile_accesses;
         self.parameter_state_charged = true;
     }
 }

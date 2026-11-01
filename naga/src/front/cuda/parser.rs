@@ -37,6 +37,7 @@ mod switches;
 mod trigonometry;
 mod types;
 mod updates;
+mod volatile;
 
 use crate::proc::TypeResolution;
 use context::{FunctionContext, FunctionKind};
@@ -53,6 +54,7 @@ use reference_bindings::{BoundAddress, BoundReference};
 use scalar_promotions::ScalarPromotions;
 use types::scalar_resolution;
 use types::{DeclarationType, GlobalDeclaration, QualifiedType, TypeSpecifier};
+use volatile::VolatileAccesses;
 
 use crate::{
     front::SymbolTable, AddressSpace, Arena, ArraySize, BinaryOperator, Binding, BuiltIn,
@@ -148,7 +150,7 @@ struct ReferenceValue {
 }
 
 impl ReferenceValue {
-    fn writable(&self) -> bool {
+    const fn writable(&self) -> bool {
         !self.qualifiers.is_const
     }
 }
@@ -291,6 +293,7 @@ pub(super) struct Parser<'a> {
     workgroup_size: [u32; 3],
     dynamic_shared_memory_size: u32,
     dynamic_shared: DynamicShared<'a>,
+    volatile_globals: FastHashMap<Handle<GlobalVariable>, Span>,
 }
 
 impl<'a> Parser<'a> {
@@ -320,6 +323,7 @@ impl<'a> Parser<'a> {
             workgroup_size: options.workgroup_size,
             dynamic_shared_memory_size: options.dynamic_shared_memory_size,
             dynamic_shared: DynamicShared::default(),
+            volatile_globals: FastHashMap::default(),
         }
     }
 
@@ -343,6 +347,7 @@ impl<'a> Parser<'a> {
         self.finish_kernels()?;
         self.finish_functions()?;
         self.upgrade_atomic_storage()?;
+        self.upgrade_volatile_storage()?;
         self.check_dynamic_shared_views()?;
         self.check_workgroup_barriers()?;
         self.promote_scalar_locals()?;
@@ -363,6 +368,9 @@ impl<'a> Parser<'a> {
             qualifiers,
         } = self.parse_type()?;
         if matches!(specifier, TypeSpecifier::ThreadBlock) {
+            if qualifiers.is_volatile {
+                return self.fail("volatile thread_block parameters are unsupported");
+            }
             return self.thread_block_parameter(type_span);
         }
         let (ty, qualifiers, aliased_pointer_qualifiers) = match specifier {
@@ -396,6 +404,7 @@ impl<'a> Parser<'a> {
             None => Qualifiers::NONE,
         };
         let pointer_const = pointer_qualifiers.is_const;
+        self.note_volatile_parameter_object(pointer_qualifiers, pointer_span)?;
         if aliased_pointer_qualifiers.is_some() && self.lexer.peek()?.0 == Token::Paren('[') {
             return self.fail("arrays of pointers are unsupported");
         }
@@ -467,6 +476,9 @@ impl<'a> Parser<'a> {
                 Token::Separator(',') | Token::Paren(')')
             )
         {
+            if mode == ParameterMode::Value {
+                self.note_volatile_parameter_object(qualifiers, type_span)?;
+            }
             return self.device_parameter(None, type_span, &ty, is_const, mode);
         }
         let (name, span) = self.identifier()?;
@@ -478,9 +490,13 @@ impl<'a> Parser<'a> {
             if self.lexer.peek()?.0 == Token::Paren('[') {
                 return self.array_parameter(Some(name), span, &ty, qualifiers, mode);
             }
+            if mode == ParameterMode::Value {
+                self.note_volatile_parameter_object(qualifiers, type_span)?;
+            }
             return self.device_parameter(Some(name), span, &ty, is_const, mode);
         }
         if !is_pointer {
+            self.note_volatile_parameter_object(qualifiers, type_span)?;
             return self.value_parameter(parameter_index, name, span, &ty, is_const);
         }
         let base = self.type_handle(&ty, span);

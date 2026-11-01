@@ -270,6 +270,9 @@ impl<'a> Parser<'a> {
             return self.fail("constexpr requires a scalar variable");
         }
         if matches!(specifier, TypeSpecifier::ThreadBlock) {
+            if qualifiers.is_volatile {
+                return self.fail("volatile thread_block objects are unsupported");
+            }
             return self.thread_block_declaration();
         }
         loop {
@@ -287,17 +290,20 @@ impl<'a> Parser<'a> {
                 if is_constexpr {
                     return self.fail("constexpr pointer declarations are unsupported");
                 }
-                let (pointee_qualifiers, pointer_const) =
+                let (pointee_qualifiers, pointer_qualifiers) =
                     if let Some(pointee_qualifiers) = pointer_alias {
-                        (pointee_qualifiers, is_const)
+                        (pointee_qualifiers, qualifiers)
                     } else {
-                        (
-                            qualifiers,
-                            types::pointer_qualifiers(&mut self.lexer)?.is_const,
-                        )
+                        (qualifiers, types::pointer_qualifiers(&mut self.lexer)?)
                     };
-                let (span, has_initializer) =
-                    self.local_pointer_declaration(specifier, pointee_qualifiers, pointer_const)?;
+                if pointer_qualifiers.is_volatile {
+                    return self.fail("volatile pointer objects are unsupported");
+                }
+                let (span, has_initializer) = self.local_pointer_declaration(
+                    specifier,
+                    pointee_qualifiers,
+                    pointer_qualifiers.is_const,
+                )?;
                 if has_initializer {
                     self.function.initialized_declarations.push(span);
                 }
@@ -320,6 +326,9 @@ impl<'a> Parser<'a> {
                 }
                 self.lexer.expect_span(Token::Separator(';'))?;
                 return Ok(());
+            }
+            if qualifiers.is_volatile {
+                return self.fail("volatile automatic objects are unsupported");
             }
             let (name, span) = self.identifier()?;
             self.check_name(name, span)?;
@@ -521,13 +530,13 @@ impl<'a> Parser<'a> {
             Symbol::Array {
                 pointer,
                 ty: TypeResolution::Handle(array.as_ref().unwrap().element_ty),
-                qualifiers: Qualifiers::NONE,
+                qualifiers,
             }
         } else {
             Symbol::Variable {
                 pointer,
                 ty: declared_ty,
-                qualifiers: Qualifiers::NONE,
+                qualifiers,
             }
         };
         self.insert_symbol(name, symbol, span)

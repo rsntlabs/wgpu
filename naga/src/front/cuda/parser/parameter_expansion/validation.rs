@@ -211,6 +211,7 @@ impl Parser<'_> {
     ) -> Result<(), ParseError> {
         let budget = &mut self.parameter_expansion_budget;
         budget.charge_bytes(size_of::<FunctionParameterState>(), span)?;
+        state.volatile_accesses.inventory(budget, span)?;
         budget.charge_slice::<u32>(state.expression_graph_depths.len(), span)?;
         budget.charge_work(state.expression_graph_depths.len(), span)?;
         budget.charge_map_entry::<Handle<Expression>, DeferredCall>(

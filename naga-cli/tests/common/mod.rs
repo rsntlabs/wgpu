@@ -44,14 +44,18 @@ impl TestFiles {
     }
 
     pub(crate) fn read_module(&self) -> naga::Module {
+        self.read_module_with_capabilities(naga::valid::Capabilities::empty())
+    }
+
+    pub(crate) fn read_module_with_capabilities(
+        &self,
+        capabilities: naga::valid::Capabilities,
+    ) -> naga::Module {
         let source = fs::read_to_string(&self.output).unwrap();
         let module = naga::front::wgsl::parse_str(&source).unwrap();
-        naga::valid::Validator::new(
-            naga::valid::ValidationFlags::all(),
-            naga::valid::Capabilities::empty(),
-        )
-        .validate(&module)
-        .unwrap();
+        naga::valid::Validator::new(naga::valid::ValidationFlags::all(), capabilities)
+            .validate(&module)
+            .unwrap();
         module
     }
 }

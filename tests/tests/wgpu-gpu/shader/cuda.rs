@@ -83,6 +83,7 @@ mod uninitialized_pointers;
 mod updates;
 mod vector_resources;
 mod vector_values;
+mod volatile;
 
 pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
     kernels::all_tests(tests);
@@ -162,13 +163,23 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_UPDATES,
         CUDA_VECTOR_RESOURCES,
         CUDA_VECTOR_VALUES,
+        CUDA_VOLATILE_STORAGE,
+        CUDA_VOLATILE_WORKGROUP,
     ]);
 }
 
 fn configuration(cases: fn() -> Vec<ShaderTest>) -> GpuTestConfiguration {
+    configuration_with_features(cases, wgpu::Features::empty())
+}
+
+fn configuration_with_features(
+    cases: fn() -> Vec<ShaderTest>,
+    features: wgpu::Features,
+) -> GpuTestConfiguration {
     GpuTestConfiguration::new()
         .parameters(
             TestParameters::default()
+                .features(features)
                 .downlevel_flags(DownlevelFlags::COMPUTE_SHADERS)
                 .limits(Limits::downlevel_defaults()),
         )
@@ -271,7 +282,15 @@ fn write_module(name: &str, module: &naga::Module) -> (String, String) {
 }
 
 fn write_module_entries(name: &str, module: &naga::Module) -> (String, Vec<String>) {
-    let info = Validator::new(ValidationFlags::all(), Capabilities::empty())
+    write_module_entries_with_capabilities(name, module, Capabilities::empty())
+}
+
+fn write_module_entries_with_capabilities(
+    name: &str,
+    module: &naga::Module,
+    capabilities: Capabilities,
+) -> (String, Vec<String>) {
+    let info = Validator::new(ValidationFlags::all(), capabilities)
         .validate(module)
         .unwrap_or_else(|error| panic!("{name}: {error}"));
     let wgsl = naga::back::wgsl::write_string(
@@ -282,7 +301,7 @@ fn write_module_entries(name: &str, module: &naga::Module) -> (String, Vec<Strin
     .unwrap_or_else(|error| panic!("{name}: {error}"));
     let roundtrip =
         naga::front::wgsl::parse_str(&wgsl).unwrap_or_else(|error| panic!("{name}: {error}"));
-    Validator::new(ValidationFlags::all(), Capabilities::empty())
+    Validator::new(ValidationFlags::all(), capabilities)
         .validate(&roundtrip)
         .unwrap_or_else(|error| panic!("{name}: {error}"));
     assert_eq!(
@@ -371,9 +390,25 @@ fn module_case_with_options<O: bytemuck::Pod + std::fmt::Debug + PartialEq>(
     options: &Options,
     expected: &[O],
 ) -> ShaderTest {
+    module_case_with_options_and_capabilities(
+        name,
+        source,
+        options,
+        expected,
+        Capabilities::empty(),
+    )
+}
+
+fn module_case_with_options_and_capabilities<O: bytemuck::Pod + std::fmt::Debug + PartialEq>(
+    name: &str,
+    source: &str,
+    options: &Options,
+    expected: &[O],
+    capabilities: Capabilities,
+) -> ShaderTest {
     let module = parse_str(source, options).unwrap_or_else(|error| panic!("{name}: {error}"));
     assert_eq!(module.entry_points.len(), 1, "{name}");
-    let (wgsl, entry_point) = write_module(name, &module);
+    let (wgsl, entries) = write_module_entries_with_capabilities(name, &module, capabilities);
     ShaderTest::new(
         name.into(),
         String::new(),
@@ -381,8 +416,20 @@ fn module_case_with_options<O: bytemuck::Pod + std::fmt::Debug + PartialEq>(
         &[0_u32],
         expected,
     )
-    .module_source(wgsl, entry_point)
+    .module_source(wgsl, entries[0].clone())
 }
+
+#[apply(gpu_test!)]
+static CUDA_VOLATILE_STORAGE: GpuTestConfiguration = configuration_with_features(
+    volatile::storage_cases,
+    wgpu::Features::MEMORY_DECORATION_VOLATILE,
+);
+
+#[apply(gpu_test!)]
+static CUDA_VOLATILE_WORKGROUP: GpuTestConfiguration = configuration_with_features(
+    volatile::workgroup_cases,
+    wgpu::Features::MEMORY_DECORATION_VOLATILE_WORKGROUP,
+);
 
 #[apply(gpu_test!)]
 static CUDA_ARITHMETIC: GpuTestConfiguration = configuration(arithmetic::cases);

@@ -674,7 +674,6 @@ fn cuda_local_references_retain_unsupported_reference_grammar_boundaries() {
         "__global__ void kernel() { int &values[2]; }",
         "__global__ void kernel(int *input) { int *&alias = input; }",
         "struct Record { int &member; }; __global__ void kernel() {}",
-        "__global__ void kernel() { int value = 1; volatile int &alias = value; }",
         "constexpr int Global = 1; const int &Alias = Global; __global__ void kernel() {}",
         "constexpr int Global = 1; __global__ void kernel() { constexpr const int &alias = Global; }",
     ] {

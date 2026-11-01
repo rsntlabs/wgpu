@@ -28,6 +28,8 @@ impl Parser<'_> {
             return self.pointer_assignment(*pointer, operator);
         }
         let mut left = self.mutable_reference(left)?;
+        self.require_volatile_scalar(left.qualifiers, &left.ty, left.span)?;
+        let volatile = left.qualifiers.is_volatile;
         self.lexer.next()?;
         let (right, right_body) = self.capture_block(|parser| {
             let right = parser.expression(0)?;
@@ -38,11 +40,17 @@ impl Parser<'_> {
         self.decorate_reference(&mut left, &mut |parser, pointer, ty, reference_span| {
             let value = if let Some(op) = operator {
                 let previous_value = parser.load_pointer(pointer, ty, reference_span)?;
+                if volatile {
+                    parser.record_volatile_load(previous_value.handle, reference_span)?;
+                }
                 parser.binary_value(op, previous_value.into(), right.clone().into())?
             } else {
                 right.clone()
             };
             let value = parser.convert_value(value.into(), ty)?;
+            if volatile {
+                parser.record_volatile_store(pointer, value.handle, span)?;
+            }
             parser.push_statement(
                 Statement::Store {
                     pointer,
@@ -71,6 +79,7 @@ impl Parser<'_> {
             return self.pointer_update(*pointer, increment, postfix, span);
         }
         let mut value = self.mutable_reference(value)?;
+        let qualifiers = value.qualifiers;
         if self.require_scalar_type(&value.ty, value.span)? == Scalar::BOOL {
             return Err(ParseError {
                 message: String::from("boolean increment and decrement are invalid"),
@@ -79,7 +88,7 @@ impl Parser<'_> {
         }
         if !postfix {
             self.decorate_reference(&mut value, &mut |parser, pointer, ty, reference_span| {
-                parser.update_pointer(pointer, ty, increment, reference_span, span)?;
+                parser.update_pointer(pointer, ty, qualifiers, increment, reference_span, span)?;
                 Ok(())
             })?;
             return Ok(ExpressionValue::Reference(ReferenceValue {
@@ -91,7 +100,7 @@ impl Parser<'_> {
         }
         if let Reference::Pointer(pointer) = value.reference {
             let previous_value =
-                self.update_pointer(pointer, &value.ty, increment, value.span, span)?;
+                self.update_pointer(pointer, &value.ty, qualifiers, increment, value.span, span)?;
             return Ok(Value {
                 span,
                 ..previous_value
@@ -107,8 +116,14 @@ impl Parser<'_> {
                     span: source.span,
                 });
             };
-            let previous_value =
-                parser.update_pointer(source_pointer, &source.ty, increment, source.span, span)?;
+            let previous_value = parser.update_pointer(
+                source_pointer,
+                &source.ty,
+                qualifiers,
+                increment,
+                source.span,
+                span,
+            )?;
             parser.push_statement(
                 Statement::Store {
                     pointer,
@@ -132,11 +147,15 @@ impl Parser<'_> {
         &mut self,
         pointer: Handle<Expression>,
         ty: &TypeResolution,
+        qualifiers: Qualifiers,
         increment: bool,
         reference_span: Span,
         span: Span,
     ) -> Result<Value, ParseError> {
         let previous_value = self.load_pointer(pointer, ty, reference_span)?;
+        if qualifiers.is_volatile {
+            self.record_volatile_load(previous_value.handle, reference_span)?;
+        }
         let one = self.append(Expression::Literal(Literal::I32(1)), span)?;
         let one = Value {
             handle: one,
@@ -167,6 +186,9 @@ impl Parser<'_> {
             .into(),
             ty,
         )?;
+        if qualifiers.is_volatile {
+            self.record_volatile_store(pointer, updated_value.handle, span)?;
+        }
         self.push_statement(
             Statement::Store {
                 pointer,
