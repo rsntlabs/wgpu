@@ -1140,12 +1140,18 @@ synchronization when any invocation writes them.
 global buffer accesses visible to other invocations in that block. It lowers to
 a control barrier covering both workgroup and storage memory, following
 [CUDA's synchronization semantics](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-c-programming-guide/index.html#synchronization-functions).
-The first implementation accepts this zero-argument statement only in
-straight-line kernel flow, including unconditional nested blocks. Barriers
-inside `if` branches, switch cases, or loops, or after a possible earlier `return`,
-produce a parse error. This conservative restriction rejects some valid CUDA programs
-until control-barrier uniformity analysis is available. Conditions and loops
-without returns may precede a barrier; returns after the last barrier are
+This zero-argument statement supports straight-line kernel flow and `for`,
+`while`, and `do` loops proven uniform for the block. A bounded CUDA-specific
+proof tracks scalar counters, updates, uniform kernel parameters, and workgroup
+builtins. Divergent branches and gathers can reconverge before a barrier when
+they do not return or make later loop control nonuniform. Storage and shared
+memory reads and opaque helper results remain unproved loop controls.
+
+Barriers inside `if` branches or switch cases, in device helpers, or after a
+possible earlier `return` remain unsupported. Loops containing barriers are
+rejected when their control is unproved or exits diverge. This conservative proof
+can reject valid CUDA programs and does not implement complete WGSL uniformity
+analysis. Returns after the last barrier in straight-line kernel flow are
 allowed. Synchronization does not extend across workgroups.
 
 ## Cooperative Groups
@@ -1173,9 +1179,9 @@ directives remain unsupported.
 
 `cg::sync(group)`, `group.sync()`, and `Block::sync()` synchronize the whole
 block with the same workgroup and storage-memory barriers as `__syncthreads()`.
-Every spelling retains the straight-line kernel placement rules above, including
-rejection after a possible earlier return. Synchronization in device helpers
-remains unsupported. These operations follow CUDA's
+Every spelling uses the same kernel control-flow checks above, including
+proven uniform loops and rejection after a possible earlier return.
+Synchronization in device helpers remains unsupported. These operations follow CUDA's
 [full-block synchronization semantics](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cooperative-groups.html#sync).
 
 `thread_rank()`, `num_threads()`, and its alias `size()` return `unsigned int`.

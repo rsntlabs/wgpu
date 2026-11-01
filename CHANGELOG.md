@@ -192,6 +192,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support static CUDA `__shared__` scalars and fixed one-dimensional arrays.
 - Support multidimensional CUDA local and shared arrays, nested initialization, and inferred outer local bounds.
 - Support CUDA `__syncthreads()` in straight-line kernel control flow.
+- Support CUDA full-block barriers in kernel loops with proven uniform control flow.
 - Support Cooperative Groups full-block handles, synchronization, and scalar rank and size queries.
 - Support Cooperative Groups `thread_block` dimension queries returning independent `dim3` values.
 - Support previously defined CUDA `__device__` helpers with scalar parameters and return values.

@@ -197,10 +197,15 @@ fn cuda_thread_block_free_and_member_sync_keep_memory_scope_and_barrier_safety()
             [4, 1, 1],
         );
         for statement in [
-            format!("if (threadIdx.x == 0u) {sync}"),
-            format!("if (true) {{ {sync} }}"),
             format!("for (int index = 0; index < 2; ++index) {{ {sync} }}"),
             format!("while (false) {{ {sync} }}"),
+        ] {
+            roundtrip(&format!("namespace cg = cooperative_groups; using Block = cg::thread_block;
+                __global__ void kernel() {{ auto group = cg::this_thread_block(); unsigned counter = 0u; {statement} }}"), [4, 1, 1]);
+        }
+        for statement in [
+            format!("if (threadIdx.x == 0u) {sync}"),
+            format!("if (true) {{ {sync} }}"),
             format!("switch (threadIdx.x) {{ case 0u: {sync} break; default: break; }}"),
             format!("if (threadIdx.x == 0u) return; {sync}"),
         ] {

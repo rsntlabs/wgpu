@@ -273,13 +273,28 @@ fn cuda_shared_vectors_keep_vector_operation_and_array_reference_gates() {
 
 #[test]
 fn cuda_shared_vectors_do_not_relax_barrier_placement_restrictions() {
+    validate_with_options(
+        "__global__ void kernel() {
+            __shared__ float3 values[8];
+            for (int iteration = 0; iteration < 1; ++iteration) __syncthreads();
+        }",
+        &Options {
+            workgroup_size: [8, 1, 1],
+        },
+    );
     for body in [
         "if (threadIdx.x == 0u) __syncthreads();",
-        "for (int i = 0; i < 1; ++i) __syncthreads();",
+        "for (unsigned iteration = 0u; iteration < threadIdx.x; ++iteration) __syncthreads();",
         "if (threadIdx.x == 0u) return; __syncthreads();",
     ] {
         let source = format!("__global__ void kernel() {{ __shared__ float3 values[8]; {body} }}");
-        let error = rejected(&source);
+        let error = parse_str(
+            &source,
+            &Options {
+                workgroup_size: [8, 1, 1],
+            },
+        )
+        .unwrap_err();
         assert!(error.message.contains("straight-line"), "{error}");
         assert_eq!(&source[error.span.to_range().unwrap()], "__syncthreads();");
     }

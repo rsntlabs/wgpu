@@ -259,12 +259,15 @@ fn cuda_thread_block_dimension_queries_preserve_existing_barrier_restrictions() 
         "cg::sync(group);",
         "cg::thread_block::sync();",
     ] {
+        roundtrip(&format!(
+            "namespace cg = cooperative_groups; __global__ void kernel() {{
+            auto group = cg::this_thread_block();
+            for (unsigned index = 0u; index < group.dim_threads().x; ++index) {{ {sync} }}
+        }}"
+        ));
         for statement in [
             format!("if (group.thread_index().x) {{ {sync} }}"),
             format!("if (group.group_index().y) return; {sync}"),
-            format!(
-                "for (unsigned index = 0u; index < group.dim_threads().x; ++index) {{ {sync} }}"
-            ),
         ] {
             let error = rejected(&format!(
                 "namespace cg = cooperative_groups; __global__ void kernel() {{

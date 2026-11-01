@@ -74,6 +74,7 @@ mod thread_block;
 mod thread_block_dimensions;
 mod trigonometry;
 mod type_aliases;
+mod uniform_loop_barriers;
 mod uninitialized;
 mod uninitialized_pointers;
 mod updates;
