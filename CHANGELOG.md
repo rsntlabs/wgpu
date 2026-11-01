@@ -227,6 +227,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Emit named values for immutable CUDA scalars to reduce redundant local storage.
 - Remove redundant CUDA scalar copy temporaries while preserving the timing of memory reads.
 - Avoid redundant unsigned index casts in generated CUDA array accesses.
+- Reuse CUDA floating-point absolute-value and rounding helpers to simplify generated shaders.
 - Simplify direct accesses through unchanged CUDA kernel buffer pointers.
 - Support CUDA vector buffer parameters with packed three-component layouts and const access.
 - Support CUDA shared numeric vectors and fixed vector arrays.

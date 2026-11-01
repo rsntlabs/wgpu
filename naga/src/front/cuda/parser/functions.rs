@@ -1,8 +1,8 @@
 use super::*;
 
 use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
+use super::float_helpers::FloatMathFunction;
 use super::function_declarations::Inlining;
-use super::rounding::Rounding;
 use super::types::{IntegerSpecifiers, VECTOR_TYPES};
 use crate::MathFunction;
 
@@ -1000,9 +1000,15 @@ impl<'a> Parser<'a> {
             let argument =
                 self.convert_scalar(arguments.into_iter().next().unwrap().into(), source)?;
             let handle = match function {
-                MathFunction::Floor => self.round_float(argument.handle, Rounding::Floor, span)?,
-                MathFunction::Ceil => self.round_float(argument.handle, Rounding::Ceil, span)?,
-                MathFunction::Abs => self.absolute_value(argument.handle, span)?,
+                MathFunction::Floor => {
+                    self.call_float_math(argument.handle, FloatMathFunction::Floor, span)?
+                }
+                MathFunction::Ceil => {
+                    self.call_float_math(argument.handle, FloatMathFunction::Ceil, span)?
+                }
+                MathFunction::Abs => {
+                    self.call_float_math(argument.handle, FloatMathFunction::AbsoluteValue, span)?
+                }
                 MathFunction::Saturate => self.saturate(argument.handle, span)?,
                 MathFunction::Sin | MathFunction::Cos => {
                     self.trigonometry(argument.handle, function == MathFunction::Cos, span)?

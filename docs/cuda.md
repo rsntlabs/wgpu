@@ -38,8 +38,10 @@ it. Backend naming rules can sanitize identifiers or add suffixes.
 Unchanged kernel buffer pointers can use direct resource accesses. Pointers that
 need runtime address tracking keep their private state and captured indices.
 
-CUDA math compatibility implementations can still produce helper functions and
-temporary expressions to preserve their numerical behavior.
+CUDA floating-point absolute value, rounding, and square root use cached
+compatibility helpers. Calls reuse each helper across the module, keeping the
+integer algorithms out of source functions while preserving their numerical
+behavior. Other operations can still produce temporary expressions.
 
 ## Kernel interface
 

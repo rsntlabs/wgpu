@@ -7,20 +7,12 @@ pub(super) enum Rounding {
 }
 
 impl Parser<'_> {
-    pub(super) fn round_float(
+    pub(super) fn rounding_bits(
         &mut self,
-        value: Handle<Expression>,
+        input_bits: Handle<Expression>,
         rounding: Rounding,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
-        let input_bits = self.append(
-            Expression::As {
-                expr: value,
-                kind: ScalarKind::Uint,
-                convert: None,
-            },
-            span,
-        )?;
         let zero = self.rounding_literal(0, span)?;
         let one = self.rounding_literal(1, span)?;
         let magnitude_mask = self.rounding_literal(0x7fff_ffff, span)?;
@@ -103,24 +95,7 @@ impl Parser<'_> {
         let quiet_nan = self.rounding_literal(0x7fc0_0000, span)?;
         let result_bits = self.rounding_select(is_nan, quiet_nan, result_bits, span)?;
 
-        // Keep non-finite results out of WGSL constant evaluation.
-        let pointer = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
-        self.push_statement(
-            Statement::Store {
-                pointer,
-                value: result_bits,
-            },
-            span,
-        );
-        let result_bits = self.append(Expression::Load { pointer }, span)?;
-        self.append(
-            Expression::As {
-                expr: result_bits,
-                kind: ScalarKind::Float,
-                convert: None,
-            },
-            span,
-        )
+        Ok(result_bits)
     }
 
     fn rounding_literal(
