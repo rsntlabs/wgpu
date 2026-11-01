@@ -673,7 +673,16 @@ impl FunctionInfo {
                 requirements: UniformityRequirements::empty(),
             },
             E::Load { pointer } => {
-                let non_uniform_result = self.add_ref(pointer);
+                let non_uniform_result = self.add_ref(pointer).or_else(|| {
+                    self[pointer]
+                        .assignable_global
+                        .is_some_and(|global| {
+                            resolve_context.global_vars[global]
+                                .memory_decorations
+                                .contains(crate::MemoryDecorations::VOLATILE)
+                        })
+                        .then_some(handle)
+                });
                 Uniformity {
                     non_uniform_result,
                     requirements: UniformityRequirements::empty(),
