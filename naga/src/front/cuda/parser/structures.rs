@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
                     span: type_span,
                 });
             }
-            let resolution = self.lower_type(specifier, type_span);
+            let resolution = self.lower_type(specifier, type_span)?;
             let base = self.type_handle(&resolution, type_span);
             loop {
                 let (name, span) = self.identifier()?;
@@ -181,7 +181,7 @@ impl<'a> Parser<'a> {
                 span,
             });
         }
-        let resolution = self.lower_type(specifier, span);
+        let resolution = self.lower_type(specifier, span)?;
         let ty = self.type_handle(&resolution, span);
         let pointer = self.temporary_pointer(&resolution, span)?;
         self.aggregate_initializer(pointer, specifier, ty, None)?;

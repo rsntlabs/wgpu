@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) enum TypeSpecifier {
+    ThreadBlock,
     Scalar(Scalar),
     Vector {
         size: VectorSize,
@@ -39,6 +40,7 @@ pub(super) enum DeclarationType {
 
 #[derive(Clone, Debug)]
 pub(super) enum GlobalDeclaration {
+    Namespace(Namespace),
     PendingAuto,
     Type(QualifiedType),
     Functions(Vec<Handle<Function>>),
@@ -149,6 +151,18 @@ fn declaration_type(
     let mut integers = IntegerSpecifiers::default();
     loop {
         let token = lexer.peek()?;
+        if ty.is_none() && !inferred {
+            if let Some(name) = cooperative_groups::try_qualified_name(lexer, symbols, globals)? {
+                let cooperative_groups::QualifiedItem::Type(qualified) = name.item else {
+                    return Err(ParseError {
+                        message: String::from("expected a CUDA type"),
+                        span: name.span,
+                    });
+                };
+                ty = Some(qualified);
+                continue;
+            }
+        }
         let invalid = |message: &str| ParseError {
             message: String::from(message),
             span: token.1,
@@ -222,15 +236,27 @@ fn declaration_type(
 }
 
 impl<'a> Parser<'a> {
-    pub(super) fn lower_type(&mut self, ty: TypeSpecifier, span: Span) -> TypeResolution {
+    pub(super) fn lower_type(
+        &mut self,
+        ty: TypeSpecifier,
+        span: Span,
+    ) -> Result<TypeResolution, ParseError> {
         let (size, scalar) = match ty {
-            TypeSpecifier::Scalar(scalar) => return scalar_resolution(scalar),
-            TypeSpecifier::Structure(handle) => return TypeResolution::Handle(handle),
-            TypeSpecifier::Pointer { pointee, .. } => return self.pointer_type(pointee, span),
+            TypeSpecifier::ThreadBlock => {
+                return Err(ParseError {
+                    message: String::from(
+                        "thread_block handles cannot be stored or passed as shader values",
+                    ),
+                    span,
+                })
+            }
+            TypeSpecifier::Scalar(scalar) => return Ok(scalar_resolution(scalar)),
+            TypeSpecifier::Structure(handle) => return Ok(TypeResolution::Handle(handle)),
+            TypeSpecifier::Pointer { pointee, .. } => return Ok(self.pointer_type(pointee, span)),
             TypeSpecifier::Vector { size, scalar } => (size, scalar),
         };
         if size != VectorSize::Tri {
-            return TypeResolution::Value(TypeInner::Vector { size, scalar });
+            return Ok(TypeResolution::Value(TypeInner::Vector { size, scalar }));
         }
         let base = self.scalar_handle(scalar, span);
         let name = VECTOR_TYPES
@@ -249,13 +275,13 @@ impl<'a> Parser<'a> {
                 offset: index as u32 * 4,
             })
             .collect();
-        TypeResolution::Handle(self.module.types.insert(
+        Ok(TypeResolution::Handle(self.module.types.insert(
             Type {
                 name: Some(String::from(name)),
                 inner: TypeInner::Struct { members, span: 12 },
             },
             span,
-        ))
+        )))
     }
 
     pub(super) fn type_handle(&mut self, ty: &TypeResolution, span: Span) -> Handle<Type> {
@@ -341,6 +367,17 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn starts_type(&mut self) -> Result<bool, ParseError> {
+        let mut lexer = self.lexer.clone();
+        if let Some(name) = cooperative_groups::try_qualified_name(
+            &mut lexer,
+            &self.function.symbol_table,
+            &self.global_declarations,
+        )? {
+            return Ok(matches!(
+                name.item,
+                cooperative_groups::QualifiedItem::Type(_)
+            ));
+        }
         Ok(match self.lexer.peek()?.0 {
             Token::Word("const" | "constexpr") => true,
             Token::Word(name) => self.type_name(name).is_some(),
@@ -351,11 +388,14 @@ impl<'a> Parser<'a> {
     pub(super) fn starts_alias(&mut self) -> Result<bool, ParseError> {
         Ok(matches!(
             self.lexer.peek()?.0,
-            Token::Word("typedef" | "using")
+            Token::Word("typedef" | "using" | "namespace")
         ))
     }
 
     pub(super) fn alias_declaration(&mut self, global: bool) -> Result<(), ParseError> {
+        if self.take_ident("namespace")? {
+            return self.namespace_alias_declaration(global);
+        }
         if self.take_ident("typedef")? {
             let ty = self.parse_type()?;
             loop {
@@ -393,7 +433,7 @@ impl<'a> Parser<'a> {
         ) {
             return self.fail("nested pointer and pointer reference aliases are unsupported");
         }
-        let resolution = self.lower_type(ty.ty, span);
+        let resolution = self.lower_type(ty.ty, span)?;
         let pointee = self.type_handle(&resolution, span);
         Ok(QualifiedType {
             ty: TypeSpecifier::Pointer {

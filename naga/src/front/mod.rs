@@ -322,12 +322,20 @@ where
         Name: core::borrow::Borrow<Q>,
         Q: core::hash::Hash + Eq + ?Sized,
     {
+        self.lookup_where(name, |_| true)
+    }
+
+    pub(crate) fn lookup_where<Q>(&self, name: &Q, predicate: impl Fn(&Var) -> bool) -> Option<&Var>
+    where
+        Name: core::borrow::Borrow<Q>,
+        Q: core::hash::Hash + Eq + ?Sized,
+    {
         let cursor = self
             .cursor
             .saturating_sub(self.lookup_cursor_is_one_behind.into());
         // Iterate backwards through the scopes and try to find the variable
         for scope in self.scopes[..cursor].iter().rev() {
-            if let Some(var) = scope.get(name) {
+            if let Some(var) = scope.get(name).filter(|var| predicate(var)) {
                 return Some(var);
             }
         }
@@ -384,5 +392,43 @@ impl crate::Module {
     pub fn get_or_insert_default_doc_comments(&mut self) -> &mut Box<crate::DocComments> {
         self.doc_comments
             .get_or_insert_with(|| Box::new(crate::DocComments::default()))
+    }
+}
+
+#[cfg(test)]
+mod symbol_table_tests {
+    use super::SymbolTable;
+
+    #[test]
+    fn filtered_lookup_preserves_category_scope_reduction_and_cached_scope_boundaries() {
+        let mut symbols: SymbolTable<&str, &str> = SymbolTable::default();
+        symbols.add("group", "namespace");
+        symbols.push_scope();
+        symbols.add("group", "type");
+        symbols.push_scope();
+        symbols.add("group", "value");
+        assert_eq!(symbols.lookup("group"), Some(&"value"));
+        assert_eq!(
+            symbols.lookup_where("group", |category| *category != "value"),
+            Some(&"type")
+        );
+        assert_eq!(
+            symbols.lookup_where("group", |category| *category == "namespace"),
+            Some(&"namespace")
+        );
+        symbols.reduce_lookup_scope();
+        assert!(symbols
+            .lookup_where("group", |category| *category == "value")
+            .is_none());
+        assert_eq!(symbols.lookup_where("group", |_| true), Some(&"type"));
+        symbols.reset_lookup_scope();
+        assert_eq!(symbols.lookup_where("group", |_| true), Some(&"value"));
+        symbols.pop_scope();
+        symbols.pop_scope();
+        assert_eq!(symbols.lookup_where("group", |_| true), Some(&"namespace"));
+        symbols.push_scope();
+        symbols.add("other", "value");
+        assert_eq!(symbols.lookup_where("group", |_| true), Some(&"namespace"));
+        assert!(symbols.lookup_where("missing", |_| true).is_none());
     }
 }

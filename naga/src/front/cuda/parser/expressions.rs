@@ -12,12 +12,15 @@ impl Parser<'_> {
         while self.lexer.next_if(Token::Separator(','))? {
             let earlier = match result {
                 ExpressionResult::Value(ref value) => value.constant(),
+                ExpressionResult::ThreadBlock(ref value) => value.constant,
                 ExpressionResult::Void(_) => ConstantValue::default(),
             };
             self.discard_result(result)?;
             result = self.expression_result(0)?;
             if let ExpressionResult::Value(ref mut value) = result {
                 self.sequence_value(value, earlier)?;
+            } else if let ExpressionResult::ThreadBlock(ref mut value) = result {
+                value.constant = value.constant.after(earlier);
             }
         }
         Ok(result)
@@ -262,6 +265,9 @@ impl Parser<'_> {
             }
             .into());
         }
+        if let Some(name) = self.qualified_item()? {
+            return self.qualified_expression(name);
+        }
         match token.0 {
             Token::Number(text) => {
                 self.lexer.next()?;
@@ -291,6 +297,9 @@ impl Parser<'_> {
                     return Ok(value.into());
                 }
                 if let Some(target) = self.type_name(name) {
+                    if matches!(target.ty, TypeSpecifier::ThreadBlock) {
+                        return self.thread_block_copy();
+                    }
                     if matches!(target.ty, TypeSpecifier::Pointer { .. }) {
                         return Err(ParseError {
                             message: String::from("pointer value constructors are unsupported"),
@@ -317,7 +326,7 @@ impl Parser<'_> {
                             span: token.1.until(&end),
                         });
                     }
-                    let target = self.lower_type(target.ty, token.1);
+                    let target = self.lower_type(target.ty, token.1)?;
                     let mut value = self.cast_value(value, &target)?;
                     value.span = token.1.until(&end);
                     return Ok(value.into());
@@ -344,6 +353,21 @@ impl Parser<'_> {
                     span: token.1,
                 })?;
                 let (pointer, ty, writable, span, constant) = match symbol {
+                    Symbol::Namespace(_) => {
+                        return Err(ParseError {
+                            message: String::from("namespace cannot be used as a value"),
+                            span: token.1,
+                        })
+                    }
+                    Symbol::ThreadBlock => {
+                        return Ok(ExpressionResult::ThreadBlock(ThreadBlockValue {
+                            span: token.1,
+                            constant: ConstantValue {
+                                literal: None,
+                                is_discardable: true,
+                            },
+                        }))
+                    }
                     Symbol::Pointer(pointer) => {
                         return self.pointer_symbol_value(pointer, token.1);
                     }
@@ -358,6 +382,14 @@ impl Parser<'_> {
                             message: String::from("auto initializer cannot use its own binding"),
                             span: token.1,
                         });
+                    }
+                    Symbol::PendingThreadBlock => {
+                        return Err(ParseError {
+                            message: String::from(
+                                "thread_block initializer cannot use its own binding",
+                            ),
+                            span: token.1,
+                        })
                     }
                     Symbol::PendingReference => {
                         return Err(ParseError {

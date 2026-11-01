@@ -34,7 +34,7 @@ impl<'a> Parser<'a> {
         is_const: bool,
     ) -> Result<(), ParseError> {
         self.insert_symbol(name, Symbol::PendingReference, span)?;
-        let ty = self.lower_type(specifier, span);
+        let ty = self.lower_type(specifier, span)?;
         let has_equals = self.lexer.next_if(Token::Operation('='))?;
         let value = if self.lexer.peek()?.0 == Token::Paren('{') {
             self.reference_list_initializer(&ty)?

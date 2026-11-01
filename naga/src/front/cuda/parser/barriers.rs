@@ -1,5 +1,21 @@
 use super::*;
 
+impl Parser<'_> {
+    pub(super) fn emit_workgroup_barrier(&mut self, span: Span) -> Result<(), ParseError> {
+        if self.function.kind == FunctionKind::Device {
+            return Err(ParseError {
+                message: String::from("barriers are unsupported in device helpers"),
+                span,
+            });
+        }
+        self.push_statement(
+            Statement::ControlBarrier(crate::Barrier::WORK_GROUP | crate::Barrier::STORAGE),
+            span,
+        );
+        Ok(())
+    }
+}
+
 // Naga's uniformity analysis does not yet validate control barriers.
 pub(super) fn check_control_flow(
     block: &crate::Block,

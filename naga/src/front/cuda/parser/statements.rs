@@ -96,11 +96,22 @@ impl<'a> Parser<'a> {
                 Some(self.convert_value(value, &ty)?.handle)
             } else {
                 if self.lexer.peek()?.0 != Token::Separator(';') {
-                    if let ExpressionResult::Value(value) = self.comma_expression_result()? {
-                        return Err(ParseError {
-                            message: String::from("cannot return a value from a void function"),
-                            span: value.span(),
-                        });
+                    match self.comma_expression_result()? {
+                        ExpressionResult::Value(value) => {
+                            return Err(ParseError {
+                                message: String::from("cannot return a value from a void function"),
+                                span: value.span(),
+                            })
+                        }
+                        ExpressionResult::ThreadBlock(value) => {
+                            return Err(ParseError {
+                                message: String::from(
+                                    "cannot return a thread_block handle from a void function",
+                                ),
+                                span: value.span,
+                            })
+                        }
+                        ExpressionResult::Void(_) => {}
                     }
                 }
                 None
@@ -110,19 +121,10 @@ impl<'a> Parser<'a> {
             return Ok(true);
         }
         if self.take_ident("__syncthreads")? {
-            if self.function.kind == FunctionKind::Device {
-                return Err(ParseError {
-                    message: String::from("barriers are unsupported in device helpers"),
-                    span: start,
-                });
-            }
             self.lexer.expect_span(Token::Paren('('))?;
             self.lexer.expect_span(Token::Paren(')'))?;
             let end = self.lexer.expect_span(Token::Separator(';'))?;
-            self.push_statement(
-                Statement::ControlBarrier(crate::Barrier::WORK_GROUP | crate::Barrier::STORAGE),
-                start.until(&end),
-            );
+            self.emit_workgroup_barrier(start.until(&end))?;
             return Ok(false);
         }
         if self.take_ident("for")? {
@@ -182,7 +184,15 @@ impl<'a> Parser<'a> {
             return Ok(false);
         }
         let mut lookahead = self.lexer.clone();
-        lookahead.next()?;
+        if cooperative_groups::try_qualified_name(
+            &mut lookahead,
+            &self.function.symbol_table,
+            &self.global_declarations,
+        )?
+        .is_none()
+        {
+            lookahead.next()?;
+        }
         let next = lookahead.peek()?;
         if next.0 == Token::Paren('{') {
             return Ok(false);
@@ -221,6 +231,9 @@ impl<'a> Parser<'a> {
         };
         if is_constexpr && !matches!(specifier, TypeSpecifier::Scalar(_)) {
             return self.fail("constexpr requires a scalar variable");
+        }
+        if matches!(specifier, TypeSpecifier::ThreadBlock) {
+            return self.thread_block_declaration();
         }
         loop {
             let explicit_pointer = self.lexer.next_if(Token::Operation('*'))?;
@@ -267,7 +280,7 @@ impl<'a> Parser<'a> {
             }
             let (name, span) = self.identifier()?;
             self.check_name(name, span)?;
-            let declared_ty = self.lower_type(specifier, span);
+            let declared_ty = self.lower_type(specifier, span)?;
             let base = self.type_handle(&declared_ty, span);
             let is_array = self.lexer.next_if(Token::Paren('['))?;
             if is_constexpr && is_array {
@@ -411,7 +424,7 @@ impl<'a> Parser<'a> {
         }
         let (name, span) = self.identifier()?;
         self.check_name(name, span)?;
-        let declared_ty = self.lower_type(specifier, span);
+        let declared_ty = self.lower_type(specifier, span)?;
         let base = self.type_handle(&declared_ty, span);
         let is_array = self.lexer.next_if(Token::Paren('['))?;
         let array = if is_array {

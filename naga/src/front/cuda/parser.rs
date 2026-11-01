@@ -9,6 +9,7 @@ mod constant_evaluation;
 mod constants;
 mod context;
 mod conversions;
+mod cooperative_groups;
 mod declarations;
 mod expressions;
 mod function_declarations;
@@ -35,6 +36,7 @@ mod updates;
 
 use crate::proc::TypeResolution;
 use context::{FunctionContext, FunctionKind};
+use cooperative_groups::{Namespace, ThreadBlockValue};
 use function_declarations::{FunctionCall, FunctionDeclaration, IntrinsicDeclaration};
 use parameter_calls::{
     CallArgument, CapturedArgument, DeferredCall, FunctionParameterState, ParameterMode,
@@ -66,11 +68,14 @@ const BUILTIN_INPUTS: [(&str, BuiltIn); 3] = [
 
 #[derive(Clone, Debug)]
 enum Symbol {
+    Namespace(Namespace),
+    ThreadBlock,
     Type(QualifiedType),
     Member,
     PendingReference,
     PendingPointer,
     PendingAuto,
+    PendingThreadBlock,
     Pointer(Handle<PointerValue>),
     Reference {
         binding: Handle<BoundReference>,
@@ -209,6 +214,7 @@ impl From<Value> for ExpressionValue {
 #[derive(Debug)]
 enum ExpressionResult {
     Value(ExpressionValue),
+    ThreadBlock(ThreadBlockValue),
     Void(Span),
 }
 
@@ -222,6 +228,10 @@ impl ExpressionResult {
     fn require_value(self) -> Result<ExpressionValue, ParseError> {
         match self {
             Self::Value(value) => Ok(value),
+            Self::ThreadBlock(value) => Err(ParseError {
+                message: String::from("thread_block handles cannot be used as shader values"),
+                span: value.span,
+            }),
             Self::Void(span) => Err(ParseError {
                 message: String::from("void expression cannot be used as a value"),
                 span,
@@ -318,7 +328,7 @@ impl<'a> Parser<'a> {
                 pointee_const,
                 Some(is_const),
             ),
-            _ => (self.lower_type(specifier, type_span), is_const, None),
+            _ => (self.lower_type(specifier, type_span)?, is_const, None),
         };
         if self.function.kind == FunctionKind::Kernel
             && self
@@ -944,6 +954,9 @@ impl<'a> Parser<'a> {
             .lookup(name)
             .cloned()
             .or_else(|| match self.global_declarations.get(name) {
+                Some(&GlobalDeclaration::Namespace(namespace)) => {
+                    Some(Symbol::Namespace(namespace))
+                }
                 Some(&GlobalDeclaration::PendingAuto) => Some(Symbol::PendingAuto),
                 Some(&GlobalDeclaration::Constant {
                     handle,

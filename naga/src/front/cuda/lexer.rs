@@ -18,6 +18,7 @@ pub(super) enum Token<'a> {
     IncrementOperation,
     DecrementOperation,
     Arrow,
+    ScopeResolution,
     Trivia,
     End,
 }
@@ -179,6 +180,7 @@ impl<'a> Lexer<'a> {
             Token::IncrementOperation => String::from("expected `++`"),
             Token::DecrementOperation => String::from("expected `--`"),
             Token::Arrow => String::from("expected `->`"),
+            Token::ScopeResolution => String::from("expected `::`"),
             Token::End => String::from("expected end of source"),
             _ => format!("expected {expected:?}"),
         };
@@ -288,6 +290,7 @@ fn consume_token(input: &str) -> Result<(Token<'_>, &str), ParseError> {
     }
     let rest = &input[character.len_utf8()..];
     Ok(match character {
+        ':' if rest.starts_with(':') => (Token::ScopeResolution, &rest[1..]),
         ':' | ';' | ',' | '.' => (Token::Separator(character), rest),
         '(' | ')' | '{' | '}' | '[' | ']' => (Token::Paren(character), rest),
         '<' | '>' => {
@@ -359,6 +362,39 @@ fn consume_token(input: &str) -> Result<(Token<'_>, &str), ParseError> {
 #[cfg(test)]
 mod tests {
     use super::{Lexer, ParseError, Token, TokenSpan};
+
+    #[test]
+    fn cuda_scanner_scope_resolution_preserves_raw_and_prepared_token_boundaries() {
+        let source = "cg::thread_block : :";
+        let tokens = lex(source).unwrap();
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|token| token.0)
+                .collect::<alloc::vec::Vec<_>>(),
+            [
+                Token::Word("cg"),
+                Token::ScopeResolution,
+                Token::Word("thread_block"),
+                Token::Separator(':'),
+                Token::Separator(':'),
+                Token::End,
+            ]
+        );
+        assert_eq!(&source[tokens[1].1.to_range().unwrap()], "::");
+        let source = "#define GROUP cg\nGROUP::thread_block : :";
+        let prepared = super::super::preprocess::prepare(source).unwrap().unwrap();
+        let mut lexer = Lexer::from_prepared(source, &prepared);
+        assert_eq!(lexer.next().unwrap().0, Token::Word("cg"));
+        let scope = lexer.peek().unwrap();
+        assert_eq!(scope.0, Token::ScopeResolution);
+        assert_eq!(&source[scope.1.to_range().unwrap()], "::");
+        assert_eq!(lexer.next().unwrap(), scope);
+        assert_eq!(lexer.next().unwrap().0, Token::Word("thread_block"));
+        assert_eq!(lexer.next().unwrap().0, Token::Separator(':'));
+        assert_eq!(lexer.next().unwrap().0, Token::Separator(':'));
+        assert_eq!(lexer.next().unwrap().0, Token::End);
+    }
 
     fn lex(source: &str) -> Result<alloc::vec::Vec<TokenSpan<'_>>, ParseError> {
         let mut lexer = Lexer::new(source)?;
