@@ -274,7 +274,7 @@ impl Parser<'_> {
             declaration
                 .parameters
                 .iter()
-                .any(|parameter| parameter.mode.is_indirect())
+                .any(|parameter| parameter.mode().is_indirect())
         }) || !self.parameter_states.is_empty()
             || has_kernel_parameter_state
         {

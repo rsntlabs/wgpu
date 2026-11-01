@@ -282,11 +282,8 @@ impl<'a> Parser<'a> {
                 Expression::FunctionArgument(index)
                     if self
                         .function
-                        .parameters
-                        .get(index as usize)
-                        .is_some_and(|parameter| {
-                            matches!(parameter.mode, ParameterMode::Reference { .. })
-                        }) =>
+                        .parameter_mode(index)
+                        .is_some_and(|mode| matches!(mode, ParameterMode::Reference { .. })) =>
                 {
                     break
                 }

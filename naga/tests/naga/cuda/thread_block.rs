@@ -115,6 +115,10 @@ fn cuda_thread_block_scope_tokens_match_preprocessed_source_and_reject_separate_
 #[test]
 fn cuda_thread_block_bindings_preserve_copies_const_auto_and_lexical_scope() {
     roundtrip(
+        "namespace cg = cooperative_groups; __device__ unsigned helper(cg::thread_block group) { return group.size(); } __global__ void kernel() {}",
+        [4, 1, 1],
+    );
+    roundtrip(
         "namespace cg = cooperative_groups;
         using Block = cg::thread_block; typedef const Block Frozen;
         __global__ void kernel(unsigned *output) {
@@ -326,7 +330,6 @@ fn cuda_thread_block_rejects_other_groups_escaping_handles_and_invalid_calls() {
         "namespace custom {} __global__ void kernel() {}",
         "using namespace cooperative_groups; __global__ void kernel() {}",
         "namespace cg = cooperative_groups; __global__ void kernel(cg::thread_block group) {}",
-        "namespace cg = cooperative_groups; __device__ unsigned helper(cg::thread_block group) { return group.size(); } __global__ void kernel() {}",
         "namespace cg = cooperative_groups; __device__ cg::thread_block helper() { return cg::this_thread_block(); } __global__ void kernel() {}",
         "namespace cg = cooperative_groups; struct Record { cg::thread_block group; }; __global__ void kernel() {}",
         "namespace cg = cooperative_groups; __global__ void kernel() { return cg::this_thread_block(); }",

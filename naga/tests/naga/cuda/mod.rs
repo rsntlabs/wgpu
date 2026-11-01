@@ -75,6 +75,7 @@ mod structures;
 mod switches;
 mod thread_block;
 mod thread_block_dimensions;
+mod thread_block_parameters;
 mod trigonometry;
 mod type_aliases;
 mod uniform_branch_barriers;

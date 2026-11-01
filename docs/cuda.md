@@ -1273,11 +1273,18 @@ unchanged. Device helpers can create local handles and use both scalar and
 dimension queries. All queries remain runtime expressions and cannot supply
 `constexpr` values or array bounds, even when the launch shape is fixed.
 
-Handles do not consume shader variables or buffer bindings. Group parameters,
-function results, pointers, references, arrays, struct members, shared storage,
-and `constexpr` handles remain unsupported. Split-phase barriers, grid and
-cluster groups, coalesced groups, partitions, and partial-block collectives are
-not yet supported. These operations are described in CUDA's
+Device helpers accept `thread_block` by value, including `const` parameters,
+namespace and type aliases, prototypes, and forwarding to other helpers. Copies
+and temporary handles can be passed directly. Group parameters participate in
+source argument counts and overload selection, and argument expressions retain
+their left-to-right evaluation order. Helpers that synchronize still require
+uniform calls and control flow across the block.
+
+Handles and their by-value helper parameters do not consume shader variables or
+buffer bindings. Group kernel parameters, function results, pointers, references,
+arrays, struct members, shared storage, and `constexpr` handles remain unsupported.
+Split-phase barriers, grid and cluster groups, coalesced groups, partitions, and
+partial-block collectives are not yet supported. These operations are described in CUDA's
 [`thread_block` API](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/device-callable-apis.html#class-thread-block).
 
 Unsupported syntax produces a parse error with a source span. This includes

@@ -161,6 +161,52 @@ pub(super) fn try_qualified_name(
 }
 
 impl<'a> Parser<'a> {
+    pub(super) fn thread_block_parameter(&mut self, span: Span) -> Result<(), ParseError> {
+        if self.function.kind == FunctionKind::Kernel {
+            return Err(ParseError {
+                message: String::from("thread_block kernel parameters are unsupported"),
+                span,
+            });
+        }
+        if matches!(
+            self.lexer.peek()?.0,
+            Token::Operation('*' | '&') | Token::LogicalOperation('&') | Token::Paren('[' | '(')
+        ) {
+            return self.fail("thread_block parameters must be passed by value");
+        }
+        self.activate_parameter_expansion(span)?;
+        if self.function.physical_parameter_modes.is_none() {
+            self.parameter_expansion_budget
+                .charge_slice::<ParameterMode>(self.function.parameters.len(), span)?;
+            self.parameter_expansion_budget
+                .charge_work(self.function.parameters.len(), span)?;
+            self.function.physical_parameter_modes = Some(
+                self.function
+                    .parameters
+                    .iter()
+                    .copied()
+                    .map(SourceParameter::mode)
+                    .collect(),
+            );
+        }
+        self.parameter_expansion_budget
+            .charge_slice::<SourceParameter>(1, span)?;
+        self.parameter_expansion_budget.charge_work(1, span)?;
+        self.function.parameters.push(SourceParameter::ThreadBlock);
+        if matches!(
+            self.lexer.peek()?.0,
+            Token::Separator(',') | Token::Paren(')')
+        ) {
+            return Ok(());
+        }
+        let (name, name_span) = self.identifier()?;
+        self.check_name(name, name_span)?;
+        if self.lexer.peek()?.0 == Token::Paren('[') {
+            return self.fail("thread_block array parameters are unsupported");
+        }
+        self.insert_symbol(name, Symbol::ThreadBlock, name_span)
+    }
+
     pub(super) fn namespace_alias_declaration(&mut self, global: bool) -> Result<(), ParseError> {
         let (name, span) = self.identifier()?;
         self.check_name(name, span)?;

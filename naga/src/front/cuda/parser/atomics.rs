@@ -65,7 +65,7 @@ impl Parser<'_> {
         let mut arguments = arguments.into_iter();
         let destination = arguments.next().ok_or_else(|| atomic_error(span))?;
         self.append_block(destination.body);
-        let pointer = self.borrowed_pointer(destination.value)?;
+        let pointer = self.borrowed_pointer(destination.value.require_value()?)?;
         if pointer.is_const {
             return Err(atomic_error(span));
         }
@@ -75,7 +75,7 @@ impl Parser<'_> {
             functions::FunctionCandidate::AtomicCompareExchange(_) => {
                 let compare = arguments.next().ok_or_else(|| atomic_error(span))?;
                 self.append_block(compare.body);
-                let compare = self.convert_scalar(compare.value, scalar)?;
+                let compare = self.convert_scalar(compare.value.require_value()?, scalar)?;
                 AtomicFunction::Exchange {
                     compare: Some(compare.handle),
                 }
@@ -83,14 +83,14 @@ impl Parser<'_> {
             functions::FunctionCandidate::WrappingAtomic(function) => {
                 let limit = arguments.next().ok_or_else(|| atomic_error(span))?;
                 self.append_block(limit.body);
-                let limit = self.convert_scalar(limit.value, scalar)?;
+                let limit = self.convert_scalar(limit.value.require_value()?, scalar)?;
                 return self.wrapping_atomic_call(reference, limit.handle, function, span);
             }
             _ => return Err(atomic_error(span)),
         };
         let operand = arguments.next().ok_or_else(|| atomic_error(span))?;
         self.append_block(operand.body);
-        let value = self.convert_scalar(operand.value, scalar)?;
+        let value = self.convert_scalar(operand.value.require_value()?, scalar)?;
         let ty = self.scalar_handle(scalar, span);
         let result_pointer = self.temporary_pointer(&scalar_resolution(scalar), span)?;
         self.decorate_reference(&mut reference, &mut |parser, pointer, _, span| {

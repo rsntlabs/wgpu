@@ -163,6 +163,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 - Support CUDA full-block barriers in kernel loops with proven uniform control flow.
 - Support Cooperative Groups full-block handles, synchronization, and scalar rank and size queries.
 - Support Cooperative Groups `thread_block` dimension queries returning independent `dim3` values.
+- Support Cooperative Groups `thread_block` parameters passed by value to CUDA device helpers.
 - Support previously defined CUDA `__device__` helpers with scalar parameters and return values.
 - Support CUDA device helper prototypes and forward calls, including definitions after the kernel.
 - Support void CUDA device helpers, including implicit returns and discarded calls.

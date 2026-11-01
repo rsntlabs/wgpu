@@ -598,7 +598,7 @@ impl Parser<'_> {
                 .builtin_logical(left, operator, |parser| parser.expression(precedence + 1))
                 .map(Into::into);
         }
-        if self.has_indirect_candidate(name) {
+        if self.has_captured_candidate(name) {
             let (right, right_body) =
                 self.capture_block(|parser| parser.expression(precedence + 1))?;
             if self.is_source_class(left.ty()) || self.is_source_class(right.ty()) {
@@ -609,11 +609,11 @@ impl Parser<'_> {
                     name,
                     alloc::vec![
                         CapturedArgument {
-                            value: left,
+                            value: left.into(),
                             body: crate::Block::new()
                         },
                         CapturedArgument {
-                            value: right,
+                            value: right.into(),
                             body: right_body
                         }
                     ],

@@ -229,6 +229,12 @@ impl From<Value> for ExpressionResult {
     }
 }
 
+impl From<ExpressionValue> for ExpressionResult {
+    fn from(value: ExpressionValue) -> Self {
+        Self::Value(value)
+    }
+}
+
 impl ExpressionResult {
     fn require_value(self) -> Result<ExpressionValue, ParseError> {
         match self {
@@ -347,6 +353,9 @@ impl<'a> Parser<'a> {
             ty: specifier,
             is_const,
         } = self.parse_type()?;
+        if matches!(specifier, TypeSpecifier::ThreadBlock) {
+            return self.thread_block_parameter(type_span);
+        }
         let (ty, is_const, aliased_pointer_const) = match specifier {
             TypeSpecifier::Pointer {
                 pointee,
