@@ -92,8 +92,12 @@ they should be easy to copy into a standalone project.
 - Verify the supported CUDA source subset, rejection of unsupported syntax,
   IR structure, parser depth limits, and output from every shader backend.
 
-The CLI integration tests live in `naga-cli/tests/cuda.rs` and run with
-`cargo nextest run -p naga-cli --test cuda`.
+The CLI integration tests live in `naga-cli/tests/cuda.rs` and
+`naga-cli/tests/entry_points.rs`. Run them with `cargo nextest run -p naga-cli`.
+They share temporary-file helpers in `naga-cli/tests/common/` and check input
+formats, entry-point selection, override values, and clean errors. Backend
+generation tests use Naga parsers where available and need no external shader
+compiler.
 
 GPU tests in `tests/tests/wgpu-gpu/shader/cuda/` run generated WGSL through the
 shared `ShaderTest` framework. They check arithmetic, conversions, evaluation
