@@ -285,6 +285,7 @@ impl<'a> Parser<'a> {
         kind: FunctionKind,
     ) -> Result<(), ParseError> {
         self.check_name(name, span)?;
+        self.check_dynamic_shared_linkage(name, span)?;
         let compatible = match self.global_declarations.get(name) {
             None => true,
             Some(&GlobalDeclaration::Functions(_)) => kind == FunctionKind::Device,

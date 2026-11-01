@@ -332,7 +332,7 @@ for backend scopes. These limits are checked before copying generated payload;
 they do not describe an exact allocator or process memory limit.
 
 Helpers have no resource bindings. Pointer and reference results,
-whole-array references, shared declarations, and barriers in helper bodies remain unsupported. Kernel prototypes
+whole-array references, static shared declarations, and barriers in helper bodies remain unsupported. Kernel prototypes
 remain unsupported.
 Pointer members, null pointers,
 pointer comparisons and differences, pointer casts, and general pointer
@@ -1142,7 +1142,44 @@ Shared variables become workgroup storage without resource bindings; names obey
 the surrounding block scope, and each workgroup has its own storage. Declarations
 cannot contain initializers, following NVIDIA's
 [shared memory constraints](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html).
-Dynamic `extern __shared__` storage remains unsupported.
+Dynamic shared arrays use the launch byte count supplied through
+`Options::dynamic_shared_memory_size` or CLI option
+`--cuda-dynamic-shared-memory-size BYTES`. It defaults to zero and applies to
+every entry in the module, in addition to each entry's static shared storage.
+For example:
+
+```cuda
+extern __shared__ unsigned values[];
+
+__global__ void exchange(unsigned *output) {
+    extern __shared__ unsigned aliases[];
+    unsigned lane = threadIdx.x;
+    values[lane] = lane;
+    __syncthreads();
+    output[lane] = aliases[(lane + 1u) % 4u];
+}
+```
+
+Translate this kernel with workgroup size `4,1,1` and dynamic shared memory size
+`16`. Compatible declarations at file, kernel, and helper scope name the same
+allocation. Repeated declarations of one external name must agree on its type.
+Static shared variables have separate storage.
+
+The outer array dimension must be omitted. Its complete element type can be a
+supported numeric scalar, vector, POD struct, or fixed inner array, such as
+`extern __shared__ int rows[][4];`. One entry can currently use one such element
+type across its reachable helpers. Different entries can use different element
+types. Using incompatible typed views of the same allocation in one entry
+produces an unsupported-feature diagnostic.
+
+The emitted workgroup array rounds the byte count up to complete elements,
+including a private dummy element for a referenced zero-byte view. Unused
+declarations create no allocation. Zero and nonmultiple byte counts are valid
+launch values; private padding does not extend the valid CUDA storage or make
+the source array complete. Workgroup storage limits apply to the emitted
+allocation, including padding. Dynamic addresses and discarded address
+expressions do not expose an array bound derived from the launch option.
+
 Accesses to shared values from different invocations require
 synchronization when any invocation writes them.
 
@@ -1227,7 +1264,7 @@ not yet supported. These operations are described in CUDA's
 Unsupported syntax produces a parse error with a source span. This includes
 includes and other preprocessing forms outside the subset above, host code and launch syntax,
 pointer operations outside the borrowed subset above,
-dynamic shared memory, atomic operations outside the integer overloads above,
+mixed-type dynamic shared views, atomic operations outside the integer overloads above,
 other synchronization primitives, templates,
 double precision, and inline PTX. No CUDA runtime ABI or NVIDIA device code is
 generated.
@@ -1236,7 +1273,7 @@ generated.
 
 Add each capability with a failing acceptance test and rejection tests before
 changing the parser or lowering. Useful next increments are more device-function
-signatures, dynamic shared storage, and more general barrier placement. Each
+signatures, mixed-type dynamic shared views, and more general barrier placement. Each
 increment must preserve validation and backend compatibility; CUDA-specific
 features need an explicit portable representation or an unsupported-feature
 diagnostic.

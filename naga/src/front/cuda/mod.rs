@@ -12,12 +12,15 @@ mod preprocess;
 pub struct Options {
     /// CUDA launch block dimensions, used for every entry point and `blockDim`.
     pub workgroup_size: [u32; 3],
+    /// Additional dynamic shared-memory bytes per block, used for every entry point.
+    pub dynamic_shared_memory_size: u32,
 }
 
 impl Default for Options {
     fn default() -> Self {
         Self {
             workgroup_size: [1; 3],
+            dynamic_shared_memory_size: 0,
         }
     }
 }

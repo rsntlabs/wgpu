@@ -164,6 +164,9 @@ impl<'a> Parser<'a> {
     pub(super) fn namespace_alias_declaration(&mut self, global: bool) -> Result<(), ParseError> {
         let (name, span) = self.identifier()?;
         self.check_name(name, span)?;
+        if global {
+            self.check_dynamic_shared_linkage(name, span)?;
+        }
         self.lexer.expect_span(Token::Operation('='))?;
         let target = qualified_name(
             &mut self.lexer,

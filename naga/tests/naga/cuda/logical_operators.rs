@@ -557,6 +557,7 @@ fn cuda_logical_operators_fixture_emits_valid_spirv_binary() {
         FIXTURE,
         &Options {
             workgroup_size: [2, 1, 1],
+            ..Options::default()
         },
     );
     let options = naga::back::spv::Options {

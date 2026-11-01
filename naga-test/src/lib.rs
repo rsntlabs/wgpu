@@ -90,11 +90,13 @@ pub struct WriterSharedOptions {
 #[serde(default)]
 pub struct CudaInParameters {
     pub workgroup_size: [u32; 3],
+    pub dynamic_shared_memory_size: u32,
 }
 impl Default for CudaInParameters {
     fn default() -> Self {
         Self {
             workgroup_size: [1; 3],
+            dynamic_shared_memory_size: 0,
         }
     }
 }
@@ -102,6 +104,7 @@ impl From<&CudaInParameters> for naga::front::cuda::Options {
     fn from(value: &CudaInParameters) -> Self {
         Self {
             workgroup_size: value.workgroup_size,
+            dynamic_shared_memory_size: value.dynamic_shared_memory_size,
         }
     }
 }
@@ -542,5 +545,35 @@ mod tests {
             naga::front::cuda::Options::from(&params.cuda_in).workgroup_size,
             [1; 3]
         );
+    }
+
+    #[test]
+    fn cuda_snapshot_parameters_accept_dynamic_shared_memory_bytes() {
+        for bytes in [0, 1, 5, 8192] {
+            let params: Parameters = toml::from_str(&format!(
+                "[cuda-in]\nworkgroup_size = [64, 2, 1]\ndynamic_shared_memory_size = {bytes}\n"
+            ))
+            .unwrap();
+            let options = naga::front::cuda::Options::from(&params.cuda_in);
+            assert_eq!(options.workgroup_size, [64, 2, 1]);
+            assert_eq!(options.dynamic_shared_memory_size, bytes);
+        }
+        for source in ["", "[cuda-in]\n"] {
+            let params: Parameters = toml::from_str(source).unwrap();
+            assert_eq!(
+                naga::front::cuda::Options::from(&params.cuda_in).dynamic_shared_memory_size,
+                0
+            );
+        }
+    }
+
+    #[test]
+    fn cuda_snapshot_parameters_reject_invalid_dynamic_shared_memory_bytes() {
+        for bytes in ["-1", "4294967296", "\"16\""] {
+            assert!(toml::from_str::<Parameters>(&format!(
+                "[cuda-in]\ndynamic_shared_memory_size = {bytes}\n"
+            ))
+            .is_err());
+        }
     }
 }

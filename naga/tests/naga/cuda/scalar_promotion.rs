@@ -163,6 +163,7 @@ fn cuda_scalar_promotion_names_the_complete_particles_shader() {
         PARTICLES,
         &naga::front::cuda::Options {
             workgroup_size: [64, 1, 1],
+            ..naga::front::cuda::Options::default()
         },
     );
     assert_particle_values(&module, &info);

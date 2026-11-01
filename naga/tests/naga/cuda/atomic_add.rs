@@ -71,6 +71,7 @@ fn cuda_atomic_add_supports_shared_counters_with_separated_normal_accesses() {
         }",
         &Options {
             workgroup_size: [8, 1, 1],
+            ..Options::default()
         },
     );
     #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]

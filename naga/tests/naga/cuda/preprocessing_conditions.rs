@@ -68,6 +68,7 @@ fn cuda_preprocessing_conditions_fixture_preserves_launch_storage_and_helper_val
         FIXTURE,
         &Options {
             workgroup_size: [2, 1, 1],
+            ..Options::default()
         },
     );
     assert_eq!(module.entry_points[0].name, "preprocessing_conditions");
@@ -826,6 +827,7 @@ fn cuda_preprocessing_conditions_fixture_emits_valid_spirv_binary() {
         FIXTURE,
         &Options {
             workgroup_size: [2, 1, 1],
+            ..Options::default()
         },
     );
     let options = naga::back::spv::Options {

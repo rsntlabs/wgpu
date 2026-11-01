@@ -127,7 +127,13 @@ fn cuda_rejects_excessive_expression_nesting() {
 fn cuda_large_launch_dimensions_do_not_overflow_the_parser() {
     let source = "__global__ void large(unsigned int *out) { out[0] = blockDim.x; }";
     for workgroup_size in [[0x4001, 1, 1], [u32::MAX, 1, 1], [u32::MAX; 3]] {
-        if let Ok(module) = parse_str(source, &Options { workgroup_size }) {
+        if let Ok(module) = parse_str(
+            source,
+            &Options {
+                workgroup_size,
+                ..Options::default()
+            },
+        ) {
             assert_eq!(module.entry_points[0].workgroup_size, workgroup_size);
             naga::valid::Validator::new(
                 naga::valid::ValidationFlags::all(),

@@ -192,7 +192,7 @@ fn cuda_helper_parameters_bind_writable_and_readonly_storage() {
 fn cuda_helper_parameters_bind_shared_records_under_existing_barrier_rules() {
     validate_with_options("struct Record { int value; int samples[2]; };
         __device__ void update(Record &record, int &sample, const Record &view) { ++record.value; sample += view.value; }
-        __global__ void kernel(int *out) { unsigned lane = threadIdx.x; __shared__ Record values[4]; values[lane] = Record{int(lane), {1, 2}}; __syncthreads(); update(values[lane], values[lane].samples[0], values[lane]); __syncthreads(); out[lane] = values[lane].samples[0]; }", &Options { workgroup_size: [4, 1, 1] });
+        __global__ void kernel(int *out) { unsigned lane = threadIdx.x; __shared__ Record values[4]; values[lane] = Record{int(lane), {1, 2}}; __syncthreads(); update(values[lane], values[lane].samples[0], values[lane]); __syncthreads(); out[lane] = values[lane].samples[0]; }", &Options { workgroup_size: [4, 1, 1], ..Options::default() });
     rejected("__device__ void wait(int &value) { __syncthreads(); ++value; } __global__ void kernel() {}");
     rejected("__device__ void update(int &value) { __shared__ int shared; shared = value; } __global__ void kernel() {}");
 }

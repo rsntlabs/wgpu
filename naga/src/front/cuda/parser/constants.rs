@@ -28,6 +28,7 @@ impl<'a> Parser<'a> {
         loop {
             let (name, span) = self.identifier()?;
             self.check_name(name, span)?;
+            self.check_dynamic_shared_linkage(name, span)?;
             if self.global_declarations.contains_key(name) {
                 return Err(ParseError {
                     message: format!("incompatible redeclaration of `{name}`"),

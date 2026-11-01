@@ -278,7 +278,6 @@ fn cuda_inferred_arrays_still_require_nonempty_lists_and_supported_local_element
         "constexpr int values[]{1};",
         "__shared__ int values[]{1};",
         "__shared__ float3 values[]{{1}};",
-        "extern __shared__ int values[];",
         "double values[]{1.0f};",
         "void values[]{1};",
         "int source[]{1}; int values[] = source;",

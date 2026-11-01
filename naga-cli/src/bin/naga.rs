@@ -89,6 +89,10 @@ struct Args {
     #[argh(option)]
     cuda_workgroup_size: Option<CudaWorkgroupSizeArg>,
 
+    /// CUDA dynamic shared memory in bytes per block. Defaults to zero.
+    #[argh(option)]
+    cuda_dynamic_shared_memory_size: Option<u32>,
+
     /// the metal version to use, for example, 1.0, 1.1, 1.2, etc.
     #[argh(option)]
     metal_version: Option<MslVersionArg>,
@@ -595,6 +599,9 @@ fn run() -> anyhow::Result<()> {
     };
     if let Some(dimensions) = args.cuda_workgroup_size {
         params.cuda_in.workgroup_size = dimensions.0;
+    }
+    if let Some(size) = args.cuda_dynamic_shared_memory_size {
+        params.cuda_in.dynamic_shared_memory_size = size;
     }
 
     params.entry_point.clone_from(&args.entry_point);

@@ -11,6 +11,7 @@ fn roundtrip(source: &str) {
         source,
         &Options {
             workgroup_size: WORKGROUP,
+            ..Options::default()
         },
     );
     #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
@@ -27,6 +28,7 @@ fn rejected(source: &str) -> naga::front::cuda::ParseError {
         source,
         &Options {
             workgroup_size: WORKGROUP,
+            ..Options::default()
         },
     )
     .unwrap_err();
@@ -53,6 +55,7 @@ fn cuda_thread_block_dimensions_return_nominal_dim3_and_select_exact_overloads()
         source,
         &Options {
             workgroup_size: WORKGROUP,
+            ..Options::default()
         },
     );
     let shape = module
@@ -122,6 +125,7 @@ fn cuda_thread_block_dimension_helpers_initialize_inputs_before_forward_calls_an
         source,
         &Options {
             workgroup_size: WORKGROUP,
+            ..Options::default()
         },
     );
     let entry = &module.entry_points[0].function;

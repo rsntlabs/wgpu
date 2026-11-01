@@ -244,6 +244,7 @@ fn cuda_local_references_bind_workgroup_elements_under_existing_barrier_policy()
         }",
         &Options {
             workgroup_size: [4, 1, 1],
+            ..Options::default()
         },
     );
     rejected("__device__ int helper() { __shared__ int value; int &alias = value; return alias; } __global__ void kernel() {}");
@@ -374,6 +375,7 @@ fn cuda_local_references_freeze_conditional_branch_indices_and_roots() {
         }",
         &Options {
             workgroup_size: [1, 1, 1],
+            ..Options::default()
         },
     );
 }

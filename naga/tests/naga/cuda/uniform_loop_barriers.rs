@@ -10,6 +10,7 @@ fn roundtrip(source: &str) {
         source,
         &Options {
             workgroup_size: WORKGROUP,
+            ..Options::default()
         },
     );
     #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
@@ -26,6 +27,7 @@ fn rejected(source: &str) -> naga::front::cuda::ParseError {
         source,
         &Options {
             workgroup_size: WORKGROUP,
+            ..Options::default()
         },
     )
     .unwrap_err();
@@ -75,6 +77,7 @@ fn cuda_uniform_loop_barriers_reconverge_after_divergent_gathers_and_data_only_b
         FIXTURE,
         &Options {
             workgroup_size: WORKGROUP,
+            ..Options::default()
         },
     );
     let mut barriers = Vec::new();

@@ -196,7 +196,6 @@ fn cuda_shared_vectors_reject_initializers_and_unsupported_declarations() {
         "__shared__ float3 values[2] = {};",
         "__shared__ float3 values[2][];",
         "__shared__ float3 values[];",
-        "extern __shared__ float3 values[];",
         "__shared__ float3 first, second;",
         "__shared__ __shared__ float3 value;",
     ] {
@@ -280,6 +279,7 @@ fn cuda_shared_vectors_do_not_relax_barrier_placement_restrictions() {
         }",
         &Options {
             workgroup_size: [8, 1, 1],
+            ..Options::default()
         },
     );
     for body in [
@@ -292,6 +292,7 @@ fn cuda_shared_vectors_do_not_relax_barrier_placement_restrictions() {
             &source,
             &Options {
                 workgroup_size: [8, 1, 1],
+                ..Options::default()
             },
         )
         .unwrap_err();
@@ -306,6 +307,7 @@ fn cuda_shared_vector_fixture_roundtrips_through_wgsl() {
         include_str!("../../in/cuda/shared-vectors.cu"),
         &Options {
             workgroup_size: [8, 1, 1],
+            ..Options::default()
         },
     );
     assert_eq!(module.entry_points[0].workgroup_size, [8, 1, 1]);

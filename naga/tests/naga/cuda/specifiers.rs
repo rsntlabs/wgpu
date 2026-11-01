@@ -201,6 +201,7 @@ fn cuda_static_preserves_kernel_resource_bindings_and_launch_dimensions() {
         source,
         &Options {
             workgroup_size: [8, 4, 2],
+            ..Options::default()
         },
     )
     .unwrap();

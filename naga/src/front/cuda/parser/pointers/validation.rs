@@ -301,11 +301,14 @@ impl Parser<'_> {
         }
         self.validate_pointer_rvalue(state, value.expression, value.is_const, value.span)?;
         if let Some(address) = value.constant_address {
-            if address.extent == 0
-                || address.offset < 0
-                || address.offset > i64::from(address.extent)
-            {
-                return Err(pointer_state_error(value.span));
+            if let Some(extent) = address.extent {
+                if extent == 0
+                    || !address
+                        .offset
+                        .is_some_and(|offset| offset >= 0 && offset <= i64::from(extent))
+                {
+                    return Err(pointer_state_error(value.span));
+                }
             }
         }
         Ok(())

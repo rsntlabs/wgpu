@@ -227,6 +227,7 @@ fn cuda_dual_execution_helpers_preserve_kernel_bindings_and_workgroup_size() {
         source,
         &Options {
             workgroup_size: [8, 4, 2],
+            ..Options::default()
         },
     )
     .unwrap();

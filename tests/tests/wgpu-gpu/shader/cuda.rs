@@ -24,6 +24,7 @@ mod control_flow;
 mod declarations;
 mod dim3;
 mod dual_execution;
+mod dynamic_shared;
 mod fabs;
 mod float_math;
 mod float_separators;
@@ -101,6 +102,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_DECLARATIONS,
         CUDA_DIM3,
         CUDA_DUAL_EXECUTION,
+        CUDA_DYNAMIC_SHARED,
         CUDA_FABS,
         CUDA_FLOAT_MATH,
         CUDA_FLOAT_SEPARATORS,
@@ -243,8 +245,14 @@ fn scalar_case(
 }
 
 fn parse_module(name: &str, source: &str, workgroup_size: [u32; 3]) -> naga::Module {
-    let module = parse_str(source, &Options { workgroup_size })
-        .unwrap_or_else(|error| panic!("{name}: {error}"));
+    let module = parse_str(
+        source,
+        &Options {
+            workgroup_size,
+            ..Options::default()
+        },
+    )
+    .unwrap_or_else(|error| panic!("{name}: {error}"));
     Validator::new(ValidationFlags::all(), Capabilities::empty())
         .validate(&module)
         .unwrap_or_else(|error| panic!("{name}: {error}"));
@@ -299,8 +307,26 @@ fn module_entry_case<O: bytemuck::Pod + std::fmt::Debug + PartialEq>(
     entry_name: &str,
     expected: &[O],
 ) -> ShaderTest {
-    let module = parse_str(source, &Options { workgroup_size })
-        .unwrap_or_else(|error| panic!("{name}: {error}"));
+    module_entry_case_with_options(
+        name,
+        source,
+        &Options {
+            workgroup_size,
+            ..Options::default()
+        },
+        entry_name,
+        expected,
+    )
+}
+
+fn module_entry_case_with_options<O: bytemuck::Pod + std::fmt::Debug + PartialEq>(
+    name: &str,
+    source: &str,
+    options: &Options,
+    entry_name: &str,
+    expected: &[O],
+) -> ShaderTest {
+    let module = parse_str(source, options).unwrap_or_else(|error| panic!("{name}: {error}"));
     assert!(module.entry_points.len() > 1, "{name}");
     let selected = module
         .entry_points
@@ -324,7 +350,25 @@ fn module_case<O: bytemuck::Pod + std::fmt::Debug + PartialEq>(
     workgroup_size: [u32; 3],
     expected: &[O],
 ) -> ShaderTest {
-    let module = parse_module(name, source, workgroup_size);
+    module_case_with_options(
+        name,
+        source,
+        &Options {
+            workgroup_size,
+            ..Options::default()
+        },
+        expected,
+    )
+}
+
+fn module_case_with_options<O: bytemuck::Pod + std::fmt::Debug + PartialEq>(
+    name: &str,
+    source: &str,
+    options: &Options,
+    expected: &[O],
+) -> ShaderTest {
+    let module = parse_str(source, options).unwrap_or_else(|error| panic!("{name}: {error}"));
+    assert_eq!(module.entry_points.len(), 1, "{name}");
     let (wgsl, entry_point) = write_module(name, &module);
     ShaderTest::new(
         name.into(),
@@ -370,6 +414,8 @@ static CUDA_DECLARATIONS: GpuTestConfiguration = configuration(declarations::cas
 static CUDA_DIM3: GpuTestConfiguration = configuration(dim3::cases);
 #[apply(gpu_test!)]
 static CUDA_DUAL_EXECUTION: GpuTestConfiguration = configuration(dual_execution::cases);
+#[apply(gpu_test!)]
+static CUDA_DYNAMIC_SHARED: GpuTestConfiguration = configuration(dynamic_shared::cases);
 #[apply(gpu_test!)]
 static CUDA_FABS: GpuTestConfiguration = configuration(fabs::cases);
 #[apply(gpu_test!)]

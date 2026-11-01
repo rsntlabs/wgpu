@@ -502,6 +502,7 @@ fn cuda_overloads_preserve_kernel_bindings_and_workgroup_configuration() {
         }";
     let options = Options {
         workgroup_size: [4, 2, 1],
+        ..Options::default()
     };
     let module = parse_str(source, &options).unwrap();
     naga::valid::Validator::new(

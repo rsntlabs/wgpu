@@ -382,6 +382,7 @@ fn cuda_pointer_parameters_bind_shared_and_storage_roots_with_existing_barrier_r
         __global__ void kernel(const Record *input, Record *out) { unsigned lane = threadIdx.x; __shared__ Record shared[4]; shared[lane] = input[lane]; __syncthreads(); update(&shared[lane], &shared[lane]); __syncthreads(); update(&out[lane], &shared[lane]); }"#,
         &Options {
             workgroup_size: [4, 1, 1],
+            ..Options::default()
         },
     );
     let input = module

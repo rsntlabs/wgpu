@@ -178,7 +178,7 @@ fn cuda_helper_block_dimensions_follow_options_without_entry_inputs() {
         __device__ unsigned height() { return blockDim.y; }
         __device__ unsigned depth() { return blockDim.z; }
         __global__ void kernel(unsigned *out) { out[0] = width(); out[1] = height(); out[2] = depth(); }",
-        &Options { workgroup_size: [2, 3, 5] },
+        &Options { workgroup_size: [2, 3, 5], ..Options::default() },
     );
     assert!(module.entry_points[0].function.arguments.is_empty());
     for (name, dimension) in [("width", 2), ("height", 3), ("depth", 5)] {

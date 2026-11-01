@@ -146,6 +146,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 - Support multiple CUDA kernels per module with independent parameter bindings and a shared workgroup-size option.
 - Honor CLI entry-point selection in WGSL, HLSL, and Metal output and resolve overrides consistently for selected shader entries.
 - Support CUDA synchronization in branches proven uniform across a thread block.
+- Support CUDA `extern __shared__` arrays using a supplied launch byte count.
 - Support scalar CUDA kernel parameters through uniform buffers, including per-invocation parameter mutation.
 - Support CUDA conditional branches, scoped locals, comparisons, and short-circuit logical operators.
 - Support CUDA scalar arithmetic conversions, assignment conversions, and explicit casts.
