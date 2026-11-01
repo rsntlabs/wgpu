@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Preserve implicit workgroup layouts and aggregate copies in SPIR-V output.
 - Preserve unused reads from volatile storage buffers during compaction and shader generation.
 - Treat volatile storage loads as nonuniform when validating resource indices and generating SPIR-V.
 - Add an experimental `cuda-in` frontend for a restricted subset of CUDA compute kernels, with `.cu` input support in `naga-cli`.

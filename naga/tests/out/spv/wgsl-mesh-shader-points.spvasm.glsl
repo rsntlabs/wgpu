@@ -17,30 +17,48 @@ struct _7
 
 struct _8
 {
+    vec4 _m0;
+};
+
+struct _9
+{
     uint _m0;
 };
 
-struct _13
+struct _10
+{
+    uint _m0;
+};
+
+struct _17
 {
     _7 _m0[1];
-    _8 _m1[1];
+    _9 _m1[1];
     uint _m2;
     uint _m3;
 };
 
-struct _41
+struct _18
+{
+    _8 _m0[1];
+    _10 _m1[1];
+    uint _m2;
+    uint _m3;
+};
+
+struct _46
 {
     uint _m0;
     uint _m1;
 };
 
-taskPayloadSharedEXT _4 _14;
+taskPayloadSharedEXT _4 _19;
 
-uvec3 _19()
+uvec3 _24()
 {
     if (gl_LocalInvocationIndex == 0u)
     {
-        _14 = _4(0u);
+        _19 = _4(0u);
     }
     barrier();
     return uvec3(1u);
@@ -48,14 +66,14 @@ uvec3 _19()
 
 void main()
 {
-    uvec3 _38 = _19();
+    uvec3 _43 = _24();
     barrier();
-    _41 _48;
-    umulExtended(_38.x, _38.y, _48._m1, _48._m0);
-    _41 _50;
-    umulExtended(_48._m0, _38.z, _50._m1, _50._m0);
-    uvec3 _63 = ((((((_50._m0 > 1024u) || (_38.x > 256u)) || (_38.y > 256u)) || (_38.z > 256u)) || (_48._m1 != 0u)) || (_50._m1 != 0u)) ? uvec3(0u) : _38;
-    EmitMeshTasksEXT(_63.x, _63.y, _63.z);
+    _46 _53;
+    umulExtended(_43.x, _43.y, _53._m1, _53._m0);
+    _46 _55;
+    umulExtended(_53._m0, _43.z, _55._m1, _55._m0);
+    uvec3 _68 = ((((((_55._m0 > 1024u) || (_43.x > 256u)) || (_43.y > 256u)) || (_43.z > 256u)) || (_53._m1 != 0u)) || (_55._m1 != 0u)) ? uvec3(0u) : _43;
+    EmitMeshTasksEXT(_68.x, _68.y, _68.z);
 }
 
 
@@ -79,49 +97,67 @@ struct _7
 
 struct _8
 {
+    vec4 _m0;
+};
+
+struct _9
+{
     uint _m0;
 };
 
-struct _13
+struct _10
+{
+    uint _m0;
+};
+
+struct _17
 {
     _7 _m0[1];
-    _8 _m1[1];
+    _9 _m1[1];
     uint _m2;
     uint _m3;
 };
 
-struct _41
+struct _18
+{
+    _8 _m0[1];
+    _10 _m1[1];
+    uint _m2;
+    uint _m3;
+};
+
+struct _46
 {
     uint _m0;
     uint _m1;
 };
 
-taskPayloadSharedEXT _4 _14;
-shared _13 _16;
+taskPayloadSharedEXT _4 _19;
+shared _18 _21;
 
-void _78()
+void _83()
 {
     if (gl_LocalInvocationIndex == 0u)
     {
-        _16 = _13(_7[](_7(vec4(0.0))), _8[](_8(0u)), 0u, 0u);
+        _21 = _18(_8[](_8(vec4(0.0))), _10[](_10(0u)), 0u, 0u);
     }
     barrier();
 }
 
 void main()
 {
-    _78();
+    _83();
     barrier();
-    uint _95 = min(_16._m2, 1u);
-    uint _99 = min(_16._m3, 1u);
-    SetMeshOutputsEXT(_95, _99);
-    for (uint _87 = gl_LocalInvocationIndex; _87 < _95; _87 += 64u)
+    uint _100 = min(_21._m2, 1u);
+    uint _104 = min(_21._m3, 1u);
+    SetMeshOutputsEXT(_100, _104);
+    for (uint _92 = gl_LocalInvocationIndex; _92 < _100; _92 += 64u)
     {
-        gl_MeshVerticesEXT[_87].gl_Position = _16._m0[_87]._m0;
+        gl_MeshVerticesEXT[_92].gl_Position = _21._m0[_92]._m0;
     }
-    for (uint _88 = gl_LocalInvocationIndex; _88 < _99; _88 += 64u)
+    for (uint _93 = gl_LocalInvocationIndex; _93 < _104; _93 += 64u)
     {
-        gl_PrimitivePointIndicesEXT[_88] = _16._m1[_88]._m0;
+        gl_PrimitivePointIndicesEXT[_93] = _21._m1[_93]._m0;
     }
 }
 

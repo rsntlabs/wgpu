@@ -19,8 +19,9 @@ pub struct MeshReturnMember {
 #[derive(Debug)]
 struct PerOutputTypeMeshReturnInfo {
     max_length_constant: Word,
-    array_type_id: Word,
+    workgroup_array_type_id: Word,
     struct_members: Vec<MeshReturnMember>,
+    workgroup_member_type_ids: Vec<Word>,
 
     // * Most builtins must be in the same block.
     // * All bindings must be in their own unique block.
@@ -37,6 +38,7 @@ pub struct MeshReturnInfo {
     out_variable_id: Word,
     /// All members of the output variable struct type
     out_members: Vec<MeshReturnMember>,
+    workgroup_memory_access: Option<spirv::MemoryAccess>,
     /// Id of the input variable for local invocation id
     local_invocation_index_var_id: Word,
     /// Total workgroup size (product)
@@ -88,7 +90,7 @@ impl super::Writer {
                 } => members
                     .iter()
                     .map(|a| MeshReturnMember {
-                        ty_id: self.get_handle_type_id(a.ty),
+                        ty_id: self.get_workgroup_type_id(a.ty),
                         binding: a.binding.clone().unwrap(),
                     })
                     .collect(),
@@ -104,30 +106,44 @@ impl super::Writer {
             .find(|a| a.binding == crate::Binding::BuiltIn(crate::BuiltIn::Primitives))
             .unwrap()
             .ty_id;
-        let vertex_members = match &ir_module.types[mesh_info.vertex_output_type] {
+        let (vertex_members, vertex_workgroup_member_type_ids): (Vec<MeshReturnMember>, Vec<Word>) =
+            match &ir_module.types[mesh_info.vertex_output_type] {
+                &crate::Type {
+                    inner: crate::TypeInner::Struct { ref members, .. },
+                    ..
+                } => members
+                    .iter()
+                    .map(|a| {
+                        (
+                            MeshReturnMember {
+                                ty_id: self.get_handle_type_id(a.ty),
+                                binding: a.binding.clone().unwrap(),
+                            },
+                            self.get_workgroup_type_id(a.ty),
+                        )
+                    })
+                    .unzip(),
+                _ => unreachable!(),
+            };
+        let (primitive_members, primitive_workgroup_member_type_ids): (
+            Vec<MeshReturnMember>,
+            Vec<Word>,
+        ) = match &ir_module.types[mesh_info.primitive_output_type] {
             &crate::Type {
                 inner: crate::TypeInner::Struct { ref members, .. },
                 ..
             } => members
                 .iter()
-                .map(|a| MeshReturnMember {
-                    ty_id: self.get_handle_type_id(a.ty),
-                    binding: a.binding.clone().unwrap(),
+                .map(|a| {
+                    (
+                        MeshReturnMember {
+                            ty_id: self.get_handle_type_id(a.ty),
+                            binding: a.binding.clone().unwrap(),
+                        },
+                        self.get_workgroup_type_id(a.ty),
+                    )
                 })
-                .collect(),
-            _ => unreachable!(),
-        };
-        let primitive_members = match &ir_module.types[mesh_info.primitive_output_type] {
-            &crate::Type {
-                inner: crate::TypeInner::Struct { ref members, .. },
-                ..
-            } => members
-                .iter()
-                .map(|a| MeshReturnMember {
-                    ty_id: self.get_handle_type_id(a.ty),
-                    binding: a.binding.clone().unwrap(),
-                })
-                .collect(),
+                .unzip(),
             _ => unreachable!(),
         };
         // In the final return, we do a giant memcpy, for which this is helpful
@@ -138,21 +154,27 @@ impl super::Writer {
         let mut mesh_return_info = MeshReturnInfo {
             out_variable_id: self.global_variables[mesh_info.output_variable].var_id,
             out_members,
+            workgroup_memory_access: ir_module.global_variables[mesh_info.output_variable]
+                .memory_decorations
+                .contains(crate::MemoryDecorations::VOLATILE)
+                .then_some(spirv::MemoryAccess::VOLATILE),
             local_invocation_index_var_id,
             workgroup_size: self
                 .get_constant_scalar(crate::Literal::U32(iface.workgroup_size.iter().product())),
 
             vertex_info: PerOutputTypeMeshReturnInfo {
-                array_type_id: vertex_array_type_id,
+                workgroup_array_type_id: vertex_array_type_id,
                 struct_members: vertex_members,
+                workgroup_member_type_ids: vertex_workgroup_member_type_ids,
                 max_length_constant: self
                     .get_constant_scalar(crate::Literal::U32(mesh_info.max_vertices)),
                 bindings: Vec::new(),
                 builtin_block: None,
             },
             primitive_info: PerOutputTypeMeshReturnInfo {
-                array_type_id: primitive_array_type_id,
+                workgroup_array_type_id: primitive_array_type_id,
                 struct_members: primitive_members,
+                workgroup_member_type_ids: primitive_workgroup_member_type_ids,
                 max_length_constant: self
                     .get_constant_scalar(crate::Literal::U32(mesh_info.max_primitives)),
                 bindings: Vec::new(),
@@ -520,9 +542,10 @@ impl super::Writer {
         let mut binding_index = 0;
         // Write individual members of the vertex
         for (member_id, member) in info.struct_members.iter().enumerate() {
+            let workgroup_type_id = info.workgroup_member_type_ids[member_id];
             let val_to_copy_ptr = self.id_gen.next();
             body.push(Instruction::access_chain(
-                self.get_pointer_type_id(member.ty_id, spirv::StorageClass::Workgroup),
+                self.get_pointer_type_id(workgroup_type_id, spirv::StorageClass::Workgroup),
                 val_to_copy_ptr,
                 array_ptr,
                 &[
@@ -530,13 +553,25 @@ impl super::Writer {
                     self.get_constant_scalar(crate::Literal::U32(member_id as u32)),
                 ],
             ));
-            let val_to_copy = self.id_gen.next();
+            let loaded_value = self.id_gen.next();
             body.push(Instruction::load(
-                member.ty_id,
-                val_to_copy,
+                workgroup_type_id,
+                loaded_value,
                 val_to_copy_ptr,
-                None,
+                return_info.workgroup_memory_access,
             ));
+            let val_to_copy = if workgroup_type_id == member.ty_id {
+                loaded_value
+            } else {
+                let converted = self.id_gen.next();
+                body.push(Instruction::unary(
+                    spirv::Op::CopyLogical,
+                    member.ty_id,
+                    converted,
+                    loaded_value,
+                ));
+                converted
+            };
             let mut needs_y_flip = false;
             let ptr_to_copy_to = self.id_gen.next();
             // Get a pointer to the struct member to copy
@@ -635,9 +670,12 @@ impl super::Writer {
                     &[self.get_constant_scalar(crate::Literal::U32(member_index))],
                 ));
                 let before_min_id = self.id_gen.next();
-                block
-                    .body
-                    .push(Instruction::load(u32_id, before_min_id, ptr_id, None));
+                block.body.push(Instruction::load(
+                    u32_id,
+                    before_min_id,
+                    ptr_id,
+                    return_info.workgroup_memory_access,
+                ));
 
                 // Clamp the values
                 let id = self.id_gen.next();
@@ -680,11 +718,11 @@ impl super::Writer {
         };
         let vert_array_ptr = get_array_ptr(
             crate::BuiltIn::Vertices,
-            return_info.vertex_info.array_type_id,
+            return_info.vertex_info.workgroup_array_type_id,
         );
         let prim_array_ptr = get_array_ptr(
             crate::BuiltIn::Primitives,
-            return_info.primitive_info.array_type_id,
+            return_info.primitive_info.workgroup_array_type_id,
         );
 
         // This must be called exactly once before any other mesh outputs are written

@@ -7,6 +7,7 @@ mod spirv_capabilities;
 mod spirv_debug_info;
 mod spirv_roundtrip;
 mod spirv_switch_fallthrough;
+mod spirv_workgroup_layout;
 mod validation;
 mod volatile_loads;
 mod volatile_uniformity;

@@ -13,29 +13,29 @@ struct _7
     float _m2;
 };
 
-struct _12
-{
-    uint _m0;
-};
-
 struct _13
 {
     uint _m0;
 };
 
-layout(location = 1) in float _19;
-layout(location = 0) out float _34;
+struct _14
+{
+    uint _m0;
+};
+
+layout(location = 1) in float _20;
+layout(location = 0) out float _35;
 
 void main()
 {
-    _7 _44 = _7(_5(gl_FragCoord, _19)._m1, uint(gl_SampleMaskIn) & (1u << uint(gl_SampleID)), float(gl_FrontFacing));
-    gl_FragDepth = _44._m0;
+    _7 _45 = _7(_5(gl_FragCoord, _20)._m1, uint(gl_SampleMaskIn) & (1u << uint(gl_SampleID)), float(gl_FrontFacing));
+    gl_FragDepth = _45._m0;
     gl_FragDepth = clamp(gl_FragDepth, 0.0, 1.0);
-    uint _48 = _44._m1;
+    uint _49 = _45._m1;
     for (int i = 0; i < int(_0); i++)
     {
-        gl_SampleMask[i] = int(_48[i]);
+        gl_SampleMask[i] = int(_49[i]);
     }
-    _34 = _44._m2;
+    _35 = _45._m2;
 }
 

@@ -6,67 +6,67 @@ struct _5
     uint _m0;
 };
 
-layout(set = 0, binding = 0, std430) readonly buffer _10_9
+layout(set = 0, binding = 0, std430) readonly buffer _11_10
 {
     uint _m0[];
-} _9;
+} _10;
 
-layout(set = 0, binding = 1, std430) buffer _13_12
+layout(set = 0, binding = 1, std430) buffer _14_13
 {
     uint _m0[];
-} _12;
+} _13;
 
-layout(set = 0, binding = 2, std140) uniform _16_15
+layout(set = 0, binding = 2, std140) uniform _17_16
 {
     _5 _m0;
-} _15;
+} _16;
 
-shared uint _18[4];
+shared uint _19[4];
 
-uint _20(uint _22, uint _23)
+uint _21(uint _23, uint _24)
 {
-    return _22 % ((_23 == 0u) ? 1u : _23);
+    return _23 % ((_24 == 0u) ? 1u : _24);
 }
 
 void main()
 {
-    uint _48 = 0u;
-    uint _51 = 0u;
-    uint _53 = 0u;
+    uint _49 = 0u;
+    uint _52 = 0u;
+    uint _54 = 0u;
     if (gl_LocalInvocationIndex == 0u)
     {
-        _18 = uint[](0u, 0u, 0u, 0u);
+        _19 = uint[](0u, 0u, 0u, 0u);
     }
     barrier();
-    uint _70 = gl_WorkGroupID.x * 4u;
-    _48 = _70 + gl_LocalInvocationID.x;
-    _18[gl_LocalInvocationID.x] = _9._m0[_48];
-    if (_15._m0._m0 != 0u)
+    uint _71 = gl_WorkGroupID.x * 4u;
+    _49 = _71 + gl_LocalInvocationID.x;
+    _19[gl_LocalInvocationID.x] = _10._m0[_49];
+    if (_16._m0._m0 != 0u)
     {
         memoryBarrierShared();
         memoryBarrierBuffer();
         barrier();
-        _51 = _18[_20(gl_LocalInvocationID.x + 1u, 4u)] + 10u;
+        _52 = _19[_21(gl_LocalInvocationID.x + 1u, 4u)] + 10u;
     }
     else
     {
         memoryBarrierShared();
         memoryBarrierBuffer();
         barrier();
-        _51 = _18[_20(gl_LocalInvocationID.x + 2u, 4u)] + 20u;
+        _52 = _19[_21(gl_LocalInvocationID.x + 2u, 4u)] + 20u;
     }
     memoryBarrierShared();
     memoryBarrierBuffer();
     barrier();
-    _18[gl_LocalInvocationID.x] = _51;
-    switch (_20(gl_WorkGroupID.x + _15._m0._m0, 3u))
+    _19[gl_LocalInvocationID.x] = _52;
+    switch (_21(gl_WorkGroupID.x + _16._m0._m0, 3u))
     {
         case 0u:
         {
             memoryBarrierShared();
             memoryBarrierBuffer();
             barrier();
-            _18[gl_LocalInvocationID.x]++;
+            _19[gl_LocalInvocationID.x]++;
             break;
         }
         case 1u:
@@ -74,11 +74,11 @@ void main()
             memoryBarrierShared();
             memoryBarrierBuffer();
             barrier();
-            _18[gl_LocalInvocationID.x] *= 2u;
+            _19[gl_LocalInvocationID.x] *= 2u;
             memoryBarrierShared();
             memoryBarrierBuffer();
             barrier();
-            _18[gl_LocalInvocationID.x] += 3u;
+            _19[gl_LocalInvocationID.x] += 3u;
             break;
         }
         default:
@@ -86,14 +86,14 @@ void main()
             memoryBarrierShared();
             memoryBarrierBuffer();
             barrier();
-            _18[gl_LocalInvocationID.x] += 3u;
+            _19[gl_LocalInvocationID.x] += 3u;
             break;
         }
     }
     memoryBarrierShared();
     memoryBarrierBuffer();
     barrier();
-    _53 = _70 + gl_LocalInvocationID.x;
-    _12._m0[_53] = _18[_20(gl_LocalInvocationID.x + 3u, 4u)];
+    _54 = _71 + gl_LocalInvocationID.x;
+    _13._m0[_54] = _19[_21(gl_LocalInvocationID.x + 3u, 4u)];
 }
 
