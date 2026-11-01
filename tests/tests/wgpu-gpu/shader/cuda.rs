@@ -73,6 +73,7 @@ mod structures;
 mod switches;
 mod thread_block;
 mod thread_block_dimensions;
+mod thread_block_parameters;
 mod trigonometry;
 mod type_aliases;
 mod uniform_branch_barriers;
@@ -151,6 +152,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_SWITCHES,
         CUDA_THREAD_BLOCK,
         CUDA_THREAD_BLOCK_DIMENSIONS,
+        CUDA_THREAD_BLOCK_PARAMETERS,
         CUDA_TRIGONOMETRY,
         CUDA_TYPE_ALIASES,
         CUDA_UNINITIALIZED,
@@ -517,6 +519,9 @@ static CUDA_THREAD_BLOCK: GpuTestConfiguration = configuration(thread_block::cas
 #[apply(gpu_test!)]
 static CUDA_THREAD_BLOCK_DIMENSIONS: GpuTestConfiguration =
     configuration(thread_block_dimensions::cases);
+#[apply(gpu_test!)]
+static CUDA_THREAD_BLOCK_PARAMETERS: GpuTestConfiguration =
+    configuration(thread_block_parameters::cases);
 #[apply(gpu_test!)]
 static CUDA_TRIGONOMETRY: GpuTestConfiguration = configuration(trigonometry::cases);
 #[apply(gpu_test!)]

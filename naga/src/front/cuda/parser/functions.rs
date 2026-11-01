@@ -567,13 +567,18 @@ impl<'a> Parser<'a> {
                     | FunctionCandidate::Unary { .. }
                     | FunctionCandidate::Sqrt
                     | FunctionCandidate::Constructor { .. }
-            ) && self.function.ir.arguments.len() == self.candidate_arity(candidate)
+            ) && self.function.parameters.len() == self.candidate_arity(candidate)
                 && (0..self.candidate_arity(candidate)).all(|index| {
-                    self.function.parameters[index].mode == self.candidate_mode(candidate, index)
-                        && self.module.compare_types(
-                            &self.candidate_type(FunctionCandidate::Current, index),
-                            &self.candidate_type(candidate, index),
-                        )
+                    self.function.parameters[index].mode() == self.candidate_mode(candidate, index)
+                        && match (
+                            self.candidate_type(FunctionCandidate::Current, index),
+                            self.candidate_type(candidate, index),
+                        ) {
+                            (Some(source), Some(target)) => {
+                                self.module.compare_types(&source, &target)
+                            }
+                            _ => false,
+                        }
                 })
         });
         if let Some(candidate) = intrinsic {
@@ -805,7 +810,15 @@ impl<'a> Parser<'a> {
         let ty = self.type_handle(parameter_ty, span);
         self.parameter_expansion_budget
             .charge_slice::<SourceParameter>(1, span)?;
-        self.function.parameters.push(SourceParameter { ty, mode });
+        self.function
+            .parameters
+            .push(SourceParameter::Shader { ty, mode });
+        if let Some(modes) = self.function.physical_parameter_modes.as_mut() {
+            self.parameter_expansion_budget
+                .charge_slice::<ParameterMode>(1, span)?;
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            modes.push(mode);
+        }
         let argument_ty = if matches!(mode, ParameterMode::Reference { .. }) {
             self.module.types.insert(
                 Type {
@@ -820,7 +833,7 @@ impl<'a> Parser<'a> {
         } else {
             ty
         };
-        let index = self.function.ir.arguments.len() as u32;
+        let argument_index = self.function.ir.arguments.len() as u32;
         self.function.ir.arguments.push(FunctionArgument {
             name: name.map(String::from),
             ty: argument_ty,
@@ -833,12 +846,13 @@ impl<'a> Parser<'a> {
             is_const: pointee_const,
         } = mode
         {
-            let pointer = self.parameter_pointer(index, parameter_ty, pointee_const, span)?;
+            let pointer =
+                self.parameter_pointer(argument_index, parameter_ty, pointee_const, span)?;
             let pointer = self.source_pointer_variable(name, pointer, is_const, span)?;
             let pointer = self.retain_pointer_symbol(pointer)?;
             return self.insert_symbol(name, Symbol::Pointer(pointer), span);
         }
-        let value = self.append(Expression::FunctionArgument(index), span)?;
+        let value = self.append(Expression::FunctionArgument(argument_index), span)?;
         if matches!(mode, ParameterMode::Reference { .. }) {
             self.insert_symbol(
                 name,
@@ -868,7 +882,7 @@ impl<'a> Parser<'a> {
             });
         }
         self.lexer.expect_span(Token::Paren('('))?;
-        if self.has_indirect_candidate(name) {
+        if self.has_captured_candidate(name) {
             let mut arguments = Vec::new();
             if self.lexer.peek()?.0 != Token::Paren(')') {
                 loop {
@@ -1152,8 +1166,8 @@ impl<'a> Parser<'a> {
         };
         self.function.calls.push(FunctionCall { function, span });
         let mut converted = Vec::with_capacity(arguments.len());
-        for (index, value) in arguments.into_iter().enumerate() {
-            let parameter = &self.module.functions[function].arguments[index];
+        for (argument_index, value) in arguments.into_iter().enumerate() {
+            let parameter = &self.module.functions[function].arguments[argument_index];
             let ty = TypeResolution::Handle(parameter.ty);
             converted.push(self.convert_value(value.into(), &ty)?.handle);
         }
@@ -1412,8 +1426,11 @@ impl<'a> Parser<'a> {
 
     pub(super) fn candidate_arity(&self, candidate: FunctionCandidate) -> usize {
         match candidate {
-            FunctionCandidate::Defined(handle) => self.module.functions[handle].arguments.len(),
-            FunctionCandidate::Current => self.function.ir.arguments.len(),
+            FunctionCandidate::Defined(handle) => self.function_declarations.get(&handle).map_or(
+                self.module.functions[handle].arguments.len(),
+                |declaration| declaration.parameters.len(),
+            ),
+            FunctionCandidate::Current => self.function.parameters.len(),
             FunctionCandidate::Builtin(builtin) => builtin.parameters.len(),
             FunctionCandidate::Multiply24(_)
             | FunctionCandidate::Atomic { .. }
@@ -1430,34 +1447,44 @@ impl<'a> Parser<'a> {
     pub(super) fn candidate_type(
         &self,
         candidate: FunctionCandidate,
-        index: usize,
-    ) -> TypeResolution {
+        logical_index: usize,
+    ) -> Option<TypeResolution> {
         match candidate {
             FunctionCandidate::Defined(handle) => {
                 if let Some(declaration) = self.function_declarations.get(&handle) {
-                    return TypeResolution::Handle(declaration.parameters[index].ty);
+                    return declaration.parameters[logical_index]
+                        .shader_type()
+                        .map(TypeResolution::Handle);
                 }
             }
             FunctionCandidate::Current => {
-                return TypeResolution::Handle(self.function.parameters[index].ty)
+                return self.function.parameters[logical_index]
+                    .shader_type()
+                    .map(TypeResolution::Handle)
             }
             _ => {}
         }
         let argument = match candidate {
-            FunctionCandidate::Defined(handle) => &self.module.functions[handle].arguments[index],
-            FunctionCandidate::Current => &self.function.ir.arguments[index],
+            FunctionCandidate::Defined(handle) => {
+                &self.module.functions[handle].arguments[logical_index]
+            }
+            FunctionCandidate::Current => &self.function.ir.arguments[logical_index],
             FunctionCandidate::Builtin(builtin) => {
-                return scalar_resolution(builtin.parameters[index])
+                return Some(scalar_resolution(builtin.parameters[logical_index]))
             }
             FunctionCandidate::Bitcast { source, .. }
             | FunctionCandidate::Unary { source, .. }
             | FunctionCandidate::Multiply24(source)
-            | FunctionCandidate::IntegralDouble { source } => return scalar_resolution(source),
-            FunctionCandidate::Sqrt => return scalar_resolution(Scalar::F32),
-            FunctionCandidate::Constructor { scalar, .. } => return scalar_resolution(scalar),
+            | FunctionCandidate::IntegralDouble { source } => {
+                return Some(scalar_resolution(source))
+            }
+            FunctionCandidate::Sqrt => return Some(scalar_resolution(Scalar::F32)),
+            FunctionCandidate::Constructor { scalar, .. } => {
+                return Some(scalar_resolution(scalar))
+            }
             FunctionCandidate::Atomic { scalar, .. }
             | FunctionCandidate::AtomicCompareExchange(scalar) => {
-                return if index == 0 {
+                return Some(if logical_index == 0 {
                     TypeResolution::Value(TypeInner::ValuePointer {
                         size: None,
                         scalar,
@@ -1465,10 +1492,10 @@ impl<'a> Parser<'a> {
                     })
                 } else {
                     scalar_resolution(scalar)
-                }
+                })
             }
             FunctionCandidate::WrappingAtomic(_) => {
-                return if index == 0 {
+                return Some(if logical_index == 0 {
                     TypeResolution::Value(TypeInner::ValuePointer {
                         size: None,
                         scalar: Scalar::U32,
@@ -1476,29 +1503,29 @@ impl<'a> Parser<'a> {
                     })
                 } else {
                     scalar_resolution(Scalar::U32)
-                }
+                })
             }
         };
-        TypeResolution::Handle(argument.ty)
+        Some(TypeResolution::Handle(argument.ty))
     }
 
     pub(super) fn candidate_mode(
         &self,
         candidate: FunctionCandidate,
-        index: usize,
+        logical_index: usize,
     ) -> ParameterMode {
         match candidate {
             FunctionCandidate::Defined(handle) => self
                 .function_declarations
                 .get(&handle)
                 .map_or(ParameterMode::Value, |declaration| {
-                    declaration.parameters[index].mode
+                    declaration.parameters[logical_index].mode()
                 }),
-            FunctionCandidate::Current => self.function.parameters[index].mode,
+            FunctionCandidate::Current => self.function.parameters[logical_index].mode(),
             FunctionCandidate::Atomic { .. }
             | FunctionCandidate::AtomicCompareExchange(_)
             | FunctionCandidate::WrappingAtomic(_)
-                if index == 0 =>
+                if logical_index == 0 =>
             {
                 ParameterMode::Pointer { is_const: false }
             }
@@ -1509,9 +1536,16 @@ impl<'a> Parser<'a> {
     fn candidate_conversion(
         &self,
         candidate: FunctionCandidate,
-        index: usize,
+        logical_index: usize,
         argument: &impl CallArgument,
     ) -> Option<u8> {
+        let target = self.candidate_type(candidate, logical_index);
+        if target.is_none() {
+            return argument.is_thread_block().then_some(0);
+        }
+        if argument.is_thread_block() {
+            return None;
+        }
         let atomic_scalar = match candidate {
             FunctionCandidate::Atomic { scalar, .. }
             | FunctionCandidate::AtomicCompareExchange(scalar) => Some(scalar),
@@ -1519,15 +1553,15 @@ impl<'a> Parser<'a> {
             _ => None,
         };
         if let Some(scalar) = atomic_scalar {
-            if index == 0 {
+            if logical_index == 0 {
                 let pointer = argument.pointer_type(&self.module)?;
                 return (!pointer.is_const
                     && self.module.types[pointer.pointee].inner == TypeInner::Scalar(scalar))
                 .then_some(0);
             }
         }
-        let target = self.candidate_type(candidate, index);
-        if let ParameterMode::Pointer { is_const } = self.candidate_mode(candidate, index) {
+        let target = target?;
+        if let ParameterMode::Pointer { is_const } = self.candidate_mode(candidate, logical_index) {
             let parameter_calls::SourcePointerType {
                 pointee,
                 is_const: source_const,
@@ -1539,12 +1573,12 @@ impl<'a> Parser<'a> {
                 .then_some(u8::from(is_const && !source_const));
         }
         let rank = conversion_rank(
-            argument.ty(),
+            argument.ty()?,
             &target,
             &self.module,
-            self.dimension_conversion(argument.ty(), &target),
+            self.dimension_conversion(argument.ty()?, &target),
         )?;
-        match self.candidate_mode(candidate, index) {
+        match self.candidate_mode(candidate, logical_index) {
             ParameterMode::Value | ParameterMode::Reference { is_const: true } => Some(rank),
             ParameterMode::Reference { is_const: false } => {
                 (rank == 0 && argument.reference_writable() == Some(true)).then_some(rank)
@@ -1688,7 +1722,8 @@ impl<'a> Parser<'a> {
         {
             return None;
         }
-        let &TypeInner::Scalar(source) = arguments[0].ty().inner_with(&self.module.types) else {
+        let argument_type = arguments[0].ty()?;
+        let &TypeInner::Scalar(source) = argument_type.inner_with(&self.module.types) else {
             return None;
         };
         if ![Scalar::BOOL, Scalar::I32, Scalar::U32].contains(&source) {
@@ -1701,8 +1736,8 @@ impl<'a> Parser<'a> {
                 FunctionCandidate::Defined(_) | FunctionCandidate::Current
             ) && self.candidate_arity(candidate) == 1
                 && self
-                    .module
-                    .compare_types(&self.candidate_type(candidate, 0), arguments[0].ty())
+                    .candidate_type(candidate, 0)
+                    .is_some_and(|target| self.module.compare_types(&target, argument_type))
                 && self
                     .candidate_conversion(candidate, 0, &arguments[0])
                     .is_some()

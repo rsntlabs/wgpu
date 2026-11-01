@@ -20,6 +20,7 @@ pub(super) struct FunctionContext<'a> {
     pub(super) current_declaration: Option<Handle<Function>>,
     pub(super) calls: Vec<FunctionCall>,
     pub(super) parameters: Vec<SourceParameter>,
+    pub(super) physical_parameter_modes: Option<Vec<ParameterMode>>,
     pub(super) deferred_calls: FastHashMap<Handle<Expression>, DeferredCall>,
     pub(super) parameter_state_charged: bool,
     pub(super) expression_depth: u32,
@@ -37,6 +38,17 @@ pub(super) struct FunctionContext<'a> {
 }
 
 impl FunctionContext<'_> {
+    pub(super) fn parameter_mode(&self, argument_index: u32) -> Option<ParameterMode> {
+        match self.physical_parameter_modes.as_ref() {
+            Some(modes) => modes.get(argument_index as usize).copied(),
+            None => self
+                .parameters
+                .get(argument_index as usize)
+                .copied()
+                .map(SourceParameter::mode),
+        }
+    }
+
     pub(super) fn push_scope(&mut self) -> usize {
         self.symbol_table.push_scope();
         self.initialized_declarations.len()
@@ -65,6 +77,7 @@ impl FunctionContext<'_> {
             current_declaration: None,
             calls: Vec::new(),
             parameters: Vec::new(),
+            physical_parameter_modes: None,
             deferred_calls: FastHashMap::default(),
             parameter_state_charged: false,
             expression_depth: 0,

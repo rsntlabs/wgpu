@@ -107,7 +107,18 @@ impl Parser<'_> {
         operator: Operator,
         span: Span,
     ) -> Result<(), ParseError> {
-        if !operator.accepts_arity(self.function.ir.arguments.len()) {
+        if self
+            .function
+            .parameters
+            .iter()
+            .any(|parameter| parameter.shader_type().is_none())
+        {
+            return Err(ParseError {
+                message: String::from("thread_block operator parameters are unsupported"),
+                span,
+            });
+        }
+        if !operator.accepts_arity(self.function.parameters.len()) {
             return Err(ParseError {
                 message: format!("invalid number of parameters for `{}`", operator.name()),
                 span,
@@ -117,7 +128,8 @@ impl Parser<'_> {
             .function
             .parameters
             .iter()
-            .any(|parameter| self.is_source_class(&TypeResolution::Handle(parameter.ty)))
+            .filter_map(|parameter| parameter.shader_type())
+            .any(|ty| self.is_source_class(&TypeResolution::Handle(ty)))
         {
             return Err(ParseError {
                 message: String::from(
@@ -137,7 +149,7 @@ impl Parser<'_> {
         operator_span: Span,
     ) -> Result<ExpressionResult, ParseError> {
         let name = Operator::from_binary(operator).unwrap().name();
-        if self.has_indirect_candidate(name) {
+        if self.has_captured_candidate(name) {
             let (right, right_body) =
                 self.capture_block(|parser| parser.expression(precedence + 1))?;
             if self.is_source_class(left.ty()) || self.is_source_class(right.ty()) {
@@ -148,11 +160,11 @@ impl Parser<'_> {
                     name,
                     alloc::vec![
                         CapturedArgument {
-                            value: left,
+                            value: left.into(),
                             body: crate::Block::new()
                         },
                         CapturedArgument {
-                            value: right,
+                            value: right.into(),
                             body: right_body
                         }
                     ],
@@ -205,14 +217,14 @@ impl Parser<'_> {
         if token == Token::Operation('&') {
             return self.address_operator(operand, operator_span);
         }
-        if self.has_indirect_candidate(operator.name()) {
+        if self.has_captured_candidate(operator.name()) {
             let span = operator_span.until(&operand.span());
             self.parameter_expansion_budget
                 .charge_slice::<CapturedArgument>(1, span)?;
             return self.call_with_captured_arguments(
                 operator.name(),
                 alloc::vec![CapturedArgument {
-                    value: operand,
+                    value: operand.into(),
                     body: crate::Block::new()
                 }],
                 operator_span,
@@ -231,7 +243,7 @@ impl Parser<'_> {
     ) -> Result<ExpressionResult, ParseError> {
         let span = operator_span.until(&operand.span());
         let argument = CapturedArgument {
-            value: operand,
+            value: operand.into(),
             body: crate::Block::new(),
         };
         let name = Operator::And.name();
@@ -239,7 +251,7 @@ impl Parser<'_> {
             self.select_overload(name, core::slice::from_ref(&argument)),
             functions::OverloadResolution::NoViable
         ) {
-            let pointer = self.address_of(argument.value, span)?;
+            let pointer = self.address_of(argument.value.require_value()?, span)?;
             return self.pointer_result(pointer);
         }
         self.parameter_expansion_budget

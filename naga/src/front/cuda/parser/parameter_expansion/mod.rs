@@ -104,7 +104,7 @@ impl Parser<'_> {
             templates.push(parameters.is_some_and(|parameters| {
                 parameters
                     .iter()
-                    .any(|parameter| parameter.mode.is_indirect())
+                    .any(|parameter| parameter.mode().is_indirect())
             }));
         }
         self.validate_parameter_templates(order)?;
@@ -118,7 +118,13 @@ impl Parser<'_> {
                     parameters.len(),
                     self.module.functions.get_span(handle),
                 )?;
-            let parameters = parameters.clone();
+            self.parameter_expansion_budget
+                .charge_work(parameters.len(), self.module.functions.get_span(handle))?;
+            let parameters = parameters
+                .iter()
+                .copied()
+                .filter(|parameter| parameter.shader_type().is_some())
+                .collect();
             let span = self.module.functions.get_span(handle);
             let function = core::mem::take(&mut self.module.functions[handle]);
             self.expand_parameter_function(function, state, parameters, span)?;
@@ -244,7 +250,7 @@ impl Parser<'_> {
         let mut arguments = Vec::with_capacity(source.arguments.len());
         for (index, argument) in source.arguments.iter().enumerate() {
             let parameter = self.function.parameters.get(index).copied();
-            let mapped = match parameter.map(|parameter| parameter.mode) {
+            let mapped = match parameter.map(SourceParameter::mode) {
                 Some(ParameterMode::Pointer { is_const }) => {
                     let ty = TypeResolution::Handle(argument.ty);
                     let pointer = self.parameter_pointer(index as u32, &ty, is_const, span)?;

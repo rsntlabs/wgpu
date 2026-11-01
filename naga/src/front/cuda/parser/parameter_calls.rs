@@ -15,9 +15,28 @@ impl ParameterMode {
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
-pub(super) struct SourceParameter {
-    pub(super) ty: Handle<Type>,
-    pub(super) mode: ParameterMode,
+pub(super) enum SourceParameter {
+    Shader {
+        ty: Handle<Type>,
+        mode: ParameterMode,
+    },
+    ThreadBlock,
+}
+
+impl SourceParameter {
+    pub(super) const fn shader_type(self) -> Option<Handle<Type>> {
+        match self {
+            Self::Shader { ty, .. } => Some(ty),
+            Self::ThreadBlock => None,
+        }
+    }
+
+    pub(super) const fn mode(self) -> ParameterMode {
+        match self {
+            Self::Shader { mode, .. } => mode,
+            Self::ThreadBlock => ParameterMode::Value,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -57,7 +76,7 @@ pub(super) struct FunctionParameterState {
 }
 
 pub(super) struct CapturedArgument {
-    pub(super) value: ExpressionValue,
+    pub(super) value: ExpressionResult,
     pub(super) body: crate::Block,
 }
 
@@ -68,15 +87,19 @@ pub(super) struct SourcePointerType {
 }
 
 pub(super) trait CallArgument {
-    fn ty(&self) -> &TypeResolution;
+    fn ty(&self) -> Option<&TypeResolution>;
+    fn is_thread_block(&self) -> bool;
     fn span(&self) -> Span;
     fn reference_writable(&self) -> Option<bool>;
     fn pointer_type(&self, module: &Module) -> Option<SourcePointerType>;
 }
 
 impl CallArgument for Value {
-    fn ty(&self) -> &TypeResolution {
-        &self.ty
+    fn ty(&self) -> Option<&TypeResolution> {
+        Some(&self.ty)
+    }
+    fn is_thread_block(&self) -> bool {
+        false
     }
     fn span(&self) -> Span {
         self.span
@@ -90,28 +113,42 @@ impl CallArgument for Value {
 }
 
 impl CallArgument for CapturedArgument {
-    fn ty(&self) -> &TypeResolution {
-        self.value.ty()
+    fn ty(&self) -> Option<&TypeResolution> {
+        match self.value {
+            ExpressionResult::Value(ref value) => Some(value.ty()),
+            ExpressionResult::ThreadBlock(_) | ExpressionResult::Void(_) => None,
+        }
+    }
+    fn is_thread_block(&self) -> bool {
+        matches!(self.value, ExpressionResult::ThreadBlock(_))
     }
     fn span(&self) -> Span {
-        self.value.span()
+        match self.value {
+            ExpressionResult::Value(ref value) => value.span(),
+            ExpressionResult::ThreadBlock(ref value) => value.span,
+            ExpressionResult::Void(span) => span,
+        }
     }
     fn reference_writable(&self) -> Option<bool> {
         match self.value {
-            ExpressionValue::Reference(ref reference) => Some(reference.writable),
-            ExpressionValue::Plain(_) | ExpressionValue::Pointer(_) => None,
+            ExpressionResult::Value(ExpressionValue::Reference(ref reference)) => {
+                Some(reference.writable)
+            }
+            _ => None,
         }
     }
     fn pointer_type(&self, module: &Module) -> Option<SourcePointerType> {
         match self.value {
-            ExpressionValue::Pointer(ref pointer) => match *pointer.ty.inner_with(&module.types) {
-                TypeInner::Pointer { base, .. } => Some(SourcePointerType {
-                    pointee: base,
-                    is_const: pointer.is_const,
-                }),
-                _ => None,
-            },
-            ExpressionValue::Reference(ref reference) => {
+            ExpressionResult::Value(ExpressionValue::Pointer(ref pointer)) => {
+                match *pointer.ty.inner_with(&module.types) {
+                    TypeInner::Pointer { base, .. } => Some(SourcePointerType {
+                        pointee: base,
+                        is_const: pointer.is_const,
+                    }),
+                    _ => None,
+                }
+            }
+            ExpressionResult::Value(ExpressionValue::Reference(ref reference)) => {
                 match *reference.ty.inner_with(&module.types) {
                     TypeInner::Array { base, .. } => Some(SourcePointerType {
                         pointee: base,
@@ -120,7 +157,7 @@ impl CallArgument for CapturedArgument {
                     _ => None,
                 }
             }
-            ExpressionValue::Plain(_) => None,
+            _ => None,
         }
     }
 }
@@ -187,22 +224,31 @@ impl Parser<'_> {
                 .function
                 .parameters
                 .iter()
-                .any(|parameter| parameter.mode.is_indirect())
+                .any(|parameter| parameter.mode().is_indirect())
     }
 
     pub(super) fn capture_call_argument(&mut self) -> Result<CapturedArgument, ParseError> {
         let span = self.lexer.peek()?.1;
         self.parameter_expansion_budget.charge_nodes(1, span)?;
+        self.parameter_expansion_budget.charge_work(1, span)?;
         self.parameter_expansion_budget
             .charge_slice::<CapturedArgument>(1, span)?;
-        let (value, body) = self.capture_block(|parser| parser.expression(0))?;
+        let (value, body) = self.capture_block(|parser| parser.expression_result(0))?;
+        if let ExpressionResult::Void(span) = value {
+            return Err(ParseError {
+                message: String::from("void expression cannot be used as an argument"),
+                span,
+            });
+        }
         Ok(CapturedArgument { value, body })
     }
 
-    pub(super) fn has_indirect_candidate(&self, name: &str) -> bool {
+    pub(super) fn has_captured_candidate(&self, name: &str) -> bool {
         self.function_candidates(name).any(|candidate| {
-            (0..self.candidate_arity(candidate))
-                .any(|index| self.candidate_mode(candidate, index).is_indirect())
+            (0..self.candidate_arity(candidate)).any(|logical_index| {
+                self.candidate_mode(candidate, logical_index).is_indirect()
+                    || self.candidate_type(candidate, logical_index).is_none()
+            })
         })
     }
 
@@ -213,6 +259,8 @@ impl Parser<'_> {
         name_span: Span,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
+        self.parameter_expansion_budget
+            .charge_work(arguments.len(), span)?;
         let candidate = self.resolve_overload(name, &arguments, name_span)?;
         if matches!(
             candidate,
@@ -228,10 +276,14 @@ impl Parser<'_> {
             self.parameter_expansion_budget
                 .charge_slice::<Value>(arguments.len(), span)?;
             let mut values = Vec::with_capacity(arguments.len());
-            for argument in arguments {
+            for (logical_index, argument) in arguments.into_iter().enumerate() {
+                self.parameter_expansion_budget.charge_work(1, span)?;
                 self.append_block(argument.body);
-                let target = self.candidate_type(candidate, values.len());
-                values.push(self.convert_value(argument.value, &target)?);
+                let Some(target) = self.candidate_type(candidate, logical_index) else {
+                    self.require_thread_block(argument.value)?;
+                    continue;
+                };
+                values.push(self.convert_value(argument.value.require_value()?, &target)?);
             }
             return self.lower_call(candidate, values, span);
         }
@@ -246,15 +298,20 @@ impl Parser<'_> {
         self.parameter_expansion_budget
             .charge_slice::<FunctionCall>(1, span)?;
         let mut bound_arguments = Vec::with_capacity(arguments.len());
-        for (index, argument) in arguments.into_iter().enumerate() {
+        for (logical_index, argument) in arguments.into_iter().enumerate() {
+            self.parameter_expansion_budget.charge_work(1, span)?;
             self.append_block(argument.body);
-            let target = self.candidate_type(candidate, index);
-            let argument = match self.candidate_mode(candidate, index) {
+            let Some(target) = self.candidate_type(candidate, logical_index) else {
+                self.require_thread_block(argument.value)?;
+                continue;
+            };
+            let value = argument.value.require_value()?;
+            let argument = match self.candidate_mode(candidate, logical_index) {
                 ParameterMode::Value => {
-                    DeferredArgument::Value(self.convert_value(argument.value, &target)?.handle)
+                    DeferredArgument::Value(self.convert_value(value, &target)?.handle)
                 }
                 ParameterMode::Reference { is_const } => {
-                    let reference = match argument.value {
+                    let reference = match value {
                         ExpressionValue::Reference(reference)
                             if self.module.compare_types(&reference.ty, &target) =>
                         {
@@ -285,7 +342,7 @@ impl Parser<'_> {
                     DeferredArgument::Reference(self.freeze_reference(reference)?)
                 }
                 ParameterMode::Pointer { is_const } => {
-                    let pointer = self.convert_pointer(argument.value, &target, is_const, span)?;
+                    let pointer = self.convert_pointer(value, &target, is_const, span)?;
                     DeferredArgument::Pointer(self.boxed_pointer_value(pointer)?)
                 }
             };
