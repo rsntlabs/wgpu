@@ -37,6 +37,10 @@ it. Backend naming rules can sanitize identifiers or add suffixes.
 
 Unchanged kernel buffer pointers can use direct resource accesses. Pointers that
 need runtime address tracking keep their private state and captured indices.
+Nonnegative literal indices and value-preserving 32-bit integer casts can avoid
+capture storage after bounds and use checks. Mutable indices, runtime arithmetic,
+and captures that fail these checks retain their existing storage and evaluation
+timing.
 
 CUDA floating-point absolute value, rounding, and square root use cached
 compatibility helpers. Calls reuse each helper across the module, keeping the

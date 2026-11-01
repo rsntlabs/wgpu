@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.1
 ; Generator: rspirv
-; Bound: 725
+; Bound: 632
 OpCapability Shader
 OpExtension "SPV_KHR_storage_buffer_storage_class"
 %1 = OpExtInstImport "GLSL.std.450"
@@ -102,59 +102,28 @@ OpMemberDecorate %11 0 Offset 0
 %178 = OpConstant  %3  30
 %179 = OpConstant  %3  16777215
 %180 = OpConstant  %3  31
-%182 = OpTypePointer Function %4
-%183 = OpConstantNull  %4
+%182 = OpConstantNull  %3
+%184 = OpTypePointer Function %4
 %185 = OpConstantNull  %4
-%187 = OpConstantNull  %4
-%189 = OpConstantNull  %4
-%191 = OpConstantNull  %4
-%193 = OpConstantNull  %4
-%195 = OpConstantNull  %4
-%197 = OpConstantNull  %4
-%199 = OpConstantNull  %4
-%201 = OpConstantNull  %4
-%203 = OpConstantNull  %4
-%205 = OpConstantNull  %4
-%207 = OpConstantNull  %4
-%209 = OpConstantNull  %4
-%211 = OpConstantNull  %4
-%213 = OpConstantNull  %4
-%215 = OpConstantNull  %4
-%217 = OpConstantNull  %4
-%219 = OpConstantNull  %4
-%221 = OpConstantNull  %4
-%223 = OpConstantNull  %3
-%225 = OpConstantNull  %4
-%227 = OpConstantNull  %4
-%229 = OpConstantNull  %4
-%231 = OpConstantNull  %4
-%233 = OpConstantNull  %4
-%235 = OpConstantNull  %4
-%237 = OpConstantNull  %3
-%239 = OpTypePointer Function %8
-%240 = OpConstantNull  %8
-%242 = OpConstantNull  %4
-%244 = OpConstantNull  %3
-%246 = OpConstantNull  %3
-%248 = OpConstantNull  %8
-%250 = OpConstantNull  %4
-%252 = OpConstantNull  %3
-%254 = OpConstantNull  %4
-%256 = OpConstantNull  %4
-%258 = OpConstantNull  %3
-%260 = OpConstantNull  %3
-%262 = OpConstantNull  %4
-%264 = OpConstantNull  %4
-%266 = OpConstantNull  %4
-%268 = OpConstantNull  %4
-%285 = OpTypePointer StorageBuffer %4
-%606 = OpConstant  %4  1
-%656 = OpTypeVector %4 2
-%657 = OpTypePointer Function %656
-%658 = OpTypeVector %6 2
-%659 = OpConstantComposite  %656  %18 %18
-%660 = OpConstant  %4  4294967295
-%661 = OpConstantComposite  %656  %660 %660
+%187 = OpConstantNull  %3
+%189 = OpTypePointer Function %8
+%190 = OpConstantNull  %8
+%192 = OpConstantNull  %3
+%194 = OpConstantNull  %3
+%196 = OpConstantNull  %8
+%198 = OpConstantNull  %3
+%200 = OpConstantNull  %3
+%202 = OpConstantNull  %3
+%204 = OpConstantNull  %4
+%206 = OpConstantNull  %4
+%222 = OpTypePointer StorageBuffer %4
+%519 = OpConstant  %4  1
+%565 = OpTypeVector %4 2
+%566 = OpTypePointer Function %565
+%567 = OpTypeVector %6 2
+%568 = OpConstantComposite  %565  %18 %18
+%569 = OpConstant  %4  4294967295
+%570 = OpConstantComposite  %565  %569 %569
 %16 = OpFunction  %3  None %17
 %14 = OpFunctionParameter  %5
 %15 = OpFunctionParameter  %5
@@ -275,598 +244,505 @@ OpReturnValue %120
 OpFunctionEnd
 %122 = OpFunction  %2  None %123
 %121 = OpLabel
-%267 = OpVariable  %182  Function %268
-%261 = OpVariable  %182  Function %262
-%255 = OpVariable  %182  Function %256
-%249 = OpVariable  %182  Function %250
-%243 = OpVariable  %70  Function %244
-%236 = OpVariable  %70  Function %237
-%230 = OpVariable  %182  Function %231
-%224 = OpVariable  %182  Function %225
-%218 = OpVariable  %182  Function %219
-%212 = OpVariable  %182  Function %213
-%206 = OpVariable  %182  Function %207
-%200 = OpVariable  %182  Function %201
-%194 = OpVariable  %182  Function %195
-%188 = OpVariable  %182  Function %189
-%181 = OpVariable  %182  Function %183
-%263 = OpVariable  %182  Function %264
-%257 = OpVariable  %70  Function %258
-%251 = OpVariable  %70  Function %252
-%245 = OpVariable  %70  Function %246
-%238 = OpVariable  %239  Function %240
-%232 = OpVariable  %182  Function %233
-%226 = OpVariable  %182  Function %227
-%220 = OpVariable  %182  Function %221
-%214 = OpVariable  %182  Function %215
-%208 = OpVariable  %182  Function %209
-%202 = OpVariable  %182  Function %203
-%196 = OpVariable  %182  Function %197
-%190 = OpVariable  %182  Function %191
-%184 = OpVariable  %182  Function %185
-%265 = OpVariable  %182  Function %266
-%259 = OpVariable  %70  Function %260
-%253 = OpVariable  %182  Function %254
-%247 = OpVariable  %239  Function %248
-%241 = OpVariable  %182  Function %242
-%234 = OpVariable  %182  Function %235
-%228 = OpVariable  %182  Function %229
-%222 = OpVariable  %70  Function %223
-%216 = OpVariable  %182  Function %217
-%210 = OpVariable  %182  Function %211
-%204 = OpVariable  %182  Function %205
-%198 = OpVariable  %182  Function %199
-%192 = OpVariable  %182  Function %193
-%186 = OpVariable  %182  Function %187
-%662 = OpVariable  %657  Function %661
+%201 = OpVariable  %70  Function %202
+%195 = OpVariable  %189  Function %196
+%188 = OpVariable  %189  Function %190
+%181 = OpVariable  %70  Function %182
+%203 = OpVariable  %184  Function %204
+%197 = OpVariable  %70  Function %198
+%191 = OpVariable  %70  Function %192
+%183 = OpVariable  %184  Function %185
+%205 = OpVariable  %184  Function %206
+%199 = OpVariable  %70  Function %200
+%193 = OpVariable  %70  Function %194
+%186 = OpVariable  %70  Function %187
+%571 = OpVariable  %566  Function %570
 %125 = OpAccessChain  %124  %10 %18
-OpBranch %269
-%269 = OpLabel
-%271 = OpExtInst  %4  %1 UMin %18 %28
-%272 = OpISub  %4  %28 %271
-%273 = OpExtInst  %4  %1 UMin %19 %272
-%270 = OpBitFieldSExtract  %3  %126 %271 %273
-%274 = OpBitcast  %4  %270
-%276 = OpExtInst  %4  %1 UMin %18 %28
-%277 = OpISub  %4  %28 %276
-%278 = OpExtInst  %4  %1 UMin %19 %277
-%275 = OpBitFieldSExtract  %3  %127 %276 %278
-%279 = OpBitcast  %4  %275
-%280 = OpIMul  %4  %274 %279
-%281 = OpBitcast  %3  %280
+OpBranch %207
+%207 = OpLabel
+%209 = OpExtInst  %4  %1 UMin %18 %28
+%210 = OpISub  %4  %28 %209
+%211 = OpExtInst  %4  %1 UMin %19 %210
+%208 = OpBitFieldSExtract  %3  %126 %209 %211
+%212 = OpBitcast  %4  %208
+%214 = OpExtInst  %4  %1 UMin %18 %28
+%215 = OpISub  %4  %28 %214
+%216 = OpExtInst  %4  %1 UMin %19 %215
+%213 = OpBitFieldSExtract  %3  %127 %214 %216
+%217 = OpBitcast  %4  %213
+%218 = OpIMul  %4  %212 %217
+%219 = OpBitcast  %3  %218
+%220 = OpBitcast  %4  %219
+%221 = OpBitcast  %4  %128
+%223 = OpAccessChain  %222  %125 %221
+OpStore %223 %220
+%225 = OpExtInst  %4  %1 UMin %18 %28
+%226 = OpISub  %4  %28 %225
+%227 = OpExtInst  %4  %1 UMin %19 %226
+%224 = OpBitFieldUExtract  %4  %129 %225 %227
+%229 = OpExtInst  %4  %1 UMin %18 %28
+%230 = OpISub  %4  %28 %229
+%231 = OpExtInst  %4  %1 UMin %19 %230
+%228 = OpBitFieldUExtract  %4  %129 %229 %231
+%232 = OpIMul  %4  %224 %228
+%233 = OpBitcast  %4  %127
+%234 = OpAccessChain  %222  %125 %233
+OpStore %234 %232
+%236 = OpExtInst  %4  %1 UMin %18 %28
+%237 = OpISub  %4  %28 %236
+%238 = OpExtInst  %4  %1 UMin %19 %237
+%235 = OpBitFieldSExtract  %3  %130 %236 %238
+%239 = OpBitcast  %4  %235
+%241 = OpExtInst  %4  %1 UMin %18 %28
+%242 = OpISub  %4  %28 %241
+%243 = OpExtInst  %4  %1 UMin %19 %242
+%240 = OpBitFieldSExtract  %3  %130 %241 %243
+%244 = OpBitcast  %4  %240
+%245 = OpIMul  %4  %239 %244
+%246 = OpBitcast  %3  %245
+%247 = OpBitcast  %4  %246
+%248 = OpBitcast  %4  %131
+%249 = OpAccessChain  %222  %125 %248
+OpStore %249 %247
+%251 = OpExtInst  %4  %1 UMin %18 %28
+%252 = OpISub  %4  %28 %251
+%253 = OpExtInst  %4  %1 UMin %19 %252
+%250 = OpBitFieldUExtract  %4  %132 %251 %253
+%255 = OpExtInst  %4  %1 UMin %18 %28
+%256 = OpISub  %4  %28 %255
+%257 = OpExtInst  %4  %1 UMin %19 %256
+%254 = OpBitFieldUExtract  %4  %133 %255 %257
+%258 = OpIMul  %4  %250 %254
+%259 = OpBitcast  %4  %134
+%260 = OpAccessChain  %222  %125 %259
+OpStore %260 %258
+%261 = OpFNegate  %5  %135
+%262 = OpFunctionCall  %3  %16 %136 %261
+%263 = OpBitcast  %4  %262
+%264 = OpBitcast  %4  %137
+%265 = OpAccessChain  %222  %125 %264
+OpStore %265 %263
+%266 = OpFNegate  %5  %136
+%267 = OpFunctionCall  %3  %16 %266 %135
+%268 = OpBitcast  %4  %267
+%269 = OpBitcast  %4  %138
+%270 = OpAccessChain  %222  %125 %269
+OpStore %270 %268
+%271 = OpFunctionCall  %4  %43 %136 %135
+%272 = OpBitcast  %4  %139
+%273 = OpAccessChain  %222  %125 %272
+OpStore %273 %271
+%274 = OpFunctionCall  %4  %43 %140 %141
+%275 = OpBitcast  %4  %142
+%276 = OpAccessChain  %222  %125 %275
+OpStore %276 %274
+%277 = OpFunctionCall  %3  %64 %143 %143
+%278 = OpBitcast  %4  %277
+%279 = OpBitcast  %4  %144
+%280 = OpAccessChain  %222  %125 %279
+OpStore %280 %278
+%281 = OpFunctionCall  %3  %64 %145 %143
 %282 = OpBitcast  %4  %281
-%283 = OpBitcast  %4  %128
-OpStore %181 %283
-%284 = OpLoad  %4  %181
-%286 = OpAccessChain  %285  %125 %284
-OpStore %286 %282
-%288 = OpExtInst  %4  %1 UMin %18 %28
-%289 = OpISub  %4  %28 %288
-%290 = OpExtInst  %4  %1 UMin %19 %289
-%287 = OpBitFieldUExtract  %4  %129 %288 %290
+%283 = OpBitcast  %4  %146
+%284 = OpAccessChain  %222  %125 %283
+OpStore %284 %282
+%285 = OpSelect  %3  %143 %127 %128
+%287 = OpExtInst  %4  %1 UMin %18 %28
+%288 = OpISub  %4  %28 %287
+%289 = OpExtInst  %4  %1 UMin %19 %288
+%286 = OpBitFieldSExtract  %3  %134 %287 %289
+%290 = OpBitcast  %4  %286
 %292 = OpExtInst  %4  %1 UMin %18 %28
 %293 = OpISub  %4  %28 %292
 %294 = OpExtInst  %4  %1 UMin %19 %293
-%291 = OpBitFieldUExtract  %4  %129 %292 %294
-%295 = OpIMul  %4  %287 %291
-%296 = OpBitcast  %4  %127
-OpStore %184 %296
-%297 = OpLoad  %4  %184
-%298 = OpAccessChain  %285  %125 %297
-OpStore %298 %295
-%300 = OpExtInst  %4  %1 UMin %18 %28
-%301 = OpISub  %4  %28 %300
-%302 = OpExtInst  %4  %1 UMin %19 %301
-%299 = OpBitFieldSExtract  %3  %130 %300 %302
-%303 = OpBitcast  %4  %299
-%305 = OpExtInst  %4  %1 UMin %18 %28
-%306 = OpISub  %4  %28 %305
-%307 = OpExtInst  %4  %1 UMin %19 %306
-%304 = OpBitFieldSExtract  %3  %130 %305 %307
-%308 = OpBitcast  %4  %304
-%309 = OpIMul  %4  %303 %308
-%310 = OpBitcast  %3  %309
-%311 = OpBitcast  %4  %310
-%312 = OpBitcast  %4  %131
-OpStore %186 %312
-%313 = OpLoad  %4  %186
-%314 = OpAccessChain  %285  %125 %313
-OpStore %314 %311
-%316 = OpExtInst  %4  %1 UMin %18 %28
-%317 = OpISub  %4  %28 %316
-%318 = OpExtInst  %4  %1 UMin %19 %317
-%315 = OpBitFieldUExtract  %4  %132 %316 %318
-%320 = OpExtInst  %4  %1 UMin %18 %28
-%321 = OpISub  %4  %28 %320
-%322 = OpExtInst  %4  %1 UMin %19 %321
-%319 = OpBitFieldUExtract  %4  %133 %320 %322
-%323 = OpIMul  %4  %315 %319
-%324 = OpBitcast  %4  %134
-OpStore %188 %324
-%325 = OpLoad  %4  %188
-%326 = OpAccessChain  %285  %125 %325
-OpStore %326 %323
-%327 = OpFNegate  %5  %135
-%328 = OpFunctionCall  %3  %16 %136 %327
-%329 = OpBitcast  %4  %328
-%330 = OpBitcast  %4  %137
-OpStore %190 %330
-%331 = OpLoad  %4  %190
-%332 = OpAccessChain  %285  %125 %331
-OpStore %332 %329
-%333 = OpFNegate  %5  %136
-%334 = OpFunctionCall  %3  %16 %333 %135
-%335 = OpBitcast  %4  %334
-%336 = OpBitcast  %4  %138
-OpStore %192 %336
-%337 = OpLoad  %4  %192
-%338 = OpAccessChain  %285  %125 %337
-OpStore %338 %335
-%339 = OpFunctionCall  %4  %43 %136 %135
-%340 = OpBitcast  %4  %139
-OpStore %194 %340
-%341 = OpLoad  %4  %194
-%342 = OpAccessChain  %285  %125 %341
-OpStore %342 %339
-%343 = OpFunctionCall  %4  %43 %140 %141
-%344 = OpBitcast  %4  %142
-OpStore %196 %344
-%345 = OpLoad  %4  %196
-%346 = OpAccessChain  %285  %125 %345
-OpStore %346 %343
-%347 = OpFunctionCall  %3  %64 %143 %143
-%348 = OpBitcast  %4  %347
-%349 = OpBitcast  %4  %144
-OpStore %198 %349
-%350 = OpLoad  %4  %198
-%351 = OpAccessChain  %285  %125 %350
-OpStore %351 %348
-%352 = OpFunctionCall  %3  %64 %145 %143
-%353 = OpBitcast  %4  %352
-%354 = OpBitcast  %4  %146
-OpStore %200 %354
-%355 = OpLoad  %4  %200
-%356 = OpAccessChain  %285  %125 %355
-OpStore %356 %353
-%357 = OpSelect  %3  %143 %127 %128
-%359 = OpExtInst  %4  %1 UMin %18 %28
-%360 = OpISub  %4  %28 %359
-%361 = OpExtInst  %4  %1 UMin %19 %360
-%358 = OpBitFieldSExtract  %3  %134 %359 %361
-%362 = OpBitcast  %4  %358
-%364 = OpExtInst  %4  %1 UMin %18 %28
-%365 = OpISub  %4  %28 %364
-%366 = OpExtInst  %4  %1 UMin %19 %365
-%363 = OpBitFieldSExtract  %3  %357 %364 %366
-%367 = OpBitcast  %4  %363
-%368 = OpIMul  %4  %362 %367
-%369 = OpBitcast  %3  %368
-%370 = OpBitcast  %4  %369
-%371 = OpBitcast  %4  %147
-OpStore %202 %371
-%372 = OpLoad  %4  %202
-%373 = OpAccessChain  %285  %125 %372
-OpStore %373 %370
-%374 = OpSelect  %3  %143 %127 %128
-%376 = OpExtInst  %4  %1 UMin %18 %28
-%377 = OpISub  %4  %28 %376
-%378 = OpExtInst  %4  %1 UMin %19 %377
-%375 = OpBitFieldSExtract  %3  %374 %376 %378
-%379 = OpBitcast  %4  %375
-%381 = OpExtInst  %4  %1 UMin %18 %28
-%382 = OpISub  %4  %28 %381
-%383 = OpExtInst  %4  %1 UMin %19 %382
-%380 = OpBitFieldSExtract  %3  %134 %381 %383
-%384 = OpBitcast  %4  %380
-%385 = OpIMul  %4  %379 %384
-%386 = OpBitcast  %3  %385
-%387 = OpBitcast  %4  %386
-%388 = OpBitcast  %4  %148
-OpStore %204 %388
-%389 = OpLoad  %4  %204
-%390 = OpAccessChain  %285  %125 %389
-OpStore %390 %387
-%391 = OpFunctionCall  %3  %86 %136 %149
-%392 = OpBitcast  %4  %391
-%393 = OpBitcast  %4  %150
-OpStore %206 %393
-%394 = OpLoad  %4  %206
-%395 = OpAccessChain  %285  %125 %394
-OpStore %395 %392
-%396 = OpFunctionCall  %4  %96 %134 %137
-%397 = OpBitcast  %4  %151
-OpStore %208 %397
-%398 = OpLoad  %4  %208
-%399 = OpAccessChain  %285  %125 %398
-OpStore %399 %396
-%401 = OpExtInst  %4  %1 UMin %18 %28
-%402 = OpISub  %4  %28 %401
-%403 = OpExtInst  %4  %1 UMin %19 %402
-%400 = OpBitFieldUExtract  %4  %152 %401 %403
-%405 = OpExtInst  %4  %1 UMin %18 %28
-%406 = OpISub  %4  %28 %405
-%407 = OpExtInst  %4  %1 UMin %19 %406
-%404 = OpBitFieldUExtract  %4  %153 %405 %407
-%408 = OpIMul  %4  %400 %404
-%409 = OpBitcast  %4  %154
-OpStore %210 %409
-%410 = OpLoad  %4  %210
-%411 = OpAccessChain  %285  %125 %410
-OpStore %411 %408
-%412 = OpSelect  %3  %143 %127 %128
-%413 = OpSelect  %3  %143 %127 %128
-%414 = OpFunctionCall  %4  %96 %412 %413
-%415 = OpBitcast  %4  %155
-OpStore %212 %415
-%416 = OpLoad  %4  %212
-%417 = OpAccessChain  %285  %125 %416
-OpStore %417 %414
-%418 = OpBitcast  %4  %137
-%420 = OpExtInst  %4  %1 UMin %18 %28
-%421 = OpISub  %4  %28 %420
-%422 = OpExtInst  %4  %1 UMin %19 %421
-%419 = OpBitFieldUExtract  %4  %152 %420 %422
-%424 = OpExtInst  %4  %1 UMin %18 %28
-%425 = OpISub  %4  %28 %424
-%426 = OpExtInst  %4  %1 UMin %19 %425
-%423 = OpBitFieldUExtract  %4  %418 %424 %426
-%427 = OpIMul  %4  %419 %423
-%428 = OpBitcast  %4  %156
-OpStore %214 %428
-%429 = OpLoad  %4  %214
-%430 = OpAccessChain  %285  %125 %429
-OpStore %430 %427
-%431 = OpSNegate  %3  %142
-%432 = OpFunctionCall  %3  %106 %431 %134
-%433 = OpBitcast  %4  %432
-%434 = OpBitcast  %4  %157
-OpStore %216 %434
-%435 = OpLoad  %4  %216
-%436 = OpAccessChain  %285  %125 %435
-OpStore %436 %433
-%438 = OpExtInst  %4  %1 UMin %18 %28
-%439 = OpISub  %4  %28 %438
-%440 = OpExtInst  %4  %1 UMin %19 %439
-%437 = OpBitFieldSExtract  %3  %134 %438 %440
-%441 = OpBitcast  %4  %437
-%443 = OpExtInst  %4  %1 UMin %18 %28
-%444 = OpISub  %4  %28 %443
-%445 = OpExtInst  %4  %1 UMin %19 %444
-%442 = OpBitFieldSExtract  %3  %137 %443 %445
-%446 = OpBitcast  %4  %442
-%447 = OpIMul  %4  %441 %446
-%448 = OpBitcast  %3  %447
-%450 = OpExtInst  %4  %1 UMin %18 %28
-%451 = OpISub  %4  %28 %450
-%452 = OpExtInst  %4  %1 UMin %19 %451
-%449 = OpBitFieldSExtract  %3  %448 %450 %452
-%453 = OpBitcast  %4  %449
-%455 = OpExtInst  %4  %1 UMin %18 %28
-%456 = OpISub  %4  %28 %455
-%457 = OpExtInst  %4  %1 UMin %19 %456
-%454 = OpBitFieldSExtract  %3  %138 %455 %457
-%458 = OpBitcast  %4  %454
-%459 = OpIMul  %4  %453 %458
-%460 = OpBitcast  %3  %459
-%461 = OpBitcast  %4  %460
-%462 = OpBitcast  %4  %158
-OpStore %218 %462
-%463 = OpLoad  %4  %218
-%464 = OpAccessChain  %285  %125 %463
-OpStore %464 %461
-%466 = OpExtInst  %4  %1 UMin %18 %28
-%467 = OpISub  %4  %28 %466
-%468 = OpExtInst  %4  %1 UMin %19 %467
-%465 = OpBitFieldUExtract  %4  %129 %466 %468
-%470 = OpExtInst  %4  %1 UMin %18 %28
-%471 = OpISub  %4  %28 %470
-%472 = OpExtInst  %4  %1 UMin %19 %471
-%469 = OpBitFieldUExtract  %4  %9 %470 %472
-%473 = OpIMul  %4  %465 %469
-%475 = OpExtInst  %4  %1 UMin %18 %28
-%476 = OpISub  %4  %28 %475
-%477 = OpExtInst  %4  %1 UMin %19 %476
-%474 = OpBitFieldUExtract  %4  %473 %475 %477
+%291 = OpBitFieldSExtract  %3  %285 %292 %294
+%295 = OpBitcast  %4  %291
+%296 = OpIMul  %4  %290 %295
+%297 = OpBitcast  %3  %296
+%298 = OpBitcast  %4  %297
+%299 = OpBitcast  %4  %147
+%300 = OpAccessChain  %222  %125 %299
+OpStore %300 %298
+%301 = OpSelect  %3  %143 %127 %128
+%303 = OpExtInst  %4  %1 UMin %18 %28
+%304 = OpISub  %4  %28 %303
+%305 = OpExtInst  %4  %1 UMin %19 %304
+%302 = OpBitFieldSExtract  %3  %301 %303 %305
+%306 = OpBitcast  %4  %302
+%308 = OpExtInst  %4  %1 UMin %18 %28
+%309 = OpISub  %4  %28 %308
+%310 = OpExtInst  %4  %1 UMin %19 %309
+%307 = OpBitFieldSExtract  %3  %134 %308 %310
+%311 = OpBitcast  %4  %307
+%312 = OpIMul  %4  %306 %311
+%313 = OpBitcast  %3  %312
+%314 = OpBitcast  %4  %313
+%315 = OpBitcast  %4  %148
+%316 = OpAccessChain  %222  %125 %315
+OpStore %316 %314
+%317 = OpFunctionCall  %3  %86 %136 %149
+%318 = OpBitcast  %4  %317
+%319 = OpBitcast  %4  %150
+%320 = OpAccessChain  %222  %125 %319
+OpStore %320 %318
+%321 = OpFunctionCall  %4  %96 %134 %137
+%322 = OpBitcast  %4  %151
+%323 = OpAccessChain  %222  %125 %322
+OpStore %323 %321
+%325 = OpExtInst  %4  %1 UMin %18 %28
+%326 = OpISub  %4  %28 %325
+%327 = OpExtInst  %4  %1 UMin %19 %326
+%324 = OpBitFieldUExtract  %4  %152 %325 %327
+%329 = OpExtInst  %4  %1 UMin %18 %28
+%330 = OpISub  %4  %28 %329
+%331 = OpExtInst  %4  %1 UMin %19 %330
+%328 = OpBitFieldUExtract  %4  %153 %329 %331
+%332 = OpIMul  %4  %324 %328
+%333 = OpBitcast  %4  %154
+%334 = OpAccessChain  %222  %125 %333
+OpStore %334 %332
+%335 = OpSelect  %3  %143 %127 %128
+%336 = OpSelect  %3  %143 %127 %128
+%337 = OpFunctionCall  %4  %96 %335 %336
+%338 = OpBitcast  %4  %155
+%339 = OpAccessChain  %222  %125 %338
+OpStore %339 %337
+%340 = OpBitcast  %4  %137
+%342 = OpExtInst  %4  %1 UMin %18 %28
+%343 = OpISub  %4  %28 %342
+%344 = OpExtInst  %4  %1 UMin %19 %343
+%341 = OpBitFieldUExtract  %4  %152 %342 %344
+%346 = OpExtInst  %4  %1 UMin %18 %28
+%347 = OpISub  %4  %28 %346
+%348 = OpExtInst  %4  %1 UMin %19 %347
+%345 = OpBitFieldUExtract  %4  %340 %346 %348
+%349 = OpIMul  %4  %341 %345
+%350 = OpBitcast  %4  %156
+%351 = OpAccessChain  %222  %125 %350
+OpStore %351 %349
+%352 = OpSNegate  %3  %142
+%353 = OpFunctionCall  %3  %106 %352 %134
+%354 = OpBitcast  %4  %353
+%355 = OpBitcast  %4  %157
+%356 = OpAccessChain  %222  %125 %355
+OpStore %356 %354
+%358 = OpExtInst  %4  %1 UMin %18 %28
+%359 = OpISub  %4  %28 %358
+%360 = OpExtInst  %4  %1 UMin %19 %359
+%357 = OpBitFieldSExtract  %3  %134 %358 %360
+%361 = OpBitcast  %4  %357
+%363 = OpExtInst  %4  %1 UMin %18 %28
+%364 = OpISub  %4  %28 %363
+%365 = OpExtInst  %4  %1 UMin %19 %364
+%362 = OpBitFieldSExtract  %3  %137 %363 %365
+%366 = OpBitcast  %4  %362
+%367 = OpIMul  %4  %361 %366
+%368 = OpBitcast  %3  %367
+%370 = OpExtInst  %4  %1 UMin %18 %28
+%371 = OpISub  %4  %28 %370
+%372 = OpExtInst  %4  %1 UMin %19 %371
+%369 = OpBitFieldSExtract  %3  %368 %370 %372
+%373 = OpBitcast  %4  %369
+%375 = OpExtInst  %4  %1 UMin %18 %28
+%376 = OpISub  %4  %28 %375
+%377 = OpExtInst  %4  %1 UMin %19 %376
+%374 = OpBitFieldSExtract  %3  %138 %375 %377
+%378 = OpBitcast  %4  %374
+%379 = OpIMul  %4  %373 %378
+%380 = OpBitcast  %3  %379
+%381 = OpBitcast  %4  %380
+%382 = OpBitcast  %4  %158
+%383 = OpAccessChain  %222  %125 %382
+OpStore %383 %381
+%385 = OpExtInst  %4  %1 UMin %18 %28
+%386 = OpISub  %4  %28 %385
+%387 = OpExtInst  %4  %1 UMin %19 %386
+%384 = OpBitFieldUExtract  %4  %129 %385 %387
+%389 = OpExtInst  %4  %1 UMin %18 %28
+%390 = OpISub  %4  %28 %389
+%391 = OpExtInst  %4  %1 UMin %19 %390
+%388 = OpBitFieldUExtract  %4  %9 %389 %391
+%392 = OpIMul  %4  %384 %388
+%394 = OpExtInst  %4  %1 UMin %18 %28
+%395 = OpISub  %4  %28 %394
+%396 = OpExtInst  %4  %1 UMin %19 %395
+%393 = OpBitFieldUExtract  %4  %392 %394 %396
+%398 = OpExtInst  %4  %1 UMin %18 %28
+%399 = OpISub  %4  %28 %398
+%400 = OpExtInst  %4  %1 UMin %19 %399
+%397 = OpBitFieldUExtract  %4  %9 %398 %400
+%401 = OpIMul  %4  %393 %397
+%402 = OpBitcast  %4  %159
+%403 = OpAccessChain  %222  %125 %402
+OpStore %403 %401
+OpStore %181 %160
+OpStore %183 %161
+%404 = OpLoad  %3  %181
+%405 = OpLoad  %4  %183
+%406 = OpBitcast  %3  %405
+%408 = OpExtInst  %4  %1 UMin %18 %28
+%409 = OpISub  %4  %28 %408
+%410 = OpExtInst  %4  %1 UMin %19 %409
+%407 = OpBitFieldSExtract  %3  %404 %408 %410
+%411 = OpBitcast  %4  %407
+%413 = OpExtInst  %4  %1 UMin %18 %28
+%414 = OpISub  %4  %28 %413
+%415 = OpExtInst  %4  %1 UMin %19 %414
+%412 = OpBitFieldSExtract  %3  %406 %413 %415
+%416 = OpBitcast  %4  %412
+%417 = OpIMul  %4  %411 %416
+%418 = OpBitcast  %3  %417
+%419 = OpBitcast  %4  %418
+%420 = OpBitcast  %4  %162
+%421 = OpAccessChain  %222  %125 %420
+OpStore %421 %419
+%422 = OpLoad  %3  %181
+%423 = OpBitcast  %4  %422
+%424 = OpLoad  %4  %183
+%426 = OpExtInst  %4  %1 UMin %18 %28
+%427 = OpISub  %4  %28 %426
+%428 = OpExtInst  %4  %1 UMin %19 %427
+%425 = OpBitFieldUExtract  %4  %423 %426 %428
+%430 = OpExtInst  %4  %1 UMin %18 %28
+%431 = OpISub  %4  %28 %430
+%432 = OpExtInst  %4  %1 UMin %19 %431
+%429 = OpBitFieldUExtract  %4  %424 %430 %432
+%433 = OpIMul  %4  %425 %429
+%434 = OpBitcast  %4  %163
+%435 = OpAccessChain  %222  %125 %434
+OpStore %435 %433
+%437 = OpExtInst  %4  %1 UMin %18 %28
+%438 = OpISub  %4  %28 %437
+%439 = OpExtInst  %4  %1 UMin %19 %438
+%436 = OpBitFieldSExtract  %3  %164 %437 %439
+%440 = OpBitcast  %4  %436
+%442 = OpExtInst  %4  %1 UMin %18 %28
+%443 = OpISub  %4  %28 %442
+%444 = OpExtInst  %4  %1 UMin %19 %443
+%441 = OpBitFieldSExtract  %3  %165 %442 %444
+%445 = OpBitcast  %4  %441
+%446 = OpIMul  %4  %440 %445
+%447 = OpBitcast  %3  %446
+%448 = OpBitcast  %4  %447
+%449 = OpBitcast  %4  %166
+%450 = OpAccessChain  %222  %125 %449
+OpStore %450 %448
+%452 = OpExtInst  %4  %1 UMin %18 %28
+%453 = OpISub  %4  %28 %452
+%454 = OpExtInst  %4  %1 UMin %19 %453
+%451 = OpBitFieldUExtract  %4  %167 %452 %454
+%456 = OpExtInst  %4  %1 UMin %18 %28
+%457 = OpISub  %4  %28 %456
+%458 = OpExtInst  %4  %1 UMin %19 %457
+%455 = OpBitFieldUExtract  %4  %168 %456 %458
+%459 = OpIMul  %4  %451 %455
+%460 = OpBitcast  %4  %169
+%461 = OpAccessChain  %222  %125 %460
+OpStore %461 %459
+OpSelectionMerge %462 None
+OpBranchConditional %143 %463 %464
+%463 = OpLabel
+%465 = OpSNegate  %3  %134
+%467 = OpExtInst  %4  %1 UMin %18 %28
+%468 = OpISub  %4  %28 %467
+%469 = OpExtInst  %4  %1 UMin %19 %468
+%466 = OpBitFieldSExtract  %3  %465 %467 %469
+%470 = OpBitcast  %4  %466
+%472 = OpExtInst  %4  %1 UMin %18 %28
+%473 = OpISub  %4  %28 %472
+%474 = OpExtInst  %4  %1 UMin %19 %473
+%471 = OpBitFieldSExtract  %3  %142 %472 %474
+%475 = OpBitcast  %4  %471
+%476 = OpIMul  %4  %470 %475
+%477 = OpBitcast  %3  %476
+OpStore %186 %477
+OpBranch %462
+%464 = OpLabel
 %479 = OpExtInst  %4  %1 UMin %18 %28
 %480 = OpISub  %4  %28 %479
 %481 = OpExtInst  %4  %1 UMin %19 %480
-%478 = OpBitFieldUExtract  %4  %9 %479 %481
-%482 = OpIMul  %4  %474 %478
-%483 = OpBitcast  %4  %159
-OpStore %220 %483
-%484 = OpLoad  %4  %220
-%485 = OpAccessChain  %285  %125 %484
-OpStore %485 %482
-OpStore %222 %160
-OpStore %224 %161
-%486 = OpLoad  %3  %222
-%487 = OpLoad  %4  %224
-%488 = OpBitcast  %3  %487
-%490 = OpExtInst  %4  %1 UMin %18 %28
-%491 = OpISub  %4  %28 %490
-%492 = OpExtInst  %4  %1 UMin %19 %491
-%489 = OpBitFieldSExtract  %3  %486 %490 %492
-%493 = OpBitcast  %4  %489
+%478 = OpBitFieldSExtract  %3  %128 %479 %481
+%482 = OpBitcast  %4  %478
+%484 = OpExtInst  %4  %1 UMin %18 %28
+%485 = OpISub  %4  %28 %484
+%486 = OpExtInst  %4  %1 UMin %19 %485
+%483 = OpBitFieldSExtract  %3  %128 %484 %486
+%487 = OpBitcast  %4  %483
+%488 = OpIMul  %4  %482 %487
+%489 = OpBitcast  %3  %488
+OpStore %186 %489
+OpBranch %462
+%462 = OpLabel
+%490 = OpLoad  %3  %186
+%491 = OpBitcast  %4  %490
+%492 = OpBitcast  %4  %170
+%493 = OpAccessChain  %222  %125 %492
+OpStore %493 %491
 %495 = OpExtInst  %4  %1 UMin %18 %28
 %496 = OpISub  %4  %28 %495
 %497 = OpExtInst  %4  %1 UMin %19 %496
-%494 = OpBitFieldSExtract  %3  %488 %495 %497
+%494 = OpBitFieldSExtract  %3  %131 %495 %497
 %498 = OpBitcast  %4  %494
-%499 = OpIMul  %4  %493 %498
-%500 = OpBitcast  %3  %499
-%501 = OpBitcast  %4  %500
-%502 = OpBitcast  %4  %162
-OpStore %226 %502
-%503 = OpLoad  %4  %226
-%504 = OpAccessChain  %285  %125 %503
-OpStore %504 %501
-%505 = OpLoad  %3  %222
-%506 = OpBitcast  %4  %505
-%507 = OpLoad  %4  %224
-%509 = OpExtInst  %4  %1 UMin %18 %28
-%510 = OpISub  %4  %28 %509
-%511 = OpExtInst  %4  %1 UMin %19 %510
-%508 = OpBitFieldUExtract  %4  %506 %509 %511
+%500 = OpExtInst  %4  %1 UMin %18 %28
+%501 = OpISub  %4  %28 %500
+%502 = OpExtInst  %4  %1 UMin %19 %501
+%499 = OpBitFieldSExtract  %3  %134 %500 %502
+%503 = OpBitcast  %4  %499
+%504 = OpIMul  %4  %498 %503
+%505 = OpBitcast  %3  %504
+%506 = OpAccessChain  %70  %188 %18
+OpStore %506 %505
+%508 = OpExtInst  %4  %1 UMin %18 %28
+%509 = OpISub  %4  %28 %508
+%510 = OpExtInst  %4  %1 UMin %19 %509
+%507 = OpBitFieldSExtract  %3  %134 %508 %510
+%511 = OpBitcast  %4  %507
 %513 = OpExtInst  %4  %1 UMin %18 %28
 %514 = OpISub  %4  %28 %513
 %515 = OpExtInst  %4  %1 UMin %19 %514
-%512 = OpBitFieldUExtract  %4  %507 %513 %515
-%516 = OpIMul  %4  %508 %512
-%517 = OpBitcast  %4  %163
-OpStore %228 %517
-%518 = OpLoad  %4  %228
-%519 = OpAccessChain  %285  %125 %518
-OpStore %519 %516
-%521 = OpExtInst  %4  %1 UMin %18 %28
-%522 = OpISub  %4  %28 %521
-%523 = OpExtInst  %4  %1 UMin %19 %522
-%520 = OpBitFieldSExtract  %3  %164 %521 %523
-%524 = OpBitcast  %4  %520
-%526 = OpExtInst  %4  %1 UMin %18 %28
-%527 = OpISub  %4  %28 %526
-%528 = OpExtInst  %4  %1 UMin %19 %527
-%525 = OpBitFieldSExtract  %3  %165 %526 %528
-%529 = OpBitcast  %4  %525
-%530 = OpIMul  %4  %524 %529
-%531 = OpBitcast  %3  %530
-%532 = OpBitcast  %4  %531
-%533 = OpBitcast  %4  %166
-OpStore %230 %533
-%534 = OpLoad  %4  %230
-%535 = OpAccessChain  %285  %125 %534
-OpStore %535 %532
-%537 = OpExtInst  %4  %1 UMin %18 %28
-%538 = OpISub  %4  %28 %537
-%539 = OpExtInst  %4  %1 UMin %19 %538
-%536 = OpBitFieldUExtract  %4  %167 %537 %539
+%512 = OpBitFieldSExtract  %3  %137 %513 %515
+%516 = OpBitcast  %4  %512
+%517 = OpIMul  %4  %511 %516
+%518 = OpBitcast  %3  %517
+%520 = OpAccessChain  %70  %188 %519
+OpStore %520 %518
+%521 = OpAccessChain  %70  %188 %18
+%522 = OpLoad  %3  %521
+%523 = OpAccessChain  %70  %188 %519
+%524 = OpLoad  %3  %523
+%525 = OpIAdd  %3  %522 %524
+%526 = OpBitcast  %4  %525
+%527 = OpBitcast  %4  %171
+%528 = OpAccessChain  %222  %125 %527
+OpStore %528 %526
+OpStore %191 %131
+OpStore %195 %172
+%529 = OpLoad  %3  %191
+%530 = OpAccessChain  %70  %195 %18
+%531 = OpLoad  %3  %530
+%532 = OpIAdd  %3  %529 %531
+%533 = OpBitcast  %4  %532
+%534 = OpBitcast  %4  %173
+%535 = OpAccessChain  %222  %125 %534
+OpStore %535 %533
+OpStore %197 %131
+%536 = OpLoad  %3  %197
+%537 = OpIAdd  %3  %536 %127
+OpStore %197 %537
+%538 = OpLoad  %3  %197
+%539 = OpIAdd  %3  %538 %127
+OpStore %197 %539
 %541 = OpExtInst  %4  %1 UMin %18 %28
 %542 = OpISub  %4  %28 %541
 %543 = OpExtInst  %4  %1 UMin %19 %542
-%540 = OpBitFieldUExtract  %4  %168 %541 %543
-%544 = OpIMul  %4  %536 %540
-%545 = OpBitcast  %4  %169
-OpStore %232 %545
-%546 = OpLoad  %4  %232
-%547 = OpAccessChain  %285  %125 %546
-OpStore %547 %544
-OpSelectionMerge %548 None
-OpBranchConditional %143 %549 %550
-%549 = OpLabel
-%551 = OpSNegate  %3  %134
-%553 = OpExtInst  %4  %1 UMin %18 %28
-%554 = OpISub  %4  %28 %553
-%555 = OpExtInst  %4  %1 UMin %19 %554
-%552 = OpBitFieldSExtract  %3  %551 %553 %555
-%556 = OpBitcast  %4  %552
-%558 = OpExtInst  %4  %1 UMin %18 %28
-%559 = OpISub  %4  %28 %558
-%560 = OpExtInst  %4  %1 UMin %19 %559
-%557 = OpBitFieldSExtract  %3  %142 %558 %560
-%561 = OpBitcast  %4  %557
-%562 = OpIMul  %4  %556 %561
-%563 = OpBitcast  %3  %562
-OpStore %236 %563
-OpBranch %548
-%550 = OpLabel
-%565 = OpExtInst  %4  %1 UMin %18 %28
-%566 = OpISub  %4  %28 %565
-%567 = OpExtInst  %4  %1 UMin %19 %566
-%564 = OpBitFieldSExtract  %3  %128 %565 %567
-%568 = OpBitcast  %4  %564
-%570 = OpExtInst  %4  %1 UMin %18 %28
-%571 = OpISub  %4  %28 %570
-%572 = OpExtInst  %4  %1 UMin %19 %571
-%569 = OpBitFieldSExtract  %3  %128 %570 %572
-%573 = OpBitcast  %4  %569
-%574 = OpIMul  %4  %568 %573
-%575 = OpBitcast  %3  %574
-OpStore %236 %575
-OpBranch %548
-%548 = OpLabel
-%576 = OpLoad  %3  %236
-%577 = OpBitcast  %4  %576
-%578 = OpBitcast  %4  %170
-OpStore %234 %578
-%579 = OpLoad  %4  %234
-%580 = OpAccessChain  %285  %125 %579
-OpStore %580 %577
-%582 = OpExtInst  %4  %1 UMin %18 %28
-%583 = OpISub  %4  %28 %582
-%584 = OpExtInst  %4  %1 UMin %19 %583
-%581 = OpBitFieldSExtract  %3  %131 %582 %584
-%585 = OpBitcast  %4  %581
-%587 = OpExtInst  %4  %1 UMin %18 %28
-%588 = OpISub  %4  %28 %587
-%589 = OpExtInst  %4  %1 UMin %19 %588
-%586 = OpBitFieldSExtract  %3  %134 %587 %589
-%590 = OpBitcast  %4  %586
-%591 = OpIMul  %4  %585 %590
-%592 = OpBitcast  %3  %591
-%593 = OpAccessChain  %70  %238 %18
-OpStore %593 %592
-%595 = OpExtInst  %4  %1 UMin %18 %28
-%596 = OpISub  %4  %28 %595
-%597 = OpExtInst  %4  %1 UMin %19 %596
-%594 = OpBitFieldSExtract  %3  %134 %595 %597
-%598 = OpBitcast  %4  %594
-%600 = OpExtInst  %4  %1 UMin %18 %28
-%601 = OpISub  %4  %28 %600
-%602 = OpExtInst  %4  %1 UMin %19 %601
-%599 = OpBitFieldSExtract  %3  %137 %600 %602
-%603 = OpBitcast  %4  %599
-%604 = OpIMul  %4  %598 %603
-%605 = OpBitcast  %3  %604
-%607 = OpAccessChain  %70  %238 %606
+%540 = OpBitFieldSExtract  %3  %536 %541 %543
+%544 = OpBitcast  %4  %540
+%546 = OpExtInst  %4  %1 UMin %18 %28
+%547 = OpISub  %4  %28 %546
+%548 = OpExtInst  %4  %1 UMin %19 %547
+%545 = OpBitFieldSExtract  %3  %538 %546 %548
+%549 = OpBitcast  %4  %545
+%550 = OpIMul  %4  %544 %549
+%551 = OpBitcast  %3  %550
+%552 = OpBitcast  %4  %551
+%553 = OpBitcast  %4  %174
+%554 = OpAccessChain  %222  %125 %553
+OpStore %554 %552
+%555 = OpLoad  %3  %197
+%556 = OpBitcast  %4  %555
+%557 = OpBitcast  %4  %175
+%558 = OpAccessChain  %222  %125 %557
+OpStore %558 %556
+OpStore %199 %128
+OpBranch %559
+%559 = OpLabel
+OpStore %201 %128
+OpBranch %561
+%561 = OpLabel
+OpLoopMerge %562 %564 None
+OpBranch %572
+%572 = OpLabel
+%573 = OpLoad  %565  %571
+%574 = OpIEqual  %567  %568 %573
+%575 = OpAll  %6  %574
+OpSelectionMerge %576 None
+OpBranchConditional %575 %562 %576
+%576 = OpLabel
+%577 = OpCompositeExtract  %4  %573 1
+%578 = OpIEqual  %6  %577 %18
+%579 = OpSelect  %4  %578 %519 %18
+%580 = OpCompositeConstruct  %565  %579 %519
+%581 = OpISub  %565  %573 %580
+OpStore %571 %581
+OpBranch %563
+%563 = OpLabel
+%582 = OpLoad  %3  %201
+%583 = OpSLessThan  %6  %582 %134
+OpSelectionMerge %584 None
+OpBranchConditional %583 %584 %585
+%585 = OpLabel
+OpBranch %562
+%584 = OpLabel
+%586 = OpLoad  %3  %201
+%587 = OpIAdd  %3  %586 %127
+%589 = OpExtInst  %4  %1 UMin %18 %28
+%590 = OpISub  %4  %28 %589
+%591 = OpExtInst  %4  %1 UMin %19 %590
+%588 = OpBitFieldSExtract  %3  %587 %589 %591
+%592 = OpBitcast  %4  %588
+%594 = OpExtInst  %4  %1 UMin %18 %28
+%595 = OpISub  %4  %28 %594
+%596 = OpExtInst  %4  %1 UMin %19 %595
+%593 = OpBitFieldSExtract  %3  %131 %594 %596
+%597 = OpBitcast  %4  %593
+%598 = OpIMul  %4  %592 %597
+%599 = OpBitcast  %3  %598
+%600 = OpLoad  %3  %199
+%601 = OpIAdd  %3  %600 %599
+OpStore %199 %601
+OpBranch %564
+%564 = OpLabel
+%602 = OpLoad  %3  %201
+%603 = OpIAdd  %3  %602 %127
+OpStore %201 %603
+OpBranch %561
+%562 = OpLabel
+OpBranch %560
+%560 = OpLabel
+%604 = OpLoad  %3  %199
+%605 = OpBitcast  %4  %604
+%606 = OpBitcast  %4  %176
+%607 = OpAccessChain  %222  %125 %606
 OpStore %607 %605
-%608 = OpAccessChain  %70  %238 %18
-%609 = OpLoad  %3  %608
-%610 = OpAccessChain  %70  %238 %606
-%611 = OpLoad  %3  %610
-%612 = OpIAdd  %3  %609 %611
-%613 = OpBitcast  %4  %612
-%614 = OpBitcast  %4  %171
-OpStore %241 %614
-%615 = OpLoad  %4  %241
-%616 = OpAccessChain  %285  %125 %615
-OpStore %616 %613
-OpStore %243 %131
-OpStore %247 %172
-%617 = OpLoad  %3  %243
-%618 = OpAccessChain  %70  %247 %18
-%619 = OpLoad  %3  %618
-%620 = OpIAdd  %3  %617 %619
-%621 = OpBitcast  %4  %620
-%622 = OpBitcast  %4  %173
-OpStore %249 %622
-%623 = OpLoad  %4  %249
-%624 = OpAccessChain  %285  %125 %623
-OpStore %624 %621
-OpStore %251 %131
-%625 = OpLoad  %3  %251
-%626 = OpIAdd  %3  %625 %127
-OpStore %251 %626
-%627 = OpLoad  %3  %251
-%628 = OpIAdd  %3  %627 %127
-OpStore %251 %628
-%630 = OpExtInst  %4  %1 UMin %18 %28
-%631 = OpISub  %4  %28 %630
-%632 = OpExtInst  %4  %1 UMin %19 %631
-%629 = OpBitFieldSExtract  %3  %625 %630 %632
-%633 = OpBitcast  %4  %629
-%635 = OpExtInst  %4  %1 UMin %18 %28
-%636 = OpISub  %4  %28 %635
-%637 = OpExtInst  %4  %1 UMin %19 %636
-%634 = OpBitFieldSExtract  %3  %627 %635 %637
-%638 = OpBitcast  %4  %634
-%639 = OpIMul  %4  %633 %638
-%640 = OpBitcast  %3  %639
-%641 = OpBitcast  %4  %640
-%642 = OpBitcast  %4  %174
-OpStore %253 %642
-%643 = OpLoad  %4  %253
-%644 = OpAccessChain  %285  %125 %643
-OpStore %644 %641
-%645 = OpLoad  %3  %251
-%646 = OpBitcast  %4  %645
-%647 = OpBitcast  %4  %175
-OpStore %255 %647
-%648 = OpLoad  %4  %255
-%649 = OpAccessChain  %285  %125 %648
-OpStore %649 %646
-OpStore %257 %128
-OpBranch %650
-%650 = OpLabel
-OpStore %259 %128
-OpBranch %652
-%652 = OpLabel
-OpLoopMerge %653 %655 None
-OpBranch %663
-%663 = OpLabel
-%664 = OpLoad  %656  %662
-%665 = OpIEqual  %658  %659 %664
-%666 = OpAll  %6  %665
-OpSelectionMerge %667 None
-OpBranchConditional %666 %653 %667
-%667 = OpLabel
-%668 = OpCompositeExtract  %4  %664 1
-%669 = OpIEqual  %6  %668 %18
-%670 = OpSelect  %4  %669 %606 %18
-%671 = OpCompositeConstruct  %656  %670 %606
-%672 = OpISub  %656  %664 %671
-OpStore %662 %672
-OpBranch %654
-%654 = OpLabel
-%673 = OpLoad  %3  %259
-%674 = OpSLessThan  %6  %673 %134
-OpSelectionMerge %675 None
-OpBranchConditional %674 %675 %676
-%676 = OpLabel
-OpBranch %653
-%675 = OpLabel
-%677 = OpLoad  %3  %259
-%678 = OpIAdd  %3  %677 %127
-%680 = OpExtInst  %4  %1 UMin %18 %28
-%681 = OpISub  %4  %28 %680
-%682 = OpExtInst  %4  %1 UMin %19 %681
-%679 = OpBitFieldSExtract  %3  %678 %680 %682
-%683 = OpBitcast  %4  %679
-%685 = OpExtInst  %4  %1 UMin %18 %28
-%686 = OpISub  %4  %28 %685
-%687 = OpExtInst  %4  %1 UMin %19 %686
-%684 = OpBitFieldSExtract  %3  %131 %685 %687
-%688 = OpBitcast  %4  %684
-%689 = OpIMul  %4  %683 %688
-%690 = OpBitcast  %3  %689
-%691 = OpLoad  %3  %257
-%692 = OpIAdd  %3  %691 %690
-OpStore %257 %692
-OpBranch %655
-%655 = OpLabel
-%693 = OpLoad  %3  %259
-%694 = OpIAdd  %3  %693 %127
-OpStore %259 %694
-OpBranch %652
-%653 = OpLabel
-OpBranch %651
-%651 = OpLabel
-%695 = OpLoad  %3  %257
-%696 = OpBitcast  %4  %695
-%697 = OpBitcast  %4  %176
-OpStore %261 %697
-%698 = OpLoad  %4  %261
-%699 = OpAccessChain  %285  %125 %698
-OpStore %699 %696
-OpBranch %700
-%700 = OpLabel
-%702 = OpExtInst  %5  %1 FClamp %177 %21 %22
-%703 = OpConvertFToS  %3  %702
-%704 = OpBitcast  %4  %703
-%705 = OpBitcast  %4  %178
-OpStore %263 %705
-%706 = OpLoad  %4  %263
-OpStore %267 %706
-%707 = OpLoad  %4  %267
-%708 = OpAccessChain  %285  %125 %707
-OpStore %708 %704
-OpBranch %701
-%701 = OpLabel
-%710 = OpExtInst  %4  %1 UMin %18 %28
-%711 = OpISub  %4  %28 %710
-%712 = OpExtInst  %4  %1 UMin %19 %711
-%709 = OpBitFieldSExtract  %3  %179 %710 %712
-%713 = OpBitcast  %4  %709
-%715 = OpExtInst  %4  %1 UMin %18 %28
-%716 = OpISub  %4  %28 %715
-%717 = OpExtInst  %4  %1 UMin %19 %716
-%714 = OpBitFieldSExtract  %3  %134 %715 %717
-%718 = OpBitcast  %4  %714
-%719 = OpIMul  %4  %713 %718
-%720 = OpBitcast  %3  %719
-%721 = OpBitcast  %4  %720
-%722 = OpBitcast  %4  %180
-OpStore %265 %722
-%723 = OpLoad  %4  %265
-%724 = OpAccessChain  %285  %125 %723
-OpStore %724 %721
+OpBranch %608
+%608 = OpLabel
+%610 = OpExtInst  %5  %1 FClamp %177 %21 %22
+%611 = OpConvertFToS  %3  %610
+%612 = OpBitcast  %4  %611
+%613 = OpBitcast  %4  %178
+OpStore %203 %613
+%614 = OpLoad  %4  %203
+OpStore %205 %614
+%615 = OpLoad  %4  %205
+%616 = OpAccessChain  %222  %125 %615
+OpStore %616 %612
+OpBranch %609
+%609 = OpLabel
+%618 = OpExtInst  %4  %1 UMin %18 %28
+%619 = OpISub  %4  %28 %618
+%620 = OpExtInst  %4  %1 UMin %19 %619
+%617 = OpBitFieldSExtract  %3  %179 %618 %620
+%621 = OpBitcast  %4  %617
+%623 = OpExtInst  %4  %1 UMin %18 %28
+%624 = OpISub  %4  %28 %623
+%625 = OpExtInst  %4  %1 UMin %19 %624
+%622 = OpBitFieldSExtract  %3  %134 %623 %625
+%626 = OpBitcast  %4  %622
+%627 = OpIMul  %4  %621 %626
+%628 = OpBitcast  %3  %627
+%629 = OpBitcast  %4  %628
+%630 = OpBitcast  %4  %180
+%631 = OpAccessChain  %222  %125 %630
+OpStore %631 %629
 OpReturn
 OpFunctionEnd

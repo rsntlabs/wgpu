@@ -98,182 +98,134 @@ kernel void local_arrays(
 , constant _mslBufferSizes& _buffer_sizes [[user(fake0)]]
 ) {
     int seed = {};
-    uint local = {};
     type_1 signed_values = {};
-    uint local_1 = {};
     type_5 words = {};
-    uint local_2 = {};
     type_7 samples = {};
-    uint local_3 = {};
     type_9 flags = {};
-    uint local_4 = {};
     type_2 zeros = {};
-    uint local_5 = {};
-    uint local_6 = {};
-    uint local_7 = {};
     type_10 zero_flags = {};
-    uint local_8 = {};
-    bool local_9 = {};
+    bool local = {};
     type_5 bank = {};
     type_7 bank_1 = {};
-    uint local_10 = {};
-    uint local_11 = {};
+    uint local_1 = {};
     type_2 signed_values_1 = {};
-    uint local_12 = {};
-    uint local_13 = {};
+    uint local_2 = {};
     type_2 mixed = {};
-    uint local_14 = {};
-    uint local_15 = {};
     int reset_total = {};
     int i = {};
     type_2 reset = {};
-    uint local_16 = {};
     int total = {};
     type_2 scratch = {};
     int j = {};
-    uint local_17 = {};
     type_7 zero_samples = {};
-    uint local_18 = {};
     type_2 left = {};
     type_2 right = {};
-    uint local_19 = {};
     type_2 temporary = {};
     type_2 temporary_1 = {};
-    uint local_20 = {};
-    uint local_21 = {};
+    uint local_3 = {};
+    uint local_4 = {};
     int index = {};
     int rhs = {};
-    uint local_22 = {};
-    int local_23 = {};
-    uint local_24 = {};
-    uint local_25 = {};
-    uint local_26 = {};
-    int local_27 = {};
-    uint local_28 = {};
-    uint local_29 = {};
-    uint local_30 = {};
-    uint local_31 = {};
-    uint local_32 = {};
-    local = static_cast<uint>(0);
-    uint _e3 = local;
-    int _e6 = out[_e3];
-    seed = _e6;
-    int _e8 = seed;
-    signed_values.inner[0] = _e8;
+    int local_5 = {};
+    int local_6 = {};
+    uint local_7 = {};
+    uint local_8 = {};
+    uint local_9 = {};
+    uint local_10 = {};
+    int _e4 = out[static_cast<uint>(0)];
+    seed = _e4;
+    int _e6 = seed;
+    signed_values.inner[0] = _e6;
     signed_values.inner[1] = naga_neg(2);
     signed_values.inner[2] = 4;
-    int _e23 = signed_values.inner[0];
-    int _e24 = signed_values.inner[1];
-    int _e28 = signed_values.inner[2];
-    local_1 = static_cast<uint>(0);
-    uint _e33 = local_1;
-    out[_e33] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e23) + as_type<uint>(_e24))) + as_type<uint>(_e28));
+    int _e21 = signed_values.inner[0];
+    int _e22 = signed_values.inner[1];
+    int _e26 = signed_values.inner[2];
+    out[static_cast<uint>(0)] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e21) + as_type<uint>(_e22))) + as_type<uint>(_e26));
     words = type_5 {};
     words.inner[0] = 4294967295u;
     words.inner[1] = 1u;
-    uint _e47 = words.inner[0];
-    uint _e48 = words.inner[1];
-    local_2 = static_cast<uint>(1);
-    uint _e56 = local_2;
-    out[_e56] = static_cast<int>((_e47 + _e48) == 0u);
+    uint _e43 = words.inner[0];
+    uint _e44 = words.inner[1];
+    out[static_cast<uint>(1)] = static_cast<int>((_e43 + _e44) == 0u);
     samples = type_7 {};
     samples.inner[0] = 1.5;
     samples.inner[1] = 2.25;
-    float _e70 = samples.inner[0];
-    float _e71 = samples.inner[1];
-    local_3 = static_cast<uint>(2);
-    uint _e79 = local_3;
-    out[_e79] = naga_f2i32((_e70 + _e71) * 4.0);
+    float _e64 = samples.inner[0];
+    float _e65 = samples.inner[1];
+    out[static_cast<uint>(2)] = naga_f2i32((_e64 + _e65) * 4.0);
     flags = type_9 {};
-    int _e83 = seed;
-    flags.inner[0] = _e83 != 0;
+    int _e75 = seed;
+    flags.inner[0] = _e75 != 0;
     flags.inner[2] = true;
-    bool _e93 = flags.inner[0];
-    bool _e99 = flags.inner[1];
-    bool _e106 = flags.inner[2];
-    local_4 = static_cast<uint>(3);
-    uint _e112 = local_4;
-    out[_e112] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(static_cast<int>(_e93)) * as_type<uint>(100))) + as_type<uint>(as_type<int>(as_type<uint>(static_cast<int>(_e99)) * as_type<uint>(10))))) + as_type<uint>(static_cast<int>(_e106)));
+    bool _e85 = flags.inner[0];
+    bool _e91 = flags.inner[1];
+    bool _e98 = flags.inner[2];
+    out[static_cast<uint>(3)] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(static_cast<int>(_e85)) * as_type<uint>(100))) + as_type<uint>(as_type<int>(as_type<uint>(static_cast<int>(_e91)) * as_type<uint>(10))))) + as_type<uint>(static_cast<int>(_e98)));
     zeros = type_2 {};
-    int _e120 = zeros.inner[0];
-    int _e121 = zeros.inner[1];
-    local_5 = static_cast<uint>(4);
-    uint _e126 = local_5;
-    out[_e126] = as_type<int>(as_type<uint>(_e120) + as_type<uint>(_e121));
-    int _e128 = seed;
-    int _e129 = local_sum(_e128);
-    local_6 = static_cast<uint>(5);
-    uint _e133 = local_6;
-    out[_e133] = _e129;
-    int _e136 = reset_sum(3);
-    local_7 = static_cast<uint>(6);
-    uint _e140 = local_7;
-    out[_e140] = _e136;
+    int _e110 = zeros.inner[0];
+    int _e111 = zeros.inner[1];
+    out[static_cast<uint>(4)] = as_type<int>(as_type<uint>(_e110) + as_type<uint>(_e111));
+    int _e116 = seed;
+    int _e117 = local_sum(_e116);
+    out[static_cast<uint>(5)] = _e117;
+    int _e122 = reset_sum(3);
+    out[static_cast<uint>(6)] = _e122;
     zero_flags = type_10 {};
-    bool _e146 = zero_flags.inner[0];
-    local_9 = _e146;
-    if (_e146) {
+    bool _e130 = zero_flags.inner[0];
+    local = _e130;
+    if (_e130) {
     } else {
-        bool _e150 = zero_flags.inner[1];
-        local_9 = _e150;
+        bool _e134 = zero_flags.inner[1];
+        local = _e134;
     }
-    bool _e151 = local_9;
-    local_8 = static_cast<uint>(7);
-    uint _e156 = local_8;
-    out[_e156] = static_cast<int>(_e151);
+    bool _e135 = local;
+    out[static_cast<uint>(7)] = static_cast<int>(_e135);
     bank = type_5 {};
     bank.inner[0] = 3u;
     bank.inner[1] = 4u;
     {
         bank_1 = type_7 {};
         bank_1.inner[1] = 6.5;
-        float _e175 = bank_1.inner[0];
-        float _e176 = bank_1.inner[1];
-        local_10 = static_cast<uint>(8);
-        uint _e182 = local_10;
-        local_29 = _e182;
-        uint _e184 = local_29;
-        out[_e184] = naga_f2i32(_e175 + _e176);
+        float _e157 = bank_1.inner[0];
+        float _e158 = bank_1.inner[1];
+        local_1 = static_cast<uint>(8);
+        uint _e164 = local_1;
+        local_7 = _e164;
+        uint _e166 = local_7;
+        out[_e166] = naga_f2i32(_e157 + _e158);
     }
-    uint _e190 = bank.inner[0];
-    uint _e191 = bank.inner[1];
-    local_11 = static_cast<uint>(9);
-    uint _e197 = local_11;
-    out[_e197] = static_cast<int>(_e190 + _e191);
+    uint _e172 = bank.inner[0];
+    uint _e173 = bank.inner[1];
+    out[static_cast<uint>(9)] = static_cast<int>(_e172 + _e173);
     {
-        int _e199 = seed;
-        signed_values_1.inner[0] = _e199;
-        int _e203 = seed;
-        signed_values_1.inner[1] = _e203;
-        int _e210 = signed_values_1.inner[0];
-        int _e211 = signed_values_1.inner[1];
-        local_12 = static_cast<uint>(10);
-        uint _e216 = local_12;
-        local_30 = _e216;
-        uint _e218 = local_30;
-        out[_e218] = as_type<int>(as_type<uint>(_e210) + as_type<uint>(_e211));
+        int _e179 = seed;
+        signed_values_1.inner[0] = _e179;
+        int _e183 = seed;
+        signed_values_1.inner[1] = _e183;
+        int _e190 = signed_values_1.inner[0];
+        int _e191 = signed_values_1.inner[1];
+        local_2 = static_cast<uint>(10);
+        uint _e196 = local_2;
+        local_8 = _e196;
+        uint _e198 = local_8;
+        out[_e198] = as_type<int>(as_type<uint>(_e190) + as_type<uint>(_e191));
     }
-    int _e222 = signed_values.inner[0];
-    local_13 = static_cast<uint>(11);
-    uint _e226 = local_13;
-    out[_e226] = _e222;
+    int _e202 = signed_values.inner[0];
+    out[static_cast<uint>(11)] = _e202;
     mixed = type_2 {};
-    int _e230 = seed;
-    seed = as_type<int>(as_type<uint>(_e230) + as_type<uint>(1));
+    int _e208 = seed;
+    seed = as_type<int>(as_type<uint>(_e208) + as_type<uint>(1));
     int next = seed;
     mixed.inner[0] = next;
-    int _e236 = seed;
-    seed = as_type<int>(as_type<uint>(_e236) + as_type<uint>(1));
-    mixed.inner[1] = _e236;
-    int _e243 = mixed.inner[0];
-    int _e248 = mixed.inner[1];
-    local_14 = static_cast<uint>(12);
-    uint _e253 = local_14;
-    out[_e253] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e243) * as_type<uint>(10))) + as_type<uint>(_e248));
-    int _e255 = seed;
-    local_15 = static_cast<uint>(13);
-    uint _e259 = local_15;
-    out[_e259] = _e255;
+    int _e214 = seed;
+    seed = as_type<int>(as_type<uint>(_e214) + as_type<uint>(1));
+    mixed.inner[1] = _e214;
+    int _e221 = mixed.inner[0];
+    int _e226 = mixed.inner[1];
+    out[static_cast<uint>(12)] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e221) * as_type<uint>(10))) + as_type<uint>(_e226));
+    int _e231 = seed;
+    out[static_cast<uint>(13)] = _e231;
     reset_total = 0;
     {
         i = 0;
@@ -283,32 +235,30 @@ kernel void local_arrays(
             if (metal::all(loop_bound_1 == uint2(0u))) { break; }
             loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
             if (!loop_init_1) {
-                int _e286 = i;
-                i = as_type<int>(as_type<uint>(_e286) + as_type<uint>(1));
+                int _e260 = i;
+                i = as_type<int>(as_type<uint>(_e260) + as_type<uint>(1));
             }
             loop_init_1 = false;
-            int _e265 = i;
-            if (_e265 < 3) {
+            int _e239 = i;
+            if (_e239 < 3) {
             } else {
                 break;
             }
             reset = type_2 {};
-            int _e270 = i;
-            if (_e270 == 1) {
+            int _e244 = i;
+            if (_e244 == 1) {
                 reset.inner[0] = 90;
                 continue;
             }
-            int _e278 = reset.inner[0];
-            int _e279 = i;
-            int _e281 = reset_total;
-            reset_total = as_type<int>(as_type<uint>(_e281) + as_type<uint>(as_type<int>(as_type<uint>(_e278) + as_type<uint>(_e279))));
+            int _e252 = reset.inner[0];
+            int _e253 = i;
+            int _e255 = reset_total;
+            reset_total = as_type<int>(as_type<uint>(_e255) + as_type<uint>(as_type<int>(as_type<uint>(_e252) + as_type<uint>(_e253))));
             reset.inner[0] = 99;
         }
     }
-    int _e289 = reset_total;
-    local_16 = static_cast<uint>(14);
-    uint _e293 = local_16;
-    out[_e293] = _e289;
+    int _e263 = reset_total;
+    out[static_cast<uint>(14)] = _e263;
     total = 0;
     {
         scratch = type_2 {};
@@ -319,124 +269,108 @@ kernel void local_arrays(
             if (metal::all(loop_bound_2 == uint2(0u))) { break; }
             loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
             if (!loop_init_2) {
-                int _e325 = j;
-                j = as_type<int>(as_type<uint>(_e325) + as_type<uint>(1));
+                int _e297 = j;
+                j = as_type<int>(as_type<uint>(_e297) + as_type<uint>(1));
             }
             loop_init_2 = false;
-            int _e301 = j;
-            if (_e301 < 3) {
+            int _e273 = j;
+            if (_e273 < 3) {
             } else {
                 break;
             }
-            int _e304 = j;
-            int _e308 = scratch.inner[naga_mod(_e304, 2)];
-            scratch.inner[naga_mod(_e304, 2)] = as_type<int>(as_type<uint>(_e308) + as_type<uint>(1));
-            int _e311 = j;
-            if (_e311 == 1) {
+            int _e276 = j;
+            int _e280 = scratch.inner[naga_mod(_e276, 2)];
+            scratch.inner[naga_mod(_e276, 2)] = as_type<int>(as_type<uint>(_e280) + as_type<uint>(1));
+            int _e283 = j;
+            if (_e283 == 1) {
                 continue;
             }
-            int _e316 = scratch.inner[0];
-            int _e321 = scratch.inner[1];
-            int _e323 = total;
-            total = as_type<int>(as_type<uint>(_e323) + as_type<uint>(as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e316) * as_type<uint>(10))) + as_type<uint>(_e321))));
+            int _e288 = scratch.inner[0];
+            int _e293 = scratch.inner[1];
+            int _e295 = total;
+            total = as_type<int>(as_type<uint>(_e295) + as_type<uint>(as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e288) * as_type<uint>(10))) + as_type<uint>(_e293))));
         }
     }
-    int _e328 = total;
-    local_17 = static_cast<uint>(15);
-    uint _e332 = local_17;
-    out[_e332] = _e328;
+    int _e300 = total;
+    out[static_cast<uint>(15)] = _e300;
     zero_samples = type_7 {};
-    float _e340 = zero_samples.inner[0];
-    float _e341 = zero_samples.inner[1];
-    local_18 = static_cast<uint>(16);
-    uint _e347 = local_18;
-    out[_e347] = naga_f2i32(_e340 + _e341);
+    float _e310 = zero_samples.inner[0];
+    float _e311 = zero_samples.inner[1];
+    out[static_cast<uint>(16)] = naga_f2i32(_e310 + _e311);
     left = type_2 {};
     right = type_2 {};
     left.inner[0] = 5;
     left.inner[1] = 7;
     right.inner[0] = 11;
     right.inner[1] = 13;
-    int _e369 = left.inner[0];
-    int _e370 = right.inner[0];
-    local_19 = static_cast<uint>(17);
-    uint _e375 = local_19;
-    out[_e375] = as_type<int>(as_type<uint>(_e369) + as_type<uint>(_e370));
+    int _e337 = left.inner[0];
+    int _e338 = right.inner[0];
+    out[static_cast<uint>(17)] = as_type<int>(as_type<uint>(_e337) + as_type<uint>(_e338));
     {
         temporary = type_2 {};
-        int _e379 = seed;
-        temporary.inner[0] = _e379;
+        int _e345 = seed;
+        temporary.inner[0] = _e345;
         {
             temporary_1 = type_2 {};
             temporary_1.inner[1] = 3;
-            int _e391 = temporary_1.inner[0];
-            int _e392 = temporary_1.inner[1];
-            local_20 = static_cast<uint>(18);
-            uint _e397 = local_20;
-            local_31 = _e397;
-            uint _e399 = local_31;
-            out[_e399] = as_type<int>(as_type<uint>(_e391) + as_type<uint>(_e392));
+            int _e357 = temporary_1.inner[0];
+            int _e358 = temporary_1.inner[1];
+            local_3 = static_cast<uint>(18);
+            uint _e363 = local_3;
+            local_9 = _e363;
+            uint _e365 = local_9;
+            out[_e365] = as_type<int>(as_type<uint>(_e357) + as_type<uint>(_e358));
         }
-        int _e403 = temporary.inner[0];
-        local_21 = static_cast<uint>(19);
-        uint _e407 = local_21;
-        local_32 = _e407;
-        uint _e409 = local_32;
-        out[_e409] = _e403;
+        int _e369 = temporary.inner[0];
+        local_4 = static_cast<uint>(19);
+        uint _e373 = local_4;
+        local_10 = _e373;
+        uint _e375 = local_10;
+        out[_e375] = _e369;
     }
-    int _e411 = seed;
-    bool choose = (_e411 & 1) == 0;
+    int _e377 = seed;
+    bool choose = (_e377 & 1) == 0;
     index = 0;
     rhs = 20;
-    int _e420 = rhs;
-    rhs = as_type<int>(as_type<uint>(_e420) + as_type<uint>(1));
-    int _e423 = rhs;
+    int _e386 = rhs;
+    rhs = as_type<int>(as_type<uint>(_e386) + as_type<uint>(1));
+    int _e389 = rhs;
     if (choose) {
-        int _e424 = index;
-        index = as_type<int>(as_type<uint>(_e424) + as_type<uint>(1));
-        int _e428 = left.inner[_e424];
-        left.inner[_e424] = as_type<int>(as_type<uint>(_e428) + as_type<uint>(_e423));
-        int _e430 = left.inner[_e424];
-        local_23 = _e430;
+        int _e390 = index;
+        index = as_type<int>(as_type<uint>(_e390) + as_type<uint>(1));
+        int _e394 = left.inner[_e390];
+        left.inner[_e390] = as_type<int>(as_type<uint>(_e394) + as_type<uint>(_e389));
+        int _e396 = left.inner[_e390];
+        local_5 = _e396;
     } else {
-        int _e432 = index;
-        index = as_type<int>(as_type<uint>(_e432) + as_type<uint>(1));
-        int _e436 = right.inner[_e432];
-        right.inner[_e432] = as_type<int>(as_type<uint>(_e436) + as_type<uint>(_e423));
-        int _e438 = right.inner[_e432];
-        local_23 = _e438;
+        int _e398 = index;
+        index = as_type<int>(as_type<uint>(_e398) + as_type<uint>(1));
+        int _e402 = right.inner[_e398];
+        right.inner[_e398] = as_type<int>(as_type<uint>(_e402) + as_type<uint>(_e389));
+        int _e404 = right.inner[_e398];
+        local_5 = _e404;
     }
-    int _e441 = local_23;
-    local_22 = static_cast<uint>(20);
-    uint _e445 = local_22;
-    out[_e445] = _e441;
-    int _e447 = index;
-    local_24 = static_cast<uint>(21);
-    uint _e451 = local_24;
-    out[_e451] = _e447;
-    int _e455 = left.inner[0];
-    int _e460 = right.inner[0];
-    local_25 = static_cast<uint>(22);
-    uint _e465 = local_25;
-    out[_e465] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e455) * as_type<uint>(100))) + as_type<uint>(_e460));
+    int _e407 = local_5;
+    out[static_cast<uint>(20)] = _e407;
+    int _e411 = index;
+    out[static_cast<uint>(21)] = _e411;
+    int _e417 = left.inner[0];
+    int _e422 = right.inner[0];
+    out[static_cast<uint>(22)] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e417) * as_type<uint>(100))) + as_type<uint>(_e422));
     if (choose) {
         right.inner[1] = 9;
-        int _e470 = right.inner[1];
-        right.inner[1] = as_type<int>(as_type<uint>(_e470) + as_type<uint>(1));
-        local_27 = _e470;
+        int _e430 = right.inner[1];
+        right.inner[1] = as_type<int>(as_type<uint>(_e430) + as_type<uint>(1));
+        local_6 = _e430;
     } else {
         left.inner[1] = 9;
-        int _e477 = left.inner[1];
-        left.inner[1] = as_type<int>(as_type<uint>(_e477) + as_type<uint>(1));
-        local_27 = _e477;
+        int _e437 = left.inner[1];
+        left.inner[1] = as_type<int>(as_type<uint>(_e437) + as_type<uint>(1));
+        local_6 = _e437;
     }
-    int _e482 = local_27;
-    local_26 = static_cast<uint>(23);
-    uint _e486 = local_26;
-    out[_e486] = _e482;
-    int _e490 = left.inner[1];
-    int _e495 = right.inner[1];
-    local_28 = static_cast<uint>(24);
-    uint _e500 = local_28;
-    out[_e500] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e490) * as_type<uint>(100))) + as_type<uint>(_e495));
+    int _e442 = local_6;
+    out[static_cast<uint>(23)] = _e442;
+    int _e448 = left.inner[1];
+    int _e453 = right.inner[1];
+    out[static_cast<uint>(24)] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e448) * as_type<uint>(100))) + as_type<uint>(_e453));
 }

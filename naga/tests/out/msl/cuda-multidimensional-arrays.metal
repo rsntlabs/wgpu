@@ -198,9 +198,6 @@ kernel void multidimensional_arrays(
     uint local_63 = {};
     uint local_64 = {};
     uint local_65 = {};
-    uint local_66 = {};
-    uint local_67 = {};
-    uint local_68 = {};
     {
         original.x = 1;
         original.y = 2;
@@ -214,20 +211,20 @@ kernel void multidimensional_arrays(
         int _e24 = points.inner[0].inner[0].y;
         local = static_cast<uint>(0);
         uint _e28 = local;
-        local_42 = _e28;
-        uint _e30 = local_42;
+        local_39 = _e28;
+        uint _e30 = local_39;
         out[_e30] = _e24;
         int _e38 = points.inner[1].inner[1].x;
         local_1 = static_cast<uint>(1);
         uint _e42 = local_1;
-        local_43 = _e42;
-        uint _e44 = local_43;
+        local_40 = _e42;
+        uint _e44 = local_40;
         out[_e44] = _e38;
         int _e51 = points.inner[1].inner[1].y;
         local_2 = static_cast<uint>(2);
         uint _e55 = local_2;
-        local_44 = _e55;
-        uint _e57 = local_44;
+        local_41 = _e55;
+        uint _e57 = local_41;
         out[_e57] = _e51;
     }
     {
@@ -245,20 +242,20 @@ kernel void multidimensional_arrays(
         int _e87 = points_1.inner[0].inner[0].z;
         local_3 = static_cast<uint>(3);
         uint _e91 = local_3;
-        local_45 = _e91;
-        uint _e93 = local_45;
+        local_42 = _e91;
+        uint _e93 = local_42;
         out[_e93] = _e87;
         int _e100 = points_1.inner[1].inner[1].x;
         local_4 = static_cast<uint>(4);
         uint _e104 = local_4;
-        local_46 = _e104;
-        uint _e106 = local_46;
+        local_43 = _e104;
+        uint _e106 = local_43;
         out[_e106] = _e100;
         int _e113 = points_1.inner[1].inner[1].z;
         local_5 = static_cast<uint>(5);
         uint _e117 = local_5;
-        local_47 = _e117;
-        uint _e119 = local_47;
+        local_44 = _e117;
+        uint _e119 = local_44;
         out[_e119] = _e113;
     }
     {
@@ -278,20 +275,20 @@ kernel void multidimensional_arrays(
         int _e153 = points_2.inner[0].inner[0].w;
         local_6 = static_cast<uint>(6);
         uint _e157 = local_6;
-        local_48 = _e157;
-        uint _e159 = local_48;
+        local_45 = _e157;
+        uint _e159 = local_45;
         out[_e159] = _e153;
         int _e166 = points_2.inner[1].inner[1].x;
         local_7 = static_cast<uint>(7);
         uint _e170 = local_7;
-        local_49 = _e170;
-        uint _e172 = local_49;
+        local_46 = _e170;
+        uint _e172 = local_46;
         out[_e172] = _e166;
         int _e179 = points_2.inner[1].inner[1].w;
         local_8 = static_cast<uint>(8);
         uint _e183 = local_8;
-        local_50 = _e183;
-        uint _e185 = local_50;
+        local_47 = _e183;
+        uint _e185 = local_47;
         out[_e185] = _e179;
     }
     {
@@ -307,20 +304,20 @@ kernel void multidimensional_arrays(
         uint _e214 = points_3.inner[0].inner[0].y;
         local_9 = static_cast<uint>(9);
         uint _e219 = local_9;
-        local_51 = _e219;
-        uint _e221 = local_51;
+        local_48 = _e219;
+        uint _e221 = local_48;
         out[_e221] = static_cast<int>(_e214);
         uint _e228 = points_3.inner[1].inner[1].x;
         local_10 = static_cast<uint>(10);
         uint _e233 = local_10;
-        local_52 = _e233;
-        uint _e235 = local_52;
+        local_49 = _e233;
+        uint _e235 = local_49;
         out[_e235] = static_cast<int>(_e228);
         uint _e242 = points_3.inner[1].inner[1].y;
         local_11 = static_cast<uint>(11);
         uint _e247 = local_11;
-        local_53 = _e247;
-        uint _e249 = local_53;
+        local_50 = _e247;
+        uint _e249 = local_50;
         out[_e249] = static_cast<int>(_e242);
     }
     {
@@ -338,20 +335,20 @@ kernel void multidimensional_arrays(
         uint _e283 = points_4.inner[0].inner[0].z;
         local_12 = static_cast<uint>(12);
         uint _e288 = local_12;
-        local_54 = _e288;
-        uint _e290 = local_54;
+        local_51 = _e288;
+        uint _e290 = local_51;
         out[_e290] = static_cast<int>(_e283);
         uint _e297 = points_4.inner[1].inner[1].x;
         local_13 = static_cast<uint>(13);
         uint _e302 = local_13;
-        local_55 = _e302;
-        uint _e304 = local_55;
+        local_52 = _e302;
+        uint _e304 = local_52;
         out[_e304] = static_cast<int>(_e297);
         uint _e311 = points_4.inner[1].inner[1].z;
         local_14 = static_cast<uint>(14);
         uint _e316 = local_14;
-        local_56 = _e316;
-        uint _e318 = local_56;
+        local_53 = _e316;
+        uint _e318 = local_53;
         out[_e318] = static_cast<int>(_e311);
     }
     {
@@ -371,20 +368,20 @@ kernel void multidimensional_arrays(
         uint _e357 = points_5.inner[0].inner[0].w;
         local_15 = static_cast<uint>(15);
         uint _e362 = local_15;
-        local_57 = _e362;
-        uint _e364 = local_57;
+        local_54 = _e362;
+        uint _e364 = local_54;
         out[_e364] = static_cast<int>(_e357);
         uint _e371 = points_5.inner[1].inner[1].x;
         local_16 = static_cast<uint>(16);
         uint _e376 = local_16;
-        local_58 = _e376;
-        uint _e378 = local_58;
+        local_55 = _e376;
+        uint _e378 = local_55;
         out[_e378] = static_cast<int>(_e371);
         uint _e385 = points_5.inner[1].inner[1].w;
         local_17 = static_cast<uint>(17);
         uint _e390 = local_17;
-        local_59 = _e390;
-        uint _e392 = local_59;
+        local_56 = _e390;
+        uint _e392 = local_56;
         out[_e392] = static_cast<int>(_e385);
     }
     {
@@ -400,20 +397,20 @@ kernel void multidimensional_arrays(
         float _e421 = points_6.inner[0].inner[0].y;
         local_18 = static_cast<uint>(18);
         uint _e426 = local_18;
-        local_60 = _e426;
-        uint _e428 = local_60;
+        local_57 = _e426;
+        uint _e428 = local_57;
         out[_e428] = naga_f2i32(_e421);
         float _e435 = points_6.inner[1].inner[1].x;
         local_19 = static_cast<uint>(19);
         uint _e440 = local_19;
-        local_61 = _e440;
-        uint _e442 = local_61;
+        local_58 = _e440;
+        uint _e442 = local_58;
         out[_e442] = naga_f2i32(_e435);
         float _e449 = points_6.inner[1].inner[1].y;
         local_20 = static_cast<uint>(20);
         uint _e454 = local_20;
-        local_62 = _e454;
-        uint _e456 = local_62;
+        local_59 = _e454;
+        uint _e456 = local_59;
         out[_e456] = naga_f2i32(_e449);
     }
     {
@@ -431,20 +428,20 @@ kernel void multidimensional_arrays(
         float _e490 = points_7.inner[0].inner[0].z;
         local_21 = static_cast<uint>(21);
         uint _e495 = local_21;
-        local_63 = _e495;
-        uint _e497 = local_63;
+        local_60 = _e495;
+        uint _e497 = local_60;
         out[_e497] = naga_f2i32(_e490);
         float _e504 = points_7.inner[1].inner[1].x;
         local_22 = static_cast<uint>(22);
         uint _e509 = local_22;
-        local_64 = _e509;
-        uint _e511 = local_64;
+        local_61 = _e509;
+        uint _e511 = local_61;
         out[_e511] = naga_f2i32(_e504);
         float _e518 = points_7.inner[1].inner[1].z;
         local_23 = static_cast<uint>(23);
         uint _e523 = local_23;
-        local_65 = _e523;
-        uint _e525 = local_65;
+        local_62 = _e523;
+        uint _e525 = local_62;
         out[_e525] = naga_f2i32(_e518);
     }
     {
@@ -464,20 +461,20 @@ kernel void multidimensional_arrays(
         float _e564 = points_8.inner[0].inner[0].w;
         local_24 = static_cast<uint>(24);
         uint _e569 = local_24;
-        local_66 = _e569;
-        uint _e571 = local_66;
+        local_63 = _e569;
+        uint _e571 = local_63;
         out[_e571] = naga_f2i32(_e564);
         float _e578 = points_8.inner[1].inner[1].x;
         local_25 = static_cast<uint>(25);
         uint _e583 = local_25;
-        local_67 = _e583;
-        uint _e585 = local_67;
+        local_64 = _e583;
+        uint _e585 = local_64;
         out[_e585] = naga_f2i32(_e578);
         float _e592 = points_8.inner[1].inner[1].w;
         local_26 = static_cast<uint>(26);
         uint _e597 = local_26;
-        local_68 = _e597;
-        uint _e599 = local_68;
+        local_65 = _e597;
+        uint _e599 = local_65;
         out[_e599] = naga_f2i32(_e592);
     }
     changed.inner[0].inner[0] = 1;
@@ -696,15 +693,9 @@ kernel void multidimensional_arrays(
     int _e780 = nested_empty.inner[1].inner[2];
     int _e786 = partial.inner[1].inner[2];
     int _e794 = volume.inner[1].inner[1].inner[2];
-    local_39 = static_cast<uint>(27);
-    uint _e799 = local_39;
-    out[_e799] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e779) + as_type<uint>(_e780))) + as_type<uint>(_e786))) + as_type<uint>(_e794));
-    float _e806 = shared_points.inner[1].inner[0].x;
-    local_40 = static_cast<uint>(28);
-    uint _e811 = local_40;
-    out[_e811] = naga_f2i32(_e806);
-    float _e818 = shared_points.inner[1].inner[0].y;
-    local_41 = static_cast<uint>(29);
-    uint _e823 = local_41;
-    out[_e823] = naga_f2i32(_e818);
+    out[static_cast<uint>(27)] = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e779) + as_type<uint>(_e780))) + as_type<uint>(_e786))) + as_type<uint>(_e794));
+    float _e804 = shared_points.inner[1].inner[0].x;
+    out[static_cast<uint>(28)] = naga_f2i32(_e804);
+    float _e814 = shared_points.inner[1].inner[0].y;
+    out[static_cast<uint>(29)] = naga_f2i32(_e814);
 }

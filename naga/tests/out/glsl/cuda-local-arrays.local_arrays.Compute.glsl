@@ -55,214 +55,164 @@ int reset_sum(int count) {
 
 void main() {
     int seed = 0;
-    uint local = 0u;
     int signed_values[3] = int[3](0, 0, 0);
-    uint local_1 = 0u;
     uint words[2] = uint[2](0u, 0u);
-    uint local_2 = 0u;
     float samples[2] = float[2](0.0, 0.0);
-    uint local_3 = 0u;
     bool flags[3] = bool[3](false, false, false);
-    uint local_4 = 0u;
     int zeros[2] = int[2](0, 0);
-    uint local_5 = 0u;
-    uint local_6 = 0u;
-    uint local_7 = 0u;
     bool zero_flags[2] = bool[2](false, false);
-    uint local_8 = 0u;
-    bool local_9 = false;
+    bool local = false;
     uint bank[2] = uint[2](0u, 0u);
     float bank_1[2] = float[2](0.0, 0.0);
-    uint local_10 = 0u;
-    uint local_11 = 0u;
+    uint local_1 = 0u;
     int signed_values_1[2] = int[2](0, 0);
-    uint local_12 = 0u;
-    uint local_13 = 0u;
+    uint local_2 = 0u;
     int mixed[2] = int[2](0, 0);
-    uint local_14 = 0u;
-    uint local_15 = 0u;
     int reset_total = 0;
     int i = 0;
     int reset[2] = int[2](0, 0);
-    uint local_16 = 0u;
     int total = 0;
     int scratch[2] = int[2](0, 0);
     int j = 0;
-    uint local_17 = 0u;
     float zero_samples[2] = float[2](0.0, 0.0);
-    uint local_18 = 0u;
     int left[2] = int[2](0, 0);
     int right[2] = int[2](0, 0);
-    uint local_19 = 0u;
     int temporary[2] = int[2](0, 0);
     int temporary_1[2] = int[2](0, 0);
-    uint local_20 = 0u;
-    uint local_21 = 0u;
+    uint local_3 = 0u;
+    uint local_4 = 0u;
     int index = 0;
     int rhs = 0;
-    uint local_22 = 0u;
-    int local_23 = 0;
-    uint local_24 = 0u;
-    uint local_25 = 0u;
-    uint local_26 = 0u;
-    int local_27 = 0;
-    uint local_28 = 0u;
-    uint local_29 = 0u;
-    uint local_30 = 0u;
-    uint local_31 = 0u;
-    uint local_32 = 0u;
-    local = uint(0);
-    uint _e3 = local;
-    int _e6 = _group_0_binding_0_cs[_e3];
-    seed = _e6;
-    int _e8 = seed;
-    signed_values[0] = _e8;
+    int local_5 = 0;
+    int local_6 = 0;
+    uint local_7 = 0u;
+    uint local_8 = 0u;
+    uint local_9 = 0u;
+    uint local_10 = 0u;
+    int _e4 = _group_0_binding_0_cs[uint(0)];
+    seed = _e4;
+    int _e6 = seed;
+    signed_values[0] = _e6;
     signed_values[1] = -(2);
     signed_values[2] = 4;
-    int _e23 = signed_values[0];
-    int _e24 = signed_values[1];
-    int _e28 = signed_values[2];
-    local_1 = uint(0);
-    uint _e33 = local_1;
-    _group_0_binding_0_cs[_e33] = ((_e23 + _e24) + _e28);
+    int _e21 = signed_values[0];
+    int _e22 = signed_values[1];
+    int _e26 = signed_values[2];
+    _group_0_binding_0_cs[uint(0)] = ((_e21 + _e22) + _e26);
     words = uint[2](0u, 0u);
     words[0] = 4294967295u;
     words[1] = 1u;
-    uint _e47 = words[0];
-    uint _e48 = words[1];
-    local_2 = uint(1);
-    uint _e56 = local_2;
-    _group_0_binding_0_cs[_e56] = int(((_e47 + _e48) == 0u));
+    uint _e43 = words[0];
+    uint _e44 = words[1];
+    _group_0_binding_0_cs[uint(1)] = int(((_e43 + _e44) == 0u));
     samples = float[2](0.0, 0.0);
     samples[0] = 1.5;
     samples[1] = 2.25;
-    float _e70 = samples[0];
-    float _e71 = samples[1];
-    local_3 = uint(2);
-    uint _e79 = local_3;
-    _group_0_binding_0_cs[_e79] = int(((_e70 + _e71) * 4.0));
+    float _e64 = samples[0];
+    float _e65 = samples[1];
+    _group_0_binding_0_cs[uint(2)] = int(((_e64 + _e65) * 4.0));
     flags = bool[3](false, false, false);
-    int _e83 = seed;
-    flags[0] = (_e83 != 0);
+    int _e75 = seed;
+    flags[0] = (_e75 != 0);
     flags[2] = true;
-    bool _e93 = flags[0];
-    bool _e99 = flags[1];
-    bool _e106 = flags[2];
-    local_4 = uint(3);
-    uint _e112 = local_4;
-    _group_0_binding_0_cs[_e112] = (((int(_e93) * 100) + (int(_e99) * 10)) + int(_e106));
+    bool _e85 = flags[0];
+    bool _e91 = flags[1];
+    bool _e98 = flags[2];
+    _group_0_binding_0_cs[uint(3)] = (((int(_e85) * 100) + (int(_e91) * 10)) + int(_e98));
     zeros = int[2](0, 0);
-    int _e120 = zeros[0];
-    int _e121 = zeros[1];
-    local_5 = uint(4);
-    uint _e126 = local_5;
-    _group_0_binding_0_cs[_e126] = (_e120 + _e121);
-    int _e128 = seed;
-    int _e129 = local_sum(_e128);
-    local_6 = uint(5);
-    uint _e133 = local_6;
-    _group_0_binding_0_cs[_e133] = _e129;
-    int _e136 = reset_sum(3);
-    local_7 = uint(6);
-    uint _e140 = local_7;
-    _group_0_binding_0_cs[_e140] = _e136;
+    int _e110 = zeros[0];
+    int _e111 = zeros[1];
+    _group_0_binding_0_cs[uint(4)] = (_e110 + _e111);
+    int _e116 = seed;
+    int _e117 = local_sum(_e116);
+    _group_0_binding_0_cs[uint(5)] = _e117;
+    int _e122 = reset_sum(3);
+    _group_0_binding_0_cs[uint(6)] = _e122;
     zero_flags = bool[2](false, false);
-    bool _e146 = zero_flags[0];
-    local_9 = _e146;
-    if (_e146) {
+    bool _e130 = zero_flags[0];
+    local = _e130;
+    if (_e130) {
     } else {
-        bool _e150 = zero_flags[1];
-        local_9 = _e150;
+        bool _e134 = zero_flags[1];
+        local = _e134;
     }
-    bool _e151 = local_9;
-    local_8 = uint(7);
-    uint _e156 = local_8;
-    _group_0_binding_0_cs[_e156] = int(_e151);
+    bool _e135 = local;
+    _group_0_binding_0_cs[uint(7)] = int(_e135);
     bank = uint[2](0u, 0u);
     bank[0] = 3u;
     bank[1] = 4u;
     {
         bank_1 = float[2](0.0, 0.0);
         bank_1[1] = 6.5;
-        float _e175 = bank_1[0];
-        float _e176 = bank_1[1];
-        local_10 = uint(8);
-        uint _e182 = local_10;
-        local_29 = _e182;
-        uint _e184 = local_29;
-        _group_0_binding_0_cs[_e184] = int((_e175 + _e176));
+        float _e157 = bank_1[0];
+        float _e158 = bank_1[1];
+        local_1 = uint(8);
+        uint _e164 = local_1;
+        local_7 = _e164;
+        uint _e166 = local_7;
+        _group_0_binding_0_cs[_e166] = int((_e157 + _e158));
     }
-    uint _e190 = bank[0];
-    uint _e191 = bank[1];
-    local_11 = uint(9);
-    uint _e197 = local_11;
-    _group_0_binding_0_cs[_e197] = int((_e190 + _e191));
+    uint _e172 = bank[0];
+    uint _e173 = bank[1];
+    _group_0_binding_0_cs[uint(9)] = int((_e172 + _e173));
     {
-        int _e199 = seed;
-        signed_values_1[0] = _e199;
-        int _e203 = seed;
-        signed_values_1[1] = _e203;
-        int _e210 = signed_values_1[0];
-        int _e211 = signed_values_1[1];
-        local_12 = uint(10);
-        uint _e216 = local_12;
-        local_30 = _e216;
-        uint _e218 = local_30;
-        _group_0_binding_0_cs[_e218] = (_e210 + _e211);
+        int _e179 = seed;
+        signed_values_1[0] = _e179;
+        int _e183 = seed;
+        signed_values_1[1] = _e183;
+        int _e190 = signed_values_1[0];
+        int _e191 = signed_values_1[1];
+        local_2 = uint(10);
+        uint _e196 = local_2;
+        local_8 = _e196;
+        uint _e198 = local_8;
+        _group_0_binding_0_cs[_e198] = (_e190 + _e191);
     }
-    int _e222 = signed_values[0];
-    local_13 = uint(11);
-    uint _e226 = local_13;
-    _group_0_binding_0_cs[_e226] = _e222;
+    int _e202 = signed_values[0];
+    _group_0_binding_0_cs[uint(11)] = _e202;
     mixed = int[2](0, 0);
-    int _e230 = seed;
-    seed = (_e230 + 1);
+    int _e208 = seed;
+    seed = (_e208 + 1);
     int next = seed;
     mixed[0] = next;
-    int _e236 = seed;
-    seed = (_e236 + 1);
-    mixed[1] = _e236;
-    int _e243 = mixed[0];
-    int _e248 = mixed[1];
-    local_14 = uint(12);
-    uint _e253 = local_14;
-    _group_0_binding_0_cs[_e253] = ((_e243 * 10) + _e248);
-    int _e255 = seed;
-    local_15 = uint(13);
-    uint _e259 = local_15;
-    _group_0_binding_0_cs[_e259] = _e255;
+    int _e214 = seed;
+    seed = (_e214 + 1);
+    mixed[1] = _e214;
+    int _e221 = mixed[0];
+    int _e226 = mixed[1];
+    _group_0_binding_0_cs[uint(12)] = ((_e221 * 10) + _e226);
+    int _e231 = seed;
+    _group_0_binding_0_cs[uint(13)] = _e231;
     reset_total = 0;
     {
         i = 0;
         bool loop_init_1 = true;
         while(true) {
             if (!loop_init_1) {
-                int _e286 = i;
-                i = (_e286 + 1);
+                int _e260 = i;
+                i = (_e260 + 1);
             }
             loop_init_1 = false;
-            int _e265 = i;
-            if ((_e265 < 3)) {
+            int _e239 = i;
+            if ((_e239 < 3)) {
             } else {
                 break;
             }
             reset = int[2](0, 0);
-            int _e270 = i;
-            if ((_e270 == 1)) {
+            int _e244 = i;
+            if ((_e244 == 1)) {
                 reset[0] = 90;
                 continue;
             }
-            int _e278 = reset[0];
-            int _e279 = i;
-            int _e281 = reset_total;
-            reset_total = (_e281 + (_e278 + _e279));
+            int _e252 = reset[0];
+            int _e253 = i;
+            int _e255 = reset_total;
+            reset_total = (_e255 + (_e252 + _e253));
             reset[0] = 99;
         }
     }
-    int _e289 = reset_total;
-    local_16 = uint(14);
-    uint _e293 = local_16;
-    _group_0_binding_0_cs[_e293] = _e289;
+    int _e263 = reset_total;
+    _group_0_binding_0_cs[uint(14)] = _e263;
     total = 0;
     {
         scratch = int[2](0, 0);
@@ -270,125 +220,109 @@ void main() {
         bool loop_init_2 = true;
         while(true) {
             if (!loop_init_2) {
-                int _e325 = j;
-                j = (_e325 + 1);
+                int _e297 = j;
+                j = (_e297 + 1);
             }
             loop_init_2 = false;
-            int _e301 = j;
-            if ((_e301 < 3)) {
+            int _e273 = j;
+            if ((_e273 < 3)) {
             } else {
                 break;
             }
-            int _e304 = j;
-            int _e308 = scratch[(_e304 - 2 * (_e304 / 2))];
-            scratch[(_e304 - 2 * (_e304 / 2))] = (_e308 + 1);
-            int _e311 = j;
-            if ((_e311 == 1)) {
+            int _e276 = j;
+            int _e280 = scratch[(_e276 - 2 * (_e276 / 2))];
+            scratch[(_e276 - 2 * (_e276 / 2))] = (_e280 + 1);
+            int _e283 = j;
+            if ((_e283 == 1)) {
                 continue;
             }
-            int _e316 = scratch[0];
-            int _e321 = scratch[1];
-            int _e323 = total;
-            total = (_e323 + ((_e316 * 10) + _e321));
+            int _e288 = scratch[0];
+            int _e293 = scratch[1];
+            int _e295 = total;
+            total = (_e295 + ((_e288 * 10) + _e293));
         }
     }
-    int _e328 = total;
-    local_17 = uint(15);
-    uint _e332 = local_17;
-    _group_0_binding_0_cs[_e332] = _e328;
+    int _e300 = total;
+    _group_0_binding_0_cs[uint(15)] = _e300;
     zero_samples = float[2](0.0, 0.0);
-    float _e340 = zero_samples[0];
-    float _e341 = zero_samples[1];
-    local_18 = uint(16);
-    uint _e347 = local_18;
-    _group_0_binding_0_cs[_e347] = int((_e340 + _e341));
+    float _e310 = zero_samples[0];
+    float _e311 = zero_samples[1];
+    _group_0_binding_0_cs[uint(16)] = int((_e310 + _e311));
     left = int[2](0, 0);
     right = int[2](0, 0);
     left[0] = 5;
     left[1] = 7;
     right[0] = 11;
     right[1] = 13;
-    int _e369 = left[0];
-    int _e370 = right[0];
-    local_19 = uint(17);
-    uint _e375 = local_19;
-    _group_0_binding_0_cs[_e375] = (_e369 + _e370);
+    int _e337 = left[0];
+    int _e338 = right[0];
+    _group_0_binding_0_cs[uint(17)] = (_e337 + _e338);
     {
         temporary = int[2](0, 0);
-        int _e379 = seed;
-        temporary[0] = _e379;
+        int _e345 = seed;
+        temporary[0] = _e345;
         {
             temporary_1 = int[2](0, 0);
             temporary_1[1] = 3;
-            int _e391 = temporary_1[0];
-            int _e392 = temporary_1[1];
-            local_20 = uint(18);
-            uint _e397 = local_20;
-            local_31 = _e397;
-            uint _e399 = local_31;
-            _group_0_binding_0_cs[_e399] = (_e391 + _e392);
+            int _e357 = temporary_1[0];
+            int _e358 = temporary_1[1];
+            local_3 = uint(18);
+            uint _e363 = local_3;
+            local_9 = _e363;
+            uint _e365 = local_9;
+            _group_0_binding_0_cs[_e365] = (_e357 + _e358);
         }
-        int _e403 = temporary[0];
-        local_21 = uint(19);
-        uint _e407 = local_21;
-        local_32 = _e407;
-        uint _e409 = local_32;
-        _group_0_binding_0_cs[_e409] = _e403;
+        int _e369 = temporary[0];
+        local_4 = uint(19);
+        uint _e373 = local_4;
+        local_10 = _e373;
+        uint _e375 = local_10;
+        _group_0_binding_0_cs[_e375] = _e369;
     }
-    int _e411 = seed;
-    bool choose = ((_e411 & 1) == 0);
+    int _e377 = seed;
+    bool choose = ((_e377 & 1) == 0);
     index = 0;
     rhs = 20;
-    int _e420 = rhs;
-    rhs = (_e420 + 1);
-    int _e423 = rhs;
+    int _e386 = rhs;
+    rhs = (_e386 + 1);
+    int _e389 = rhs;
     if (choose) {
-        int _e424 = index;
-        index = (_e424 + 1);
-        int _e428 = left[_e424];
-        left[_e424] = (_e428 + _e423);
-        int _e430 = left[_e424];
-        local_23 = _e430;
+        int _e390 = index;
+        index = (_e390 + 1);
+        int _e394 = left[_e390];
+        left[_e390] = (_e394 + _e389);
+        int _e396 = left[_e390];
+        local_5 = _e396;
     } else {
-        int _e432 = index;
-        index = (_e432 + 1);
-        int _e436 = right[_e432];
-        right[_e432] = (_e436 + _e423);
-        int _e438 = right[_e432];
-        local_23 = _e438;
+        int _e398 = index;
+        index = (_e398 + 1);
+        int _e402 = right[_e398];
+        right[_e398] = (_e402 + _e389);
+        int _e404 = right[_e398];
+        local_5 = _e404;
     }
-    int _e441 = local_23;
-    local_22 = uint(20);
-    uint _e445 = local_22;
-    _group_0_binding_0_cs[_e445] = _e441;
-    int _e447 = index;
-    local_24 = uint(21);
-    uint _e451 = local_24;
-    _group_0_binding_0_cs[_e451] = _e447;
-    int _e455 = left[0];
-    int _e460 = right[0];
-    local_25 = uint(22);
-    uint _e465 = local_25;
-    _group_0_binding_0_cs[_e465] = ((_e455 * 100) + _e460);
+    int _e407 = local_5;
+    _group_0_binding_0_cs[uint(20)] = _e407;
+    int _e411 = index;
+    _group_0_binding_0_cs[uint(21)] = _e411;
+    int _e417 = left[0];
+    int _e422 = right[0];
+    _group_0_binding_0_cs[uint(22)] = ((_e417 * 100) + _e422);
     if (choose) {
         right[1] = 9;
-        int _e470 = right[1];
-        right[1] = (_e470 + 1);
-        local_27 = _e470;
+        int _e430 = right[1];
+        right[1] = (_e430 + 1);
+        local_6 = _e430;
     } else {
         left[1] = 9;
-        int _e477 = left[1];
-        left[1] = (_e477 + 1);
-        local_27 = _e477;
+        int _e437 = left[1];
+        left[1] = (_e437 + 1);
+        local_6 = _e437;
     }
-    int _e482 = local_27;
-    local_26 = uint(23);
-    uint _e486 = local_26;
-    _group_0_binding_0_cs[_e486] = _e482;
-    int _e490 = left[1];
-    int _e495 = right[1];
-    local_28 = uint(24);
-    uint _e500 = local_28;
-    _group_0_binding_0_cs[_e500] = ((_e490 * 100) + _e495);
+    int _e442 = local_6;
+    _group_0_binding_0_cs[uint(23)] = _e442;
+    int _e448 = left[1];
+    int _e453 = right[1];
+    _group_0_binding_0_cs[uint(24)] = ((_e448 * 100) + _e453);
 }
 

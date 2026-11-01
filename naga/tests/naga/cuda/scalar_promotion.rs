@@ -21,6 +21,17 @@ fn assert_no_local(function: &naga::Function, name: &str) {
     );
 }
 
+fn assert_no_unsigned_index_storage(module: &naga::Module, function: &naga::Function) {
+    assert!(
+        function
+            .local_variables
+            .iter()
+            .all(|(_, local)| module.types[local.ty].inner
+                != naga::TypeInner::Scalar(naga::Scalar::U32)),
+        "constant resource indices retain unsigned capture storage"
+    );
+}
+
 fn named_scalar(
     module: &naga::Module,
     function: &naga::Function,
@@ -156,6 +167,7 @@ fn cuda_scalar_promotion_names_the_complete_particles_shader() {
     );
     assert_particle_values(&module, &info);
     assert_particle_point_indices(&module);
+    assert_no_unsigned_index_storage(&module, &module.entry_points[0].function);
     assert!(
         module.entry_points[0]
             .function
@@ -179,6 +191,7 @@ fn cuda_scalar_promotion_names_the_complete_particles_shader() {
             &["i", "count", "time", "side", "x", "y", "distance", "ripple"],
         );
         assert_particle_point_indices(&reparsed);
+        assert_no_unsigned_index_storage(&reparsed, &reparsed.entry_points[0].function);
         let (_, wave) = reparsed
             .functions
             .iter()
@@ -190,6 +203,74 @@ fn cuda_scalar_promotion_names_the_complete_particles_shader() {
             .arguments
             .iter()
             .any(|argument| argument.name.as_deref() == Some("angle")));
+    }
+}
+
+#[test]
+fn cuda_scalar_promotion_avoids_storage_for_nonnegative_literal_and_cast_indices() {
+    for index in [
+        "0",
+        "1u",
+        "unsigned(0)",
+        "static_cast<int>(1u)",
+        "int(unsigned(0))",
+        "(unsigned)1",
+    ] {
+        for source in [
+            format!("__global__ void kernel(int *output, const int *input) {{ int value = input[{index}]; output[0] = value; }}"),
+            format!("__global__ void kernel(int *output) {{ int values[2]{{3, 5}}; const int &value = values[{index}]; output[0] = value; }}"),
+        ] {
+            let (module, info) = validate(&source);
+            assert_no_unsigned_index_storage(&module, &module.entry_points[0].function);
+            #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+            {
+                let (_, reparsed) = super::helpers::wgsl_roundtrip(
+                    &module, &info, naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+                );
+                assert_no_unsigned_index_storage(&reparsed, &reparsed.entry_points[0].function);
+            }
+            let _ = info;
+        }
+    }
+}
+
+#[test]
+fn cuda_scalar_promotion_preserves_mutable_index_views_and_runtime_offset_arithmetic() {
+    let (module, info) = validate(
+        "__device__ int advance(int &index) { int previous = index; ++index; return previous; }
+        __global__ void kernel(int *output) {
+            int index = 8; const int &view = index;
+            int &saved = output[view]; ++index;
+            int &from_call = output[advance(index)]; ++index;
+            int &selected = output[output[7] ? index++ : advance(index) + 1];
+            ++index; saved = 3; from_call = 5; selected = 7;
+            for (int iteration = 0; iteration < 2; ++iteration) {
+                int &captured = output[index++]; captured += iteration;
+            }
+            int *cursor = output + 18; cursor[-1] = 23;
+            unsigned seed = 4294967295u; unsigned wrapped = seed + 1u;
+            int *origin = output + wrapped; origin[18] = 9;
+            output[0] = index;
+        }",
+    );
+    local(&module.entry_points[0].function, "index");
+    #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+    super::helpers::wgsl_roundtrip(
+        &module,
+        &info,
+        naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+    );
+    let _ = info;
+    for source in [
+        "__global__ void kernel(int *output) { int values[2]{3, 5}; int &saved = values[7]; output[0] = saved; }",
+        "__global__ void kernel(int *output) { int values[2]{3, 5}; int &saved = values[-1]; output[0] = saved; }",
+        "__global__ void kernel(int *output) { int &saved = output[-1]; output[0] = saved; }",
+        "__global__ void kernel(int *output) { int *cursor = output + 0xffffffffu; cursor += 1u; cursor[0] = 7; }",
+    ] {
+        let (module, info) = validate(source);
+        #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+        super::helpers::wgsl_roundtrip(&module, &info, naga::back::wgsl::WriterFlags::EXPLICIT_TYPES);
+        let _ = (module, info);
     }
 }
 

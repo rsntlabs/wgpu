@@ -105,5 +105,72 @@ pub(super) fn cases() -> Vec<ShaderTest> {
             0, wgpu::BufferBindingType::Storage { read_only: false }, &initial,
         )], 0, [1, 1, 1]));
     }
+    for choose in [0, 1] {
+        let mut initial = [SENTINEL; 64];
+        initial[31] = choose;
+        initial[32..42].copy_from_slice(&[100, 110, 120, 130, 140, 150, 160, 170, 180, 190]);
+        let mut expected = initial;
+        expected[..15].copy_from_slice(&[
+            7,
+            100,
+            35,
+            35,
+            350,
+            37,
+            if choose == 0 { 167 } else { 157 },
+            38,
+            101,
+            170,
+            41,
+            180,
+            191,
+            101,
+            35,
+        ]);
+        expected[17] = 23;
+        expected[18] = 9;
+        expected[32..41].copy_from_slice(&[
+            101,
+            35,
+            120,
+            350,
+            140,
+            if choose == 0 { 150 } else { 157 },
+            380,
+            180,
+            191,
+        ]);
+        tests.push(module_case(
+            &format!("constant indices stay compact while mutable signed indices, aliases, calls and branch {choose} preserve captured addresses"),
+            "__device__ int advance(int &index) { int previous = index; ++index; return previous; }
+            __device__ void assign(int &destination, int &index) { ++index; destination = index; }
+            __global__ void kernel(int *output) {
+                int index = 32; int &saved = output[index]; ++index;
+                int first = saved; output[index] = 210;
+                output[0] = first; output[1] = output[unsigned(32)];
+                int &post = output[index++]; assign(post, index);
+                output[2] = output[33u]; output[3] = index;
+                int &from_call = output[advance(index)]; ++index; from_call = 350;
+                output[4] = output[static_cast<int>(35u)]; output[5] = index;
+                int &selected = output[output[31] ? index++ : advance(index) + 1];
+                selected += 7; output[6] = selected; output[7] = index;
+                const int &index_view = index;
+                int &captured = output[index_view]; ++index; captured = 380;
+                saved += 1; output[8] = saved; output[9] = output[index];
+                for (int iteration = 0; iteration < 2; ++iteration) {
+                    int &loop_saved = output[index++]; loop_saved += 10 + iteration;
+                }
+                output[10] = index; output[11] = output[39]; output[12] = output[40];
+                output[13] = output[int(32u)]; output[14] = output[unsigned(33)];
+                int *cursor = output + 18; cursor[-1] = 23;
+                unsigned seed = 4294967295u; unsigned wrapped = seed + 1u;
+                int *origin = output + wrapped; origin[18] = 9;
+                int *wrapped_cursor = output + 0xffffffffu;
+                wrapped_cursor += 1u; wrapped_cursor[0] = 7;
+            }", [1, 1, 1], &expected,
+        ).module_buffers(vec![ShaderBuffer::new(
+            0, wgpu::BufferBindingType::Storage { read_only: false }, &initial,
+        )], 0, [1, 1, 1]));
+    }
     tests
 }

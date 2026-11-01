@@ -111,9 +111,6 @@ fn multidimensional_arrays() {
     var local_63: u32;
     var local_64: u32;
     var local_65: u32;
-    var local_66: u32;
-    var local_67: u32;
-    var local_68: u32;
 
     {
         original.x = 1i;
@@ -128,20 +125,20 @@ fn multidimensional_arrays() {
         let _e24 = points[0i][0i].y;
         local = u32(0i);
         let _e28 = local;
-        local_42 = _e28;
-        let _e30 = local_42;
+        local_39 = _e28;
+        let _e30 = local_39;
         out[_e30] = _e24;
         let _e38 = points[1i][1i].x;
         local_1 = u32(1i);
         let _e42 = local_1;
-        local_43 = _e42;
-        let _e44 = local_43;
+        local_40 = _e42;
+        let _e44 = local_40;
         out[_e44] = _e38;
         let _e51 = points[1i][1i].y;
         local_2 = u32(2i);
         let _e55 = local_2;
-        local_44 = _e55;
-        let _e57 = local_44;
+        local_41 = _e55;
+        let _e57 = local_41;
         out[_e57] = _e51;
     }
     {
@@ -159,20 +156,20 @@ fn multidimensional_arrays() {
         let _e87 = points_1[0i][0i].z;
         local_3 = u32(3i);
         let _e91 = local_3;
-        local_45 = _e91;
-        let _e93 = local_45;
+        local_42 = _e91;
+        let _e93 = local_42;
         out[_e93] = _e87;
         let _e100 = points_1[1i][1i].x;
         local_4 = u32(4i);
         let _e104 = local_4;
-        local_46 = _e104;
-        let _e106 = local_46;
+        local_43 = _e104;
+        let _e106 = local_43;
         out[_e106] = _e100;
         let _e113 = points_1[1i][1i].z;
         local_5 = u32(5i);
         let _e117 = local_5;
-        local_47 = _e117;
-        let _e119 = local_47;
+        local_44 = _e117;
+        let _e119 = local_44;
         out[_e119] = _e113;
     }
     {
@@ -192,20 +189,20 @@ fn multidimensional_arrays() {
         let _e153 = points_2[0i][0i].w;
         local_6 = u32(6i);
         let _e157 = local_6;
-        local_48 = _e157;
-        let _e159 = local_48;
+        local_45 = _e157;
+        let _e159 = local_45;
         out[_e159] = _e153;
         let _e166 = points_2[1i][1i].x;
         local_7 = u32(7i);
         let _e170 = local_7;
-        local_49 = _e170;
-        let _e172 = local_49;
+        local_46 = _e170;
+        let _e172 = local_46;
         out[_e172] = _e166;
         let _e179 = points_2[1i][1i].w;
         local_8 = u32(8i);
         let _e183 = local_8;
-        local_50 = _e183;
-        let _e185 = local_50;
+        local_47 = _e183;
+        let _e185 = local_47;
         out[_e185] = _e179;
     }
     {
@@ -221,20 +218,20 @@ fn multidimensional_arrays() {
         let _e214 = points_3[0i][0i].y;
         local_9 = u32(9i);
         let _e219 = local_9;
-        local_51 = _e219;
-        let _e221 = local_51;
+        local_48 = _e219;
+        let _e221 = local_48;
         out[_e221] = i32(_e214);
         let _e228 = points_3[1i][1i].x;
         local_10 = u32(10i);
         let _e233 = local_10;
-        local_52 = _e233;
-        let _e235 = local_52;
+        local_49 = _e233;
+        let _e235 = local_49;
         out[_e235] = i32(_e228);
         let _e242 = points_3[1i][1i].y;
         local_11 = u32(11i);
         let _e247 = local_11;
-        local_53 = _e247;
-        let _e249 = local_53;
+        local_50 = _e247;
+        let _e249 = local_50;
         out[_e249] = i32(_e242);
     }
     {
@@ -252,20 +249,20 @@ fn multidimensional_arrays() {
         let _e283 = points_4[0i][0i].z;
         local_12 = u32(12i);
         let _e288 = local_12;
-        local_54 = _e288;
-        let _e290 = local_54;
+        local_51 = _e288;
+        let _e290 = local_51;
         out[_e290] = i32(_e283);
         let _e297 = points_4[1i][1i].x;
         local_13 = u32(13i);
         let _e302 = local_13;
-        local_55 = _e302;
-        let _e304 = local_55;
+        local_52 = _e302;
+        let _e304 = local_52;
         out[_e304] = i32(_e297);
         let _e311 = points_4[1i][1i].z;
         local_14 = u32(14i);
         let _e316 = local_14;
-        local_56 = _e316;
-        let _e318 = local_56;
+        local_53 = _e316;
+        let _e318 = local_53;
         out[_e318] = i32(_e311);
     }
     {
@@ -285,20 +282,20 @@ fn multidimensional_arrays() {
         let _e357 = points_5[0i][0i].w;
         local_15 = u32(15i);
         let _e362 = local_15;
-        local_57 = _e362;
-        let _e364 = local_57;
+        local_54 = _e362;
+        let _e364 = local_54;
         out[_e364] = i32(_e357);
         let _e371 = points_5[1i][1i].x;
         local_16 = u32(16i);
         let _e376 = local_16;
-        local_58 = _e376;
-        let _e378 = local_58;
+        local_55 = _e376;
+        let _e378 = local_55;
         out[_e378] = i32(_e371);
         let _e385 = points_5[1i][1i].w;
         local_17 = u32(17i);
         let _e390 = local_17;
-        local_59 = _e390;
-        let _e392 = local_59;
+        local_56 = _e390;
+        let _e392 = local_56;
         out[_e392] = i32(_e385);
     }
     {
@@ -314,20 +311,20 @@ fn multidimensional_arrays() {
         let _e421 = points_6[0i][0i].y;
         local_18 = u32(18i);
         let _e426 = local_18;
-        local_60 = _e426;
-        let _e428 = local_60;
+        local_57 = _e426;
+        let _e428 = local_57;
         out[_e428] = i32(_e421);
         let _e435 = points_6[1i][1i].x;
         local_19 = u32(19i);
         let _e440 = local_19;
-        local_61 = _e440;
-        let _e442 = local_61;
+        local_58 = _e440;
+        let _e442 = local_58;
         out[_e442] = i32(_e435);
         let _e449 = points_6[1i][1i].y;
         local_20 = u32(20i);
         let _e454 = local_20;
-        local_62 = _e454;
-        let _e456 = local_62;
+        local_59 = _e454;
+        let _e456 = local_59;
         out[_e456] = i32(_e449);
     }
     {
@@ -345,20 +342,20 @@ fn multidimensional_arrays() {
         let _e490 = points_7[0i][0i].z;
         local_21 = u32(21i);
         let _e495 = local_21;
-        local_63 = _e495;
-        let _e497 = local_63;
+        local_60 = _e495;
+        let _e497 = local_60;
         out[_e497] = i32(_e490);
         let _e504 = points_7[1i][1i].x;
         local_22 = u32(22i);
         let _e509 = local_22;
-        local_64 = _e509;
-        let _e511 = local_64;
+        local_61 = _e509;
+        let _e511 = local_61;
         out[_e511] = i32(_e504);
         let _e518 = points_7[1i][1i].z;
         local_23 = u32(23i);
         let _e523 = local_23;
-        local_65 = _e523;
-        let _e525 = local_65;
+        local_62 = _e523;
+        let _e525 = local_62;
         out[_e525] = i32(_e518);
     }
     {
@@ -378,20 +375,20 @@ fn multidimensional_arrays() {
         let _e564 = points_8[0i][0i].w;
         local_24 = u32(24i);
         let _e569 = local_24;
-        local_66 = _e569;
-        let _e571 = local_66;
+        local_63 = _e569;
+        let _e571 = local_63;
         out[_e571] = i32(_e564);
         let _e578 = points_8[1i][1i].x;
         local_25 = u32(25i);
         let _e583 = local_25;
-        local_67 = _e583;
-        let _e585 = local_67;
+        local_64 = _e583;
+        let _e585 = local_64;
         out[_e585] = i32(_e578);
         let _e592 = points_8[1i][1i].w;
         local_26 = u32(26i);
         let _e597 = local_26;
-        local_68 = _e597;
-        let _e599 = local_68;
+        local_65 = _e597;
+        let _e599 = local_65;
         out[_e599] = i32(_e592);
     }
     changed[0][0] = 1i;
@@ -550,15 +547,9 @@ fn multidimensional_arrays() {
     let _e780 = nested_empty[1i][2i];
     let _e786 = partial[1i][2i];
     let _e794 = volume[1i][1i][2i];
-    local_39 = u32(27i);
-    let _e799 = local_39;
-    out[_e799] = (((_e779 + _e780) + _e786) + _e794);
-    let _e806 = shared_points[1i][0i].x;
-    local_40 = u32(28i);
-    let _e811 = local_40;
-    out[_e811] = i32(_e806);
-    let _e818 = shared_points[1i][0i].y;
-    local_41 = u32(29i);
-    let _e823 = local_41;
-    out[_e823] = i32(_e818);
+    out[u32(27i)] = (((_e779 + _e780) + _e786) + _e794);
+    let _e804 = shared_points[1i][0i].x;
+    out[u32(28i)] = i32(_e804);
+    let _e814 = shared_points[1i][0i].y;
+    out[u32(29i)] = i32(_e814);
 }
