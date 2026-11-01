@@ -147,13 +147,19 @@ fn cuda_uniform_loop_barriers_reject_divergent_conditions_exits_and_backedge_tai
 #[test]
 fn cuda_uniform_loop_barriers_keep_unproved_bounds_and_existing_placement_restrictions() {
     for body in [
+        "for (unsigned index = 0u; index < 3u; ++index) { if (true) { __syncthreads(); } }",
+        "for (unsigned index = 0u; index < 3u; ++index) { switch (0u) { case 0u: __syncthreads(); break; default: break; } }",
+    ] {
+        roundtrip(&kernel(body));
+    }
+    for body in [
         "unsigned bound = output[0]; for (unsigned index = 0u; index < bound; ++index) { __syncthreads(); }",
         "__shared__ unsigned bound; if (threadIdx.x == 0u) bound = 3u; __syncthreads(); for (unsigned index = 0u; index < bound; ++index) { __syncthreads(); }",
         "unsigned bound = 3u; unsigned &alias = bound; alias = threadIdx.x; for (unsigned index = 0u; index < bound; ++index) { __syncthreads(); }",
         "unsigned bound = 0u; switch (0u) { case 0u: if (threadIdx.x) break; bound = 1u; break; default: break; } for (unsigned index = bound; index > 0u; --index) { __syncthreads(); }",
         "if (threadIdx.x) return; for (unsigned index = 0u; index < 3u; ++index) { __syncthreads(); }",
-        "for (unsigned index = 0u; index < 3u; ++index) { if (true) { __syncthreads(); } }",
-        "for (unsigned index = 0u; index < 3u; ++index) { switch (0u) { case 0u: __syncthreads(); break; default: break; } }",
+        "for (unsigned index = 0u; index < 3u; ++index) { if (threadIdx.x) { __syncthreads(); } }",
+        "for (unsigned index = 0u; index < 3u; ++index) { switch (threadIdx.x) { case 0u: __syncthreads(); break; default: break; } }",
     ] { rejected(&kernel(body)); }
     for source in [
         "__global__ void kernel(const unsigned *input) { unsigned bound = input[0]; for (unsigned index = 0u; index < bound; ++index) { __syncthreads(); } }",

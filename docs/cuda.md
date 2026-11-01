@@ -1150,16 +1150,18 @@ synchronization when any invocation writes them.
 global buffer accesses visible to other invocations in that block. It lowers to
 a control barrier covering both workgroup and storage memory, following
 [CUDA's synchronization semantics](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-c-programming-guide/index.html#synchronization-functions).
-This zero-argument statement supports straight-line kernel flow and `for`,
-`while`, and `do` loops proven uniform for the block. A bounded CUDA-specific
-proof tracks scalar counters, updates, uniform kernel parameters, and workgroup
-builtins. Divergent branches and gathers can reconverge before a barrier when
-they do not return or make later loop control nonuniform. Storage and shared
-memory reads and opaque helper results remain unproved loop controls.
+This zero-argument statement supports straight-line kernel flow, `if` branches,
+switch cases, and `for`, `while`, and `do` loops proven uniform for the block.
+A bounded CUDA-specific proof tracks scalar counters, updates, uniform kernel
+parameters, and workgroup builtins. A switch also needs uniform case exits:
+a divergent `break` can skip a barrier even when its selector is uniform.
+Divergent branches and gathers can reconverge before a barrier when they do not
+return or make later control nonuniform. Storage and shared memory reads and
+opaque helper results remain unproved controls.
 
-Barriers inside `if` branches or switch cases, in device helpers, or after a
-possible earlier `return` remain unsupported. Loops containing barriers are
-rejected when their control is unproved or exits diverge. This conservative proof
+Barriers in device helpers or after a possible earlier `return` remain
+unsupported. Branches and loops containing barriers are rejected when their
+control is unproved or exits diverge. This conservative proof
 can reject valid CUDA programs and does not implement complete WGSL uniformity
 analysis. Returns after the last barrier in straight-line kernel flow are
 allowed. Synchronization does not extend across workgroups.

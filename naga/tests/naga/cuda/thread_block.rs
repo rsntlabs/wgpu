@@ -199,13 +199,14 @@ fn cuda_thread_block_free_and_member_sync_keep_memory_scope_and_barrier_safety()
         for statement in [
             format!("for (int index = 0; index < 2; ++index) {{ {sync} }}"),
             format!("while (false) {{ {sync} }}"),
+            format!("if (true) {{ {sync} }}"),
+            format!("switch (0u) {{ case 0u: {sync} break; default: break; }}"),
         ] {
             roundtrip(&format!("namespace cg = cooperative_groups; using Block = cg::thread_block;
                 __global__ void kernel() {{ auto group = cg::this_thread_block(); unsigned counter = 0u; {statement} }}"), [4, 1, 1]);
         }
         for statement in [
             format!("if (threadIdx.x == 0u) {sync}"),
-            format!("if (true) {{ {sync} }}"),
             format!("switch (threadIdx.x) {{ case 0u: {sync} break; default: break; }}"),
             format!("if (threadIdx.x == 0u) return; {sync}"),
         ] {
@@ -236,8 +237,12 @@ fn cuda_thread_block_free_and_member_sync_keep_memory_scope_and_barrier_safety()
         __global__ void kernel() { return cg::thread_block::sync(); }",
         [4, 1, 1],
     );
+    roundtrip(
+        "namespace cg = cooperative_groups;
+        __global__ void kernel() { auto group = cg::this_thread_block(); true ? group.sync() : group.sync(); }",
+        [4, 1, 1],
+    );
     for expression in [
-        "true ? group.sync() : group.sync()",
         "threadIdx.x ? cg::sync(group) : cg::thread_block::sync()",
         "threadIdx.x ? cg::this_thread_block().sync() : group.sync()",
     ] {
