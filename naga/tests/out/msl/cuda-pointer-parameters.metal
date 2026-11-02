@@ -528,7 +528,7 @@ kernel void pointer_parameters(
     uint local_451 = {};
     uint local_452 = {};
     out = type_12 {};
-    out.inner[0] = 0u;
+    out.inner[0] = 2u;
     out.inner[1] = 0u;
     values.inner[0] = 1;
     values.inner[1] = 2;
@@ -548,13 +548,13 @@ kernel void pointer_parameters(
     local_92 = int {};
     local_93 = int {};
     first = type_12 {};
-    first.inner[0] = 1u;
+    first.inner[0] = 3u;
     first.inner[1] = 0u;
     uint _e49 = local;
     uint _e51 = first.inner[1];
     first.inner[1] = _e51 + _e49;
     second = type_12 {};
-    second.inner[0] = 1u;
+    second.inner[0] = 3u;
     second.inner[1] = 0u;
     uint _e60 = local_1;
     uint _e62 = second.inner[1];
@@ -725,7 +725,7 @@ kernel void pointer_parameters(
     local_98 = int {};
     local_99 = int {};
     value = type_12 {};
-    value.inner[0] = 1u;
+    value.inner[0] = 3u;
     value.inner[1] = 0u;
     uint _e355 = local_12;
     uint _e357 = value.inner[1];
@@ -790,7 +790,7 @@ kernel void pointer_parameters(
     local_104 = int {};
     local_105 = int {};
     value_1 = type_12 {};
-    value_1.inner[0] = 1u;
+    value_1.inner[0] = 3u;
     value_1.inner[1] = 0u;
     uint _e470 = local_16;
     uint _e472 = value_1.inner[1];
@@ -860,7 +860,7 @@ kernel void pointer_parameters(
     local_116 = int {};
     local_117 = int {};
     value_2 = type_12 {};
-    value_2.inner[0] = 1u;
+    value_2.inner[0] = 3u;
     value_2.inner[1] = 0u;
     uint _e595 = local_18;
     uint _e597 = value_2.inner[1];
@@ -890,7 +890,7 @@ kernel void pointer_parameters(
     uint _e642 = local_245.inner[2];
     local_248 = static_cast<uint>(_e642);
     value_3 = type_12 {};
-    value_3.inner[0] = 1u;
+    value_3.inner[0] = 3u;
     uint _e649 = local_247;
     value_3.inner[1] = _e649;
     type_12 _e652 = value_3;
@@ -981,7 +981,7 @@ kernel void pointer_parameters(
     local_122 = int {};
     local_123 = int {};
     value_4 = type_12 {};
-    value_4.inner[0] = 1u;
+    value_4.inner[0] = 3u;
     uint _e801 = local_23;
     value_4.inner[1] = _e801;
     type_12 _e804 = value_4;
@@ -1060,7 +1060,7 @@ kernel void pointer_parameters(
     out_1[_e928] = static_cast<uint>(_e902);
     local_125 = uint {};
     value_5 = type_12 {};
-    value_5.inner[0] = 2u;
+    value_5.inner[0] = 4u;
     value_5.inner[1] = 0u;
     type_12 _e939 = value_5;
     local_124 = _e939;
@@ -1099,7 +1099,7 @@ kernel void pointer_parameters(
     local_127 = uint {};
     local_128 = int {};
     value_6 = type_12 {};
-    value_6.inner[0] = 3u;
+    value_6.inner[0] = 5u;
     value_6.inner[1] = 0u;
     amount = 2;
     int _e1009 = amount;
@@ -1155,7 +1155,7 @@ kernel void pointer_parameters(
     local_141 = int {};
     local_142 = int {};
     value_7 = type_12 {};
-    value_7.inner[0] = 4u;
+    value_7.inner[0] = 6u;
     value_7.inner[1] = 0u;
     type_12 _e1111 = value_7;
     local_131 = _e1111;
@@ -1353,10 +1353,10 @@ kernel void pointer_parameters(
     local_153 = int {};
     local_154 = int {};
     value_8 = type_12 {};
-    value_8.inner[0] = 5u;
+    value_8.inner[0] = 7u;
     value_8.inner[1] = 0u;
     view = type_12 {};
-    view.inner[0] = 5u;
+    view.inner[0] = 7u;
     view.inner[1] = 0u;
     type_12 _e1485 = view;
     local_145 = _e1485;
@@ -1507,7 +1507,7 @@ kernel void pointer_parameters(
     uint _e1746 = local_52;
     local_156 = uint {};
     value_9 = type_12 {};
-    value_9.inner[0] = 6u;
+    value_9.inner[0] = 8u;
     value_9.inner[1] = 0u;
     value_9.inner[2] = _e1746;
     uint _e1756 = local_53;
@@ -1553,7 +1553,7 @@ kernel void pointer_parameters(
     local_158 = uint {};
     local_159 = int {};
     value_10 = type_12 {};
-    value_10.inner[0] = 7u;
+    value_10.inner[0] = 9u;
     value_10.inner[1] = 0u;
     value_10.inner[2] = _e1828;
     amount_1 = 3;
@@ -1606,13 +1606,13 @@ kernel void pointer_parameters(
     local_167 = float {};
     local_168 = float {};
     value_11 = type_12 {};
-    value_11.inner[0] = 8u;
+    value_11.inner[0] = 10u;
     value_11.inner[1] = 0u;
     uint _e1939 = local_59;
     uint _e1941 = value_11.inner[1];
     value_11.inner[1] = _e1941 + _e1939;
     view_1 = type_12 {};
-    view_1.inner[0] = 8u;
+    view_1.inner[0] = 10u;
     view_1.inner[1] = 0u;
     type_12 _e1951 = view_1;
     local_162 = _e1951;
@@ -1732,7 +1732,7 @@ kernel void pointer_parameters(
     local_177 = bool {};
     local_178 = bool {};
     value_12 = type_12 {};
-    value_12.inner[0] = 9u;
+    value_12.inner[0] = 11u;
     value_12.inner[1] = 0u;
     type_12 _e2160 = value_12;
     local_171 = _e2160;
@@ -1839,7 +1839,7 @@ kernel void pointer_parameters(
     fixed.inner[0] = 3;
     fixed.inner[1] = 4;
     value_13 = type_12 {};
-    value_13.inner[0] = 1u;
+    value_13.inner[0] = 3u;
     value_13.inner[1] = 0u;
     local_72 = 10;
     int _e2344 = local_72;
@@ -1860,7 +1860,7 @@ kernel void pointer_parameters(
     uint _e2370 = local_435;
     out_1[_e2370] = static_cast<uint>(_e2344);
     value_14 = type_12 {};
-    value_14.inner[0] = 10u;
+    value_14.inner[0] = 12u;
     value_14.inner[1] = 0u;
     local_75 = 20;
     int _e2380 = local_75;
@@ -1886,7 +1886,7 @@ kernel void pointer_parameters(
     local_183 = int {};
     local_184 = int {};
     value_15 = type_12 {};
-    value_15.inner[0] = 1u;
+    value_15.inner[0] = 3u;
     value_15.inner[1] = 0u;
     uint _e2425 = local_78;
     uint _e2427 = value_15.inner[1];

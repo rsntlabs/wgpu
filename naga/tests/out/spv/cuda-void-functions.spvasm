@@ -225,13 +225,13 @@ OpStore %163 %158
 OpStore %102 %85
 OpBranch %164
 %164 = OpLabel
-%166 = OpLoad  %3  %94
-%167 = OpIAdd  %3  %166 %20
-OpStore %94 %167
-%168 = OpINotEqual  %4  %85 %85
+%166 = OpINotEqual  %4  %85 %85
+%167 = OpLoad  %3  %94
+%168 = OpIAdd  %3  %167 %20
+OpStore %94 %168
 %169 = OpBitcast  %5  %85
 %170 = OpConvertUToF  %6  %64
-%171 = OpFunctionCall  %2  %28 %168 %166 %169 %170
+%171 = OpFunctionCall  %2  %28 %166 %167 %169 %170
 OpBranch %172
 %172 = OpLabel
 OpLoopMerge %173 %175 None

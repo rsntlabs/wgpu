@@ -372,7 +372,7 @@ void arrow_members()
     uint local_321 = (uint)0;
 
     out_ = ZeroValuearray3_uint_();
-    out_[0] = 0u;
+    out_[0] = 2u;
     out_[1] = 0u;
     records[0].nested.value = int(2);
     records[0].point_.x = int(3);
@@ -519,13 +519,13 @@ void arrow_members()
     local_95 = ZeroValueint();
     local_96 = ZeroValueint();
     record = ZeroValuearray3_uint_();
-    record[0] = 1u;
+    record[0] = 3u;
     record[1] = 0u;
     uint _e326 = local_12;
     uint _e328 = record[1];
     record[1] = (_e328 + _e326);
     view = ZeroValuearray3_uint_();
-    view[0] = 1u;
+    view[0] = 3u;
     view[1] = 0u;
     uint _e338[3] = view;
     local_84 = _e338;
@@ -677,7 +677,7 @@ void arrow_members()
     local_99 = ZeroValueint();
     local_100 = ZeroValueint();
     value = ZeroValuearray3_uint_();
-    value[0] = 1u;
+    value[0] = 3u;
     value[1] = 0u;
     uint _e615 = local_19;
     uint _e617 = value[1];
@@ -754,15 +754,15 @@ void arrow_members()
     local_109 = ZeroValueint();
     local_110 = ZeroValueint();
     whole = ZeroValuearray3_uint_();
-    whole[0] = 1u;
+    whole[0] = 3u;
     whole[1] = 0u;
     field = ZeroValuearray3_uint_();
-    field[0] = 2u;
+    field[0] = 4u;
     field[1] = 0u;
     uint _e768 = local_101;
     field[2] = _e768;
     view_1 = ZeroValuearray3_uint_();
-    view_1[0] = 1u;
+    view_1[0] = 3u;
     view_1[1] = 0u;
     uint _e777[3] = whole;
     local_102 = _e777;
@@ -873,7 +873,7 @@ void arrow_members()
     local_113 = ZeroValueuint();
     local_114 = ZeroValueint();
     value_1 = ZeroValuearray3_uint_();
-    value_1[0] = 1u;
+    value_1[0] = 3u;
     value_1[1] = 0u;
     uint _e981 = local_30;
     uint _e983 = value_1[1];
@@ -944,7 +944,7 @@ void arrow_members()
     local_120 = ZeroValueint();
     local_121 = ZeroValueint();
     value_2 = ZeroValuearray3_uint_();
-    value_2[0] = 3u;
+    value_2[0] = 5u;
     value_2[1] = 0u;
     value_2[2] = _e1097;
     uint _e1114[3] = value_2;

@@ -23,6 +23,32 @@ pub(super) struct BoundTarget {
 pub(super) struct BoundReference {
     pub(super) selector: Option<Handle<Expression>>,
     pub(super) targets: Vec<BoundTarget>,
+    pub(super) is_nullable: bool,
+}
+
+pub(super) const INVALID_BOUND_ADDRESS: u32 = u32::MAX;
+
+fn bound_reference_error(span: Span) -> ParseError {
+    ParseError {
+        message: String::from("invalid CUDA bound reference"),
+        span,
+    }
+}
+
+pub(super) fn bound_reference_is_valid(reference: &BoundReference) -> bool {
+    if (reference.selector.is_none() && (reference.is_nullable || reference.targets.len() != 1))
+        || (!reference.is_nullable && reference.targets.is_empty())
+    {
+        return false;
+    }
+    if let &[ref target] = reference.targets.as_slice() {
+        return target.selector != INVALID_BOUND_ADDRESS;
+    }
+    let mut selectors = crate::FastHashSet::default();
+    reference
+        .targets
+        .iter()
+        .all(|target| target.selector != INVALID_BOUND_ADDRESS && selectors.insert(target.selector))
 }
 
 impl<'a> Parser<'a> {
@@ -212,11 +238,44 @@ impl<'a> Parser<'a> {
         targets: Vec<BoundTarget>,
         span: Span,
     ) -> Result<Handle<BoundReference>, ParseError> {
+        self.retain_bound_reference_with_nullability(selector, targets, false, span)
+    }
+
+    pub(super) fn retain_bound_reference_with_nullability(
+        &mut self,
+        selector: Option<Handle<Expression>>,
+        targets: Vec<BoundTarget>,
+        is_nullable: bool,
+        span: Span,
+    ) -> Result<Handle<BoundReference>, ParseError> {
         self.charge_reference_binding(targets.len() + 1, span)?;
-        Ok(self
-            .function
-            .bound_references
-            .append(BoundReference { selector, targets }, span))
+        let reference = BoundReference {
+            selector,
+            targets,
+            is_nullable,
+        };
+        if !bound_reference_is_valid(&reference) {
+            return Err(bound_reference_error(span));
+        }
+        Ok(self.function.bound_references.append(reference, span))
+    }
+
+    pub(super) fn initialize_empty_bound_selector(
+        &mut self,
+        selector: Handle<Expression>,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        let value = self.append(
+            Expression::Literal(Literal::U32(INVALID_BOUND_ADDRESS)),
+            span,
+        )?;
+        self.generated_pointer_statement(
+            Statement::Store {
+                pointer: selector,
+                value,
+            },
+            span,
+        )
     }
 
     pub(super) fn bound_reference_view(
@@ -351,22 +410,36 @@ impl<'a> Parser<'a> {
         action: &mut impl FnMut(&mut Self, Handle<BoundAddress>) -> Result<(), ParseError>,
     ) -> Result<(), ParseError> {
         let view = self.bound_reference_view(handle, span)?;
+        if !bound_reference_is_valid(&view) {
+            return Err(bound_reference_error(span));
+        }
         let Some(pointer) = view.selector else {
             return action(self, view.targets[0].address);
         };
+        if view.targets.is_empty() {
+            return Ok(());
+        }
         let selector = self.append(Expression::Load { pointer }, span)?;
         let last = view.targets.len() - 1;
-        let mut cases = Vec::with_capacity(view.targets.len());
+        self.charge_reference_binding(usize::from(view.is_nullable), span)?;
+        let mut cases = Vec::with_capacity(view.targets.len() + usize::from(view.is_nullable));
         for (index, target) in view.targets.into_iter().enumerate() {
             self.charge_reference_binding(1, span)?;
             let ((), body) = self.capture_block(|parser| action(parser, target.address))?;
             cases.push(crate::SwitchCase {
-                value: if index == last {
+                value: if index == last && !view.is_nullable {
                     crate::SwitchValue::Default
                 } else {
                     crate::SwitchValue::U32(target.selector)
                 },
                 body,
+                fall_through: false,
+            });
+        }
+        if view.is_nullable {
+            cases.push(crate::SwitchCase {
+                value: crate::SwitchValue::Default,
+                body: crate::Block::new(),
                 fall_through: false,
             });
         }
@@ -416,7 +489,7 @@ impl<'a> Parser<'a> {
                 address,
             });
         }
-        self.retain_bound_reference(view.selector, targets, span)
+        self.retain_bound_reference_with_nullability(view.selector, targets, view.is_nullable, span)
     }
 
     pub(super) fn project_bound_index(
@@ -457,9 +530,11 @@ impl<'a> Parser<'a> {
                 let conditional = self.function.conditional_references[handle].take().unwrap();
                 let selector = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
                 let mut addresses = Vec::new();
+                let mut is_nullable = false;
                 let mut branch = |parser: &mut Self, branch: ReferenceBranch| {
                     parser.append_block(branch.body);
                     let handle = parser.freeze_reference(branch.reference)?;
+                    is_nullable |= parser.function.bound_references[handle].is_nullable;
                     parser.with_bound_target(handle, span, &mut |parser, address| {
                         addresses.push(address);
                         let value = parser.append(Expression::Literal(Literal::U32(address.index() as u32)), span)?;
@@ -469,6 +544,9 @@ impl<'a> Parser<'a> {
                 };
                 let ((), accept) = self.capture_block(|parser| branch(parser, conditional.accept))?;
                 let ((), reject) = self.capture_block(|parser| branch(parser, conditional.reject))?;
+                if is_nullable {
+                    self.initialize_empty_bound_selector(selector, span)?;
+                }
                 self.push_statement(Statement::If { condition: conditional.condition, accept, reject }, span);
                 addresses.sort_unstable_by_key(|address| address.index());
                 addresses.dedup();
@@ -476,7 +554,7 @@ impl<'a> Parser<'a> {
                     selector: address.index() as u32,
                     address,
                 }).collect();
-                self.retain_bound_reference(Some(selector), targets, span)
+                self.retain_bound_reference_with_nullability(Some(selector), targets, is_nullable, span)
             }
         }
     }

@@ -360,6 +360,12 @@ impl Parser<'_> {
             return self.read_reference(reference);
         }
         let pointer = self.temporary_pointer(&ty, span)?;
+        if matches!(reference.reference, Reference::Bound(binding) if self.function.bound_references[binding].is_nullable)
+        {
+            let ty = self.type_handle(&ty, span);
+            let value = self.append(Expression::ZeroValue(ty), span)?;
+            self.generated_pointer_statement(Statement::Store { pointer, value }, span)?;
+        }
         self.consume_reference(reference, &mut |parser, source| {
             let span = source.span;
             let value = parser.read_reference(source)?;

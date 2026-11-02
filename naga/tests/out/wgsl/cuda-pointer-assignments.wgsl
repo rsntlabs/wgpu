@@ -204,7 +204,7 @@ fn pointer_assignments() {
     var local_190: u32;
 
     out = array<u32, 2>();
-    out[0] = 0u;
+    out[0] = 2u;
     out[1] = 0u;
     first[0] = 2i;
     first[1] = 3i;
@@ -230,7 +230,7 @@ fn pointer_assignments() {
     let _e48 = out_1[_e45];
     let choose = (_e48 != 0i);
     pointer = array<u32, 2>();
-    pointer[0] = 1u;
+    pointer[0] = 3u;
     pointer[1] = 0u;
     let _e58 = pointer;
     local_2 = _e58;
@@ -240,7 +240,7 @@ fn pointer_assignments() {
     local_3 = _e62;
     local_4 = u32(1i);
     local_70 = array<u32, 2>();
-    local_70[0] = 2u;
+    local_70[0] = 4u;
     local_70[1] = 0u;
     let _e73 = local_4;
     let _e75 = local_70[1];
@@ -257,7 +257,7 @@ fn pointer_assignments() {
     local_73 = u32(_e88);
     let _e91 = local_72;
     switch _e91 {
-        case 1u: {
+        case 3u: {
             let _e92 = local_73;
             let _e94 = first[_e92];
             local_74 = _e94;
@@ -293,7 +293,7 @@ fn pointer_assignments() {
     local_80 = u32(_e134);
     let _e137 = local_79;
     switch _e137 {
-        case 1u: {
+        case 3u: {
             let _e138 = local_80;
             let _e140 = first[_e138];
             local_81 = _e140;
@@ -327,7 +327,7 @@ fn pointer_assignments() {
     local_87 = u32(_e177);
     let _e180 = local_86;
     switch _e180 {
-        case 1u: {
+        case 3u: {
             let _e181 = local_87;
             let _e183 = first[_e181];
             local_88 = _e183;
@@ -356,7 +356,7 @@ fn pointer_assignments() {
     if choose {
         local_13 = u32(2i);
         local_92 = array<u32, 2>();
-        local_92[0] = 1u;
+        local_92[0] = 3u;
         local_92[1] = 0u;
         let _e222 = local_13;
         let _e224 = local_92[1];
@@ -366,7 +366,7 @@ fn pointer_assignments() {
     } else {
         local_14 = u32(2i);
         local_93 = array<u32, 2>();
-        local_93[0] = 2u;
+        local_93[0] = 4u;
         local_93[1] = 0u;
         let _e237 = local_14;
         let _e239 = local_93[1];
@@ -384,7 +384,7 @@ fn pointer_assignments() {
     local_96 = u32(_e252);
     let _e255 = local_95;
     switch _e255 {
-        case 1u: {
+        case 3u: {
             let _e256 = local_96;
             let _e258 = first[_e256];
             local_97 = _e258;
@@ -416,7 +416,7 @@ fn pointer_assignments() {
     selected = _e290;
     local_19 = u32(1i);
     local_101 = array<u32, 2>();
-    local_101[0] = 1u;
+    local_101[0] = 3u;
     local_101[1] = 0u;
     let _e301 = local_19;
     let _e303 = local_101[1];
@@ -433,7 +433,7 @@ fn pointer_assignments() {
     local_104 = u32(_e317);
     let _e320 = local_103;
     switch _e320 {
-        case 1u: {
+        case 3u: {
             let _e321 = local_104;
             let _e323 = first[_e321];
             local_105 = _e323;
@@ -448,7 +448,7 @@ fn pointer_assignments() {
     let _e332 = (_e330 + 20i);
     let _e333 = local_103;
     switch _e333 {
-        case 1u: {
+        case 3u: {
             let _e334 = local_104;
             first[_e334] = _e332;
         }
@@ -467,7 +467,7 @@ fn pointer_assignments() {
     local_108 = u32(_e347);
     let _e350 = local_107;
     switch _e350 {
-        case 1u: {
+        case 3u: {
             let _e351 = local_108;
             let _e353 = first[_e351];
             local_109 = _e353;
@@ -503,7 +503,7 @@ fn pointer_assignments() {
     local_115 = u32(_e392);
     let _e395 = local_114;
     switch _e395 {
-        case 1u: {
+        case 3u: {
             let _e396 = local_115;
             let _e398 = first[_e396];
             local_116 = _e398;
@@ -539,7 +539,7 @@ fn pointer_assignments() {
     local_122 = u32(_e437);
     let _e440 = local_121;
     switch _e440 {
-        case 1u: {
+        case 3u: {
             let _e441 = local_122;
             let _e443 = first[_e441];
             local_123 = _e443;
@@ -596,7 +596,7 @@ fn pointer_assignments() {
     let _e521 = local_132;
     out_1[_e521] = _e500;
     local_133 = array<u32, 2>();
-    local_133[0] = 1u;
+    local_133[0] = 3u;
     local_133[1] = 0u;
     let _e529 = local_133;
     pointer = _e529;
@@ -618,7 +618,7 @@ fn pointer_assignments() {
             local_136 = u32(_e544);
             let _e547 = local_135;
             switch _e547 {
-                case 1u: {
+                case 3u: {
                     let _e548 = local_136;
                     let _e550 = first[_e548];
                     local_137 = _e550;
@@ -651,7 +651,7 @@ fn pointer_assignments() {
             if (_e584 == 0i) {
                 local_37 = u32(1i);
                 local_141 = array<u32, 2>();
-                local_141[0] = 2u;
+                local_141[0] = 4u;
                 local_141[1] = 0u;
                 let _e596 = local_37;
                 let _e598 = local_141[1];
@@ -661,7 +661,7 @@ fn pointer_assignments() {
             } else {
                 local_38 = u32(3i);
                 local_142 = array<u32, 2>();
-                local_142[0] = 1u;
+                local_142[0] = 3u;
                 local_142[1] = 0u;
                 let _e611 = local_38;
                 let _e613 = local_142[1];
@@ -685,7 +685,7 @@ fn pointer_assignments() {
     local_145 = u32(_e629);
     let _e632 = local_144;
     switch _e632 {
-        case 1u: {
+        case 3u: {
             let _e633 = local_145;
             let _e635 = first[_e633];
             local_146 = _e635;
@@ -737,7 +737,7 @@ fn pointer_assignments() {
     local_154 = u32(_e692);
     let _e695 = local_153;
     switch _e695 {
-        case 1u: {
+        case 3u: {
             let _e696 = local_154;
             let _e698 = first[_e696];
             local_155 = _e698;
@@ -785,7 +785,7 @@ fn pointer_assignments() {
     local_163 = u32(_e747);
     let _e750 = local_162;
     switch _e750 {
-        case 1u: {
+        case 3u: {
             let _e751 = local_163;
             let _e753 = first[_e751];
             local_164 = _e753;
@@ -813,7 +813,7 @@ fn pointer_assignments() {
     out_1[_e781] = _e760;
     local_53 = u32(4i);
     end = array<u32, 2>();
-    end[0] = 1u;
+    end[0] = 3u;
     end[1] = 0u;
     let _e792 = local_53;
     let _e794 = end[1];
@@ -838,7 +838,7 @@ fn pointer_assignments() {
     local_171 = u32(_e820);
     let _e823 = local_170;
     switch _e823 {
-        case 1u: {
+        case 3u: {
             let _e824 = local_171;
             let _e826 = first[_e824];
             local_172 = _e826;
@@ -865,7 +865,7 @@ fn pointer_assignments() {
     let _e854 = local_175;
     out_1[_e854] = _e833;
     local_176 = array<u32, 2>();
-    local_176[0] = 2u;
+    local_176[0] = 4u;
     local_176[1] = 0u;
     let _e862 = local_176;
     pointer = _e862;
@@ -883,7 +883,7 @@ fn pointer_assignments() {
     local_179 = u32(_e879);
     let _e882 = local_178;
     switch _e882 {
-        case 1u: {
+        case 3u: {
             let _e883 = local_179;
             let _e885 = first[_e883];
             local_180 = _e885;
@@ -919,7 +919,7 @@ fn pointer_assignments() {
     local_186 = u32(_e924);
     let _e927 = local_185;
     switch _e927 {
-        case 1u: {
+        case 3u: {
             let _e928 = local_186;
             let _e930 = first[_e928];
             local_187 = _e930;

@@ -63,7 +63,7 @@ kernel void exchange(
     uint local_12 = {};
     uint local_13 = {};
     output = type_4 {};
-    output.inner[0] = 0u;
+    output.inner[0] = 2u;
     output.inner[1] = 0u;
     uint lane = threadIdx.x;
     uint base = blockIdx.x * 8u;
@@ -94,7 +94,7 @@ kernel void exchange(
     metal::threadgroup_barrier(metal::mem_flags::mem_device);
     metal::threadgroup_barrier(metal::mem_flags::mem_threadgroup);
     pointer = type_4 {};
-    pointer.inner[0] = 1u;
+    pointer.inner[0] = 3u;
     pointer.inner[1] = 0u;
     type_4 _e65 = pointer;
     local_2 = _e65;

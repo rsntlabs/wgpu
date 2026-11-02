@@ -49,7 +49,7 @@ fn kernel() {
     var local_37: u32;
 
     out = array<u32, 2>();
-    out[0] = 0u;
+    out[0] = 2u;
     out[1] = 0u;
     first[0] = 2i;
     first[1] = 3i;
@@ -59,7 +59,7 @@ fn kernel() {
     second[2] = 13i;
     local = u32(1i);
     local_13 = array<u32, 2>();
-    local_13[0] = 1u;
+    local_13[0] = 3u;
     local_13[1] = 0u;
     let _e29 = local;
     let _e31 = local_13[1];
@@ -74,7 +74,7 @@ fn kernel() {
     saved = _e40;
     local_2 = u32(2i);
     local_15 = array<u32, 2>();
-    local_15[0] = 2u;
+    local_15[0] = 4u;
     local_15[1] = 0u;
     let _e51 = local_2;
     let _e53 = local_15[1];
@@ -97,7 +97,7 @@ fn kernel() {
     local_19 = u32(_e72);
     let _e75 = local_18;
     switch _e75 {
-        case 1u: {
+        case 3u: {
             let _e76 = local_19;
             let _e78 = first[_e76];
             local_20 = _e78;
@@ -133,7 +133,7 @@ fn kernel() {
     local_26 = u32(_e119);
     let _e122 = local_25;
     switch _e122 {
-        case 1u: {
+        case 3u: {
             let _e123 = local_26;
             let _e125 = first[_e123];
             local_27 = _e125;
@@ -169,7 +169,7 @@ fn kernel() {
     local_33 = u32(_e164);
     let _e167 = local_32;
     switch _e167 {
-        case 1u: {
+        case 3u: {
             let _e168 = local_33;
             let _e170 = first[_e168];
             local_34 = _e170;

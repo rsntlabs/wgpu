@@ -44,7 +44,7 @@ void exchange(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_GroupID, u
     uint local_13 = (uint)0;
 
     output = ZeroValuearray2_uint_();
-    output[0] = 0u;
+    output[0] = 2u;
     output[1] = 0u;
     uint lane = threadIdx.x;
     uint base = (blockIdx.x * 8u);
@@ -75,7 +75,7 @@ void exchange(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_GroupID, u
     DeviceMemoryBarrierWithGroupSync();
     GroupMemoryBarrierWithGroupSync();
     pointer = ZeroValuearray2_uint_();
-    pointer[0] = 1u;
+    pointer[0] = 3u;
     pointer[1] = 0u;
     uint _e65[2] = pointer;
     local_2 = _e65;

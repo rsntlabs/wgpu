@@ -387,7 +387,6 @@ fn cuda_lists_reject_empty_inferred_arrays_and_unsupported_initialization_contex
         "int values[]{};",
         "int values[] = {};",
         "int values[2][2]{{1, 2, 3}};",
-        "int *pointer{0};",
         "__shared__ int values[2]{1};",
         "__shared__ int3 point{1};",
         "int3 point{.x = 1};",

@@ -271,7 +271,7 @@ fn pointer_updates() {
     var local_250: u32;
 
     out = array<u32, 2>();
-    out[0] = 0u;
+    out[0] = 2u;
     out[1] = 0u;
     values[0] = 2i;
     values[1] = 3i;
@@ -282,7 +282,7 @@ fn pointer_updates() {
     values[6] = 17i;
     values[7] = 19i;
     pointer = array<u32, 2>();
-    pointer[0] = 1u;
+    pointer[0] = 3u;
     pointer[1] = 0u;
     let _e30 = pointer;
     local = _e30;
@@ -731,7 +731,7 @@ fn pointer_updates() {
     out_1[_e724] = _e703;
     local_51 = u32(1i);
     fixed = array<u32, 2>();
-    fixed[0] = 1u;
+    fixed[0] = 3u;
     fixed[1] = 0u;
     let _e735 = local_51;
     let _e737 = fixed[1];
@@ -853,7 +853,7 @@ fn pointer_updates() {
             let _e902 = item;
             local_62 = u32(_e902);
             local_63 = array<u32, 2>();
-            local_63[0] = 1u;
+            local_63[0] = 3u;
             local_63[1] = 0u;
             let _e911 = local_62;
             let _e913 = local_63[1];
@@ -915,7 +915,7 @@ fn pointer_updates() {
     out_1[_e988] = _e967;
     local_68 = u32(1i);
     reference_pointer = array<u32, 2>();
-    reference_pointer[0] = 1u;
+    reference_pointer[0] = 3u;
     reference_pointer[1] = 0u;
     let _e999 = local_68;
     let _e1001 = reference_pointer[1];
@@ -1000,7 +1000,7 @@ fn pointer_updates() {
     out_1[_e1126] = _e1105;
     local_78 = u32(8i);
     end = array<u32, 2>();
-    end[0] = 1u;
+    end[0] = 3u;
     end[1] = 0u;
     let _e1137 = local_78;
     let _e1139 = end[1];

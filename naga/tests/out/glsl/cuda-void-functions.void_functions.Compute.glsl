@@ -92,9 +92,9 @@ void main() {
         _group_0_binding_0_cs[_e62] = _e54;
         iterations = 0;
         {
-            int _e66 = value;
-            value = (_e66 + 1);
-            consume((0 != 0), _e66, uint(0), float(1u));
+            int _e69 = value;
+            value = (_e69 + 1);
+            consume((0 != 0), _e69, uint(0), float(1u));
             bool loop_init = true;
             while(true) {
                 if (!loop_init) {

@@ -90,10 +90,10 @@ fn previous_neighbor(@builtin(local_invocation_id) threadIdx_1: vec3<u32>, @buil
     blockIdx_2 = blockIdx_1;
     gridDim_2 = gridDim_1;
     output = array<u32, 2>();
-    output[0] = 0u;
+    output[0] = 2u;
     output[1] = 0u;
     input = array<u32, 2>();
-    input[0] = 1u;
+    input[0] = 3u;
     input[1] = 0u;
     let offset_3 = offset_1.value;
     let lane_1 = threadIdx_1.x;
@@ -117,7 +117,7 @@ fn previous_neighbor(@builtin(local_invocation_id) threadIdx_1: vec3<u32>, @buil
     workgroupBarrier();
     local_5 = u32(((lane_1 + 3u) % 4u));
     selected = array<u32, 2>();
-    selected[0] = 2u;
+    selected[0] = 4u;
     selected[1] = 0u;
     let _e65 = local_5;
     let _e67 = selected[1];

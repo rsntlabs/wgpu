@@ -33,7 +33,13 @@ impl Parser<'_> {
         self.lexer.next()?;
         let (right, right_body) = self.capture_block(|parser| {
             let right = parser.expression(0)?;
-            parser.rvalue(right)
+            if operator.is_none()
+                && *left.ty.inner_with(&parser.module.types) == TypeInner::Scalar(Scalar::BOOL)
+            {
+                parser.convert_value(right, &left.ty)
+            } else {
+                parser.rvalue(right)
+            }
         })?;
         let span = left.span.until(&right.span);
         self.prepend_block(right_body);

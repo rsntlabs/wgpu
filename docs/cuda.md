@@ -387,7 +387,20 @@ During overload resolution, integer literal zero is a
 including when parenthesized or supplied by a macro. Named constants, casts,
 and computed zeros do not qualify. Ordinary calls, explicit operator calls,
 and operator expressions use the same rule. Pointer candidates participate
-before checking whether the selected call can be lowered; null pointer values
+before checking whether the selected call can be lowered.
+
+Literal zero can initialize or assign a typed null pointer, pass to a pointer
+parameter, or form a conditional arm alongside a compatible pointer. Empty
+pointer initializers, `T *pointer{}` and `T *pointer = {}`, also produce null.
+Copies and qualification conversions preserve the null value.
+
+Pointers support conditions, logical negation, Boolean conversions, and
+`==` or `!=` with literal zero in either operand order. Null converts to `false`;
+object pointers and one-past pointers convert to `true`, following the C++
+[Boolean conversion rules](https://timsong-cpp.github.io/cppwp/n4659/conv.bool).
+Boolean helper parameters also accept pointers. These conversions do not read
+the pointed-to object. Guard a pointer before accessing it when it may be null.
+The `nullptr` source type, comparisons between two pointers, and pointer casts
 remain unsupported.
 
 Borrowed expressions support `*pointer`, unary `+pointer`, `pointer + index`,
@@ -469,8 +482,8 @@ they do not describe an exact allocator or process memory limit.
 Helpers have no resource bindings. Pointer and reference results,
 whole-array references and static shared declarations in helper bodies remain unsupported. Kernel prototypes
 remain unsupported.
-Pointer members, null pointers,
-pointer comparisons and differences, pointer casts, and general pointer
+Pointer members, general pointer comparisons and differences, pointer casts,
+the `nullptr` source type, and general pointer
 declarators remain unsupported. Arrays selected from temporary struct values
 cannot supply borrowed pointers.
 

@@ -172,13 +172,13 @@ fn kernel() {
     var local_144: u32;
 
     output = array<u32, 2>();
-    output[0] = 0u;
+    output[0] = 2u;
     output[1] = 0u;
     values[0] = 2i;
     values[1] = 3i;
     values[2] = 5i;
     cursor = array<u32, 2>();
-    cursor[0] = 1u;
+    cursor[0] = 3u;
     cursor[1] = 0u;
     let _e20 = cursor;
     local = _e20;
@@ -236,7 +236,7 @@ fn kernel() {
     atomicStore((&output_1[_e104]), _e83);
     local_7 = u32(2i);
     fixed = array<u32, 2>();
-    fixed[0] = 1u;
+    fixed[0] = 3u;
     fixed[1] = 0u;
     let _e115 = local_7;
     let _e117 = fixed[1];
@@ -254,7 +254,7 @@ fn kernel() {
     let _e138 = local_70;
     values[_e138] = (_e135 + 2i);
     frozen = array<u32, 2>();
-    frozen[0] = 1u;
+    frozen[0] = 3u;
     frozen[1] = 0u;
     let _e147 = frozen;
     local_9 = _e147;
@@ -275,7 +275,7 @@ fn kernel() {
     let _e174 = local_73;
     values[_e174] = (_e171 + 4i);
     read_ = array<u32, 2>();
-    read_[0] = 1u;
+    read_[0] = 3u;
     read_[1] = 0u;
     let _e183 = read_;
     local_11 = _e183;
@@ -312,7 +312,7 @@ fn kernel() {
     index = (_e232 + 1i);
     local_15 = u32(_e232);
     local_80 = array<u32, 2>();
-    local_80[0] = 1u;
+    local_80[0] = 3u;
     local_80[1] = 0u;
     let _e243 = local_15;
     let _e245 = local_80[1];
@@ -425,7 +425,7 @@ fn kernel() {
     point.x = 11i;
     point.y = 13i;
     point_alias = array<u32, 2>();
-    point_alias[0] = 2u;
+    point_alias[0] = 4u;
     point_alias[1] = 0u;
     let _e422 = point_alias;
     local_27 = _e422;
@@ -471,7 +471,7 @@ fn kernel() {
     record.pair.x = 19i;
     record.pair.y = 23i;
     record_alias = array<u32, 2>();
-    record_alias[0] = 3u;
+    record_alias[0] = 5u;
     record_alias[1] = 0u;
     let _e502 = record_alias;
     local_32 = _e502;
@@ -515,7 +515,7 @@ fn kernel() {
     atomicStore((&output_1[_e568]), _e547);
     {
         local_37 = array<u32, 2>();
-        local_37[0] = 1u;
+        local_37[0] = 3u;
         local_37[1] = 0u;
         let _e577 = local_37;
         local_40 = _e577;
@@ -548,7 +548,7 @@ fn kernel() {
     }
     local_41 = u32(2i);
     restored = array<u32, 2>();
-    restored[0] = 1u;
+    restored[0] = 3u;
     restored[1] = 0u;
     let _e627 = local_41;
     let _e629 = restored[1];

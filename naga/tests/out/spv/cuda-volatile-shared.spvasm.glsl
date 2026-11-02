@@ -57,7 +57,7 @@ void main()
     }
     barrier();
     _42 = uint[](0u, 0u);
-    _42[0u] = 0u;
+    _42[0u] = 2u;
     _42[1u] = 0u;
     _50 = 0u;
     _50 = (gl_WorkGroupID.x * 1000u) + gl_LocalInvocationID.x;
@@ -71,7 +71,7 @@ void main()
     _64 = 0u;
     _66 = 0u;
     _52 = uint[](0u, 0u);
-    _52[0u] = 1u;
+    _52[0u] = 3u;
     _52[1u] = 0u;
     _54 = _16(gl_LocalInvocationID.x + 1u, 4u);
     _56 = _52;
@@ -106,7 +106,7 @@ void main()
     _82 = 0u;
     _84 = 0u;
     _70 = uint[](0u, 0u);
-    _70[0u] = 1u;
+    _70[0u] = 3u;
     _70[1u] = 0u;
     _72 = _16(gl_LocalInvocationID.x + 3u, 4u);
     _74 = _70;

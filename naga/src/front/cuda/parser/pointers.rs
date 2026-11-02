@@ -2,8 +2,10 @@ use super::parameter_calls::MappedExpression;
 use super::reference_bindings::{AddressProjection, BoundTarget};
 use super::*;
 
+mod bound_references;
 mod immutable;
 mod origins;
+mod queries;
 mod remapping;
 pub(super) mod runtime;
 mod state;
@@ -57,6 +59,7 @@ pub(super) struct PointerExpression {
 
 #[derive(Clone, Debug)]
 pub(super) enum PointerExpressionKind {
+    Null,
     Parameter(u32),
     Object(Handle<BoundReference>),
     Snapshot(Handle<LocalVariable>),
@@ -95,6 +98,10 @@ pub(super) struct PointerState {
 }
 
 impl PointerState {
+    pub(super) fn needs_materialization(&self) -> bool {
+        !self.cells.is_empty() || !self.operations.is_empty()
+    }
+
     pub(super) fn is_empty(&self) -> bool {
         self.expressions.is_empty()
             && self.accesses.is_empty()
@@ -154,13 +161,17 @@ impl<'a> Parser<'a> {
         let has_braces = self.lexer.next_if(Token::Paren('{'))?;
         let has_initializer = has_equals || has_braces;
         let pointer = if has_initializer {
-            let value = self.expression(0)?;
-            if has_braces {
-                self.lexer.next_if(Token::Separator(','))?;
-                self.lexer.expect_span(Token::Paren('}'))?;
-            }
-            let value_span = value.span();
-            let pointer = self.convert_pointer(value, &ty, pointee_qualifiers, value_span)?;
+            let pointer = if has_braces && self.lexer.next_if(Token::Paren('}'))? {
+                self.null_pointer(&ty, pointee_qualifiers, span)?
+            } else {
+                let value = self.expression(0)?;
+                if has_braces {
+                    self.lexer.next_if(Token::Separator(','))?;
+                    self.lexer.expect_span(Token::Paren('}'))?;
+                }
+                let value_span = value.span();
+                self.convert_pointer(value, &ty, pointee_qualifiers, value_span)?
+            };
             self.bind_local_pointer(name, pointer, pointer_const, span)?;
             return Ok((span, true));
         } else {
@@ -360,6 +371,9 @@ impl<'a> Parser<'a> {
         let span = left.span().until(&right.span());
         let left_pointer = self.is_pointer_operand(&left);
         let right_pointer = self.is_pointer_operand(&right);
+        if matches!(operator, BinaryOperator::Equal | BinaryOperator::NotEqual) {
+            return self.pointer_null_comparison(left, right, right_body, operator, span);
+        }
         if !matches!(operator, BinaryOperator::Add | BinaryOperator::Subtract)
             || (left_pointer && right_pointer)
             || (operator == BinaryOperator::Subtract && right_pointer)
@@ -632,6 +646,10 @@ impl<'a> Parser<'a> {
         qualifiers: Qualifiers,
         span: Span,
     ) -> Result<PointerValue, ParseError> {
+        if matches!(value, ExpressionValue::Plain(ref value) if value.constant.is_null_pointer_constant)
+        {
+            return self.null_pointer(target, qualifiers, span);
+        }
         let mut pointer = self.borrowed_pointer(value)?;
         if !self.module.compare_types(&pointer.ty, target)
             || !qualifiers.contains(pointer.qualifiers)
@@ -851,6 +869,24 @@ impl<'a> Parser<'a> {
     ) -> Result<PointerValue, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
+        let null_operand = match (&accept, &reject) {
+            (&ExpressionValue::Plain(ref value), other)
+                if value.constant.is_null_pointer_constant =>
+            {
+                Some(other)
+            }
+            (other, &ExpressionValue::Plain(ref value))
+                if value.constant.is_null_pointer_constant =>
+            {
+                Some(other)
+            }
+            _ => None,
+        };
+        let null_target =
+            null_operand.map(|other| match *other.ty().inner_with(&self.module.types) {
+                TypeInner::Array { base, .. } => self.pointer_type(base, span),
+                _ => other.ty().clone(),
+            });
         let variable = matches!((&accept, &reject), (ExpressionValue::Pointer(accept), ExpressionValue::Pointer(reject)) if matches!(accept.category, PointerValueCategory::Variable { .. }) && matches!(reject.category, PointerValueCategory::Variable { .. }) && accept.qualifiers == reject.qualifiers && self.module.compare_types(&accept.ty, &reject.ty));
         let selector = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
         let selected = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
@@ -863,6 +899,13 @@ impl<'a> Parser<'a> {
                         unreachable!()
                     };
                     *pointer
+                } else if let Some(ref target) = null_target {
+                    let qualifiers = match value {
+                        ExpressionValue::Pointer(ref pointer) => pointer.qualifiers,
+                        ExpressionValue::Reference(ref reference) => reference.qualifiers,
+                        ExpressionValue::Plain(_) => Qualifiers::NONE,
+                    };
+                    parser.convert_pointer(value, target, qualifiers, span)?
                 } else {
                     parser.borrowed_pointer(value)?
                 };
@@ -1000,7 +1043,8 @@ impl<'a> Parser<'a> {
     ) -> Result<bool, ParseError> {
         self.parameter_expansion_budget.charge_work(1, span)?;
         match self.function.pointers.expressions[expression].kind.clone() {
-            PointerExpressionKind::Parameter(_)
+            PointerExpressionKind::Null
+            | PointerExpressionKind::Parameter(_)
             | PointerExpressionKind::Object(_)
             | PointerExpressionKind::Snapshot(_) => Ok(false),
             PointerExpressionKind::Offset { base, .. } => self.pointer_origin_is_known(base, span),
@@ -1110,7 +1154,8 @@ impl<'a> Parser<'a> {
         let source = self.function.pointers.expressions[expression].clone();
         let ty = TypeResolution::Handle(source.pointee);
         match source.kind {
-            PointerExpressionKind::Parameter(_)
+            PointerExpressionKind::Null
+            | PointerExpressionKind::Parameter(_)
             | PointerExpressionKind::Object(_)
             | PointerExpressionKind::Snapshot(_) => Err(ParseError {
                 message: String::from("unresolved CUDA pointer parameter"),

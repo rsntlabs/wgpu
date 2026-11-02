@@ -149,7 +149,7 @@ fn kernel() {
     var local_121: u32;
 
     output = array<u32, 2>();
-    output[0] = 0u;
+    output[0] = 2u;
     output[1] = 0u;
     seed = 4i;
     let _e8 = seed;
@@ -378,7 +378,7 @@ fn kernel() {
     values[1] = 3i;
     values[2] = 5i;
     pointer = array<u32, 2>();
-    pointer[0] = 1u;
+    pointer[0] = 3u;
     pointer[1] = 0u;
     let _e382 = pointer;
     local_27 = _e382;
@@ -490,7 +490,7 @@ fn kernel() {
     let _e550 = local_109;
     output_1[_e550] = _e529;
     fixed = array<u32, 2>();
-    fixed[0] = 1u;
+    fixed[0] = 3u;
     fixed[1] = 0u;
     let _e559 = fixed;
     local_40 = _e559;

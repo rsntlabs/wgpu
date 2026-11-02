@@ -132,7 +132,7 @@ impl Parser<'_> {
             let function = core::mem::take(&mut self.function.ir);
             let state = self.function.take_parameter_state();
             self.validate_pointer_state(&state, &function, span)?;
-            if !templates[handle.index()] && !state.pointers.cells.is_empty() {
+            if !templates[handle.index()] && state.pointers.needs_materialization() {
                 self.materialize_pointer_function(function, state, parameters, span)?;
                 let function = core::mem::take(&mut self.function.ir);
                 let state = self.function.take_parameter_state();
@@ -164,7 +164,7 @@ impl Parser<'_> {
             let function = core::mem::take(&mut self.function.ir);
             let state = self.function.take_parameter_state();
             self.validate_pointer_state(&state, &function, span)?;
-            if !state.pointers.cells.is_empty() {
+            if state.pointers.needs_materialization() {
                 self.materialize_pointer_function(function, state, Vec::new(), span)?;
                 let function = core::mem::take(&mut self.function.ir);
                 let state = self.function.take_parameter_state();

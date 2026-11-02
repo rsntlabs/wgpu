@@ -44,8 +44,8 @@ OpDecorate %118 BuiltIn LocalInvocationIndex
 %37 = OpConstantNull  %9
 %38 = OpConstant  %3  1000
 %39 = OpConstantNull  %3
-%40 = OpConstant  %3  17
-%41 = OpConstant  %3  3
+%40 = OpConstant  %3  3
+%41 = OpConstant  %3  17
 %43 = OpTypePointer Function %9
 %44 = OpConstantNull  %9
 %46 = OpConstantNull  %9
@@ -156,7 +156,7 @@ OpBranch %125
 %125 = OpLabel
 OpStore %42 %37
 %126 = OpAccessChain  %48  %42 %22
-OpStore %126 %22
+OpStore %126 %10
 %127 = OpAccessChain  %48  %42 %24
 OpStore %127 %22
 %128 = OpCompositeExtract  %3  %30 0
@@ -178,7 +178,7 @@ OpStore %64 %39
 OpStore %66 %39
 OpStore %52 %37
 %138 = OpAccessChain  %48  %52 %22
-OpStore %138 %24
+OpStore %138 %40
 %139 = OpAccessChain  %48  %52 %24
 OpStore %139 %22
 OpStore %54 %137
@@ -228,14 +228,14 @@ OpStore %96 %166
 OpStore %66 %169
 %170 = OpLoad  %3  %66
 OpControlBarrier %10 %24 %135
-%171 = OpIAdd  %3  %170 %40
+%171 = OpIAdd  %3  %170 %41
 OpStore %68 %39
 OpStore %68 %171
 %172 = OpLoad  %3  %68
 %173 = OpAccessChain  %133  %14 %128
 OpStore %173 %172 Volatile
 OpControlBarrier %10 %24 %135
-%174 = OpIAdd  %3  %128 %41
+%174 = OpIAdd  %3  %128 %40
 %175 = OpFunctionCall  %3  %16 %174 %6
 OpStore %72 %39
 OpStore %76 %39
@@ -244,7 +244,7 @@ OpStore %82 %39
 OpStore %84 %39
 OpStore %70 %37
 %176 = OpAccessChain  %48  %70 %22
-OpStore %176 %24
+OpStore %176 %40
 %177 = OpAccessChain  %48  %70 %24
 OpStore %177 %22
 OpStore %72 %175

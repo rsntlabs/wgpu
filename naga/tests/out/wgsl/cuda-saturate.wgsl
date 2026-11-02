@@ -213,7 +213,7 @@ fn saturate_values() {
     var local_160: u32;
 
     out = array<u32, 2>();
-    out[0] = 0u;
+    out[0] = 2u;
     out[1] = 0u;
     let _e8 = bitcast<u32>(-(1f));
     let _e18 = out;
@@ -501,7 +501,7 @@ fn saturate_values() {
     values[1] = -(0.5f);
     local_67 = f32();
     value_1 = array<u32, 2>();
-    value_1[0] = 1u;
+    value_1[0] = 3u;
     value_1[1] = 0u;
     let _e563 = value_1;
     local_66 = _e563;

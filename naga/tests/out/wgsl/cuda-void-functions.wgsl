@@ -87,9 +87,9 @@ fn void_functions(@builtin(workgroup_id) blockIdx: vec3<u32>, @builtin(local_inv
         out[_e62] = _e54;
         iterations = 0i;
         {
-            let _e66 = value;
-            value = (_e66 + 1i);
-            consume((0i != 0i), _e66, u32(0i), f32(1u));
+            let _e69 = value;
+            value = (_e69 + 1i);
+            consume((0i != 0i), _e69, u32(0i), f32(1u));
             loop {
                 let _e76 = iterations;
                 if (_e76 < 3i) {

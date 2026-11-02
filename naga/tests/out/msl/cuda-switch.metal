@@ -509,7 +509,7 @@ kernel void switches(
     uint local_156 = {};
     uint local_157 = {};
     out = type_4 {};
-    out.inner[0] = 0u;
+    out.inner[0] = 2u;
     out.inner[1] = 0u;
     int _e9 = case_chain(naga_neg(1));
     type_4 _e12 = out;

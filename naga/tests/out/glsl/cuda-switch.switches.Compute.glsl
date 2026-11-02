@@ -476,7 +476,7 @@ void main() {
     uint local_156 = 0u;
     uint local_157 = 0u;
     out_ = uint[2](0u, 0u);
-    out_[0] = 0u;
+    out_[0] = 2u;
     out_[1] = 0u;
     int _e9 = case_chain(-(1));
     uint _e12[2] = out_;
