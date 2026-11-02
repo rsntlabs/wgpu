@@ -846,8 +846,9 @@ These types follow CUDA's [built-in vector definitions](https://docs.nvidia.com/
 In particular, three-component arrays have a 12-byte element stride and
 4-byte alignment. Vector comparisons, truthiness, indexing, and swizzles remain
 unsupported. Vector arithmetic requires a visible source-defined operator.
-Vector casts and parenthesized aggregate initialization remain unsupported,
-apart from the `dim3` conversions below. By-value kernel
+Vector casts and parenthesized member initialization remain unsupported,
+apart from the `dim3` conversions below. Same-type vector copies accept
+one parenthesized expression, such as `float2 copied(source);`. By-value kernel
 parameters require the scalar types described in the kernel interface.
 Typed vector temporaries such as `float2{1.0f, 2.0f}` use the same list
 initialization and narrowing rules as vector declarations.
@@ -947,7 +948,8 @@ bounds use the existing integral constant-expression rules. Aliases of a struct
 preserve its type; separate definitions remain different types even when their
 fields match. Local definitions can hide outer type names.
 
-Locals support same-type copies, assignments, and braced initialization,
+Locals support same-type copies with equals or a single parenthesized expression,
+such as `Sample copied(source);`, assignments, and braced initialization,
 including partial initialization and brace elision for nested aggregates.
 Omitted fields use zero initialization, with `dim3` subobjects using their
 constructor defaults. Typed expressions such as `Sample{}` can

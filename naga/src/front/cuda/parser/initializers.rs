@@ -24,31 +24,18 @@ impl Parser<'_> {
         target: &TypeResolution,
     ) -> Result<Value, ParseError> {
         let has_equals = self.lexer.next_if(Token::Operation('='))?;
-        if !has_equals && self.is_uint3(target) && self.lexer.next_if(Token::Paren('('))? {
-            let value = self.expression(0)?;
-            let end = self.lexer.expect_span(Token::Paren(')'))?;
-            if !self.is_dim3(value.shader_type()?) {
-                return Err(ParseError {
-                    message: String::from("parenthesized uint3 initialization requires dim3"),
-                    span: value.span().until(&end),
-                });
-            }
-            return self.convert_value(value, target);
-        }
         if self.lexer.peek()?.0 == Token::Paren('{') {
             let span = self.lexer.peek()?.1;
             let scalar = self.require_scalar_type(target, span)?;
             return self.scalar_list_initializer(scalar, !has_equals);
         }
-        if !has_equals
-            && matches!(
-                *target.inner_with(&self.module.types),
-                TypeInner::Scalar(Scalar::BOOL | Scalar::I32 | Scalar::U32 | Scalar::F32)
-            )
-            && self.lexer.peek()?.0 == Token::Paren('(')
-        {
+        if !has_equals && self.lexer.peek()?.0 == Token::Paren('(') {
             let value = self.parenthesized_initializer()?;
-            return self.cast_value(value, target);
+            return if matches!(*target.inner_with(&self.module.types), TypeInner::Scalar(_)) {
+                self.cast_value(value, target)
+            } else {
+                self.convert_value(value, target)
+            };
         }
         if !has_equals {
             self.lexer.expect_span(Token::Operation('='))?;

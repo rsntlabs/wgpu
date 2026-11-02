@@ -20,6 +20,7 @@ mod declarations;
 mod device_functions;
 mod device_helper_barriers;
 mod dim3;
+mod direct_aggregate_initialization;
 mod direct_borrowed_initialization;
 mod direct_initialization;
 mod dual_execution;
