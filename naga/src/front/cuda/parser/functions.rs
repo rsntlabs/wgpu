@@ -110,41 +110,52 @@ fn vector_constructor(name: &str) -> Option<(VectorSize, Scalar)> {
 pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclaration> {
     MATH_BUILTINS
         .into_iter()
-        .map(|(name, _)| (name, GlobalDeclaration::Functions(Vec::new())))
-        .chain(
-            MULTIPLY24_BUILTINS
-                .into_iter()
-                .map(|(name, _)| (name, GlobalDeclaration::Functions(Vec::new()))),
-        )
-        .chain(
-            BITCAST_BUILTINS
-                .into_iter()
-                .map(|(name, _, _)| (name, GlobalDeclaration::Functions(Vec::new()))),
-        )
-        .chain(
-            UNARY_BUILTINS
-                .into_iter()
-                .map(|(name, _, _, _)| (name, GlobalDeclaration::Functions(Vec::new()))),
-        )
-        .chain(
-            SQRT_BUILTINS
-                .into_iter()
-                .map(|name| (name, GlobalDeclaration::Functions(Vec::new()))),
-        )
-        .chain(
-            INTEGER_ATOMICS
-                .into_iter()
-                .map(|(name, _)| (name, GlobalDeclaration::Functions(Vec::new()))),
-        )
+        .map(|(name, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        })
+        .chain(MULTIPLY24_BUILTINS.into_iter().map(|(name, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
+        .chain(BITCAST_BUILTINS.into_iter().map(|(name, _, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
+        .chain(UNARY_BUILTINS.into_iter().map(|(name, _, _, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
+        .chain(SQRT_BUILTINS.into_iter().map(|name| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
+        .chain(INTEGER_ATOMICS.into_iter().map(|(name, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
         .chain(core::iter::once((
             "atomicCAS",
-            GlobalDeclaration::Functions(Vec::new()),
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
         )))
-        .chain(
-            WRAPPING_ATOMICS
-                .into_iter()
-                .map(|(name, _)| (name, GlobalDeclaration::Functions(Vec::new()))),
-        )
+        .chain(WRAPPING_ATOMICS.into_iter().map(|(name, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
         .chain(core::iter::once((
             "cooperative_groups",
             GlobalDeclaration::Namespace(Namespace::CooperativeGroups),
@@ -168,7 +179,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
                                 qualifiers: Qualifiers::NONE,
                             }),
                         ),
-                        (constructor, GlobalDeclaration::Functions(Vec::new())),
+                        (
+                            constructor,
+                            GlobalDeclaration::Functions(FunctionOverloads::default()),
+                        ),
                     ]
                 }),
         )
@@ -289,7 +303,9 @@ impl<'a> Parser<'a> {
         self.check_dynamic_shared_linkage(name, span)?;
         let compatible = match self.global_declarations.get(name) {
             None => true,
-            Some(&GlobalDeclaration::Functions(_)) => kind == FunctionKind::Device,
+            Some(&GlobalDeclaration::Functions(_)) => {
+                kind == FunctionKind::Device && !self.has_kernel_template(name)
+            }
             Some(_) => false,
         };
         if !compatible {
@@ -474,7 +490,6 @@ impl<'a> Parser<'a> {
                 span: name_span,
             });
         }
-        self.check_function_name(name, name_span, kind)?;
         Ok(FunctionHeader {
             kind,
             result,
@@ -497,6 +512,7 @@ impl<'a> Parser<'a> {
             self.lexer.next()?;
         }
         let header = self.function_header(extern_c)?;
+        self.check_function_name(header.name, header.name_span, header.kind)?;
         self.function = FunctionContext::new(header.kind);
         match header.kind {
             FunctionKind::Device => {
@@ -520,17 +536,7 @@ impl<'a> Parser<'a> {
         if !self.kernels.is_empty() {
             self.activate_parameter_expansion(header.name_span)?;
         }
-        if !matches!(header.result, ReturnType::Void) {
-            return Err(ParseError {
-                message: String::from("CUDA kernels must return void"),
-                span: header.result_span,
-            });
-        }
-        self.parameters()?;
-        self.lexer.expect_span(Token::Paren('{'))?;
-        self.initialize_helper_builtins()?;
-        self.block_contents()?;
-        self.flush_emitter();
+        self.kernel_body(&header)?;
         let function = core::mem::replace(
             &mut self.function,
             FunctionContext::new(FunctionKind::Kernel),
@@ -564,6 +570,21 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    pub(super) fn kernel_body(&mut self, header: &FunctionHeader<'a>) -> Result<(), ParseError> {
+        if !matches!(header.result, ReturnType::Void) {
+            return Err(ParseError {
+                message: String::from("CUDA kernels must return void"),
+                span: header.result_span,
+            });
+        }
+        self.parameters()?;
+        self.lexer.expect_span(Token::Paren('{'))?;
+        self.initialize_helper_builtins()?;
+        self.block_contents()?;
+        self.flush_emitter();
+        Ok(())
+    }
+
     pub(super) fn initialize_function_header(
         &mut self,
         header: &FunctionHeader<'a>,
@@ -580,8 +601,31 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn device_function(&mut self, header: FunctionHeader<'a>) -> Result<(), ParseError> {
+        self.device_function_with_target(header, None)
+    }
+
+    pub(super) fn device_function_with_target(
+        &mut self,
+        header: FunctionHeader<'a>,
+        target: Option<Handle<Function>>,
+    ) -> Result<(), ParseError> {
         self.initialize_function_header(&header)?;
+        if let Some(target) = target {
+            self.parameter_expansion_budget.charge_bytes(
+                self.module.functions[target]
+                    .name
+                    .as_ref()
+                    .map_or(0, String::len),
+                header.name_span,
+            )?;
+            self.function.ir.name = self.module.functions[target].name.clone();
+        }
         self.parameters()?;
+        if let Some(target) = target {
+            if self.function_declarations[&target].parameters != self.function.parameters {
+                return self.fail("incompatible instantiated function parameter types");
+            }
+        }
         if let Some(operator) = header.operator {
             self.check_operator_parameters(operator, header.name_span)?;
         }
@@ -595,18 +639,20 @@ impl<'a> Parser<'a> {
             }
         }
         let intrinsic = self.function_candidates(header.name).find(|&candidate| {
-            matches!(
-                candidate,
-                FunctionCandidate::Builtin(_)
-                    | FunctionCandidate::Multiply24(_)
-                    | FunctionCandidate::Atomic { .. }
-                    | FunctionCandidate::AtomicCompareExchange(_)
-                    | FunctionCandidate::WrappingAtomic(_)
-                    | FunctionCandidate::Bitcast { .. }
-                    | FunctionCandidate::Unary { .. }
-                    | FunctionCandidate::Sqrt
-                    | FunctionCandidate::Constructor { .. }
-            ) && self.function.parameters.len() == self.candidate_arity(candidate)
+            target.is_none()
+                && matches!(
+                    candidate,
+                    FunctionCandidate::Builtin(_)
+                        | FunctionCandidate::Multiply24(_)
+                        | FunctionCandidate::Atomic { .. }
+                        | FunctionCandidate::AtomicCompareExchange(_)
+                        | FunctionCandidate::WrappingAtomic(_)
+                        | FunctionCandidate::Bitcast { .. }
+                        | FunctionCandidate::Unary { .. }
+                        | FunctionCandidate::Sqrt
+                        | FunctionCandidate::Constructor { .. }
+                )
+                && self.function.parameters.len() == self.candidate_arity(candidate)
                 && (0..self.candidate_arity(candidate)).all(|index| {
                     self.function.parameters[index].mode() == self.candidate_mode(candidate, index)
                         && match (
@@ -669,14 +715,14 @@ impl<'a> Parser<'a> {
             self.function = FunctionContext::new(FunctionKind::Kernel);
             return Ok(());
         }
-        let previous = match self.global_declarations.get(header.name) {
+        let previous = target.or_else(|| match self.global_declarations.get(header.name) {
             Some(&GlobalDeclaration::Functions(ref functions)) => {
-                functions.iter().copied().find(|&function| {
+                functions.functions.iter().copied().find(|&function| {
                     self.function_declarations[&function].parameters == self.function.parameters
                 })
             }
             _ => None,
-        };
+        });
         if let Some(previous) = previous {
             let declaration = self.function_declarations.get_mut(&previous).unwrap();
             function_declarations::check_redeclaration(
@@ -799,9 +845,9 @@ impl<'a> Parser<'a> {
         match *self
             .global_declarations
             .entry(name)
-            .or_insert_with(|| GlobalDeclaration::Functions(Vec::new()))
+            .or_insert_with(|| GlobalDeclaration::Functions(FunctionOverloads::default()))
         {
-            GlobalDeclaration::Functions(ref mut functions) => functions.push(handle),
+            GlobalDeclaration::Functions(ref mut functions) => functions.functions.push(handle),
             _ => unreachable!(),
         }
     }
@@ -1379,7 +1425,7 @@ impl<'a> Parser<'a> {
         name: &str,
     ) -> impl Iterator<Item = FunctionCandidate> + Clone + 'b {
         let functions = match self.global_declarations.get(name) {
-            Some(&GlobalDeclaration::Functions(ref functions)) => functions.as_slice(),
+            Some(&GlobalDeclaration::Functions(ref functions)) => functions.functions.as_slice(),
             _ => &[],
         };
         let current = (self.function.kind == FunctionKind::Device
@@ -1720,16 +1766,24 @@ impl<'a> Parser<'a> {
         arguments: &[impl CallArgument],
     ) -> OverloadResolution {
         let integral_double = self.integral_double_candidate(name, arguments);
-        let mut viable_candidates = self
-            .function_candidates(name)
-            .chain(integral_double)
-            .filter(|&candidate| {
-                self.candidate_arity(candidate) == arguments.len()
-                    && arguments.iter().enumerate().all(|(index, argument)| {
-                        self.candidate_conversion(candidate, index, argument)
-                            .is_some()
-                    })
-            });
+        self.select_candidates(
+            self.function_candidates(name).chain(integral_double),
+            arguments,
+        )
+    }
+
+    pub(super) fn select_candidates(
+        &self,
+        candidates: impl Iterator<Item = FunctionCandidate> + Clone,
+        arguments: &[impl CallArgument],
+    ) -> OverloadResolution {
+        let mut viable_candidates = candidates.filter(|&candidate| {
+            self.candidate_arity(candidate) == arguments.len()
+                && arguments.iter().enumerate().all(|(index, argument)| {
+                    self.candidate_conversion(candidate, index, argument)
+                        .is_some()
+                })
+        });
         let mut remaining_candidates = viable_candidates.clone();
         let Some(mut best_candidate) = remaining_candidates.next() else {
             return OverloadResolution::NoViable;

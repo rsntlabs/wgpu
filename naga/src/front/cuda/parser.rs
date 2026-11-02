@@ -34,6 +34,7 @@ mod sqrtf;
 mod statements;
 mod structures;
 mod switches;
+mod templates;
 mod trigonometry;
 mod types;
 mod updates;
@@ -53,7 +54,7 @@ use qualifiers::Qualifiers;
 use reference_bindings::{BoundAddress, BoundReference};
 use scalar_promotions::ScalarPromotions;
 use types::scalar_resolution;
-use types::{DeclarationType, GlobalDeclaration, QualifiedType, TypeSpecifier};
+use types::{DeclarationType, FunctionOverloads, GlobalDeclaration, QualifiedType, TypeSpecifier};
 use volatile::VolatileAccesses;
 
 use crate::{
@@ -104,6 +105,10 @@ enum Symbol {
     },
     Constant {
         handle: Option<Handle<crate::Constant>>,
+        scalar: Scalar,
+        literal: Option<Literal>,
+    },
+    TemplateParameter {
         scalar: Scalar,
         literal: Option<Literal>,
     },
@@ -294,6 +299,7 @@ pub(super) struct Parser<'a> {
     dynamic_shared_memory_size: u32,
     dynamic_shared: DynamicShared<'a>,
     volatile_globals: FastHashMap<Handle<GlobalVariable>, Span>,
+    templates: templates::Templates<'a>,
 }
 
 impl<'a> Parser<'a> {
@@ -324,12 +330,15 @@ impl<'a> Parser<'a> {
             dynamic_shared_memory_size: options.dynamic_shared_memory_size,
             dynamic_shared: DynamicShared::default(),
             volatile_globals: FastHashMap::default(),
+            templates: templates::Templates::default(),
         }
     }
 
     pub fn parse(mut self) -> Result<Module, ParseError> {
         while self.lexer.peek()?.0 != Token::End {
-            if self.starts_dynamic_shared_declaration()? {
+            if self.lexer.peek()?.0 == Token::Word("template") {
+                self.template_declaration()?;
+            } else if self.starts_dynamic_shared_declaration()? {
                 self.dynamic_shared_declaration(true)?;
             } else if self.lexer.peek()?.0 == Token::Word("struct") {
                 self.structure_declaration(true)?;
@@ -341,6 +350,7 @@ impl<'a> Parser<'a> {
                 self.function_definition()?;
             }
         }
+        self.finish_templates()?;
         if self.kernels.is_empty() {
             return self.fail("expected a CUDA kernel definition");
         }
@@ -894,7 +904,12 @@ impl<'a> Parser<'a> {
     }
 
     fn check_name(&self, name: &str, span: Span) -> Result<(), ParseError> {
-        if Self::reserved_name(name) {
+        if Self::reserved_name(name)
+            || matches!(
+                self.function.symbol_table.lookup(name),
+                Some(Symbol::TemplateParameter { .. })
+            )
+        {
             Err(ParseError {
                 message: format!("duplicate or reserved name `{name}`"),
                 span,

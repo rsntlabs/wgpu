@@ -297,7 +297,11 @@ impl<'a> Parser<'a> {
         }
         self.lexer.expect_span(Token::Paren('['))?;
         if self.lexer.peek()?.0 != Token::Paren(']') {
-            self.array_size()?;
+            if self.templates.parsing_signature {
+                self.skip_template_array_bound()?;
+            } else {
+                self.array_size()?;
+            }
         }
         self.lexer.expect_span(Token::Paren(']'))?;
         if self.lexer.peek()?.0 == Token::Paren('[') {

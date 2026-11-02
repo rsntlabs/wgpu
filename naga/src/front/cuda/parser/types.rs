@@ -44,7 +44,7 @@ pub(super) enum GlobalDeclaration {
     Namespace(Namespace),
     PendingAuto,
     Type(QualifiedType),
-    Functions(Vec<Handle<Function>>),
+    Functions(FunctionOverloads),
     Kernel,
     DynamicShared(DynamicSharedDeclaration),
     Constant {
@@ -52,6 +52,12 @@ pub(super) enum GlobalDeclaration {
         scalar: Scalar,
         literal: Option<Literal>,
     },
+}
+
+#[derive(Clone, Debug, Default)]
+pub(super) struct FunctionOverloads {
+    pub(super) functions: Vec<Handle<Function>>,
+    pub(super) templates: Vec<usize>,
 }
 
 #[derive(Default)]
