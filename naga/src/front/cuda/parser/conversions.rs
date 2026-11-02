@@ -205,12 +205,7 @@ impl Parser<'_> {
     pub(super) fn cast_type(&mut self) -> Result<QualifiedType, ParseError> {
         let span = self.lexer.peek()?.1;
         let target = self.parse_type()?;
-        if matches!(target.ty, TypeSpecifier::Pointer { .. }) {
-            return Err(ParseError {
-                message: String::from("pointer casts are unsupported"),
-                span,
-            });
-        }
+        let target = self.alias_declarator(target)?;
         if !matches!(
             target.ty,
             TypeSpecifier::NullPointer
@@ -218,6 +213,7 @@ impl Parser<'_> {
                 | TypeSpecifier::Vector { .. }
                 | TypeSpecifier::Structure(_)
                 | TypeSpecifier::Dim3
+                | TypeSpecifier::Pointer { .. }
         ) {
             return Err(ParseError {
                 message: String::from("unsupported cast target"),
@@ -248,6 +244,17 @@ impl Parser<'_> {
             let mut value = self.require_null_pointer_value(value)?;
             value.span = span;
             return Ok(ExpressionValue::NullPointer(value.rvalue()));
+        }
+        if let TypeSpecifier::Pointer {
+            pointee,
+            pointee_qualifiers,
+        } = target.ty
+        {
+            let target = self.pointer_type(pointee, span);
+            let pointer = self.cast_pointer(value, &target, pointee_qualifiers, span)?;
+            return self
+                .boxed_pointer_value(pointer)
+                .map(ExpressionValue::Pointer);
         }
         let ty = self.lower_type(target.ty, span)?;
         let mut value = self.cast_value(value, &ty)?;

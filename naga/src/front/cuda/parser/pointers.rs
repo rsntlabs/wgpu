@@ -1,8 +1,9 @@
 use super::parameter_calls::MappedExpression;
-use super::reference_bindings::{AddressProjection, BoundTarget};
+use super::reference_bindings::{AddressProjection, BoundTarget, ReferenceAddressKind};
 use super::*;
 
 mod bound_references;
+mod construction;
 mod immutable;
 mod origins;
 mod queries;
@@ -37,6 +38,7 @@ pub(super) enum PointerValueCategory {
 pub(super) struct ConstantPointerAddress {
     pub(super) extent: Option<u32>,
     pub(super) offset: Option<i64>,
+    pub(super) has_static_lifetime: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -158,23 +160,19 @@ impl<'a> Parser<'a> {
         };
         let ty = self.pointer_type(pointee, span);
         let has_equals = self.lexer.next_if(Token::Operation('='))?;
-        let has_braces = self.lexer.next_if(Token::Paren('{'))?;
+        let has_braces = self.lexer.peek()?.0 == Token::Paren('{');
         let has_parentheses =
             !has_equals && !has_braces && self.lexer.peek()?.0 == Token::Paren('(');
         let has_initializer = has_equals || has_braces || has_parentheses;
         let pointer = if has_initializer {
-            let pointer = if has_braces && self.lexer.next_if(Token::Paren('}'))? {
-                self.null_pointer(&ty, pointee_qualifiers, span)?
+            let pointer = if has_braces {
+                self.pointer_list_initializer(&ty, pointee_qualifiers)?
             } else {
                 let value = if has_parentheses {
                     self.parenthesized_initializer()?
                 } else {
                     self.expression(0)?
                 };
-                if has_braces {
-                    self.lexer.next_if(Token::Separator(','))?;
-                    self.lexer.expect_span(Token::Paren('}'))?;
-                }
                 let value_span = value.span();
                 self.convert_pointer(value, &ty, pointee_qualifiers, value_span)?
             };
@@ -347,7 +345,7 @@ impl<'a> Parser<'a> {
             self.lexer.expect_span(Token::Paren('['))?;
             let index = if pointer
                 .constant_address
-                .is_some_and(|address| address.extent.is_none())
+                .is_some_and(|address| address.has_static_lifetime && address.extent.is_none())
             {
                 self.dynamic_shared_index()?
             } else {
@@ -393,7 +391,7 @@ impl<'a> Parser<'a> {
             let pointer = self.borrowed_pointer(left)?;
             let pure_offset = pointer
                 .constant_address
-                .is_some_and(|address| address.extent.is_none())
+                .is_some_and(|address| address.has_static_lifetime && address.extent.is_none())
                 && self.dynamic_shared_index_is_pure(&right_body)?;
             self.append_block(right_body);
             let mut offset = self.integral_operand(right)?;
@@ -559,7 +557,8 @@ impl<'a> Parser<'a> {
         let span = reference.span;
         let qualifiers = reference.qualifiers;
         let dynamic = self.reference_is_dynamic_shared(&reference)?;
-        let constant_address = if self.reference_has_static_address(&reference)? {
+        let address_kind = self.reference_address_kind(&reference)?;
+        let constant_address = if let Some(address_kind) = address_kind {
             match *reference.ty.inner_with(&self.module.types) {
                 TypeInner::Array {
                     size: ArraySize::Constant(extent),
@@ -567,6 +566,7 @@ impl<'a> Parser<'a> {
                 } => Some(ConstantPointerAddress {
                     extent: (!dynamic).then_some(extent.get()),
                     offset: Some(0),
+                    has_static_lifetime: address_kind == ReferenceAddressKind::Static,
                 }),
                 _ => None,
             }
@@ -610,18 +610,21 @@ impl<'a> Parser<'a> {
             if access.projections.is_empty() {
                 let mut pointer = access.pointer;
                 pointer.span = span;
+                // Assignment and prefix update results still evaluate their writes.
+                pointer.constant.is_discardable &= reference.discard_read;
                 return Ok(pointer);
             }
         }
         let pointee = self.type_handle(&reference.ty, span);
         let qualifiers = reference.qualifiers;
         let dynamic = self.reference_is_dynamic_shared(&reference)?;
-        let constant_address =
-            self.reference_has_static_address(&reference)?
-                .then_some(ConstantPointerAddress {
-                    extent: (!dynamic).then_some(1),
-                    offset: Some(0),
-                });
+        let constant_address = self
+            .reference_address_kind(&reference)?
+            .map(|address_kind| ConstantPointerAddress {
+                extent: (!dynamic).then_some(1),
+                offset: Some(0),
+                has_static_lifetime: address_kind == ReferenceAddressKind::Static,
+            });
         let constant = ConstantValue {
             literal: None,
             is_discardable: constant_address.is_some(),
@@ -640,29 +643,6 @@ impl<'a> Parser<'a> {
             constant_address,
             category: PointerValueCategory::Value { position: None },
         })
-    }
-
-    pub(super) fn convert_pointer(
-        &mut self,
-        value: ExpressionValue,
-        target: &TypeResolution,
-        qualifiers: Qualifiers,
-        span: Span,
-    ) -> Result<PointerValue, ParseError> {
-        if value.is_null_pointer_constant() {
-            return self.null_pointer(target, qualifiers, span);
-        }
-        let mut pointer = self.borrowed_pointer(value)?;
-        if !self.module.compare_types(&pointer.ty, target)
-            || !qualifiers.contains(pointer.qualifiers)
-        {
-            return Err(ParseError {
-                message: String::from("incompatible CUDA pointer type"),
-                span,
-            });
-        }
-        pointer.qualifiers = qualifiers;
-        Ok(pointer)
     }
 
     pub(super) fn offset_pointer(
@@ -736,11 +716,12 @@ impl<'a> Parser<'a> {
             literal: None,
             is_discardable: pointer.constant.is_discardable
                 && pointer.constant_address.is_some_and(|address| {
-                    address.extent.is_none_or(|extent| {
-                        address
-                            .offset
-                            .is_some_and(|offset| offset < i64::from(extent))
-                    })
+                    address.has_static_lifetime
+                        && address.extent.is_none_or(|extent| {
+                            address
+                                .offset
+                                .is_some_and(|offset| offset < i64::from(extent))
+                        })
                 }),
             is_null_pointer_constant: false,
         };
@@ -771,11 +752,12 @@ impl<'a> Parser<'a> {
         let span = pointer.span;
         let discardable = pointer.constant.is_discardable
             && pointer.constant_address.is_some_and(|address| {
-                address.extent.is_none_or(|extent| {
-                    address
-                        .offset
-                        .is_some_and(|offset| offset < i64::from(extent))
-                })
+                address.has_static_lifetime
+                    && address.extent.is_none_or(|extent| {
+                        address
+                            .offset
+                            .is_some_and(|offset| offset < i64::from(extent))
+                    })
             });
         let mut reference =
             self.retain_pointer_access(pointer, Vec::new(), TypeResolution::Handle(pointee), span)?;

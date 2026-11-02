@@ -232,7 +232,8 @@ impl Parser<'_> {
     fn parenthesized_expression(&mut self, span: Span) -> Result<ExpressionResult, ParseError> {
         if self.starts_type()? {
             let mut lookahead = self.lexer.clone();
-            self.parse_type_from(&mut lookahead)?;
+            let target = self.parse_type_from(&mut lookahead)?;
+            types::pointer_declarator(&mut lookahead, target.ty)?;
             if lookahead.next_if(Token::Paren(')'))? {
                 let target = self.cast_type()?;
                 self.lexer.expect_span(Token::Paren(')'))?;
@@ -371,7 +372,12 @@ impl Parser<'_> {
             return self.static_cast_expression(span);
         }
         if let Some(target) = self.type_name(name) {
-            if target.qualifiers.is_volatile && !matches!(target.ty, TypeSpecifier::Scalar(_)) {
+            if target.qualifiers.is_volatile
+                && !matches!(
+                    target.ty,
+                    TypeSpecifier::Scalar(_) | TypeSpecifier::Pointer { .. }
+                )
+            {
                 return self.fail("volatile class value construction is unsupported");
             }
             return self.type_expression(target, span);
@@ -600,11 +606,12 @@ impl Parser<'_> {
         if matches!(target, TypeSpecifier::Dim3) {
             return self.dim3_constructor(span).map(Into::into);
         }
-        if matches!(target, TypeSpecifier::Pointer { .. }) {
-            return Err(ParseError {
-                message: String::from("pointer value constructors are unsupported"),
-                span,
-            });
+        if let TypeSpecifier::Pointer {
+            pointee,
+            pointee_qualifiers,
+        } = target
+        {
+            return self.pointer_value_constructor(pointee, pointee_qualifiers, span);
         }
         if matches!(
             target,

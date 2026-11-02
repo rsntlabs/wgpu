@@ -148,6 +148,32 @@ pub(super) fn pointer_qualifiers(lexer: &mut Lexer<'_>) -> Result<Qualifiers, Pa
     }
 }
 
+pub(super) fn pointer_declarator(
+    lexer: &mut Lexer<'_>,
+    ty: TypeSpecifier,
+) -> Result<Option<Qualifiers>, ParseError> {
+    if !lexer.next_if(Token::Operation('*'))? {
+        return Ok(None);
+    }
+    if matches!(ty, TypeSpecifier::Pointer { .. }) {
+        return Err(ParseError {
+            message: String::from("nested pointer types are unsupported"),
+            span: lexer.peek()?.1,
+        });
+    }
+    let qualifiers = pointer_qualifiers(lexer)?;
+    if matches!(
+        lexer.peek()?.0,
+        Token::Operation('*' | '&') | Token::LogicalOperation('&')
+    ) {
+        return Err(ParseError {
+            message: String::from("nested pointer and pointer reference types are unsupported"),
+            span: lexer.peek()?.1,
+        });
+    }
+    Ok(Some(qualifiers))
+}
+
 fn parse_type(
     lexer: &mut Lexer<'_>,
     symbols: &SymbolTable<&str, Symbol>,
@@ -485,19 +511,9 @@ impl<'a> Parser<'a> {
         ty: QualifiedType,
     ) -> Result<QualifiedType, ParseError> {
         let span = self.lexer.peek()?.1;
-        if !self.lexer.next_if(Token::Operation('*'))? {
+        let Some(pointer_qualifiers) = pointer_declarator(&mut self.lexer, ty.ty)? else {
             return Ok(ty);
-        }
-        if matches!(ty.ty, TypeSpecifier::Pointer { .. }) {
-            return self.fail("nested pointer aliases are unsupported");
-        }
-        let pointer_qualifiers = pointer_qualifiers(&mut self.lexer)?;
-        if matches!(
-            self.lexer.peek()?.0,
-            Token::Operation('*' | '&') | Token::LogicalOperation('&')
-        ) {
-            return self.fail("nested pointer and pointer reference aliases are unsupported");
-        }
+        };
         let resolution = self.lower_type(ty.ty, span)?;
         let pointee = self.type_handle(&resolution, span);
         Ok(QualifiedType {

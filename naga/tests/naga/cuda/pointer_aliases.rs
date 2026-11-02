@@ -223,11 +223,8 @@ fn cuda_pointer_aliases_reject_hidden_unsupported_forms_and_malformed_source() {
         "using Pointer = int *; __device__ Pointer helper(); __global__ void kernel() {}",
         "using Pointer = int *; __device__ Pointer helper(int *value) { return value; } __global__ void kernel() {}",
         "using Pointer = int *; __global__ void kernel(int *output) { Pointer &reference = output; }",
-        "using Pointer = int *; __global__ void kernel(int *output) { Pointer value = (Pointer)output; }",
-        "using Pointer = int *; __global__ void kernel(int *output) { Pointer value = static_cast<Pointer>(output); }",
-        "using Pointer = int *; __global__ void kernel(int *output) { Pointer(output + 1); }",
-        "using Pointer = int *; __global__ void kernel(int *output) { auto value = Pointer(output); }",
-        "using Pointer = int *; __global__ void kernel(int *output) { auto value = Pointer{output}; }",
+        "using Pointer = int *; __global__ void kernel(const int *input) { auto value = (Pointer)input; }",
+        "using Pointer = int *; __global__ void kernel(float *input) { auto value = Pointer(input); }",
         "using Nothing = void *; __global__ void kernel() {}",
         "using Function = int (*)(int); __global__ void kernel() {}",
         "typedef int (*Function)(int); __global__ void kernel() {}",
@@ -240,5 +237,14 @@ fn cuda_pointer_aliases_reject_hidden_unsupported_forms_and_malformed_source() {
         "__global__ void kernel() { return; using Pointer = int *; Pointer values[2]; }",
     ] {
         rejected(source);
+    }
+    for source in [
+        "using Pointer = int *; __global__ void kernel(int *output) { Pointer value = (Pointer)output; }",
+        "using Pointer = int *; __global__ void kernel(int *output) { Pointer value = static_cast<Pointer>(output); }",
+        "using Pointer = int *; __global__ void kernel(int *output) { Pointer(output + 1); }",
+        "using Pointer = int *; __global__ void kernel(int *output) { auto value = Pointer(output); }",
+        "using Pointer = int *; __global__ void kernel(int *output) { auto value = Pointer{output}; }",
+    ] {
+        roundtrip(source);
     }
 }
