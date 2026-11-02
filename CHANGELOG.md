@@ -142,6 +142,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 
 #### Naga
 
+- Reject CUDA `dim3` declarations that C++ interprets as local functions.
 - Support CUDA vector and struct copies with single-expression parenthesized initialization.
 - Support CUDA pointer and reference declarations with single-expression parenthesized initialization.
 - Support CUDA scalar declarations with single-expression parenthesized initialization.
