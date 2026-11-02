@@ -214,6 +214,8 @@ impl Parser<'_> {
         target: &TypeResolution,
     ) -> Result<Value, ParseError> {
         self.require_scalar_type(value.ty(), value.span())?;
-        self.convert_value(value, target)
+        let mut value = self.convert_value(value, target)?;
+        value.constant = value.constant.non_literal();
+        Ok(value)
     }
 }

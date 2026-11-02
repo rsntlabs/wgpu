@@ -323,6 +323,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 
 #### naga
 
+- Fix CUDA operator overload selection for literal zero arguments.
 - Fix explicit WGSL type annotations for atomic compare-exchange, `modf`, and `frexp` result bindings.
 - Preserve source names for atomic results in WGSL output.
 - Report an HLSL error when `NumWorkGroups` is used without a host constants binding, and expose the binding through `naga-cli`.

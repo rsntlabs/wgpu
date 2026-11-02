@@ -47,7 +47,8 @@ impl Parser<'_> {
                     Some(Literal::Bool(true)) => accept.constant,
                     Some(Literal::Bool(false)) => reject.constant,
                     _ => ConstantValue::default(),
-                };
+                }
+                .non_literal();
                 let handle = self.function.conditional_references.append(
                     Some(ConditionalReference {
                         condition: condition.handle,
@@ -161,7 +162,8 @@ impl Parser<'_> {
                     Some(Literal::Bool(true)) => accept_constant,
                     Some(Literal::Bool(false)) => reject_constant,
                     _ => ConstantValue::default(),
-                };
+                }
+                .non_literal();
                 Ok(Value {
                     category,
                     qualifiers,

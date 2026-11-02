@@ -382,6 +382,14 @@ through reference parameters. Selecting an argument's address happens once,
 before later arguments execute, without reading the pointee. Pointer helpers
 use the same caller expansion as reference helpers.
 
+During overload resolution, integer literal zero is a
+[null pointer constant](https://timsong-cpp.github.io/cppwp/n4659/conv.ptr),
+including when parenthesized or supplied by a macro. Named constants, casts,
+and computed zeros do not qualify. Ordinary calls, explicit operator calls,
+and operator expressions use the same rule. Pointer candidates participate
+before checking whether the selected call can be lowered; null pointer values
+remain unsupported.
+
 Borrowed expressions support `*pointer`, unary `+pointer`, `pointer + index`,
 `index + pointer`, `pointer - index`, and both subscript orders. Indices must
 have integral types; `bool` promotes to `int`. Parentheses and comma expressions

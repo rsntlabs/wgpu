@@ -72,6 +72,7 @@ impl<'a> Parser<'a> {
                     ConstantValue {
                         literal: None,
                         is_discardable,
+                        is_null_pointer_constant: false,
                     },
                 )
             }

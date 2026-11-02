@@ -266,8 +266,9 @@ impl Parser<'_> {
                 }
                 .into());
             }
-            let value = self.promote_integral(value)?;
+            let mut value = self.promote_integral(value)?;
             if token.0 == Token::Operation('+') {
+                value.constant = value.constant.non_literal();
                 return Ok(value.into());
             }
             let span = token.1.until(&value.span);
@@ -396,6 +397,7 @@ impl Parser<'_> {
                     constant: ConstantValue {
                         literal: None,
                         is_discardable: true,
+                        is_null_pointer_constant: false,
                     },
                 }))
             }
@@ -472,6 +474,7 @@ impl Parser<'_> {
                     ConstantValue {
                         literal: None,
                         is_discardable,
+                        is_null_pointer_constant: false,
                     },
                 )
             }
@@ -501,6 +504,7 @@ impl Parser<'_> {
                         constant: ConstantValue {
                             literal,
                             is_discardable: true,
+                            is_null_pointer_constant: false,
                         },
                     },
                 )));
@@ -526,6 +530,7 @@ impl Parser<'_> {
         let mut result = self.type_value_expression(target.ty, span)?;
         if let ExpressionResult::Value(ExpressionValue::Plain(ref mut value)) = result {
             value.qualifiers = self.prvalue_qualifiers(&value.ty, target.qualifiers);
+            value.constant = value.constant.non_literal();
         }
         Ok(result)
     }
@@ -651,12 +656,10 @@ impl Parser<'_> {
                     name,
                     alloc::vec![
                         CapturedArgument {
-                            is_null_pointer_constant: false,
                             value: left.into(),
                             body: crate::Block::new()
                         },
                         CapturedArgument {
-                            is_null_pointer_constant: false,
                             value: right.into(),
                             body: right_body
                         }

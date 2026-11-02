@@ -79,7 +79,6 @@ pub(super) struct FunctionParameterState {
 pub(super) struct CapturedArgument {
     pub(super) value: ExpressionResult,
     pub(super) body: crate::Block,
-    pub(super) is_null_pointer_constant: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -98,9 +97,7 @@ pub(super) trait CallArgument {
     fn pointer_object_qualifiers(&self) -> Option<Qualifiers> {
         None
     }
-    fn is_null_pointer_constant(&self) -> bool {
-        false
-    }
+    fn is_null_pointer_constant(&self) -> bool;
 }
 
 impl CallArgument for Value {
@@ -121,6 +118,9 @@ impl CallArgument for Value {
     }
     fn pointer_type(&self, _module: &Module) -> Option<SourcePointerType> {
         None
+    }
+    fn is_null_pointer_constant(&self) -> bool {
+        self.constant.is_null_pointer_constant
     }
 }
 
@@ -170,7 +170,12 @@ impl CallArgument for CapturedArgument {
         }
     }
     fn is_null_pointer_constant(&self) -> bool {
-        self.is_null_pointer_constant
+        match self.value {
+            ExpressionResult::Value(ExpressionValue::Plain(ref value)) => {
+                value.constant.is_null_pointer_constant
+            }
+            _ => false,
+        }
     }
     fn pointer_type(&self, module: &Module) -> Option<SourcePointerType> {
         match self.value {
@@ -264,56 +269,12 @@ impl Parser<'_> {
                 .any(|parameter| parameter.mode().is_indirect())
     }
 
-    fn starts_null_pointer_argument(&mut self) -> Result<bool, ParseError> {
-        let mut lexer = self.lexer.clone();
-        let mut parentheses = 0;
-        loop {
-            let (_, span) = lexer.peek()?;
-            self.parameter_expansion_budget.charge_work(1, span)?;
-            if !lexer.next_if(Token::Paren('('))? {
-                break;
-            }
-            parentheses += 1;
-            if parentheses > 64 {
-                return Ok(false);
-            }
-        }
-        let (token, span) = lexer.next()?;
-        let Token::Number(spelling) = token else {
-            return Ok(false);
-        };
-        self.parameter_expansion_budget
-            .charge_work(spelling.len(), span)?;
-        if spelling.contains('\'') {
-            self.parameter_expansion_budget
-                .charge_bytes(spelling.len(), span)?;
-        }
-        if !matches!(
-            number::parse_integer(spelling),
-            Some(Literal::I32(0) | Literal::U32(0))
-        ) {
-            return Ok(false);
-        }
-        for _ in 0..parentheses {
-            let (_, span) = lexer.peek()?;
-            self.parameter_expansion_budget.charge_work(1, span)?;
-            if !lexer.next_if(Token::Paren(')'))? {
-                return Ok(false);
-            }
-        }
-        Ok(matches!(
-            lexer.peek()?.0,
-            Token::Separator(',') | Token::Paren(')')
-        ))
-    }
-
     pub(super) fn capture_call_argument(&mut self) -> Result<CapturedArgument, ParseError> {
         let span = self.lexer.peek()?.1;
         self.parameter_expansion_budget.charge_nodes(1, span)?;
         self.parameter_expansion_budget.charge_work(1, span)?;
         self.parameter_expansion_budget
             .charge_slice::<CapturedArgument>(1, span)?;
-        let is_null_pointer_constant = self.starts_null_pointer_argument()?;
         let (value, body) = self.capture_block(|parser| parser.expression_result(0))?;
         if let ExpressionResult::Void(span) = value {
             return Err(ParseError {
@@ -321,11 +282,7 @@ impl Parser<'_> {
                 span,
             });
         }
-        Ok(CapturedArgument {
-            value,
-            body,
-            is_null_pointer_constant,
-        })
+        Ok(CapturedArgument { value, body })
     }
 
     pub(super) fn has_captured_candidate(&self, name: &str) -> bool {
