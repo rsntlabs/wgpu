@@ -863,6 +863,9 @@ Default construction produces `(1, 1, 1)`, including `dim3 shape;`,
 omitted components are one. For example, `dim3 shape = 2u;` produces `(2, 1, 1)`.
 Parenthesized arguments use the existing scalar conversions; explicit
 `dim3{...}` arguments enforce list-initialization narrowing checks.
+Local declarations follow the usual function-declaration rules:
+`dim3 copied(dim3(source));` declares an unsupported function;
+`dim3 copied((dim3(source)));` initializes a value.
 Array and record scalar initializer clauses use copy initialization for a
 `dim3` subobject; explicit inner braces retain narrowing checks.
 

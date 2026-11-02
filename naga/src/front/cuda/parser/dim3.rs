@@ -106,21 +106,13 @@ impl Parser<'_> {
         let has_equals = self.lexer.next_if(Token::Operation('='))?;
         let token = self.lexer.peek()?;
         if token.0 == Token::Paren('{') || (!has_equals && token.0 == Token::Paren('(')) {
-            if token.0 == Token::Paren('(') {
-                let mut lookahead = self.lexer.clone();
-                lookahead.next()?;
-                let empty = lookahead.next_if(Token::Paren(')'))?;
-                let function_parameter = !empty
-                    && self.parse_type_from(&mut lookahead).is_ok()
-                    && lookahead.next_if(Token::Paren('('))?
-                    && lookahead.next_if(Token::Paren(')'))?
-                    && lookahead.next_if(Token::Paren(')'))?;
-                if empty || function_parameter {
-                    return Err(ParseError {
-                        message: String::from("local function declarations are unsupported"),
-                        span: token.1,
-                    });
-                }
+            if token.0 == Token::Paren('(')
+                && declarations::parenthesized_function_declaration(self, self.lexer.clone())?
+            {
+                return Err(ParseError {
+                    message: String::from("local function declarations are unsupported"),
+                    span: token.1,
+                });
             }
             return self.dim3_constructor(token.1);
         }

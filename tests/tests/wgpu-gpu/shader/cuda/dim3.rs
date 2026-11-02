@@ -25,6 +25,7 @@ fn output_case(
 pub(super) fn cases() -> Vec<ShaderTest> {
     vec![
         constructors_and_values(),
+        genuine_constructor_expressions(),
         nested_defaults(),
         three_dimensions(),
     ]
@@ -112,4 +113,42 @@ fn three_dimensions() -> ShaderTest {
             output[offset + 8u] = config.raw.x + config.raw.y + config.raw.z;
             output[offset + 9u] = kind(shape) + kind(packed);
         }", &initial, &expected, [4, 3, 2], [2, 1, 1])
+}
+
+fn genuine_constructor_expressions() -> ShaderTest {
+    let initial = [SENTINEL; 32];
+    let mut expected = initial;
+    expected[..7].copy_from_slice(&[4, 3, 30, 41, 8, 71, 3]);
+    output_case(
+        "dim3 constructors preserve copies, nested calls and comma effects",
+        "using Shape = dim3; using Count = unsigned;
+        __device__ unsigned observe(unsigned &counter) { ++counter; return counter + 2u; }
+        __device__ dim3 produce(unsigned &counter) { ++counter; return dim3(counter, 5u, 7u); }
+        __global__ void kernel(unsigned *output) {
+            unsigned counter = 0u;
+            dim3 defaulted;
+            dim3 one(2u), two(3u, 4u), three(5u, 6u, 7u);
+            dim3 source(11u, 13u, 17u);
+            Shape copied((source));
+            Shape forced((Shape(source)));
+            Shape scalar(Count(observe(counter)));
+            Shape returned(produce(counter));
+            Shape typed(Shape(produce(counter)));
+            Shape comma((++counter, source));
+            uint3 packed{19u, 23u, 29u};
+            Shape converted(packed);
+            dim3 forced_empty((dim3()));
+            output[0] = counter;
+            output[1] = defaulted.x + defaulted.y + defaulted.z;
+            output[2] = one.x + one.y + one.z + two.x + two.y + two.z + three.x + three.y + three.z;
+            output[3] = copied.x + forced.y + comma.z;
+            output[4] = scalar.x + returned.x + typed.x;
+            output[5] = converted.x + converted.y + converted.z;
+            output[6] = forced_empty.x + forced_empty.y + forced_empty.z;
+        }",
+        &initial,
+        &expected,
+        [1, 1, 1],
+        [1, 1, 1],
+    )
 }

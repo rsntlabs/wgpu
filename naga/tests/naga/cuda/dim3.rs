@@ -356,3 +356,140 @@ fn cuda_dim3_default_construction_scales_with_the_shared_record_type_graph() {
             "default construction expanded the repeated record tree into {expression_count} expressions for {leaf_fields}");
     }
 }
+
+#[test]
+fn cuda_dim3_initializers_reject_named_parameter_declarations() {
+    for declaration in [
+        "dim3 value();",
+        "dim3 value(dim3());",
+        "dim3 value(dim3(shape));",
+        "dim3 value(dim3((shape)));",
+        "Shape value(Shape(shape));",
+        "dim3 value(const Shape(shape));",
+        "dim3 value(unsigned(seed));",
+        "dim3 value(Count(seed));",
+        "dim3 value(dim3(produce()));",
+        "dim3 value(unsigned(observe()));",
+        "dim3 value(dim3(shape), unsigned(seed));",
+    ] {
+        let source = format!(
+            "using Shape = dim3; using Count = unsigned;
+            __global__ void kernel() {{ dim3 shape(2u); unsigned seed = 3u; {declaration} }}"
+        );
+        let error = rejected(&source);
+        assert!(
+            error.message.contains("function declaration"),
+            "{source}: {error}"
+        );
+    }
+}
+
+#[test]
+fn cuda_dim3_initializers_preserve_genuine_constructor_expressions() {
+    roundtrip(
+        "using Shape = dim3; using Count = unsigned;
+        __device__ unsigned observe(unsigned &counter) { ++counter; return counter + 2u; }
+        __device__ dim3 produce(unsigned &counter) { ++counter; return dim3(counter, 5u, 7u); }
+        __global__ void kernel(unsigned *output) {
+            unsigned counter = 0u;
+            dim3 defaulted;
+            dim3 one(2u), two(3u, 4u), three(5u, 6u, 7u);
+            dim3 source(11u, 13u, 17u);
+            Shape copied((source));
+            Shape forced((Shape(source)));
+            Shape scalar(Count(observe(counter)));
+            Shape returned(produce(counter));
+            Shape typed(Shape(produce(counter)));
+            Shape comma((++counter, source));
+            uint3 packed{19u, 23u, 29u};
+            Shape converted(packed);
+            dim3 forced_empty((dim3()));
+            output[0] = counter;
+            output[1] = defaulted.x + defaulted.y + defaulted.z;
+            output[2] = one.x + one.y + one.z + two.x + two.y + two.z + three.x + three.y + three.z;
+            output[3] = copied.x + forced.y + comma.z;
+            output[4] = scalar.x + returned.x + typed.x;
+            output[5] = converted.x + converted.y + converted.z;
+            output[6] = forced_empty.x + forced_empty.y + forced_empty.z;
+        }",
+    );
+}
+
+#[test]
+fn cuda_dim3_declaration_guards_keep_alias_cv_spans_and_mixed_arguments() {
+    for declaration in [
+        "dim3 value(unsigned(seed), unsigned(other));",
+        "Shape value(Count(seed), Count(other), Count(third));",
+        "const Shape value(Shape(shape));",
+        "Frozen value(Shape(shape));",
+    ] {
+        let source = format!(
+            "/* café 漢 */ using Shape = dim3; using Frozen = const Shape;
+            using Count = unsigned;
+            __global__ void kernel() {{
+                dim3 shape(2u); unsigned seed = 3u, other = 5u, third = 7u;
+                {declaration}
+            }}"
+        );
+        let opening = source.find("value(").unwrap() + "value".len();
+        let error = rejected(&source);
+        assert!(
+            error.message.contains("function declaration"),
+            "{source}: {error}"
+        );
+        assert_eq!(
+            error.span.to_range(),
+            Some(opening..opening + 1),
+            "{source}: {error}"
+        );
+    }
+    roundtrip(
+        "using Shape = dim3; using Frozen = const Shape; using Count = unsigned;
+        __global__ void kernel(unsigned *output) {
+            unsigned seed = 3u;
+            Shape mixed(Count(seed), 5u, 7u);
+            Frozen fixed(Count(seed), 11u);
+            const Shape forced((Shape(seed)));
+            output[0] = mixed.x + mixed.y + mixed.z;
+            output[1] = fixed.x + fixed.y + fixed.z;
+            output[2] = forced.x + forced.y + forced.z;
+        }",
+    );
+}
+
+#[test]
+fn cuda_dim3_declaration_guards_bound_lookahead_and_genuine_constructors() {
+    for depth in [8, 512] {
+        let mut parameter = String::from("Shape()");
+        for _ in 0..depth {
+            parameter = format!("Shape({parameter})");
+        }
+        let source =
+            format!("using Shape = dim3; __global__ void kernel() {{ Shape value({parameter}); }}");
+        let error = rejected(&source);
+        if depth == 8 {
+            assert!(error.message.contains("function declaration"), "{error}");
+        } else {
+            assert!(
+                error.message.contains("nesting") && error.message.contains("limit"),
+                "{error}"
+            );
+        }
+    }
+    let source = |depth: usize| {
+        format!(
+            "using Shape = dim3; __global__ void kernel(unsigned *output) {{
+                Shape value({}2u{});
+                output[0] = value.x + value.y + value.z;
+            }}",
+            "Shape(".repeat(depth),
+            ")".repeat(depth),
+        )
+    };
+    roundtrip(&source(8));
+    let error = rejected(&source(512));
+    assert!(
+        error.message.contains("nesting") && error.message.contains("limit"),
+        "{error}"
+    );
+}
