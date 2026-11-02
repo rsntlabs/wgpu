@@ -26,6 +26,7 @@ mod direct_borrowed_initialization;
 mod direct_initialization;
 mod dual_execution;
 mod dynamic_shared;
+mod empty_scalar_construction;
 mod fabs;
 mod float_math;
 mod float_separators;

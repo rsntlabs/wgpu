@@ -1310,6 +1310,14 @@ destination type; brace initializers use the narrowing rules above. C-style cast
 supported for these scalar types. Float-to-integer conversions truncate toward
 zero within the destination range; unsigned negation wraps modulo 2^32.
 
+Empty scalar constructors `bool()`, `int()`, `unsigned()`, and `float()` produce
+`false` or a typed zero, including scalar aliases and template `Value()`
+expressions. These values support constant evaluation and array bounds. Scalar
+prvalues discard top-level `const` and `volatile` qualification. Constructed
+zeros are not integer literals and cannot initialize null pointers. Named
+declarations such as `int value();` retain their function interpretation;
+`int value((int()));` initializes an object.
+
 Remainder `%`, bitwise `~`, `&`, `|`, and `^`, and shifts `<<` and `>>` accept
 integer and boolean operands, with booleans promoted to `int`. Shift operands
 are promoted independently, and the result has the promoted left operand's type.
