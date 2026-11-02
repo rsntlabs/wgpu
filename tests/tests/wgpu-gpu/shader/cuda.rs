@@ -77,6 +77,7 @@ mod thread_block_dimensions;
 mod thread_block_parameters;
 mod trigonometry;
 mod type_aliases;
+mod type_templates;
 mod uniform_branch_barriers;
 mod uniform_loop_barriers;
 mod uninitialized;
@@ -158,6 +159,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_THREAD_BLOCK_PARAMETERS,
         CUDA_TRIGONOMETRY,
         CUDA_TYPE_ALIASES,
+        CUDA_TYPE_TEMPLATES,
         CUDA_UNINITIALIZED,
         CUDA_UNINITIALIZED_POINTERS,
         CUDA_UNIFORM_BRANCH_BARRIERS,
@@ -577,6 +579,8 @@ static CUDA_THREAD_BLOCK_PARAMETERS: GpuTestConfiguration =
 static CUDA_TRIGONOMETRY: GpuTestConfiguration = configuration(trigonometry::cases);
 #[apply(gpu_test!)]
 static CUDA_TYPE_ALIASES: GpuTestConfiguration = configuration(type_aliases::cases);
+#[apply(gpu_test!)]
+static CUDA_TYPE_TEMPLATES: GpuTestConfiguration = configuration(type_templates::cases);
 #[apply(gpu_test!)]
 static CUDA_UNINITIALIZED: GpuTestConfiguration = configuration(uninitialized::cases);
 #[apply(gpu_test!)]
