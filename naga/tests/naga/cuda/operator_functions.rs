@@ -666,6 +666,9 @@ fn cuda_operator_functions_distinguish_grouped_record_values_from_cast_types() {
         "(int2)make_int2(1, 2);",
         "(Vector)make_float2(1.0f, 2.0f);",
     ] {
+        validate(&format!("{BOX} using Alias = Box; using Vector = float2; __global__ void kernel() {{ Box value{{1}}; {statement} }}"));
+    }
+    for statement in ["(Box)make_int2(1, 2);", "(int2)make_float2(1.0f, 2.0f);"] {
         rejected(&format!("{BOX} using Alias = Box; using Vector = float2; __global__ void kernel() {{ Box value{{1}}; {statement} }}"));
     }
 }

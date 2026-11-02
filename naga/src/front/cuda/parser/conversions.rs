@@ -202,46 +202,58 @@ impl Parser<'_> {
         })
     }
 
-    pub(super) fn cast_type(&mut self) -> Result<SourceType<TypeResolution>, ParseError> {
+    pub(super) fn cast_type(&mut self) -> Result<QualifiedType, ParseError> {
         let span = self.lexer.peek()?.1;
-        let ty = self.parse_type()?.ty;
-        if matches!(ty, TypeSpecifier::NullPointer) {
-            return Ok(SourceType::NullPointer);
-        }
-        if matches!(ty, TypeSpecifier::Pointer { .. }) {
+        let target = self.parse_type()?;
+        if matches!(target.ty, TypeSpecifier::Pointer { .. }) {
             return Err(ParseError {
                 message: String::from("pointer casts are unsupported"),
                 span,
             });
         }
-        if !matches!(ty, TypeSpecifier::Scalar(_)) {
+        if !matches!(
+            target.ty,
+            TypeSpecifier::NullPointer
+                | TypeSpecifier::Scalar(_)
+                | TypeSpecifier::Vector { .. }
+                | TypeSpecifier::Structure(_)
+                | TypeSpecifier::Dim3
+        ) {
             return Err(ParseError {
-                message: String::from("vector casts are unsupported"),
+                message: String::from("unsupported cast target"),
                 span,
             });
         }
-        self.lower_type(ty, span).map(SourceType::Shader)
+        if target.qualifiers.is_volatile
+            && matches!(
+                target.ty,
+                TypeSpecifier::Vector { .. } | TypeSpecifier::Structure(_) | TypeSpecifier::Dim3
+            )
+        {
+            return Err(ParseError {
+                message: String::from("volatile class value construction is unsupported"),
+                span,
+            });
+        }
+        Ok(target)
     }
 
     pub(super) fn cast_source_value(
         &mut self,
         value: ExpressionValue,
-        target: SourceType<TypeResolution>,
+        target: QualifiedType,
         span: Span,
     ) -> Result<ExpressionValue, ParseError> {
-        match target {
-            SourceType::NullPointer => {
-                let mut value = self.require_null_pointer_value(value)?;
-                value.span = span;
-                Ok(ExpressionValue::NullPointer(value.rvalue()))
-            }
-            SourceType::Shader(target) => {
-                let mut value = self.cast_value(value, &target)?;
-                value.span = span;
-                Ok(value.into())
-            }
-            SourceType::ThreadBlock => self.fail("thread_block casts are unsupported"),
+        if matches!(target.ty, TypeSpecifier::NullPointer) {
+            let mut value = self.require_null_pointer_value(value)?;
+            value.span = span;
+            return Ok(ExpressionValue::NullPointer(value.rvalue()));
         }
+        let ty = self.lower_type(target.ty, span)?;
+        let mut value = self.cast_value(value, &ty)?;
+        value.qualifiers = self.prvalue_qualifiers(&ty, target.qualifiers);
+        value.span = span;
+        Ok(value.into())
     }
 
     pub(super) fn cast_value(
@@ -249,6 +261,15 @@ impl Parser<'_> {
         value: ExpressionValue,
         target: &TypeResolution,
     ) -> Result<Value, ParseError> {
+        if self.is_source_class(target) {
+            let value = self.rvalue(value)?;
+            self.require_volatile_scalar(value.qualifiers, &value.ty, value.span)?;
+            let mut value = self.convert_value(value.into(), target)?;
+            value.category = ValueCategory::Prvalue;
+            value.qualifiers = Qualifiers::NONE;
+            value.constant = value.constant.non_literal();
+            return Ok(value);
+        }
         if *target.inner_with(&self.module.types) == TypeInner::Scalar(Scalar::BOOL) {
             if let ExpressionValue::NullPointer(value) = value {
                 return self.null_pointer_boolean(value);

@@ -846,9 +846,11 @@ These types follow CUDA's [built-in vector definitions](https://docs.nvidia.com/
 In particular, three-component arrays have a 12-byte element stride and
 4-byte alignment. Vector comparisons, truthiness, indexing, and swizzles remain
 unsupported. Vector arithmetic requires a visible source-defined operator.
-Vector casts and parenthesized member initialization remain unsupported,
-apart from the `dim3` conversions below. Same-type vector copies accept
-one parenthesized expression, such as `float2 copied(source);`. By-value kernel
+Same-type vector copies support `float2(source)`, `static_cast<float2>(source)`,
+and `(float2)source`. Empty `float2()` construction zeroes every component.
+Parenthesized component lists and casts between unrelated vector types remain
+unsupported, apart from the `dim3` conversions below. Named vector copies also
+accept one parenthesized expression, such as `float2 copied(source);`. By-value kernel
 parameters require the scalar types described in the kernel interface.
 Typed vector temporaries such as `float2{1.0f, 2.0f}` use the same list
 initialization and narrowing rules as vector declarations.
@@ -961,6 +963,14 @@ or read through their fields. Copying a struct
 also copies its fixed-array fields. Standalone arrays still cannot be copied
 or passed by value. These rules follow C++
 [aggregate initialization](https://eel.is/c++draft/dcl.init.aggr).
+
+Struct value construction also supports `Sample(source)`,
+`static_cast<Sample>(source)`, and `(Sample)source` for a source of the same type.
+Empty `Sample()` construction zeroes numeric subobjects and applies the existing
+`dim3` defaults recursively. Class values retain the requested target's `const`
+qualification; an unqualified copy of a const source is mutable. Empty class
+constructors can be discarded in scalar constant expressions when C++17 permits
+their default construction there. Aggregate constant expressions remain unsupported.
 
 Arbitrary field names and indexed fields use the existing value/reference
 rules, including `samples[index].weights[element]`. Const objects and
