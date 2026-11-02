@@ -479,7 +479,7 @@ impl Parser<'_> {
         })
     }
 
-    fn scalar_list_initializer(
+    pub(super) fn scalar_list_initializer(
         &mut self,
         scalar: Scalar,
         direct: bool,

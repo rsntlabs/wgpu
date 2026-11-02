@@ -1142,7 +1142,11 @@ Scalar lists contain at most one expression; extra scalar brace nesting is
 rejected, following the
 [nested-brace clarification](https://cplusplus.github.io/CWG/issues/cwg_closed.html#1501).
 Thus `int values[2]{{1}, {}};` is valid and `int value{{1}};` is not.
-Typed vector and struct temporaries also use these initialization rules.
+Typed scalar, vector, and struct temporaries also use these initialization rules.
+Scalar expressions accept empty braces, one element, and a trailing comma:
+`float{}`, `unsigned{3}`, and `bool{1,}`. Aliases and template `Value{value}`
+expressions use the same rules. `bool{nullptr}` is direct list initialization
+and produces `false`. Typed expressions can nest, as in `int{int{3}}`.
 Bare initializer lists in assignments, returns, and helper arguments remain
 unsupported, as do designated initializers and shared-storage initializers.
 
