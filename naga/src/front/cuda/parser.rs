@@ -30,6 +30,7 @@ mod references;
 mod rounding;
 mod saturate;
 mod scalar_promotions;
+mod signatures;
 mod sqrtf;
 mod statements;
 mod structures;
@@ -372,11 +373,17 @@ impl<'a> Parser<'a> {
     }
 
     fn parameter(&mut self, parameter_index: u32) -> Result<(), ParseError> {
-        let type_span = self.lexer.peek()?.1;
-        let QualifiedType {
-            ty: specifier,
-            qualifiers,
-        } = self.parse_type()?;
+        let signatures::ParameterType {
+            ty:
+                QualifiedType {
+                    ty: specifier,
+                    qualifiers,
+                },
+            pointer_qualifiers: explicit_pointer_qualifiers,
+            is_reference,
+            type_span,
+            declarator_span: pointer_span,
+        } = self.parameter_type()?;
         if matches!(specifier, TypeSpecifier::ThreadBlock) {
             if qualifiers.is_volatile {
                 return self.fail("volatile thread_block parameters are unsupported");
@@ -402,15 +409,14 @@ impl<'a> Parser<'a> {
         {
             return self.fail("boolean kernel parameters are unsupported");
         }
-        let pointer_span = self.lexer.peek()?.1;
-        let explicit_pointer = self.lexer.next_if(Token::Operation('*'))?;
+        let explicit_pointer = explicit_pointer_qualifiers.is_some();
         if explicit_pointer && aliased_pointer_qualifiers.is_some() {
             return self.fail("nested pointer parameters are unsupported");
         }
         let is_pointer = explicit_pointer || aliased_pointer_qualifiers.is_some();
         let pointer_qualifiers = match aliased_pointer_qualifiers {
             Some(qualifiers) => qualifiers,
-            None if explicit_pointer => types::pointer_qualifiers(&mut self.lexer)?,
+            None if explicit_pointer => explicit_pointer_qualifiers.unwrap(),
             None => Qualifiers::NONE,
         };
         let pointer_const = pointer_qualifiers.is_const;
@@ -419,10 +425,12 @@ impl<'a> Parser<'a> {
             return self.fail("arrays of pointers are unsupported");
         }
         if self.function.kind == FunctionKind::Device && is_pointer {
-            if matches!(
-                self.lexer.peek()?.0,
-                Token::Operation('*' | '&') | Token::LogicalOperation('&') | Token::Paren('(')
-            ) {
+            if is_reference
+                || matches!(
+                    self.lexer.peek()?.0,
+                    Token::Operation('*' | '&') | Token::LogicalOperation('&') | Token::Paren('(')
+                )
+            {
                 return self
                     .fail("nested pointer and pointer reference declarators are unsupported");
             }
@@ -450,7 +458,7 @@ impl<'a> Parser<'a> {
                 ParameterMode::Pointer { qualifiers },
             );
         }
-        let mode = if self.lexer.next_if(Token::Operation('&'))? {
+        let mode = if is_reference {
             if self.function.kind == FunctionKind::Kernel {
                 return Err(ParseError {
                     message: String::from("kernel reference parameters are unsupported"),
