@@ -460,6 +460,25 @@ impl Parser<'_> {
         }
     }
 
+    pub(super) fn zero_scalar_value(
+        &mut self,
+        scalar: Scalar,
+        span: Span,
+    ) -> Result<Value, ParseError> {
+        let literal = Literal::zero(scalar).ok_or_else(|| ParseError {
+            message: String::from("unsupported scalar value initialization"),
+            span,
+        })?;
+        Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
+            handle: self.append(Expression::Literal(literal), span)?,
+            ty: scalar_resolution(scalar),
+            span,
+            constant: literal.into(),
+        })
+    }
+
     fn scalar_list_initializer(
         &mut self,
         scalar: Scalar,
@@ -467,21 +486,7 @@ impl Parser<'_> {
     ) -> Result<Value, ParseError> {
         let start = self.lexer.expect_span(Token::Paren('{'))?;
         let mut value = if self.lexer.peek()?.0 == Token::Paren('}') {
-            let literal = match scalar {
-                Scalar::BOOL => Literal::Bool(false),
-                Scalar::I32 => Literal::I32(0),
-                Scalar::U32 => Literal::U32(0),
-                Scalar::F32 => Literal::F32(0.0),
-                _ => return self.fail("unsupported scalar list initializer"),
-            };
-            Value {
-                category: ValueCategory::Prvalue,
-                qualifiers: Qualifiers::NONE,
-                handle: self.append(Expression::Literal(literal), start)?,
-                ty: scalar_resolution(scalar),
-                span: start,
-                constant: literal.into(),
-            }
+            self.zero_scalar_value(scalar, start)?
         } else {
             if self.lexer.peek()?.0 == Token::Paren('{') {
                 return self.fail("nested scalar initializer lists are unsupported");

@@ -30,6 +30,7 @@ mod direct_borrowed_initialization;
 mod direct_initialization;
 mod dual_execution;
 mod dynamic_shared;
+mod empty_scalar_construction;
 mod fabs;
 mod float_math;
 mod float_separators;
@@ -121,6 +122,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_DIRECT_INITIALIZATION,
         CUDA_DUAL_EXECUTION,
         CUDA_DYNAMIC_SHARED,
+        CUDA_EMPTY_SCALAR_CONSTRUCTION,
         CUDA_FABS,
         CUDA_FLOAT_MATH,
         CUDA_FLOAT_SEPARATORS,
@@ -502,6 +504,9 @@ static CUDA_DIRECT_INITIALIZATION: GpuTestConfiguration =
 static CUDA_DUAL_EXECUTION: GpuTestConfiguration = configuration(dual_execution::cases);
 #[apply(gpu_test!)]
 static CUDA_DYNAMIC_SHARED: GpuTestConfiguration = configuration(dynamic_shared::cases);
+#[apply(gpu_test!)]
+static CUDA_EMPTY_SCALAR_CONSTRUCTION: GpuTestConfiguration =
+    configuration(empty_scalar_construction::cases);
 #[apply(gpu_test!)]
 static CUDA_FABS: GpuTestConfiguration = configuration(fabs::cases);
 #[apply(gpu_test!)]

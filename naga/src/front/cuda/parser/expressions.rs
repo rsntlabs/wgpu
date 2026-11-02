@@ -616,6 +616,14 @@ impl Parser<'_> {
             return self.class_value_constructor(target, span).map(Into::into);
         }
         self.lexer.expect_span(Token::Paren('('))?;
+        if let TypeSpecifier::Scalar(scalar) = target {
+            if self.lexer.peek()?.0 == Token::Paren(')') {
+                let end = self.lexer.next()?.1;
+                return self
+                    .zero_scalar_value(scalar, span.until(&end))
+                    .map(Into::into);
+            }
+        }
         let value = self.expression(0)?;
         let end = self.lexer.expect_span(Token::Paren(')'))?;
         let target = self.lower_type(target, span)?;
