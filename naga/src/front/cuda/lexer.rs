@@ -28,6 +28,12 @@ pub(super) enum Token<'a> {
 
 pub(super) type TokenSpan<'a> = (Token<'a>, Span);
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct LexerPosition {
+    offset: usize,
+    prepared_index: usize,
+}
+
 #[derive(Clone, Copy)]
 struct ScannedToken<'a> {
     token: TokenSpan<'a>,
@@ -45,6 +51,7 @@ pub(super) struct Lexer<'a> {
     prepared_index: usize,
     last_end_offset: usize,
     lookahead: Option<ScannedToken<'a>>,
+    limit: Option<LexerPosition>,
 }
 
 impl<'a> Lexer<'a> {
@@ -58,6 +65,7 @@ impl<'a> Lexer<'a> {
             prepared_index: 0,
             last_end_offset: 0,
             lookahead: None,
+            limit: None,
         })
     }
 
@@ -70,10 +78,17 @@ impl<'a> Lexer<'a> {
             prepared_index: 0,
             last_end_offset: 0,
             lookahead: None,
+            limit: None,
         }
     }
 
     pub(super) fn pragmas_before(&self) -> &'a [UnrollPragma] {
+        if self
+            .limit
+            .is_some_and(|limit| self.prepared_index >= limit.prepared_index)
+        {
+            return &[];
+        }
         let Some(prepared) = self.prepared else {
             return &[];
         };
@@ -95,6 +110,7 @@ impl<'a> Lexer<'a> {
             prepared_index: 0,
             last_end_offset: pragma.span.to_range().unwrap().start,
             lookahead: None,
+            limit: None,
         }
     }
 
@@ -110,6 +126,24 @@ impl<'a> Lexer<'a> {
     }
 
     fn scan(&self) -> Result<ScannedToken<'a>, ParseError> {
+        if let Some(limit) = self.limit {
+            let reached = if self.prepared.is_some() {
+                self.prepared_index >= limit.prepared_index
+            } else {
+                self.source.len() - self.input.len() >= limit.offset
+            };
+            if reached {
+                return Ok(ScannedToken {
+                    token: (
+                        Token::End,
+                        Span::from(limit.offset.saturating_sub(1)..limit.offset),
+                    ),
+                    input: self.input,
+                    prepared_index: self.prepared_index,
+                    end_offset: limit.offset,
+                });
+            }
+        }
         if let Some(pragma) = self.pragma {
             let Some(raw) = pragma.tokens.get(self.prepared_index) else {
                 return Ok(ScannedToken {
@@ -171,6 +205,17 @@ impl<'a> Lexer<'a> {
         let mut input = self.input;
         loop {
             let offset = self.source.len() - input.len();
+            if let Some(limit) = self.limit.filter(|limit| offset >= limit.offset) {
+                return Ok(ScannedToken {
+                    token: (
+                        Token::End,
+                        Span::from(limit.offset.saturating_sub(1)..limit.offset),
+                    ),
+                    input,
+                    prepared_index: self.prepared_index,
+                    end_offset: limit.offset,
+                });
+            }
             let (token, rest) = consume_token(input).map_err(|mut error| {
                 let range = error.span.to_range().unwrap_or(0..0);
                 error.span = Span::from(offset + range.start..offset + range.end);
@@ -251,6 +296,24 @@ impl<'a> Lexer<'a> {
 
     pub(super) fn span_from(&self, offset: usize) -> Span {
         Span::from(offset..self.last_end_offset)
+    }
+
+    pub(super) fn position(&self) -> LexerPosition {
+        LexerPosition {
+            offset: if self.prepared.is_some() {
+                self.last_end_offset
+            } else {
+                self.source.len() - self.input.len()
+            },
+            prepared_index: self.prepared_index,
+        }
+    }
+
+    pub(super) fn bounded(&self, end: LexerPosition) -> Self {
+        let mut lexer = self.clone();
+        lexer.limit = Some(end);
+        lexer.lookahead = None;
+        lexer
     }
 }
 
@@ -424,6 +487,72 @@ fn consume_token(input: &str) -> Result<(Token<'_>, &str), ParseError> {
 #[cfg(test)]
 mod tests {
     use super::{Lexer, ParseError, Token, TokenSpan};
+
+    #[test]
+    fn cuda_scanner_bounded_raw_replay_keeps_lookahead_and_source_spans() {
+        let source = "first /* 漢 */ second third";
+        let mut lexer = Lexer::new(source).unwrap();
+        lexer.next().unwrap();
+        let second = lexer.peek().unwrap();
+        let start = lexer.clone();
+        assert_eq!(lexer.next().unwrap(), second);
+        let end = lexer.position();
+        assert_eq!(lexer.peek().unwrap().0, Token::Word("third"));
+        let mut replay = start.bounded(end);
+        assert_eq!(replay.next().unwrap(), second);
+        assert_eq!(&source[second.1.to_range().unwrap()], "second");
+        for _ in 0..2 {
+            let token = replay.peek().unwrap();
+            assert_eq!(token.0, Token::End);
+            assert_eq!(replay.next().unwrap(), token);
+        }
+        assert_eq!(lexer.next().unwrap().0, Token::Word("third"));
+        let mut empty = start.bounded(start.position());
+        assert_eq!(empty.next().unwrap().0, Token::End);
+        let empty = Lexer::new("").unwrap();
+        assert_eq!(
+            empty.bounded(empty.position()).next().unwrap().0,
+            Token::End
+        );
+    }
+
+    #[test]
+    fn cuda_scanner_bounded_prepared_replay_keeps_macro_spans_and_pragmas() {
+        let source = "#define LOOP for\n#pragma unroll 2\nLOOP\n#pragma unroll 4\ntail";
+        let prepared = super::super::preprocess::prepare(source).unwrap().unwrap();
+        let mut lexer = Lexer::from_prepared(source, &prepared);
+        assert_eq!(lexer.pragmas_before().len(), 1);
+        let first = lexer.peek().unwrap();
+        assert_eq!(first.0, Token::Word("for"));
+        assert_eq!(&source[first.1.to_range().unwrap()], "LOOP");
+        let start = lexer.clone();
+        assert_eq!(lexer.next().unwrap(), first);
+        let end = lexer.position();
+        assert_eq!(lexer.pragmas_before().len(), 1);
+        assert_eq!(lexer.peek().unwrap().0, Token::Word("tail"));
+        let mut replay = start.bounded(end);
+        assert_eq!(replay.pragmas_before().len(), 1);
+        assert_eq!(replay.next().unwrap(), first);
+        assert!(replay.pragmas_before().is_empty());
+        assert_eq!(replay.peek().unwrap().0, Token::End);
+        assert_eq!(replay.next().unwrap().0, Token::End);
+        assert_eq!(lexer.next().unwrap().0, Token::Word("tail"));
+    }
+
+    #[test]
+    fn cuda_scanner_bounded_prepared_end_and_empty_ranges_stay_at_the_bound() {
+        let source = "#define VALUE 7\nVALUE";
+        let prepared = super::super::preprocess::prepare(source).unwrap().unwrap();
+        let start = Lexer::from_prepared(source, &prepared);
+        let mut end = start.clone();
+        let value = end.next().unwrap();
+        let mut replay = start.bounded(end.position());
+        assert_eq!(replay.next().unwrap(), value);
+        assert_eq!(replay.next().unwrap().0, Token::End);
+        let mut empty = start.bounded(start.position());
+        assert_eq!(empty.peek().unwrap().0, Token::End);
+        assert_eq!(empty.next().unwrap().0, Token::End);
+    }
 
     #[test]
     fn cuda_scanner_scope_resolution_preserves_raw_and_prepared_token_boundaries() {
