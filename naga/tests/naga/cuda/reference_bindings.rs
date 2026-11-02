@@ -653,7 +653,6 @@ fn cuda_local_references_reject_invalid_mutable_and_const_bindings() {
         "int &alias = {};",
         "int value = 1; int &alias{value, value};",
         "int value = 1; int &const alias = value;",
-        "int value = 1; int &alias(value);",
         "int value = 1; int (&alias) = value;",
     ] {
         rejected(&format!("__global__ void kernel() {{ {declaration} }}"));

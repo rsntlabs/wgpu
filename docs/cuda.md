@@ -443,8 +443,8 @@ Overloaded `operator->` and pointer-to-member operators remain unsupported.
 Local pointers can be declared without an initializer, `T *value;`, and assigned
 later. Assign a value before using the pointer; the declaration does not provide
 a null pointer. Top-level `const` pointers require an initializer.
-Initialized forms are `T *value = source`, `T *value{source}`, and
-`T *value = {source}`. They accept the same array decays,
+Initialized forms are `T *value = source`, `T *value{source}`,
+`T *value = {source}`, and `T *value(source)`. They accept the same array decays,
 object addresses, pointer expressions, and pointee qualifications as helper
 arguments. Initializers evaluate once, so later changes to an index or condition
 do not retarget a pointer. Locals preserve live aliases in kernels and helpers,
@@ -1048,12 +1048,16 @@ element += 2;
 
 Both `element` and `view` subsequently observe `values[0]`, whose value is `5`.
 References require initializers and use the existing block and loop scopes.
-Equals, direct-list, and copy-list initializers are accepted; a singleton list
+Equals, single-expression parentheses, direct-list, and copy-list initializers
+are accepted, including `int &alias(value);`. A singleton list
 with a matching lvalue binds that object, while const temporary lists apply the
 existing narrowing checks. Each comma declarator needs its own `&`, as in
 `int &alias = value, copy = alias;`. Reference results, type aliases,
 array references, and reference members remain unsupported. Binding an unresolved
-reference to itself is also unsupported. Reference lowering has a per-function
+reference to itself is also unsupported. Parenthesized reference temporaries
+use implicit conversion: `const bool &value(nullptr);` is invalid, while
+`const bool &value(bool(nullptr));` is accepted. Empty parentheses and ambiguous
+type-headed forms still declare unsupported functions. Reference lowering has a per-function
 work limit of 65,536 units to bound generated address dispatch and projections.
 
 Fixed local arrays support the scalar, vector, and struct types above

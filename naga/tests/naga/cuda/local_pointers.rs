@@ -545,11 +545,6 @@ fn cuda_local_pointers_keep_escaping_and_unsupported_declarators_rejected() {
 }
 "#,
         r#"__global__ void kernel() {
-    int value = 3;
-    int *pointer(&value);
-}
-"#,
-        r#"__global__ void kernel() {
     int values[2]{2, 3};
     int (*pointer)[2] = &values;
 }
