@@ -92,8 +92,8 @@ they should be easy to copy into a standalone project.
 - Verify the supported CUDA source subset, rejection of unsupported syntax,
   IR structure, parser depth limits, and output from every shader backend.
 
-The CLI integration tests live in `naga-cli/tests/cuda.rs` and
-`naga-cli/tests/entry_points.rs`. Run them with `cargo nextest run -p naga-cli`.
+The CLI integration tests live in `naga-cli/tests/cuda.rs`,
+`naga-cli/tests/cuda_integral_templates.rs`, and `naga-cli/tests/entry_points.rs`. Run them with `cargo nextest run -p naga-cli`.
 They share temporary-file helpers in `naga-cli/tests/common/` and check input
 formats, entry-point selection, override values, and clean errors. Backend
 generation tests use Naga parsers where available and need no external shader
