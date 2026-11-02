@@ -64,6 +64,8 @@ impl<'a> Parser<'a> {
         let has_equals = self.lexer.next_if(Token::Operation('='))?;
         let value = if self.lexer.peek()?.0 == Token::Paren('{') {
             self.reference_list_initializer(&ty)?
+        } else if !has_equals && self.lexer.peek()?.0 == Token::Paren('(') {
+            self.parenthesized_initializer()?
         } else {
             if !has_equals {
                 return self.fail("reference declaration requires an initializer");

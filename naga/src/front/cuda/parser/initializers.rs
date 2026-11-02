@@ -9,6 +9,16 @@ impl Parser<'_> {
         Ok(lookahead.peek()?.0 == Token::Paren('{'))
     }
 
+    pub(super) fn parenthesized_initializer(&mut self) -> Result<ExpressionValue, ParseError> {
+        if declarations::parenthesized_function_declaration(self, self.lexer.clone())? {
+            return self.fail("local function declarations are unsupported");
+        }
+        self.lexer.expect_span(Token::Paren('('))?;
+        let value = self.expression(0)?;
+        self.lexer.expect_span(Token::Paren(')'))?;
+        Ok(value)
+    }
+
     pub(super) fn value_initializer(
         &mut self,
         target: &TypeResolution,
@@ -37,12 +47,7 @@ impl Parser<'_> {
             )
             && self.lexer.peek()?.0 == Token::Paren('(')
         {
-            if declarations::parenthesized_function_declaration(self, self.lexer.clone())? {
-                return self.fail("local function declarations are unsupported");
-            }
-            self.lexer.next()?;
-            let value = self.expression(0)?;
-            self.lexer.expect_span(Token::Paren(')'))?;
+            let value = self.parenthesized_initializer()?;
             return self.cast_value(value, target);
         }
         if !has_equals {

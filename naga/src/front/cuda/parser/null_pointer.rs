@@ -199,8 +199,15 @@ impl<'a> Parser<'a> {
                 if is_constexpr {
                     return self.fail("constexpr reference declarations are unsupported");
                 }
-                self.lexer.expect_span(Token::Operation('='))?;
-                let value = self.expression(0)?;
+                let has_equals = self.lexer.next_if(Token::Operation('='))?;
+                let value = if !has_equals && self.lexer.peek()?.0 == Token::Paren('(') {
+                    self.parenthesized_initializer()?
+                } else {
+                    if !has_equals {
+                        self.lexer.expect_span(Token::Operation('='))?;
+                    }
+                    self.expression(0)?
+                };
                 self.require_null_pointer_reference(value, qualifiers)?;
                 self.bind_null_pointer_symbol(name, span, qualifiers)?;
             } else {

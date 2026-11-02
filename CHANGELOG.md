@@ -142,6 +142,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 
 #### Naga
 
+- Support CUDA pointer and reference declarations with single-expression parenthesized initialization.
 - Support CUDA scalar declarations with single-expression parenthesized initialization.
 - Support CUDA typed null pointers from literal zero, empty pointer initializers, and null tests.
 - Support CUDA `nullptr` values, source type aliases, helper parameters and results, and function template deduction.

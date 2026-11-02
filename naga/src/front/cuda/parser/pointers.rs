@@ -159,12 +159,18 @@ impl<'a> Parser<'a> {
         let ty = self.pointer_type(pointee, span);
         let has_equals = self.lexer.next_if(Token::Operation('='))?;
         let has_braces = self.lexer.next_if(Token::Paren('{'))?;
-        let has_initializer = has_equals || has_braces;
+        let has_parentheses =
+            !has_equals && !has_braces && self.lexer.peek()?.0 == Token::Paren('(');
+        let has_initializer = has_equals || has_braces || has_parentheses;
         let pointer = if has_initializer {
             let pointer = if has_braces && self.lexer.next_if(Token::Paren('}'))? {
                 self.null_pointer(&ty, pointee_qualifiers, span)?
             } else {
-                let value = self.expression(0)?;
+                let value = if has_parentheses {
+                    self.parenthesized_initializer()?
+                } else {
+                    self.expression(0)?
+                };
                 if has_braces {
                     self.lexer.next_if(Token::Separator(','))?;
                     self.lexer.expect_span(Token::Paren('}'))?;
