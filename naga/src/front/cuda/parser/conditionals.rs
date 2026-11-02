@@ -98,6 +98,29 @@ impl Parser<'_> {
                         self.require_scalar_type(reject.ty(), reject.span())?,
                     ))
                 };
+                let category = match (&accept, &reject) {
+                    (&ExpressionValue::Plain(ref accept), &ExpressionValue::Plain(ref reject))
+                        if accept.category == ValueCategory::Xvalue
+                            && reject.category == ValueCategory::Xvalue
+                            && self.module.compare_types(&accept.ty, &reject.ty)
+                            && (accept.qualifiers.contains(reject.qualifiers)
+                                || reject.qualifiers.contains(accept.qualifiers)) =>
+                    {
+                        ValueCategory::Xvalue
+                    }
+                    _ => ValueCategory::Prvalue,
+                };
+                let source_qualifiers = |value: &ExpressionValue| match *value {
+                    ExpressionValue::Plain(ref value) => value.qualifiers,
+                    ExpressionValue::Reference(ref reference) => reference.qualifiers,
+                    ExpressionValue::Pointer(_) => unreachable!(),
+                };
+                let qualifiers = source_qualifiers(&accept).union(source_qualifiers(&reject));
+                let qualifiers = if category == ValueCategory::Prvalue {
+                    self.prvalue_qualifiers(&ty, qualifiers)
+                } else {
+                    qualifiers
+                };
                 let pointer = self.temporary_pointer(&ty, span)?;
                 let (accept_constant, accept) = self.capture_block(|parser| {
                     parser.append_block(accept_body);
@@ -140,6 +163,8 @@ impl Parser<'_> {
                     _ => ConstantValue::default(),
                 };
                 Ok(Value {
+                    category,
+                    qualifiers,
                     constant,
                     handle,
                     ty,

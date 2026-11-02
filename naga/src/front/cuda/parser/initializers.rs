@@ -464,6 +464,8 @@ impl Parser<'_> {
                 _ => return self.fail("unsupported scalar list initializer"),
             };
             Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
                 handle: self.append(Expression::Literal(literal), start)?,
                 ty: scalar_resolution(scalar),
                 span: start,

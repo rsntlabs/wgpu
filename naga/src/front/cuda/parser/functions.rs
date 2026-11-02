@@ -808,11 +808,12 @@ impl<'a> Parser<'a> {
                     span: header.name_span,
                 });
             }
-            if self.module.functions[previous]
-                .result
-                .as_ref()
-                .map(|result| result.ty)
-                != self.function.ir.result.as_ref().map(|result| result.ty)
+            if declaration.result_qualifiers != header.result_qualifiers
+                || self.module.functions[previous]
+                    .result
+                    .as_ref()
+                    .map(|result| result.ty)
+                    != self.function.ir.result.as_ref().map(|result| result.ty)
             {
                 return Err(ParseError {
                     message: format!("incompatible device helper result type `{}`", header.name),
@@ -835,6 +836,7 @@ impl<'a> Parser<'a> {
                     handle,
                     FunctionDeclaration {
                         parameters: core::mem::take(&mut self.function.parameters),
+                        result_qualifiers: header.result_qualifiers,
                         has_host: header.has_host,
                         is_static: header.is_static,
                         inlining: header.inlining,
@@ -895,6 +897,7 @@ impl<'a> Parser<'a> {
                 handle,
                 FunctionDeclaration {
                     parameters: function.parameters,
+                    result_qualifiers: header.result_qualifiers,
                     has_host: header.has_host,
                     is_static: header.is_static,
                     inlining: header.inlining,
@@ -1102,6 +1105,8 @@ impl<'a> Parser<'a> {
                 span,
             )?;
             return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
                 constant: ConstantValue::default(),
                 handle,
                 ty,
@@ -1134,6 +1139,8 @@ impl<'a> Parser<'a> {
                 span,
             )?;
             return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
                 constant: ConstantValue::default(),
                 handle,
                 ty: scalar_resolution(result),
@@ -1171,6 +1178,8 @@ impl<'a> Parser<'a> {
                 span,
             )?;
             return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
                 constant: ConstantValue::default(),
                 handle,
                 ty: scalar_resolution(Scalar::F32),
@@ -1212,6 +1221,8 @@ impl<'a> Parser<'a> {
                 )?,
             };
             let mut value = Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
                 constant: ConstantValue::default(),
                 handle,
                 ty: scalar_resolution(source),
@@ -1284,6 +1295,8 @@ impl<'a> Parser<'a> {
                 product
             };
             return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
                 constant: ConstantValue::default(),
                 handle,
                 ty: scalar_resolution(scalar),
@@ -1310,6 +1323,8 @@ impl<'a> Parser<'a> {
                 )?
             };
             return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
                 constant: ConstantValue::default(),
                 handle,
                 ty: scalar_resolution(builtin.result),
@@ -1334,6 +1349,11 @@ impl<'a> Parser<'a> {
         let value = if let Some(ty) = ty {
             let handle = self.append_call_result(function, span)?;
             Some(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: self.prvalue_qualifiers(
+                    &ty,
+                    self.function_declarations[&function].result_qualifiers,
+                ),
                 constant: ConstantValue::default(),
                 handle,
                 ty,
@@ -1768,6 +1788,12 @@ impl<'a> Parser<'a> {
                 if rank == 0 {
                     if let Some(source) = argument.reference_qualifiers() {
                         return qualifiers.contains(source).then_some(rank);
+                    }
+                    if argument
+                        .value_qualifiers()
+                        .is_some_and(|source| !qualifiers.contains(source))
+                    {
+                        return None;
                     }
                 }
                 (qualifiers.is_const && !qualifiers.is_volatile).then_some(rank)

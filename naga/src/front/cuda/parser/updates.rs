@@ -102,6 +102,8 @@ impl Parser<'_> {
             let previous_value =
                 self.update_pointer(pointer, &value.ty, qualifiers, increment, value.span, span)?;
             return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
                 span,
                 ..previous_value
             }
@@ -135,6 +137,8 @@ impl Parser<'_> {
         })?;
         let handle = self.append(Expression::Load { pointer }, span)?;
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
             handle,
             ty,
             span,
@@ -158,6 +162,8 @@ impl Parser<'_> {
         }
         let one = self.append(Expression::Literal(Literal::I32(1)), span)?;
         let one = Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
             handle: one,
             ty: scalar_resolution(Scalar::I32),
             span,
@@ -178,6 +184,8 @@ impl Parser<'_> {
         )?;
         let updated_value = self.convert_value(
             Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
                 handle,
                 ty: left.ty,
                 span,

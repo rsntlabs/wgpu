@@ -271,7 +271,7 @@ impl<'a> Parser<'a> {
                 if ty.qualifiers.is_volatile && !matches!(ty.ty, TypeSpecifier::Scalar(_)) {
                     return self.fail("volatile class value construction is unsupported");
                 }
-                self.type_expression(ty.ty, name.span)
+                self.type_expression(ty, name.span)
             }
             QualifiedItem::Function(GroupFunction::Current) => {
                 self.lexer.expect_span(Token::Paren('('))?;
@@ -466,6 +466,8 @@ impl<'a> Parser<'a> {
             | GroupMethod::Dimensions => unreachable!(),
         };
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
             handle,
             ty: scalar_resolution(Scalar::U32),
             span,
@@ -506,6 +508,8 @@ impl<'a> Parser<'a> {
         let ty = self.dim3_type(span);
         let handle = self.append(Expression::Compose { ty, components }, span)?;
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
             handle,
             ty: TypeResolution::Handle(ty),
             span,

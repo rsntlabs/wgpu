@@ -128,6 +128,8 @@ impl<'a> Parser<'a> {
             }
             let handle = self.append(Expression::ZeroValue(actual_ty), opening)?;
             return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
                 handle,
                 ty: ty.clone(),
                 span: opening,

@@ -43,6 +43,8 @@ impl Parser<'_> {
             value.span,
         )?;
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
             handle,
             ty: scalar_resolution(target),
             span: value.span,
@@ -179,6 +181,8 @@ impl Parser<'_> {
             span,
         )?;
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
             handle,
             ty: scalar_resolution(scalar),
             span,

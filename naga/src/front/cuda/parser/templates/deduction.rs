@@ -77,6 +77,7 @@ impl Parser<'_> {
                     let ty = self.type_handle(ty, span);
                     let qualifiers = argument
                         .reference_qualifiers()
+                        .or_else(|| argument.value_qualifiers())
                         .unwrap_or(Qualifiers::NONE)
                         .without(qualifiers);
                     return Ok(Some(TemplateValue::ArrayType { ty, qualifiers }));
@@ -116,10 +117,13 @@ impl Parser<'_> {
                 .or_else(|| argument.reference_qualifiers())
             {
                 source.without(qualifiers)
-            } else if qualifiers.is_const && !qualifiers.is_volatile {
-                Qualifiers::NONE
             } else {
-                return Ok(None);
+                let source = argument.value_qualifiers().unwrap_or(Qualifiers::NONE);
+                let reference = qualifiers.union(source);
+                if !reference.is_const || reference.is_volatile {
+                    return Ok(None);
+                }
+                source.without(qualifiers)
             }
         } else {
             Qualifiers::NONE

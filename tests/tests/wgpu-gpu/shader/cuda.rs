@@ -60,6 +60,7 @@ mod pragma_unroll;
 mod preprocessing;
 mod preprocessing_conditions;
 mod prototypes;
+mod qualified_values;
 mod reference_bindings;
 mod reference_categories;
 mod restrict;
@@ -142,6 +143,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_PREPROCESSING,
         CUDA_PREPROCESSING_CONDITIONS,
         CUDA_PROTOTYPES,
+        CUDA_QUALIFIED_VALUES,
         CUDA_REFERENCE_BINDINGS,
         CUDA_REFERENCE_CATEGORIES,
         CUDA_RESTRICT,
@@ -543,6 +545,8 @@ static CUDA_POINTER_UPDATES: GpuTestConfiguration = configuration(pointer_update
 static CUDA_PRAGMA_UNROLL: GpuTestConfiguration = configuration(pragma_unroll::cases);
 #[apply(gpu_test!)]
 static CUDA_PROTOTYPES: GpuTestConfiguration = configuration(prototypes::cases);
+#[apply(gpu_test!)]
+static CUDA_QUALIFIED_VALUES: GpuTestConfiguration = configuration(qualified_values::cases);
 #[apply(gpu_test!)]
 static CUDA_REFERENCE_BINDINGS: GpuTestConfiguration = configuration(reference_bindings::cases);
 #[apply(gpu_test!)]
