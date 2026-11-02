@@ -219,9 +219,9 @@ fn cuda_decimal_float_separators_do_not_enable_double_hexadecimal_or_extended_su
         "1'0.0L",
         "1'0.0f32",
         "1'0.0h",
-        "0x1p+0f",
-        "0x1'0p+2f",
-        "0x1.fp-2F",
+        "0x1p+0",
+        "0x1'0p+2L",
+        "0x1.fp-2f32",
     ] {
         rejected_token(text);
     }

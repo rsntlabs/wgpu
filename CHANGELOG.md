@@ -142,6 +142,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 
 #### Naga
 
+- Support CUDA hexadecimal floating-point literals with direct binary32 rounding and digit separators.
 - Support CUDA pointer value construction and compatible pointer casts with shared conversion and capture rules.
 - Support CUDA scalar brace expressions with shared list-initialization narrowing checks.
 - Support empty CUDA scalar constructors, including aliases and function template values.

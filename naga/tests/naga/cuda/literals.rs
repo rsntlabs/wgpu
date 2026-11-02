@@ -212,8 +212,8 @@ fn cuda_float_extensions_and_nonfinite_literals_remain_unsupported() {
         "1.0",
         "1.0L",
         "1.0f32",
-        "0x1p+0f",
-        "0x1.fp-2F",
+        "0x1p+0",
+        "0x1.fp-2L",
         "1e9999f",
     ] {
         rejected_token(text);

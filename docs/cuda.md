@@ -1320,7 +1320,13 @@ literals use `int` when they fit and otherwise `unsigned int`. The `u`/`U` suffi
 selects `unsigned int`. Values requiring more than 32 bits and long or size
 suffixes remain unsupported. Decimal floating literals require the `f`/`F` suffix,
 such as `2.0f`. Apostrophes may separate decimal digits in the significand and
-exponent, as in `1'024.5f` or `1.25e+0'2f`. Hexadecimal floats remain unsupported.
+exponent, as in `1'024.5f` or `1.25e+0'2f`. Hexadecimal floating literals also
+require `f`/`F` and a binary exponent introduced by `p`/`P`, as in `0x1.8p+1f`
+(3.0). The significand may contain a decimal point and hexadecimal digit
+separators; exponent digits are decimal and may also contain separators.
+Literals round directly to binary32 using round-to-nearest, ties-to-even,
+including subnormal and signed-zero results. Values that round to infinity
+are rejected. Unsuffixed and long floating literals remain unsupported.
 Arithmetic promotes booleans to `int`; a `float` operand makes the common
 type `float`, and mixed signed/unsigned integer operands use `unsigned int`.
 Scalar assignments and ordinary `= expression` initializers convert to the

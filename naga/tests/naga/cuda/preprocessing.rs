@@ -463,7 +463,7 @@ fn cuda_preprocessing_preserves_invalid_numbers_until_active_language_conversion
         "0xe+value",
         "1e+f",
         "1'2'foo",
-        "0x1.fp+3f",
+        "0x1.fp+3f32",
         "1.0",
         "1L",
     ] {
