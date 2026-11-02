@@ -2,7 +2,12 @@ use alloc::borrow::Cow;
 
 use crate::Literal;
 
+mod hexadecimal;
+
 pub(super) fn parse(input: &str) -> Option<Literal> {
+    if matches!(input.get(..2), Some("0x" | "0X")) && input.contains(['p', 'P']) {
+        return hexadecimal::parse(input).map(Literal::F32);
+    }
     if matches!(input.get(..2), Some("0x" | "0X" | "0b" | "0B")) {
         return parse_integer(input);
     }

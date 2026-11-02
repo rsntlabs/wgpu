@@ -38,6 +38,7 @@ mod floorf;
 mod function_macros;
 mod helper_builtins;
 mod helper_parameters;
+mod hex_float_literals;
 mod immutable_pointers;
 mod inferred_arrays;
 mod inline;
@@ -132,6 +133,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FUNCTION_MACROS,
         CUDA_HELPER_BUILTINS,
         CUDA_HELPER_PARAMETERS,
+        CUDA_HEX_FLOAT_LITERALS,
         CUDA_IMMUTABLE_POINTERS,
         CUDA_INFERRED_ARRAYS,
         CUDA_INLINE,
@@ -526,6 +528,8 @@ static CUDA_HELPER_BUILTINS: GpuTestConfiguration = configuration(helper_builtin
 
 #[apply(gpu_test!)]
 static CUDA_HELPER_PARAMETERS: GpuTestConfiguration = configuration(helper_parameters::cases);
+#[apply(gpu_test!)]
+static CUDA_HEX_FLOAT_LITERALS: GpuTestConfiguration = configuration(hex_float_literals::cases);
 #[apply(gpu_test!)]
 static CUDA_IMMUTABLE_POINTERS: GpuTestConfiguration = configuration(immutable_pointers::cases);
 #[apply(gpu_test!)]
