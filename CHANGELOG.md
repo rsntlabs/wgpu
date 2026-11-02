@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA macro token pasting with raw arguments, empty arguments, and rescanning.
 - Support CUDA hexadecimal floating-point literals with direct binary32 rounding and digit separators.
 - Support CUDA pointer value construction and compatible pointer casts with shared conversion and capture rules.
 - Support CUDA scalar brace expressions with shared list-initialization narrowing checks.

@@ -22,6 +22,38 @@ pub(super) struct RawToken {
     pub(super) line_start: bool,
 }
 
+pub(super) fn relex_pasted(
+    spelling: &str,
+    budget: &mut Budget,
+    span: Span,
+) -> Result<RawToken, ParseError> {
+    let result = (|| {
+        let invalid = || {
+            error(
+                "CUDA token pasting must produce one preprocessing token",
+                span,
+            )
+        };
+        if spelling.starts_with("//") || spelling.starts_with("/*") {
+            return Err(invalid());
+        }
+        let mut lexer = RawLexer::new(spelling);
+        let token = lexer.next(budget)?.ok_or_else(invalid)?;
+        if token.kind == Kind::Newline
+            || token.span.to_range() != Some(0..spelling.len())
+            || token.spelling != spelling
+            || lexer.next(budget)?.is_some()
+        {
+            return Err(invalid());
+        }
+        Ok(token)
+    })();
+    result.map_err(|mut error| {
+        error.span = span;
+        error
+    })
+}
+
 #[derive(Clone, Copy)]
 struct Character {
     value: char,

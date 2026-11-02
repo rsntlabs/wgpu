@@ -87,6 +87,7 @@ mod switches;
 mod thread_block;
 mod thread_block_dimensions;
 mod thread_block_parameters;
+mod token_pasting;
 mod trigonometry;
 mod type_aliases;
 mod type_templates;
@@ -182,6 +183,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_THREAD_BLOCK,
         CUDA_THREAD_BLOCK_DIMENSIONS,
         CUDA_THREAD_BLOCK_PARAMETERS,
+        CUDA_TOKEN_PASTING,
         CUDA_TRIGONOMETRY,
         CUDA_TYPE_ALIASES,
         CUDA_TYPE_TEMPLATES,
@@ -632,6 +634,8 @@ static CUDA_THREAD_BLOCK_DIMENSIONS: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_THREAD_BLOCK_PARAMETERS: GpuTestConfiguration =
     configuration(thread_block_parameters::cases);
+#[apply(gpu_test!)]
+static CUDA_TOKEN_PASTING: GpuTestConfiguration = configuration(token_pasting::cases);
 #[apply(gpu_test!)]
 static CUDA_TRIGONOMETRY: GpuTestConfiguration = configuration(trigonometry::cases);
 #[apply(gpu_test!)]

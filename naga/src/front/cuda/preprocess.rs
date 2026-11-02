@@ -1,4 +1,4 @@
-use alloc::{string::String, vec::Vec};
+use alloc::{rc::Rc, string::String, vec::Vec};
 use core::{mem::size_of, ops::Range};
 
 use crate::{FastHashMap, Span};
@@ -106,16 +106,49 @@ impl Budget {
             return Err(error("CUDA preprocessing token limit exceeded", span));
         }
         self.step(span)?;
+        self.own(size_of::<T>(), span)?;
         tokens.push(token);
         Ok(())
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
+enum Spelling<'a> {
+    Borrowed(&'a str),
+    Shared(Rc<str>),
+}
+
+impl Spelling<'_> {
+    fn as_str(&self) -> &str {
+        match *self {
+            Self::Borrowed(value) => value,
+            Self::Shared(ref value) => value,
+        }
+    }
+}
+
+#[derive(Clone)]
 struct ExpandedToken<'a> {
+    kind: Kind,
+    spelling: Spelling<'a>,
+    span: Span,
+}
+
+#[derive(Clone, Copy)]
+struct TokenView<'a> {
     kind: Kind,
     spelling: &'a str,
     span: Span,
+}
+
+impl ExpandedToken<'_> {
+    fn view(&self) -> TokenView<'_> {
+        TokenView {
+            kind: self.kind,
+            spelling: self.spelling.as_str(),
+            span: self.span,
+        }
+    }
 }
 
 struct Definition {
@@ -542,9 +575,13 @@ impl Preprocessor<'_> {
             parameters = Some(names);
             replacement = &replacement[index..];
         }
-        if let Some(token) = replacement.iter().find(|token| token.spelling == "##") {
+        if let Some(token) = replacement
+            .first()
+            .filter(|token| token.spelling == "##")
+            .or_else(|| replacement.last().filter(|token| token.spelling == "##"))
+        {
             return Err(error(
-                "CUDA preprocessing token pasting is unsupported",
+                "token pasting cannot occur at either end of a CUDA macro replacement",
                 token.span,
             ));
         }
@@ -622,9 +659,10 @@ impl Preprocessor<'_> {
 
 impl PreparedSource {
     fn push(&mut self, token: ExpandedToken<'_>) -> Result<(), ParseError> {
+        let spelling = token.spelling.as_str();
         let start = self.spelling.len();
         let end = start
-            .checked_add(token.spelling.len())
+            .checked_add(spelling.len())
             .filter(|&end| end <= MAX_BYTES)
             .ok_or_else(|| {
                 error(
@@ -632,7 +670,7 @@ impl PreparedSource {
                     token.span,
                 )
             })?;
-        self.spelling.push_str(token.spelling);
+        self.spelling.push_str(spelling);
         self.tokens.push(PreparedToken {
             spelling: start..end,
             span: token.span,

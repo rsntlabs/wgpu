@@ -208,13 +208,23 @@ fn cuda_hex_float_literals_survive_supported_macro_substitution() {
     assert_eq!(returned_bits(&module, "object_macro"), 0x4178_0000);
     assert_eq!(returned_bits(&module, "forwarded_value"), 0x4040_0000);
     assert_eq!(returned_bits(&module, "forwarded_tiny"), 1);
+    let (pasted, _) = validate(
+        "#define JOIN(left, right) left ## right
+        #define WITH_SUFFIX(value) value ## f
+        __device__ float pasted_exponent() { return JOIN(0x1.8p, 1f); }
+        __device__ float pasted_suffix() { return WITH_SUFFIX(0x1p-149); }
+        __global__ void kernel(float *output) {
+            output[0] = pasted_exponent(); output[1] = pasted_suffix();
+        }",
+    );
+    assert_eq!(returned_bits(&pasted, "pasted_exponent"), 0x4040_0000);
+    assert_eq!(returned_bits(&pasted, "pasted_suffix"), 1);
     for definition in [
-        "#define JOIN(left, right) left ## right",
-        "#define WITH_SUFFIX(value) value ## f",
+        "#define JOIN(left, right) ## left",
+        "#define WITH_SUFFIX(value) value ##",
     ] {
         let source = format!("{definition}\n__global__ void kernel() {{}}");
         let error = parse_str(&source, &Options::default()).unwrap_err();
-        assert!(error.message.contains("token pasting"), "{error}");
         assert_eq!(&source[error.span.to_range().unwrap()], "##");
     }
     for spelling in ["0x1p+f", "0x1p999999f"] {

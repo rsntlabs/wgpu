@@ -304,9 +304,13 @@ fn cuda_function_macros_reject_malformed_or_duplicate_formal_parameters() {
 
 #[test]
 fn cuda_function_macros_reject_stringization_pasting_and_fixed_variadic_spellings() {
+    validate(&kernel(
+        "#define F(value) value ## tail",
+        "unsigned humantail = 7u; out[0] = F(human);",
+    ));
     for definition in [
         "F(value) #value",
-        "F(value) value ## tail",
+        "F(value) value ##",
         "F(...) __VA_ARGS__",
         "F(value, ...) value",
         "F(value...) value",
