@@ -26,6 +26,7 @@ impl Parser<'_> {
         self.structures.insert(
             ty,
             structures::Structure {
+                source_name: None,
                 depth: 1,
                 requires_default_constructor: true,
                 const_default_constructible: true,

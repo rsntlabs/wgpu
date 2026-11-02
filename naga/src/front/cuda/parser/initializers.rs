@@ -216,6 +216,9 @@ impl Parser<'_> {
             }
         } else {
             match specifier {
+                TypeSpecifier::TemplateParameter(_) => {
+                    return self.fail("dependent type requires an instantiation");
+                }
                 TypeSpecifier::Scalar(scalar) => {
                     let value = self.scalar_initializer_clause(scalar)?;
                     self.push_statement(

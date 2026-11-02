@@ -160,10 +160,12 @@ impl Parser<'_> {
                     name,
                     alloc::vec![
                         CapturedArgument {
+                            is_null_pointer_constant: false,
                             value: left.into(),
                             body: crate::Block::new()
                         },
                         CapturedArgument {
+                            is_null_pointer_constant: false,
                             value: right.into(),
                             body: right_body
                         }
@@ -224,6 +226,7 @@ impl Parser<'_> {
             return self.call_with_captured_arguments(
                 operator.name(),
                 alloc::vec![CapturedArgument {
+                    is_null_pointer_constant: false,
                     value: operand.into(),
                     body: crate::Block::new()
                 }],
@@ -243,6 +246,7 @@ impl Parser<'_> {
     ) -> Result<ExpressionResult, ParseError> {
         let span = operator_span.until(&operand.span());
         let argument = CapturedArgument {
+            is_null_pointer_constant: false,
             value: operand.into(),
             body: crate::Block::new(),
         };

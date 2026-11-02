@@ -189,7 +189,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         .collect()
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub(super) enum ReturnType {
     Void,
     Value(TypeSpecifier),
@@ -200,6 +200,7 @@ pub(super) struct FunctionHeader<'a> {
     pub(super) kind: FunctionKind,
     pub(super) result: ReturnType,
     pub(super) result_span: Span,
+    pub(super) result_qualifiers: Qualifiers,
     pub(super) name: &'a str,
     pub(super) name_span: Span,
     pub(super) has_host: bool,
@@ -239,13 +240,70 @@ pub(super) enum FunctionCandidate {
     },
 }
 
-pub(super) enum OverloadResolution {
-    Selected(FunctionCandidate),
+pub(super) enum OverloadResolution<C = FunctionCandidate> {
+    Selected(C),
     NoViable,
     Ambiguous,
 }
 
-fn conversion_rank(
+#[derive(Clone, Copy)]
+pub(super) struct ArgumentConversion {
+    pub(super) rank: u8,
+    pub(super) mode: ParameterMode,
+}
+
+pub(super) fn better_conversion_sequences(
+    conversions: impl Iterator<Item = Option<(ArgumentConversion, ArgumentConversion)>>,
+) -> bool {
+    let mut has_better_conversion = false;
+    for conversion in conversions {
+        let Some((left, right)) = conversion else {
+            return false;
+        };
+        if left.rank > right.rank {
+            return false;
+        }
+        has_better_conversion |= left.rank < right.rank;
+        if left.rank == right.rank {
+            if let (
+                ParameterMode::Reference { qualifiers: left },
+                ParameterMode::Reference { qualifiers: right },
+            ) = (left.mode, right.mode)
+            {
+                if left != right && left.contains(right) {
+                    return false;
+                }
+                has_better_conversion |= left != right && right.contains(left);
+            }
+        }
+    }
+    has_better_conversion
+}
+
+pub(super) fn select_ranked_candidate<C: Copy + PartialEq>(
+    candidates: impl Iterator<Item = C> + Clone,
+    mut better: impl FnMut(C, C) -> bool,
+) -> OverloadResolution<C> {
+    let mut remaining = candidates.clone();
+    let Some(mut best) = remaining.next() else {
+        return OverloadResolution::NoViable;
+    };
+    for candidate in remaining {
+        if better(candidate, best) {
+            best = candidate;
+        }
+    }
+    if candidates
+        .clone()
+        .any(|candidate| candidate != best && !better(best, candidate))
+    {
+        OverloadResolution::Ambiguous
+    } else {
+        OverloadResolution::Selected(best)
+    }
+}
+
+pub(super) fn conversion_rank(
     source: &TypeResolution,
     target: &TypeResolution,
     module: &Module,
@@ -331,6 +389,7 @@ impl<'a> Parser<'a> {
         let mut explicit_const = false;
         let mut explicit_volatile = false;
         let mut volatile_result = false;
+        let mut const_result = false;
         let mut integers = IntegerSpecifiers::default();
         loop {
             let token = self.lexer.peek()?;
@@ -340,6 +399,7 @@ impl<'a> Parser<'a> {
                         return self.fail("expected a supported function return type");
                     };
                     volatile_result = ty.qualifiers.is_volatile;
+                    const_result = ty.qualifiers.is_const;
                     result = Some(ReturnType::Value(ty.ty));
                     result_span.get_or_insert(name.span);
                     continue;
@@ -437,6 +497,7 @@ impl<'a> Parser<'a> {
                         break;
                     };
                     volatile_result = ty.qualifiers.is_volatile;
+                    const_result = ty.qualifiers.is_const;
                     result = Some(ReturnType::Value(ty.ty));
                     result_span.get_or_insert(token.1);
                 }
@@ -456,7 +517,10 @@ impl<'a> Parser<'a> {
         if (explicit_volatile || volatile_result)
             && !matches!(
                 result,
-                ReturnType::Void | ReturnType::Value(TypeSpecifier::Scalar(_))
+                ReturnType::Void
+                    | ReturnType::Value(
+                        TypeSpecifier::Scalar(_) | TypeSpecifier::TemplateParameter(_)
+                    )
             )
         {
             return self.fail("volatile class return types are unsupported");
@@ -494,6 +558,10 @@ impl<'a> Parser<'a> {
             kind,
             result,
             result_span: result_span.unwrap(),
+            result_qualifiers: Qualifiers {
+                is_const: explicit_const || const_result,
+                is_volatile: explicit_volatile || volatile_result,
+            },
             name,
             name_span,
             has_host: host_span.is_some(),
@@ -956,6 +1024,13 @@ impl<'a> Parser<'a> {
                 span,
             });
         }
+        if self.has_function_template(name) {
+            return self.deduced_template_call(name, span);
+        }
+        self.ordinary_call(name, span)
+    }
+
+    fn ordinary_call(&mut self, name: &str, span: Span) -> Result<ExpressionResult, ParseError> {
         if self.function_candidates(name).next().is_none() {
             return Err(ParseError {
                 message: format!("unknown or not previously declared device helper `{name}`"),
@@ -1616,7 +1691,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn candidate_conversion(
+    pub(super) fn candidate_conversion(
         &self,
         candidate: FunctionCandidate,
         logical_index: usize,
@@ -1644,26 +1719,50 @@ impl<'a> Parser<'a> {
             }
         }
         let target = target?;
-        if let ParameterMode::Pointer { qualifiers } = self.candidate_mode(candidate, logical_index)
-        {
-            let parameter_calls::SourcePointerType {
-                pointee,
-                qualifiers: source_qualifiers,
-            } = argument.pointer_type(&self.module)?;
+        let mode = self.candidate_mode(candidate, logical_index);
+        if let ParameterMode::Pointer { qualifiers } = mode {
             let TypeInner::Pointer { base, .. } = *target.inner_with(&self.module.types) else {
                 return None;
             };
-            return (base == pointee)
-                .then(|| qualifiers.qualification_rank(source_qualifiers))
-                .flatten();
+            return self.pointer_argument_conversion(
+                &TypeResolution::Handle(base),
+                qualifiers,
+                argument,
+            );
         }
+        self.value_argument_conversion(&target, mode, argument)
+    }
+
+    pub(super) fn pointer_argument_conversion(
+        &self,
+        pointee: &TypeResolution,
+        qualifiers: Qualifiers,
+        argument: &impl CallArgument,
+    ) -> Option<u8> {
+        if argument.is_null_pointer_constant() {
+            return Some(2);
+        }
+        let source = argument.pointer_type(&self.module)?;
+        self.module
+            .compare_types(&TypeResolution::Handle(source.pointee), pointee)
+            .then(|| qualifiers.qualification_rank(source.qualifiers))
+            .flatten()
+    }
+
+    pub(super) fn value_argument_conversion(
+        &self,
+        target: &TypeResolution,
+        mode: ParameterMode,
+        argument: &impl CallArgument,
+    ) -> Option<u8> {
+        let source = argument.ty()?;
         let rank = conversion_rank(
-            argument.ty()?,
-            &target,
+            source,
+            target,
             &self.module,
-            self.dimension_conversion(argument.ty()?, &target),
+            self.dimension_conversion(source, target),
         )?;
-        match self.candidate_mode(candidate, logical_index) {
+        match mode {
             ParameterMode::Value => Some(rank),
             ParameterMode::Reference { qualifiers } => {
                 if rank == 0 {
@@ -1677,39 +1776,46 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub(super) fn pointer_reference_conversion(
+        &self,
+        pointee: Handle<Type>,
+        pointee_qualifiers: Qualifiers,
+        object_qualifiers: Qualifiers,
+        argument: &impl CallArgument,
+    ) -> Option<u8> {
+        let rank = self.pointer_argument_conversion(
+            &TypeResolution::Handle(pointee),
+            pointee_qualifiers,
+            argument,
+        )?;
+        if rank == 0 {
+            if let Some(source) = argument.pointer_object_qualifiers() {
+                return object_qualifiers.contains(source).then_some(rank);
+            }
+        }
+        (object_qualifiers.is_const && !object_qualifiers.is_volatile).then_some(rank)
+    }
+
     fn better_candidate(
         &self,
         left_candidate: FunctionCandidate,
         right_candidate: FunctionCandidate,
         arguments: &[impl CallArgument],
     ) -> bool {
-        let mut has_better_conversion = false;
-        for (index, argument) in arguments.iter().enumerate() {
-            let left_rank = self.candidate_conversion(left_candidate, index, argument);
-            let right_rank = self.candidate_conversion(right_candidate, index, argument);
-            let (Some(left_rank), Some(right_rank)) = (left_rank, right_rank) else {
-                return false;
-            };
-            if left_rank > right_rank {
-                return false;
-            }
-            has_better_conversion |= left_rank < right_rank;
-            if left_rank == right_rank {
-                if let (
-                    ParameterMode::Reference { qualifiers: left },
-                    ParameterMode::Reference { qualifiers: right },
-                ) = (
-                    self.candidate_mode(left_candidate, index),
-                    self.candidate_mode(right_candidate, index),
-                ) {
-                    if left != right && left.contains(right) {
-                        return false;
-                    }
-                    has_better_conversion |= left != right && right.contains(left);
-                }
-            }
-        }
-        has_better_conversion
+        better_conversion_sequences(arguments.iter().enumerate().map(|(index, argument)| {
+            let left = self.candidate_conversion(left_candidate, index, argument)?;
+            let right = self.candidate_conversion(right_candidate, index, argument)?;
+            Some((
+                ArgumentConversion {
+                    rank: left,
+                    mode: self.candidate_mode(left_candidate, index),
+                },
+                ArgumentConversion {
+                    rank: right,
+                    mode: self.candidate_mode(right_candidate, index),
+                },
+            ))
+        }))
     }
 
     pub(super) fn resolve_overload(
@@ -1777,32 +1883,19 @@ impl<'a> Parser<'a> {
         candidates: impl Iterator<Item = FunctionCandidate> + Clone,
         arguments: &[impl CallArgument],
     ) -> OverloadResolution {
-        let mut viable_candidates = candidates.filter(|&candidate| {
+        let viable_candidates = candidates.filter(|&candidate| {
             self.candidate_arity(candidate) == arguments.len()
                 && arguments.iter().enumerate().all(|(index, argument)| {
                     self.candidate_conversion(candidate, index, argument)
                         .is_some()
                 })
         });
-        let mut remaining_candidates = viable_candidates.clone();
-        let Some(mut best_candidate) = remaining_candidates.next() else {
-            return OverloadResolution::NoViable;
-        };
-        for candidate in remaining_candidates {
-            if self.better_candidate(candidate, best_candidate, arguments) {
-                best_candidate = candidate;
-            }
-        }
-        if viable_candidates.any(|candidate| {
-            candidate != best_candidate
-                && !self.better_candidate(best_candidate, candidate, arguments)
-        }) {
-            return OverloadResolution::Ambiguous;
-        }
-        OverloadResolution::Selected(best_candidate)
+        select_ranked_candidate(viable_candidates, |left, right| {
+            self.better_candidate(left, right, arguments)
+        })
     }
 
-    fn integral_double_candidate(
+    pub(super) fn integral_double_candidate(
         &self,
         name: &str,
         arguments: &[impl CallArgument],

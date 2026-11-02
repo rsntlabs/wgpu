@@ -1,5 +1,9 @@
+mod deduction;
+
 use super::super::lexer::LexerPosition;
-use super::functions::{FunctionCandidate, FunctionHeader, OverloadResolution, ReturnType};
+use super::functions::{
+    ArgumentConversion, FunctionCandidate, FunctionHeader, OverloadResolution, ReturnType,
+};
 use super::*;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -7,6 +11,14 @@ enum TemplateValue {
     Int(i32),
     Uint(u32),
     Bool(bool),
+    Type {
+        ty: TypeSpecifier,
+        qualifiers: Qualifiers,
+    },
+    ArrayType {
+        ty: Handle<Type>,
+        qualifiers: Qualifiers,
+    },
 }
 
 impl TemplateValue {
@@ -15,6 +27,7 @@ impl TemplateValue {
             Self::Int(value) => Literal::I32(value),
             Self::Uint(value) => Literal::U32(value),
             Self::Bool(value) => Literal::Bool(value),
+            Self::Type { .. } | Self::ArrayType { .. } => unreachable!(),
         }
     }
 
@@ -38,29 +51,59 @@ impl TemplateValue {
             Self::Int(value) => format!("{value}"),
             Self::Uint(value) => format!("{value}u"),
             Self::Bool(value) => String::from(if value { "true" } else { "false" }),
+            Self::Type { .. } | Self::ArrayType { .. } => unreachable!(),
         }
     }
 }
 
 #[derive(Clone)]
+enum TemplateArgument {
+    Type(QualifiedType),
+    Value(Literal),
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum TemplateParameterKind {
+    Type,
+    Value(Scalar),
+}
+
+#[derive(Clone)]
 struct TemplateParameter<'a> {
     name: &'a str,
-    scalar: Scalar,
+    index: u32,
+    kind: TemplateParameterKind,
     span: Span,
 }
 
-struct Definition<'a> {
-    parameters: Lexer<'a>,
+struct SignatureSource<'a> {
+    start: Lexer<'a>,
     end: LexerPosition,
-    globals: FastHashMap<&'a str, GlobalDeclaration>,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum PatternType {
+    Concrete(Handle<Type>),
+    Parameter(u32),
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum ParameterPattern {
+    Shader {
+        ty: PatternType,
+        mode: ParameterMode,
+    },
+    ThreadBlock,
 }
 
 struct FunctionTemplate<'a> {
     header: FunctionHeader<'a>,
     parameters: Vec<TemplateParameter<'a>>,
-    signature: Vec<SourceParameter>,
-    result: Option<Handle<Type>>,
-    definition: Option<Definition<'a>>,
+    signature: Vec<ParameterPattern>,
+    result: ReturnType,
+    source: SignatureSource<'a>,
+    globals: FastHashMap<&'a str, GlobalDeclaration>,
+    definition: Option<LexerPosition>,
 }
 
 #[derive(Clone, Eq, Hash, PartialEq)]
@@ -80,6 +123,32 @@ struct Instance {
     target: InstanceTarget,
     queued: bool,
     span: Span,
+}
+
+enum CandidateOrigin {
+    Ordinary(FunctionCandidate),
+    Template {
+        template: usize,
+        arguments: Vec<TemplateValue>,
+    },
+}
+
+struct CallCandidate {
+    origin: CandidateOrigin,
+    conversions: Vec<ArgumentConversion>,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum PatternTerm {
+    Type {
+        ty: PatternType,
+        qualifiers: Qualifiers,
+    },
+    Pointer {
+        pointee: PatternType,
+        qualifiers: Qualifiers,
+    },
+    ThreadBlock,
 }
 
 #[derive(Default)]
@@ -156,14 +225,30 @@ impl<'a> Parser<'a> {
                 .charge_work(1, parameter.span)?;
             self.parameter_expansion_budget
                 .charge_map_entry::<&str, Symbol>(1, parameter.span)?;
-            self.insert_symbol(
-                parameter.name,
-                Symbol::TemplateParameter {
-                    scalar: parameter.scalar,
+            let symbol = match parameter.kind {
+                TemplateParameterKind::Value(scalar) => Symbol::TemplateParameter {
+                    scalar,
                     literal: arguments.map(|arguments| arguments[index].literal()),
                 },
-                parameter.span,
-            )?;
+                TemplateParameterKind::Type => {
+                    let ty = match arguments.map(|arguments| arguments[index]) {
+                        Some(TemplateValue::Type { ty, qualifiers }) => {
+                            QualifiedType { ty, qualifiers }
+                        }
+                        Some(TemplateValue::ArrayType { .. }) => return Err(ParseError {
+                            message: String::from("template array types and array reference parameters are unsupported"),
+                            span: parameter.span,
+                        }),
+                        None => QualifiedType {
+                            ty: TypeSpecifier::TemplateParameter(parameter.index),
+                            qualifiers: Qualifiers::NONE,
+                        },
+                        _ => unreachable!(),
+                    };
+                    Symbol::TemplateTypeParameter { ty }
+                }
+            };
+            self.insert_symbol(parameter.name, symbol, parameter.span)?;
         }
         Ok(())
     }
@@ -182,14 +267,16 @@ impl<'a> Parser<'a> {
         let signature_result = self.template_signature(span);
         self.templates.parsing_signature = false;
         self.function = saved;
-        let (declaration, parameters_lexer) = signature_result?;
+        let declaration = signature_result?;
         let FunctionTemplate {
             mut header,
             parameters,
             signature,
             result,
+            source,
             ..
         } = declaration;
+        let mut source = Some(source);
         let is_definition = self.lexer.peek()?.0 == Token::Paren('{');
         if is_definition {
             self.skip_template_body()?;
@@ -221,8 +308,10 @@ impl<'a> Parser<'a> {
                             .parameters
                             .iter()
                             .zip(&parameters)
-                            .all(|(left, right)| left.scalar == right.scalar)
+                            .all(|(left, right)| left.kind == right.kind)
                         && previous.signature == signature
+                        && previous.result == result
+                        && previous.header.result_qualifiers == header.result_qualifiers
                 })
             }
             Some(_) => {
@@ -288,6 +377,8 @@ impl<'a> Parser<'a> {
                 parameters: Vec::new(),
                 signature,
                 result,
+                source: source.take().unwrap(),
+                globals: FastHashMap::default(),
                 definition: None,
             });
             let &mut GlobalDeclaration::Functions(ref mut overloads) = self
@@ -301,25 +392,23 @@ impl<'a> Parser<'a> {
             id
         };
         if previous.is_none() || is_definition {
-            self.templates.declarations[id].parameters = parameters;
-        }
-        if is_definition {
             let globals = self.clone_template_environment(span)?;
             let declaration = &mut self.templates.declarations[id];
+            declaration.parameters = parameters;
+            declaration.globals = globals;
+            if let Some(source) = source {
+                declaration.source = source;
+            }
+        }
+        if is_definition {
+            let declaration = &mut self.templates.declarations[id];
             declaration.header = header;
-            declaration.definition = Some(Definition {
-                parameters: parameters_lexer,
-                end,
-                globals,
-            });
+            declaration.definition = Some(end);
         }
         Ok(())
     }
 
-    fn template_signature(
-        &mut self,
-        span: Span,
-    ) -> Result<(FunctionTemplate<'a>, Lexer<'a>), ParseError> {
+    fn template_signature(&mut self, span: Span) -> Result<FunctionTemplate<'a>, ParseError> {
         self.prepare_parameter_bindings(span)?;
         if self.lexer.peek()?.0 == Token::Paren('>') {
             return self.fail("explicit template specializations are unsupported");
@@ -327,13 +416,23 @@ impl<'a> Parser<'a> {
         let mut parameters = Vec::new();
         loop {
             let parameter_span = self.lexer.peek()?.1;
-            let ty = self.parse_type()?;
-            let TypeSpecifier::Scalar(scalar @ (Scalar::I32 | Scalar::U32 | Scalar::BOOL)) = ty.ty
-            else {
-                return Err(ParseError {
-                    message: String::from("template parameters must be int, unsigned, or bool"),
-                    span: parameter_span,
-                });
+            let kind = if self.lexer.next_if(Token::Word("typename"))?
+                || self.lexer.next_if(Token::Word("class"))?
+            {
+                TemplateParameterKind::Type
+            } else {
+                let ty = self.parse_type()?;
+                let TypeSpecifier::Scalar(scalar @ (Scalar::I32 | Scalar::U32 | Scalar::BOOL)) =
+                    ty.ty
+                else {
+                    return Err(ParseError {
+                        message: String::from(
+                            "non-type template parameters must be int, unsigned, or bool",
+                        ),
+                        span: parameter_span,
+                    });
+                };
+                TemplateParameterKind::Value(scalar)
             };
             let (name, name_span) = self.identifier()?;
             self.check_name(name, name_span)?;
@@ -341,7 +440,11 @@ impl<'a> Parser<'a> {
                 .charge_slice::<TemplateParameter<'_>>(1, name_span)?;
             let parameter = TemplateParameter {
                 name,
-                scalar,
+                index: u32::try_from(parameters.len()).map_err(|_| ParseError {
+                    message: String::from("CUDA template parameter limit exceeded"),
+                    span: name_span,
+                })?,
+                kind,
                 span: name_span,
             };
             self.bind_template_parameters(core::slice::from_ref(&parameter), None)?;
@@ -351,27 +454,136 @@ impl<'a> Parser<'a> {
             }
             self.lexer.expect_span(Token::Separator(','))?;
         }
+        let source = self.lexer.clone();
         let header = self.function_header(false)?;
         if header.operator.is_some() {
             return self.fail("operator templates are unsupported");
         }
         self.check_name(header.name, header.name_span)?;
         self.check_dynamic_shared_linkage(header.name, header.name_span)?;
-        let parameters_lexer = self.lexer.clone();
-        self.parameter_expansion_budget
-            .charge_bytes(header.name.len(), header.name_span)?;
-        self.initialize_function_header(&header)?;
-        self.parameters()?;
-        Ok((
-            FunctionTemplate {
-                header,
-                parameters,
-                signature: core::mem::take(&mut self.function.parameters),
-                result: self.function.ir.result.as_ref().map(|result| result.ty),
-                definition: None,
-            },
-            parameters_lexer,
-        ))
+        let signature = self.template_parameter_patterns()?;
+        let end = self.lexer.position();
+        Ok(FunctionTemplate {
+            result: header.result,
+            header,
+            parameters,
+            signature,
+            source: SignatureSource { start: source, end },
+            globals: FastHashMap::default(),
+            definition: None,
+        })
+    }
+
+    fn template_parameter_patterns(&mut self) -> Result<Vec<ParameterPattern>, ParseError> {
+        self.lexer.expect_span(Token::Paren('('))?;
+        let mut parameters = Vec::new();
+        if self.lexer.next_if(Token::Paren(')'))? {
+            return Ok(parameters);
+        }
+        if self.take_ident("void")? {
+            self.lexer.expect_span(Token::Paren(')'))?;
+            return Ok(parameters);
+        }
+        loop {
+            let declaration = self.parameter_type()?;
+            if !matches!(
+                self.lexer.peek()?.0,
+                Token::Separator(',') | Token::Paren(')') | Token::Paren('[')
+            ) {
+                let (name, span) = self.identifier()?;
+                self.check_name(name, span)?;
+                self.parameter_expansion_budget
+                    .charge_map_entry::<&str, Symbol>(1, span)?;
+                self.insert_symbol(name, Symbol::PendingAuto, span)?;
+            }
+            let is_array = self.lexer.next_if(Token::Paren('['))?;
+            if is_array {
+                self.skip_template_array_bound()?;
+                self.lexer.expect_span(Token::Paren(']'))?;
+                if self.lexer.peek()?.0 == Token::Paren('[') {
+                    return self.fail("multidimensional array parameters are unsupported");
+                }
+            }
+            let pattern = self.parameter_pattern(declaration, is_array)?;
+            self.parameter_expansion_budget
+                .charge_slice::<ParameterPattern>(1, self.lexer.peek()?.1)?;
+            parameters.push(pattern);
+            if self.lexer.next_if(Token::Paren(')'))? {
+                return Ok(parameters);
+            }
+            self.lexer.expect_span(Token::Separator(','))?;
+        }
+    }
+
+    fn parameter_pattern(
+        &mut self,
+        declaration: signatures::ParameterType,
+        is_array: bool,
+    ) -> Result<ParameterPattern, ParseError> {
+        let signatures::ParameterType {
+            ty,
+            pointer_qualifiers,
+            is_reference,
+            type_span,
+            declarator_span,
+        } = declaration;
+        let pointer = pointer_qualifiers.is_some() || is_array;
+        if is_array && (pointer_qualifiers.is_some() || is_reference) {
+            return Err(ParseError {
+                message: String::from("array pointer and reference parameters are unsupported"),
+                span: declarator_span,
+            });
+        }
+        if pointer_qualifiers.is_some() && is_reference {
+            return Err(ParseError {
+                message: String::from("pointer reference parameters are unsupported"),
+                span: declarator_span,
+            });
+        }
+        let (base, qualifiers, is_pointer) = match ty.ty {
+            TypeSpecifier::ThreadBlock => {
+                if pointer || is_reference || ty.qualifiers.is_volatile {
+                    return Err(ParseError {
+                        message: String::from("thread_block parameters must be passed by value"),
+                        span: type_span,
+                    });
+                }
+                return Ok(ParameterPattern::ThreadBlock);
+            }
+            TypeSpecifier::TemplateParameter(index) => {
+                (PatternType::Parameter(index), ty.qualifiers, pointer)
+            }
+            TypeSpecifier::Pointer {
+                pointee,
+                pointee_qualifiers,
+            } => {
+                if pointer || is_reference {
+                    return Err(ParseError {
+                        message: String::from(
+                            "nested pointer and pointer reference parameters are unsupported",
+                        ),
+                        span: declarator_span,
+                    });
+                }
+                (PatternType::Concrete(pointee), pointee_qualifiers, true)
+            }
+            specifier => {
+                let resolution = self.lower_type(specifier, type_span)?;
+                (
+                    PatternType::Concrete(self.type_handle(&resolution, type_span)),
+                    ty.qualifiers,
+                    pointer,
+                )
+            }
+        };
+        let mode = if is_pointer {
+            ParameterMode::Pointer { qualifiers }
+        } else if is_reference {
+            ParameterMode::Reference { qualifiers }
+        } else {
+            ParameterMode::Value
+        };
+        Ok(ParameterPattern::Shader { ty: base, mode })
     }
 
     pub(super) fn has_kernel_template(&self, name: &str) -> bool {
@@ -463,7 +675,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn template_arguments(&mut self) -> Result<Vec<Literal>, ParseError> {
+    fn template_arguments(&mut self) -> Result<Vec<TemplateArgument>, ParseError> {
         self.lexer.expect_span(Token::Paren('<'))?;
         let mut arguments = Vec::new();
         if self.lexer.next_if(Token::Paren('>'))? {
@@ -537,17 +749,20 @@ impl<'a> Parser<'a> {
             }
             self.lexer = start.bounded(end.position());
             let parsed = self.capture_block(|parser| {
+                if let Some(ty) = parser.template_type_argument()? {
+                    return Ok(TemplateArgument::Type(ty));
+                }
                 let value = parser.conditional_expression()?;
                 let value = parser.rvalue(value)?;
                 let literal = Self::required_constant(&value)?;
                 parser.lexer.expect_span(Token::End)?;
-                Ok(literal)
+                Ok(TemplateArgument::Value(literal))
             });
             self.lexer = end;
             let (literal, _) = parsed?;
             let span = self.lexer.peek()?.1;
             self.parameter_expansion_budget
-                .charge_slice::<Literal>(1, span)?;
+                .charge_slice::<TemplateArgument>(1, span)?;
             arguments.push(literal);
             if self.lexer.next_if(Token::Paren('>'))? {
                 return Ok(arguments);
@@ -556,10 +771,28 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn template_type_argument(&mut self) -> Result<Option<QualifiedType>, ParseError> {
+        let mut lookahead = self.lexer.clone();
+        let Ok(_) = self.parse_type_from(&mut lookahead) else {
+            return Ok(None);
+        };
+        let is_pointer = lookahead.next_if(Token::Operation('*'))?;
+        if is_pointer {
+            types::pointer_qualifiers(&mut lookahead)?;
+        }
+        if lookahead.peek()?.0 != Token::End {
+            return Ok(None);
+        }
+        let ty = self.parse_type()?;
+        let ty = self.alias_declarator(ty)?;
+        self.lexer.expect_span(Token::End)?;
+        Ok(Some(ty))
+    }
+
     fn normalized_template_arguments(
         &mut self,
         template: usize,
-        arguments: &[Literal],
+        arguments: &[TemplateArgument],
         span: Span,
     ) -> Result<Option<Vec<TemplateValue>>, ParseError> {
         let parameters = &self.templates.declarations[template].parameters;
@@ -571,9 +804,21 @@ impl<'a> Parser<'a> {
         self.parameter_expansion_budget
             .charge_slice::<TemplateValue>(arguments.len(), span)?;
         let mut converted = Vec::with_capacity(arguments.len());
-        for (parameter, &argument) in parameters.iter().zip(arguments) {
-            let Some(value) = TemplateValue::converted(argument, parameter.scalar) else {
-                return Ok(None);
+        for (parameter, argument) in parameters.iter().zip(arguments) {
+            let value = match (parameter.kind, argument) {
+                (TemplateParameterKind::Type, &TemplateArgument::Type(ref ty)) => {
+                    TemplateValue::Type {
+                        ty: ty.ty,
+                        qualifiers: ty.qualifiers,
+                    }
+                }
+                (TemplateParameterKind::Value(scalar), &TemplateArgument::Value(literal)) => {
+                    let Some(value) = TemplateValue::converted(literal, scalar) else {
+                        return Ok(None);
+                    };
+                    value
+                }
+                _ => return Ok(None),
             };
             converted.push(value);
         }
@@ -603,10 +848,163 @@ impl<'a> Parser<'a> {
             if index != 0 {
                 name.push(',');
             }
-            name.push_str(&argument.spelling());
+            match argument {
+                TemplateValue::Type { ty, qualifiers } => {
+                    name.push_str(&self.template_type_spelling(ty, qualifiers, span)?);
+                }
+                value => name.push_str(&value.spelling()),
+            }
         }
         name.push('>');
         Ok(name)
+    }
+
+    fn template_type_spelling(
+        &mut self,
+        ty: TypeSpecifier,
+        qualifiers: Qualifiers,
+        span: Span,
+    ) -> Result<String, ParseError> {
+        self.parameter_expansion_budget.charge_bytes(32, span)?;
+        self.parameter_expansion_budget.charge_work(1, span)?;
+        let mut name = match ty {
+            TypeSpecifier::Scalar(Scalar::I32) => String::from("int"),
+            TypeSpecifier::Scalar(Scalar::U32) => String::from("unsigned"),
+            TypeSpecifier::Scalar(Scalar::F32) => String::from("float"),
+            TypeSpecifier::Scalar(Scalar::BOOL) => String::from("bool"),
+            TypeSpecifier::Dim3 => String::from("dim3"),
+            TypeSpecifier::ThreadBlock => String::from("cooperative_groups::thread_block"),
+            TypeSpecifier::Vector { size, scalar } => {
+                let name = types::VECTOR_TYPES
+                    .iter()
+                    .find(|entry| entry.2 == size && entry.3 == scalar)
+                    .unwrap()
+                    .0;
+                String::from(name)
+            }
+            TypeSpecifier::Structure(handle) => {
+                let name = self
+                    .structures
+                    .get(&handle)
+                    .and_then(|structure| structure.source_name.as_ref())
+                    .ok_or_else(|| ParseError {
+                        message: String::from("type has no CUDA source name"),
+                        span,
+                    })?;
+                self.parameter_expansion_budget
+                    .charge_bytes(name.len(), span)?;
+                String::from(name)
+            }
+            TypeSpecifier::Pointer {
+                pointee,
+                pointee_qualifiers,
+            } => {
+                let pointee = self.template_type_from_handle(pointee, span)?;
+                let mut name = self.template_type_spelling(pointee, pointee_qualifiers, span)?;
+                self.parameter_expansion_budget
+                    .charge_bytes(name.len() + 16, span)?;
+                name.push('*');
+                if qualifiers.is_const {
+                    name.push_str(" const");
+                }
+                if qualifiers.is_volatile {
+                    name.push_str(" volatile");
+                }
+                return Ok(name);
+            }
+            _ => {
+                return Err(ParseError {
+                    message: String::from("unsupported template type argument"),
+                    span,
+                })
+            }
+        };
+        self.parameter_expansion_budget
+            .charge_bytes(name.len() + 16, span)?;
+        if qualifiers.is_volatile {
+            name.insert_str(0, "volatile ");
+        }
+        if qualifiers.is_const {
+            name.insert_str(0, "const ");
+        }
+        Ok(name)
+    }
+
+    fn template_type_from_handle(
+        &self,
+        ty: Handle<Type>,
+        span: Span,
+    ) -> Result<TypeSpecifier, ParseError> {
+        if Some(ty) == self.dim3_type {
+            return Ok(TypeSpecifier::Dim3);
+        }
+        match self.module.types[ty].inner {
+            TypeInner::Scalar(scalar) => Ok(TypeSpecifier::Scalar(scalar)),
+            TypeInner::Vector { size, scalar } => Ok(TypeSpecifier::Vector { size, scalar }),
+            TypeInner::Struct { .. } => {
+                if self.structures.contains_key(&ty) {
+                    return Ok(TypeSpecifier::Structure(ty));
+                }
+                let name = self.module.types[ty].name.as_deref();
+                if let Some(&(_, _, size, scalar)) = types::VECTOR_TYPES
+                    .iter()
+                    .find(|entry| Some(entry.0) == name)
+                {
+                    return Ok(TypeSpecifier::Vector { size, scalar });
+                }
+                Err(ParseError {
+                    message: String::from("unsupported template source type"),
+                    span,
+                })
+            }
+            _ => Err(ParseError {
+                message: String::from("unsupported template source type"),
+                span,
+            }),
+        }
+    }
+
+    fn resolved_template_signature(
+        &mut self,
+        template: usize,
+        arguments: &[TemplateValue],
+        span: Span,
+    ) -> Result<(Vec<SourceParameter>, Option<Handle<Type>>), ParseError> {
+        let declaration = &self.templates.declarations[template];
+        self.parameter_expansion_budget
+            .charge_slice::<TemplateParameter<'_>>(declaration.parameters.len(), span)?;
+        Self::charge_template_environment(
+            &declaration.globals,
+            &mut self.parameter_expansion_budget,
+            span,
+        )?;
+        let lexer = declaration.source.start.bounded(declaration.source.end);
+        let parameters = declaration.parameters.clone();
+        let globals = declaration.globals.clone();
+        let previous_globals = core::mem::replace(&mut self.global_declarations, globals);
+        let previous_lexer = core::mem::replace(&mut self.lexer, lexer);
+        let previous_function = core::mem::replace(
+            &mut self.function,
+            FunctionContext::new(FunctionKind::Device),
+        );
+        let previous_signature = core::mem::replace(&mut self.templates.parsing_signature, true);
+        let parsed = (|| {
+            self.prepare_parameter_bindings(span)?;
+            self.bind_template_parameters(&parameters, Some(arguments))?;
+            let header = self.function_header(false)?;
+            self.parameter_expansion_budget
+                .charge_bytes(header.name.len(), span)?;
+            self.initialize_function_header(&header)?;
+            self.parameters()?;
+            self.lexer.expect_span(Token::End)?;
+            let result = self.function.ir.result.as_ref().map(|result| result.ty);
+            Ok((core::mem::take(&mut self.function.parameters), result))
+        })();
+        self.templates.parsing_signature = previous_signature;
+        self.function = previous_function;
+        self.lexer = previous_lexer;
+        self.global_declarations = previous_globals;
+        parsed
     }
 
     fn template_instance(
@@ -615,6 +1013,17 @@ impl<'a> Parser<'a> {
         arguments: Vec<TemplateValue>,
         span: Span,
     ) -> Result<usize, ParseError> {
+        if arguments
+            .iter()
+            .any(|argument| matches!(argument, &TemplateValue::ArrayType { .. }))
+        {
+            return Err(ParseError {
+                message: String::from(
+                    "template array types and array reference parameters are unsupported",
+                ),
+                span,
+            });
+        }
         let key = InstanceKey {
             template,
             arguments,
@@ -626,6 +1035,8 @@ impl<'a> Parser<'a> {
         }
         let name = self.templates.declarations[template].header.name;
         let name = self.template_selector(name, &key.arguments, span)?;
+        let (signature, result) =
+            self.resolved_template_signature(template, &key.arguments, span)?;
         let declaration = &self.templates.declarations[template];
         self.parameter_expansion_budget
             .charge_slice::<Instance>(1, span)?;
@@ -637,13 +1048,13 @@ impl<'a> Parser<'a> {
             self.parameter_expansion_budget
                 .charge_slice::<Function>(1, span)?;
             self.parameter_expansion_budget
-                .charge_slice::<SourceParameter>(declaration.signature.len(), span)?;
+                .charge_slice::<SourceParameter>(signature.len(), span)?;
             self.parameter_expansion_budget
-                .charge_slice::<FunctionArgument>(declaration.signature.len(), span)?;
+                .charge_slice::<FunctionArgument>(signature.len(), span)?;
             self.parameter_expansion_budget
                 .charge_map_entry::<Handle<Function>, FunctionDeclaration>(1, span)?;
-            let mut arguments = Vec::with_capacity(declaration.signature.len());
-            for &parameter in &declaration.signature {
+            let mut arguments = Vec::with_capacity(signature.len());
+            for &parameter in &signature {
                 if let SourceParameter::Shader { ty, mode } = parameter {
                     let ty = if matches!(mode, ParameterMode::Reference { .. }) {
                         self.module.types.insert(
@@ -670,9 +1081,7 @@ impl<'a> Parser<'a> {
                 Function {
                     name: Some(name),
                     arguments,
-                    result: declaration
-                        .result
-                        .map(|ty| crate::FunctionResult { ty, binding: None }),
+                    result: result.map(|ty| crate::FunctionResult { ty, binding: None }),
                     ..Function::default()
                 },
                 span,
@@ -680,7 +1089,7 @@ impl<'a> Parser<'a> {
             self.function_declarations.insert(
                 function,
                 FunctionDeclaration {
-                    parameters: declaration.signature.clone(),
+                    parameters: signature,
                     has_host: declaration.header.has_host,
                     is_static: declaration.header.is_static,
                     inlining: declaration.header.inlining,
@@ -738,12 +1147,177 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    fn template_candidate_conversions(
+        &mut self,
+        template: usize,
+        values: &[TemplateValue],
+        arguments: &[CapturedArgument],
+        span: Span,
+    ) -> Result<Option<Vec<ArgumentConversion>>, ParseError> {
+        let parameter_count = self.templates.declarations[template].signature.len();
+        self.parameter_expansion_budget
+            .charge_work(parameter_count, span)?;
+        if parameter_count != arguments.len() {
+            return Ok(None);
+        }
+        self.parameter_expansion_budget
+            .charge_slice::<ArgumentConversion>(parameter_count, span)?;
+        let mut conversions = Vec::with_capacity(parameter_count);
+        for (index, argument) in arguments.iter().enumerate() {
+            let pattern = self.templates.declarations[template].signature[index];
+            let Some(conversion) =
+                self.template_argument_conversion(pattern, values, argument, span)?
+            else {
+                return Ok(None);
+            };
+            conversions.push(conversion);
+        }
+        Ok(Some(conversions))
+    }
+
+    fn template_argument_conversion(
+        &mut self,
+        pattern: ParameterPattern,
+        values: &[TemplateValue],
+        argument: &CapturedArgument,
+        span: Span,
+    ) -> Result<Option<ArgumentConversion>, ParseError> {
+        let ParameterPattern::Shader { ty, mode } = pattern else {
+            return Ok(argument.is_thread_block().then_some(ArgumentConversion {
+                rank: 0,
+                mode: ParameterMode::Value,
+            }));
+        };
+        let (target, mode) = match ty {
+            PatternType::Concrete(ty) => (TypeResolution::Handle(ty), mode),
+            PatternType::Parameter(parameter) => {
+                if let TemplateValue::ArrayType { ty, qualifiers } = values[parameter as usize] {
+                    let mode = match mode {
+                        ParameterMode::Reference { qualifiers: formal } => {
+                            ParameterMode::Reference {
+                                qualifiers: formal.union(qualifiers),
+                            }
+                        }
+                        ParameterMode::Pointer { qualifiers: formal } => ParameterMode::Pointer {
+                            qualifiers: formal.union(qualifiers),
+                        },
+                        ParameterMode::Value => ParameterMode::Value,
+                    };
+                    if argument.is_thread_block() {
+                        return Ok(None);
+                    }
+                    let rank = match mode {
+                        ParameterMode::Pointer { qualifiers } => self.pointer_argument_conversion(
+                            &TypeResolution::Handle(ty),
+                            qualifiers,
+                            argument,
+                        ),
+                        ParameterMode::Reference { .. } => self.value_argument_conversion(
+                            &TypeResolution::Handle(ty),
+                            mode,
+                            argument,
+                        ),
+                        ParameterMode::Value => {
+                            let TypeInner::Array { base, .. } = self.module.types[ty].inner else {
+                                unreachable!()
+                            };
+                            self.pointer_argument_conversion(
+                                &TypeResolution::Handle(base),
+                                qualifiers,
+                                argument,
+                            )
+                        }
+                    };
+                    return Ok(rank.map(|rank| ArgumentConversion { rank, mode }));
+                }
+                let TemplateValue::Type { ty, qualifiers } = values[parameter as usize] else {
+                    unreachable!()
+                };
+                let mode = match mode {
+                    ParameterMode::Reference { qualifiers: formal } => ParameterMode::Reference {
+                        qualifiers: formal.union(qualifiers),
+                    },
+                    ParameterMode::Pointer { qualifiers: formal } => ParameterMode::Pointer {
+                        qualifiers: formal.union(qualifiers),
+                    },
+                    ParameterMode::Value => ParameterMode::Value,
+                };
+                if ty == TypeSpecifier::ThreadBlock {
+                    return Ok((argument.is_thread_block()
+                        && !matches!(mode, ParameterMode::Pointer { .. }))
+                    .then_some(ArgumentConversion { rank: 0, mode }));
+                }
+                if let (
+                    ParameterMode::Reference { qualifiers },
+                    TypeSpecifier::Pointer {
+                        pointee,
+                        pointee_qualifiers,
+                    },
+                ) = (mode, ty)
+                {
+                    return Ok(self
+                        .pointer_reference_conversion(
+                            pointee,
+                            pointee_qualifiers,
+                            qualifiers,
+                            argument,
+                        )
+                        .map(|rank| ArgumentConversion { rank, mode }));
+                }
+                if let (
+                    ParameterMode::Value,
+                    TypeSpecifier::Pointer {
+                        pointee,
+                        pointee_qualifiers,
+                    },
+                ) = (mode, ty)
+                {
+                    (
+                        TypeResolution::Handle(pointee),
+                        ParameterMode::Pointer {
+                            qualifiers: pointee_qualifiers,
+                        },
+                    )
+                } else {
+                    (self.lower_type(ty, span)?, mode)
+                }
+            }
+        };
+        if argument.is_thread_block() {
+            return Ok(None);
+        }
+        let rank = match mode {
+            ParameterMode::Pointer { qualifiers } => {
+                self.pointer_argument_conversion(&target, qualifiers, argument)
+            }
+            _ => self.value_argument_conversion(&target, mode, argument),
+        };
+        Ok(rank.map(|rank| ArgumentConversion { rank, mode }))
+    }
+
     pub(super) fn template_call(
         &mut self,
         name: &str,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
-        let template_arguments = self.template_arguments()?;
+        let arguments = self.template_arguments()?;
+        self.template_call_inner(name, span, Some(arguments))
+    }
+
+    pub(super) fn deduced_template_call(
+        &mut self,
+        name: &str,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.template_call_inner(name, span, None)
+    }
+
+    fn template_call_inner(
+        &mut self,
+        name: &str,
+        span: Span,
+        explicit: Option<Vec<TemplateArgument>>,
+    ) -> Result<ExpressionResult, ParseError> {
         self.lexer.expect_span(Token::Paren('('))?;
         let mut arguments = Vec::new();
         if self.lexer.peek()?.0 != Token::Paren(')') {
@@ -756,6 +1330,17 @@ impl<'a> Parser<'a> {
             }
         }
         let end = self.lexer.expect_span(Token::Paren(')'))?;
+        self.lower_template_call(name, span, end, explicit, arguments)
+    }
+
+    fn lower_template_call(
+        &mut self,
+        name: &str,
+        span: Span,
+        end: Span,
+        explicit: Option<Vec<TemplateArgument>>,
+        arguments: Vec<CapturedArgument>,
+    ) -> Result<ExpressionResult, ParseError> {
         let ids = match &self.global_declarations[name] {
             &GlobalDeclaration::Functions(ref overloads) => {
                 self.parameter_expansion_budget
@@ -767,48 +1352,146 @@ impl<'a> Parser<'a> {
             _ => unreachable!(),
         };
         let mut candidates = Vec::new();
+        if explicit.is_none() {
+            let ordinary_count = self.function_candidates(name).count() + 1;
+            self.parameter_expansion_budget
+                .charge_slice::<FunctionCandidate>(ordinary_count, span)?;
+            let ordinary: Vec<_> = self
+                .function_candidates(name)
+                .chain(self.integral_double_candidate(name, &arguments))
+                .collect();
+            for candidate in ordinary {
+                self.parameter_expansion_budget
+                    .charge_work(arguments.len() + 1, span)?;
+                if self.candidate_arity(candidate) != arguments.len() {
+                    continue;
+                }
+                self.parameter_expansion_budget
+                    .charge_slice::<ArgumentConversion>(arguments.len(), span)?;
+                let conversions: Option<Vec<_>> = arguments
+                    .iter()
+                    .enumerate()
+                    .map(|(index, argument)| {
+                        self.candidate_conversion(candidate, index, argument)
+                            .map(|rank| ArgumentConversion {
+                                rank,
+                                mode: self.candidate_mode(candidate, index),
+                            })
+                    })
+                    .collect();
+                if let Some(conversions) = conversions {
+                    self.parameter_expansion_budget
+                        .charge_slice::<CallCandidate>(1, span)?;
+                    candidates.push(CallCandidate {
+                        origin: CandidateOrigin::Ordinary(candidate),
+                        conversions,
+                    });
+                }
+            }
+        }
+        let mut maximum_parameters = 0;
         for id in ids {
             if self.templates.declarations[id].header.kind != FunctionKind::Device {
                 continue;
             }
-            let Some(values) = self.normalized_template_arguments(id, &template_arguments, span)?
+            let Some(values) = self.template_call_arguments(
+                id,
+                explicit.as_deref().unwrap_or(&[]),
+                &arguments,
+                span,
+            )?
             else {
                 continue;
             };
-            let instance = self.template_instance(id, values, span)?;
-            let InstanceTarget::Device(function) = self.templates.instances[instance].target else {
-                unreachable!()
+            let Some(conversions) =
+                self.template_candidate_conversions(id, &values, &arguments, span)?
+            else {
+                continue;
             };
+            maximum_parameters =
+                maximum_parameters.max(self.templates.declarations[id].parameters.len());
             self.parameter_expansion_budget
-                .charge_slice::<(FunctionCandidate, usize)>(1, span)?;
+                .charge_slice::<CallCandidate>(1, span)?;
             self.parameter_expansion_budget
-                .charge_work(arguments.len() + 1, span)?;
-            candidates.push((FunctionCandidate::Defined(function), instance));
+                .charge_work(arguments.len() * 3 + 1, span)?;
+            candidates.push(CallCandidate {
+                origin: CandidateOrigin::Template {
+                    template: id,
+                    arguments: values,
+                },
+                conversions,
+            });
         }
-        let candidate = match self.select_candidates(
-            candidates.iter().map(|&(candidate, _)| candidate),
-            &arguments,
-        ) {
-            OverloadResolution::Selected(candidate) => candidate,
-            OverloadResolution::NoViable => {
+        self.parameter_expansion_budget
+            .charge_slice::<Option<PatternTerm>>(maximum_parameters * 2, span)?;
+        let comparison_work = candidates
+            .len()
+            .saturating_sub(1)
+            .checked_mul(4)
+            .and_then(|count| count.checked_mul(maximum_parameters + arguments.len()))
+            .ok_or_else(|| ParseError {
+                message: String::from("CUDA template ordering limit exceeded"),
+                span,
+            })?;
+        self.parameter_expansion_budget
+            .charge_work(comparison_work, span)?;
+        let mut left_bindings = alloc::vec![None; maximum_parameters];
+        let mut right_bindings = alloc::vec![None; maximum_parameters];
+        let selected =
+            match functions::select_ranked_candidate(0..candidates.len(), |left, right| {
+                self.source_candidate_better(
+                    &candidates[left],
+                    &candidates[right],
+                    &mut left_bindings,
+                    &mut right_bindings,
+                )
+            }) {
+                OverloadResolution::Selected(index) => index,
+                OverloadResolution::NoViable => {
+                    return Err(ParseError {
+                        message: format!(
+                            "no matching function template or ordinary overload `{name}`"
+                        ),
+                        span,
+                    })
+                }
+                OverloadResolution::Ambiguous => {
+                    return Err(ParseError {
+                        message: format!(
+                            "ambiguous function template or ordinary overload `{name}`"
+                        ),
+                        span,
+                    })
+                }
+            };
+        let selected = candidates.into_iter().nth(selected).unwrap();
+        let candidate = match selected.origin {
+            CandidateOrigin::Ordinary(FunctionCandidate::Current) => {
                 return Err(ParseError {
-                    message: format!("no matching function template `{name}`"),
+                    message: String::from("recursive device helper calls are unsupported"),
                     span,
                 })
             }
-            OverloadResolution::Ambiguous => {
+            CandidateOrigin::Ordinary(FunctionCandidate::IntegralDouble { .. }) => {
                 return Err(ParseError {
-                    message: format!("ambiguous function template `{name}`"),
+                    message: format!("integral {name} requires unsupported double precision"),
                     span,
                 })
+            }
+            CandidateOrigin::Ordinary(candidate) => candidate,
+            CandidateOrigin::Template {
+                template,
+                arguments,
+            } => {
+                let instance = self.template_instance(template, arguments, span)?;
+                let InstanceTarget::Device(function) = self.templates.instances[instance].target
+                else {
+                    unreachable!()
+                };
+                self.queue_template_instance(instance)?;
+                FunctionCandidate::Defined(function)
             }
         };
-        let instance = candidates
-            .iter()
-            .find(|&&(function, _)| function == candidate)
-            .unwrap()
-            .1;
-        self.queue_template_instance(instance)?;
         self.lower_captured_call(candidate, arguments, span.until(&end))
     }
 
@@ -836,26 +1519,34 @@ impl<'a> Parser<'a> {
         self.function = saved;
         let signature = parsed?;
         self.lexer.expect_span(Token::Separator(';'))?;
-        let id = match &self.global_declarations[header.name] {
+        let ids = match &self.global_declarations[header.name] {
             &GlobalDeclaration::Functions(ref overloads) => {
-                overloads.templates.iter().copied().find(|&id| {
-                    let declaration = &self.templates.declarations[id];
-                    declaration.header.kind == FunctionKind::Kernel
-                        && declaration.signature == signature
-                })
+                self.parameter_expansion_budget
+                    .charge_slice::<usize>(overloads.templates.len(), span)?;
+                overloads.templates.clone()
             }
-            _ => None,
+            _ => unreachable!(),
+        };
+        let mut selected = None;
+        for id in ids {
+            if self.templates.declarations[id].header.kind != FunctionKind::Kernel {
+                continue;
+            }
+            let Some(values) = self.normalized_template_arguments(id, &arguments, span)? else {
+                continue;
+            };
+            let (instantiated, _) = self.resolved_template_signature(id, &values, span)?;
+            if instantiated == signature {
+                selected = Some((id, values));
+                break;
+            }
         }
-        .ok_or_else(|| ParseError {
-            message: String::from("incompatible explicit kernel instantiation signature"),
+        let (id, values) = selected.ok_or_else(|| ParseError {
+            message: String::from(
+                "incompatible explicit kernel instantiation signature or arguments",
+            ),
             span: header.name_span,
         })?;
-        let values = self
-            .normalized_template_arguments(id, &arguments, span)?
-            .ok_or_else(|| ParseError {
-                message: String::from("invalid kernel template arguments"),
-                span: header.name_span,
-            })?;
         let instance = self.template_instance(id, values, header.name_span)?;
         if self.templates.instances[instance].queued {
             return Err(ParseError {
@@ -879,7 +1570,7 @@ impl<'a> Parser<'a> {
         let instance = &self.templates.instances[instance];
         let span = instance.span;
         let declaration = &self.templates.declarations[instance.key.template];
-        let definition = declaration.definition.as_ref().ok_or_else(|| ParseError {
+        let end = declaration.definition.ok_or_else(|| ParseError {
             message: format!(
                 "function template `{}` has no definition",
                 declaration.header.name
@@ -892,25 +1583,28 @@ impl<'a> Parser<'a> {
         self.parameter_expansion_budget
             .charge_slice::<TemplateParameter<'_>>(declaration.parameters.len(), span)?;
         Self::charge_template_environment(
-            &definition.globals,
+            &declaration.globals,
             &mut self.parameter_expansion_budget,
             span,
         )?;
         let arguments = instance.key.arguments.clone();
         let target = instance.target;
-        let header = declaration.header.clone();
+        let metadata = declaration.header.clone();
         let parameters = declaration.parameters.clone();
-        let lexer = definition.parameters.bounded(definition.end);
-        let globals = definition.globals.clone();
+        let lexer = declaration.source.start.bounded(end);
+        let globals = declaration.globals.clone();
         let previous_globals = core::mem::replace(&mut self.global_declarations, globals);
         let previous_lexer = core::mem::replace(&mut self.lexer, lexer);
         let previous_function =
-            core::mem::replace(&mut self.function, FunctionContext::new(header.kind));
+            core::mem::replace(&mut self.function, FunctionContext::new(metadata.kind));
         let result = (|| {
-            self.parameter_expansion_budget
-                .charge_bytes(header.name.len(), span)?;
             self.prepare_parameter_bindings(span)?;
             self.bind_template_parameters(&parameters, Some(&arguments))?;
+            let mut header = self.function_header(false)?;
+            header.is_static = metadata.is_static;
+            header.inlining = metadata.inlining;
+            self.parameter_expansion_budget
+                .charge_bytes(header.name.len(), span)?;
             match target {
                 InstanceTarget::Device(function) => {
                     self.device_function_with_target(header, Some(function))?

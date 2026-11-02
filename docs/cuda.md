@@ -53,7 +53,40 @@ compatibility helpers. Calls reuse each helper across the module, keeping the
 integer algorithms out of source functions while preserving their numerical
 behavior. Other operations can still produce temporary expressions.
 
-## Integral function templates
+## Function templates
+
+Device helpers accept `typename` and `class` type parameters using the frontend's
+supported scalar, vector, record, `dim3`, Cooperative Groups, and pointer types.
+Type aliases name the same specialization as their underlying types. Explicit
+type arguments retain source qualification; ordinary parameter and return-type
+restrictions still apply after substitution.
+
+```cuda
+template<class Value>
+__device__ Value copied(Value value) {
+    return value;
+}
+
+template<class Result, class Input>
+__device__ Result converted(Input value) {
+    return Result(value);
+}
+```
+
+Calls can supply type arguments explicitly, as in `copied<unsigned>(3)`, or
+deduce them from arguments, as in `copied(3u)` and `copied<>(3u)`. Trailing type
+arguments can be deduced after an explicit prefix: `converted<int>(2.75f)`
+deduces `Input` as `float`. Value parameters discard an argument's top-level
+qualification and allow array decay; reference and pointer parameters retain
+the applicable source qualifiers. Repeated deductions must agree on the type;
+`sum(1, 2u)` cannot deduce a common arithmetic type for two `Value` parameters.
+Explicitly supplied parameters use the ordinary argument conversion rules.
+
+Templates participate alongside ordinary helper overloads. Better argument
+conversions take precedence, followed by ordinary overloads on ties and partial
+ordering of the supported template parameter patterns. An explicit `<...>` or
+`<>` selects only templates. Equal normalized template arguments reuse one
+helper instance regardless of whether arguments were explicit or deduced.
 
 Device helpers accept explicit `int`, `unsigned int`, and `bool` template
 parameters, including aliases and top-level `const` or `volatile` qualification.
@@ -100,9 +133,13 @@ request order with canonical source selectors such as `fill<4>`. Use
 change the emitted entry name, so library callers should inspect the generated
 backend entry names.
 
-Every template argument must be supplied explicitly. Type and class templates,
-argument deduction, default template arguments, parameter packs, explicit
-specializations, `if constexpr`, and overloaded kernel templates are unsupported.
+Type and integral parameters can appear in the same template. Integral arguments
+must be supplied explicitly; kernel instantiation definitions require every
+template argument. Typed kernel selectors use canonical source type names, such
+as `copy_typed<unsigned>`, even when the instantiation uses a type alias.
+Class templates, dependent non-type parameter types, default template arguments,
+parameter packs, explicit specializations, `if constexpr`, and overloaded kernel
+templates are unsupported.
 Unrequested template bodies receive structural checks; full semantic checking
 happens when an instance is requested. This does not yet implement all C++
 diagnostics for unused template bodies. Instance creation and source replay use

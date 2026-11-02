@@ -79,6 +79,7 @@ mod thread_block_dimensions;
 mod thread_block_parameters;
 mod trigonometry;
 mod type_aliases;
+mod type_templates;
 mod uniform_branch_barriers;
 mod uniform_loop_barriers;
 mod uninitialized;
