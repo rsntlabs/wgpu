@@ -171,4 +171,23 @@ mod tests {
         assert!(error.message.contains("limit"), "{error}");
         assert!(repeated.parameter_expansion_budget.is_exhausted());
     }
+
+    #[test]
+    fn erased_nullptr_name_reads_charge_the_expansion_node_budget() {
+        let source = "value";
+        let span = Span::new(0, source.len() as u32);
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        parser
+            .bind_null_pointer_symbol("value", span, Qualifiers::NONE)
+            .unwrap();
+        let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+        parser
+            .parameter_expansion_budget
+            .charge_nodes(remaining, span)
+            .unwrap();
+        let error = parser.expression(0).unwrap_err();
+        assert!(error.message.contains("limit"), "{error}");
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+        assert_eq!(error.span.to_range(), Some(0..source.len()));
+    }
 }

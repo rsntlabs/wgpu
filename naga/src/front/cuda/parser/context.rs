@@ -1,3 +1,4 @@
+use super::functions::ReturnType;
 use super::*;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -9,6 +10,7 @@ pub(super) enum FunctionKind {
 pub(super) struct FunctionContext<'a> {
     pub(super) kind: FunctionKind,
     pub(super) ir: Function,
+    pub(super) source_result: ReturnType,
     pub(super) emitter: crate::proc::Emitter,
     pub(super) symbol_table: SymbolTable<&'a str, Symbol>,
     pub(super) statement_depth: u32,
@@ -68,6 +70,7 @@ impl FunctionContext<'_> {
         Self {
             kind,
             ir,
+            source_result: ReturnType::Void,
             emitter,
             symbol_table: SymbolTable::default(),
             statement_depth: 0,

@@ -328,15 +328,7 @@ fn cuda_pointer_assignments_require_modifiable_pointer_object_lvalues() {
 
 #[test]
 fn cuda_pointer_assignments_reject_invalid_rhs_and_unsupported_compounds() {
-    for right in [
-        "1",
-        "1.5f",
-        "int2{1,2}",
-        "nothing()",
-        "nullptr",
-        "{}",
-        "{first}",
-    ] {
+    for right in ["1", "1.5f", "int2{1,2}", "nothing()", "{}", "{first}"] {
         rejected(&format!(
             "__device__ void nothing() {{}} __global__ void kernel() {{
                 int first[2]{{2,3}};int *pointer=first;pointer={right};

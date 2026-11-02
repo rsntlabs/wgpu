@@ -12,6 +12,54 @@ impl Parser<'_> {
         self.lexer.expect_span(Token::Separator(':'))?;
         let (reject, reject_body) = self.capture_block(|parser| parser.expression_result(0))?;
         let span = self.lexer.span_from(start);
+        let null_arms = matches!((&accept, &reject), (ExpressionResult::Value(left), ExpressionResult::Value(right))
+            if left.is_null_pointer_constant() && right.is_null_pointer_constant()
+                && (matches!(left, ExpressionValue::NullPointer(_)) || matches!(right, ExpressionValue::NullPointer(_))));
+        if null_arms {
+            let accept = accept.require_value()?;
+            let reject = reject.require_value()?;
+            let category = match (&accept, &reject) {
+                (
+                    &ExpressionValue::NullPointer(ref accept),
+                    &ExpressionValue::NullPointer(ref reject),
+                ) if accept.category == ValueCategory::Lvalue
+                    && reject.category == ValueCategory::Lvalue =>
+                {
+                    ValueCategory::Lvalue
+                }
+                _ => ValueCategory::Prvalue,
+            };
+            let qualifiers = match (&accept, &reject) {
+                (
+                    &ExpressionValue::NullPointer(ref accept),
+                    &ExpressionValue::NullPointer(ref reject),
+                ) if category == ValueCategory::Lvalue => {
+                    accept.qualifiers.union(reject.qualifiers)
+                }
+                _ => Qualifiers::NONE,
+            };
+            let accept = self.require_null_pointer_value(accept)?;
+            let reject = self.require_null_pointer_value(reject)?;
+            let is_constant = match condition.constant.literal {
+                Some(Literal::Bool(true)) => accept.is_constant,
+                Some(Literal::Bool(false)) => reject.is_constant,
+                _ => false,
+            };
+            self.push_statement(
+                Statement::If {
+                    condition: condition.handle,
+                    accept: accept_body,
+                    reject: reject_body,
+                },
+                span,
+            );
+            let mut value = NullPointerValue::literal(span);
+            value.category = category;
+            value.qualifiers = qualifiers;
+            value.is_constant = is_constant;
+            value.constant.is_discardable = is_constant;
+            return Ok(ExpressionValue::NullPointer(value).into());
+        }
         match (accept, reject) {
             (ExpressionResult::Void(_), ExpressionResult::Void(_)) => {
                 self.push_statement(
@@ -91,12 +139,15 @@ impl Parser<'_> {
                     )?;
                     return self.pointer_result(pointer);
                 }
-                let ty = if self.module.compare_types(accept.ty(), reject.ty()) {
-                    accept.ty().clone()
+                let ty = if self
+                    .module
+                    .compare_types(accept.shader_type()?, reject.shader_type()?)
+                {
+                    accept.shader_type()?.clone()
                 } else {
                     scalar_resolution(Self::arithmetic_scalar(
-                        self.require_scalar_type(accept.ty(), accept.span())?,
-                        self.require_scalar_type(reject.ty(), reject.span())?,
+                        self.require_scalar_type(accept.shader_type()?, accept.span())?,
+                        self.require_scalar_type(reject.shader_type()?, reject.span())?,
                     ))
                 };
                 let category = match (&accept, &reject) {
@@ -112,6 +163,7 @@ impl Parser<'_> {
                     _ => ValueCategory::Prvalue,
                 };
                 let source_qualifiers = |value: &ExpressionValue| match *value {
+                    ExpressionValue::NullPointer(ref value) => value.qualifiers,
                     ExpressionValue::Plain(ref value) => value.qualifiers,
                     ExpressionValue::Reference(ref reference) => reference.qualifiers,
                     ExpressionValue::Pointer(_) => unreachable!(),

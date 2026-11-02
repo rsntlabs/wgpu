@@ -3,6 +3,7 @@ use super::*;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) enum Namespace {
     CooperativeGroups,
+    Standard,
 }
 
 #[derive(Debug)]
@@ -110,6 +111,18 @@ fn qualified_name(
             });
         };
         item = match item {
+            QualifiedItem::Namespace(Namespace::Standard) => match name {
+                "nullptr_t" if !namespace_only => QualifiedItem::Type(QualifiedType {
+                    ty: TypeSpecifier::NullPointer,
+                    qualifiers: Qualifiers::NONE,
+                }),
+                _ => {
+                    return Err(ParseError {
+                        message: format!("unsupported standard name `{name}`"),
+                        span,
+                    })
+                }
+            },
             QualifiedItem::Namespace(Namespace::CooperativeGroups) => match name {
                 "thread_block" if !namespace_only => QualifiedItem::Type(QualifiedType {
                     ty: TypeSpecifier::ThreadBlock,

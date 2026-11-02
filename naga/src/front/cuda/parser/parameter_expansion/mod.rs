@@ -102,9 +102,9 @@ impl Parser<'_> {
             self.parameter_expansion_budget
                 .charge_work(parameters.map_or(0, Vec::len), span)?;
             templates.push(parameters.is_some_and(|parameters| {
-                parameters
-                    .iter()
-                    .any(|parameter| parameter.mode().is_indirect())
+                parameters.iter().any(|parameter| {
+                    parameter.shader_type().is_some() && parameter.mode().is_indirect()
+                })
             }));
         }
         self.validate_parameter_templates(order)?;

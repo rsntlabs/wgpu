@@ -537,10 +537,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn is_pointer_operand(&self, value: &ExpressionValue) -> bool {
         matches!(value, ExpressionValue::Pointer(_))
-            || matches!(
-                *value.ty().inner_with(&self.module.types),
-                TypeInner::Array { .. }
-            )
+            || matches!(value.source_type(), SourceType::Shader(ty) if matches!(*ty.inner_with(&self.module.types), TypeInner::Array { .. }))
     }
 
     pub(super) fn decay_array(
@@ -646,8 +643,7 @@ impl<'a> Parser<'a> {
         qualifiers: Qualifiers,
         span: Span,
     ) -> Result<PointerValue, ParseError> {
-        if matches!(value, ExpressionValue::Plain(ref value) if value.constant.is_null_pointer_constant)
-        {
+        if value.is_null_pointer_constant() {
             return self.null_pointer(target, qualifiers, span);
         }
         let mut pointer = self.borrowed_pointer(value)?;
@@ -806,6 +802,10 @@ impl<'a> Parser<'a> {
         earlier: ConstantValue,
     ) -> Result<(), ParseError> {
         match *value {
+            ExpressionValue::NullPointer(ref mut value) => {
+                value.is_constant &= earlier.is_discardable;
+                value.constant = value.constant.after(earlier);
+            }
             ExpressionValue::Plain(ref mut value) => value.constant = value.constant.after(earlier),
             ExpressionValue::Pointer(ref mut pointer) => {
                 pointer.constant = pointer.constant.after(earlier)
@@ -869,24 +869,21 @@ impl<'a> Parser<'a> {
     ) -> Result<PointerValue, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
-        let null_operand = match (&accept, &reject) {
-            (&ExpressionValue::Plain(ref value), other)
-                if value.constant.is_null_pointer_constant =>
-            {
-                Some(other)
-            }
-            (other, &ExpressionValue::Plain(ref value))
-                if value.constant.is_null_pointer_constant =>
-            {
-                Some(other)
-            }
-            _ => None,
+        let null_operand = if accept.is_null_pointer_constant() {
+            Some(&reject)
+        } else if reject.is_null_pointer_constant() {
+            Some(&accept)
+        } else {
+            None
         };
-        let null_target =
-            null_operand.map(|other| match *other.ty().inner_with(&self.module.types) {
+        let null_target = if let Some(other) = null_operand {
+            Some(match *other.shader_type()?.inner_with(&self.module.types) {
                 TypeInner::Array { base, .. } => self.pointer_type(base, span),
-                _ => other.ty().clone(),
-            });
+                _ => other.shader_type()?.clone(),
+            })
+        } else {
+            None
+        };
         let variable = matches!((&accept, &reject), (ExpressionValue::Pointer(accept), ExpressionValue::Pointer(reject)) if matches!(accept.category, PointerValueCategory::Variable { .. }) && matches!(reject.category, PointerValueCategory::Variable { .. }) && accept.qualifiers == reject.qualifiers && self.module.compare_types(&accept.ty, &reject.ty));
         let selector = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
         let selected = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
@@ -903,7 +900,9 @@ impl<'a> Parser<'a> {
                     let qualifiers = match value {
                         ExpressionValue::Pointer(ref pointer) => pointer.qualifiers,
                         ExpressionValue::Reference(ref reference) => reference.qualifiers,
-                        ExpressionValue::Plain(_) => Qualifiers::NONE,
+                        ExpressionValue::Plain(_) | ExpressionValue::NullPointer(_) => {
+                            Qualifiers::NONE
+                        }
                     };
                     parser.convert_pointer(value, target, qualifiers, span)?
                 } else {

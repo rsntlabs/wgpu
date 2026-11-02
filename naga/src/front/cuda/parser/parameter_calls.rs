@@ -20,6 +20,9 @@ pub(super) enum SourceParameter {
         ty: Handle<Type>,
         mode: ParameterMode,
     },
+    NullPointer {
+        mode: ParameterMode,
+    },
     ThreadBlock,
 }
 
@@ -27,13 +30,13 @@ impl SourceParameter {
     pub(super) const fn shader_type(self) -> Option<Handle<Type>> {
         match self {
             Self::Shader { ty, .. } => Some(ty),
-            Self::ThreadBlock => None,
+            Self::NullPointer { .. } | Self::ThreadBlock => None,
         }
     }
 
     pub(super) const fn mode(self) -> ParameterMode {
         match self {
-            Self::Shader { mode, .. } => mode,
+            Self::Shader { mode, .. } | Self::NullPointer { mode } => mode,
             Self::ThreadBlock => ParameterMode::Value,
         }
     }
@@ -89,6 +92,12 @@ pub(super) struct SourcePointerType {
 
 pub(super) trait CallArgument {
     fn ty(&self) -> Option<&TypeResolution>;
+    fn source_type(&self) -> Option<SourceType<&TypeResolution>> {
+        self.ty().map(SourceType::Shader)
+    }
+    fn is_null_pointer(&self) -> bool {
+        matches!(self.source_type(), Some(SourceType::NullPointer))
+    }
     fn is_thread_block(&self) -> bool;
     fn span(&self) -> Span;
     fn reference_qualifiers(&self) -> Option<Qualifiers>;
@@ -127,8 +136,15 @@ impl CallArgument for Value {
 impl CallArgument for CapturedArgument {
     fn ty(&self) -> Option<&TypeResolution> {
         match self.value {
-            ExpressionResult::Value(ref value) => Some(value.ty()),
+            ExpressionResult::Value(ref value) => value.shader_type().ok(),
             ExpressionResult::ThreadBlock(_) | ExpressionResult::Void(_) => None,
+        }
+    }
+    fn source_type(&self) -> Option<SourceType<&TypeResolution>> {
+        match self.value {
+            ExpressionResult::Value(ref value) => Some(value.source_type()),
+            ExpressionResult::ThreadBlock(_) => Some(SourceType::ThreadBlock),
+            ExpressionResult::Void(_) => None,
         }
     }
     fn is_thread_block(&self) -> bool {
@@ -146,12 +162,20 @@ impl CallArgument for CapturedArgument {
             ExpressionResult::Value(ExpressionValue::Reference(ref reference)) => {
                 Some(reference.qualifiers)
             }
+            ExpressionResult::Value(ExpressionValue::NullPointer(ref value))
+                if value.category == ValueCategory::Lvalue =>
+            {
+                Some(value.qualifiers)
+            }
             _ => None,
         }
     }
     fn value_qualifiers(&self) -> Option<Qualifiers> {
         match self.value {
             ExpressionResult::Value(ExpressionValue::Plain(ref value)) => Some(value.qualifiers),
+            ExpressionResult::Value(ExpressionValue::NullPointer(ref value)) => {
+                Some(value.qualifiers)
+            }
             _ => None,
         }
     }
@@ -171,9 +195,7 @@ impl CallArgument for CapturedArgument {
     }
     fn is_null_pointer_constant(&self) -> bool {
         match self.value {
-            ExpressionResult::Value(ExpressionValue::Plain(ref value)) => {
-                value.constant.is_null_pointer_constant
-            }
+            ExpressionResult::Value(ref value) => value.is_null_pointer_constant(),
             _ => false,
         }
     }
@@ -262,11 +284,9 @@ impl Parser<'_> {
         !self.function.deferred_calls.is_empty()
             || !self.function.pointers.is_empty()
             || !self.function.volatile_accesses.is_empty()
-            || self
-                .function
-                .parameters
-                .iter()
-                .any(|parameter| parameter.mode().is_indirect())
+            || self.function.parameters.iter().any(|parameter| {
+                parameter.shader_type().is_some() && parameter.mode().is_indirect()
+            })
     }
 
     pub(super) fn capture_call_argument(&mut self) -> Result<CapturedArgument, ParseError> {
@@ -326,8 +346,10 @@ impl Parser<'_> {
         ) {
             return self.atomic_call(arguments, candidate, span);
         }
-        let has_indirect_parameters =
-            (0..arguments.len()).any(|index| self.candidate_mode(candidate, index).is_indirect());
+        let has_indirect_parameters = (0..arguments.len()).any(|index| {
+            self.candidate_type(candidate, index).is_some()
+                && self.candidate_mode(candidate, index).is_indirect()
+        });
         if !has_indirect_parameters {
             self.parameter_expansion_budget
                 .charge_slice::<Value>(arguments.len(), span)?;
@@ -336,7 +358,7 @@ impl Parser<'_> {
                 self.parameter_expansion_budget.charge_work(1, span)?;
                 self.append_block(argument.body);
                 let Some(target) = self.candidate_type(candidate, logical_index) else {
-                    self.require_thread_block(argument.value)?;
+                    self.consume_erased_argument(candidate, logical_index, argument.value)?;
                     continue;
                 };
                 values.push(self.convert_value(argument.value.require_value()?, &target)?);
@@ -358,7 +380,7 @@ impl Parser<'_> {
             self.parameter_expansion_budget.charge_work(1, span)?;
             self.append_block(argument.body);
             let Some(target) = self.candidate_type(candidate, logical_index) else {
-                self.require_thread_block(argument.value)?;
+                self.consume_erased_argument(candidate, logical_index, argument.value)?;
                 continue;
             };
             let value = argument.value.require_value()?;
@@ -436,8 +458,33 @@ impl Parser<'_> {
                 );
                 Ok(value.into())
             }
-            _ => Ok(ExpressionResult::Void(span)),
+            _ => Ok(self.erased_call_result(function, span)),
         }
+    }
+
+    fn consume_erased_argument(
+        &self,
+        candidate: functions::FunctionCandidate,
+        logical_index: usize,
+        value: ExpressionResult,
+    ) -> Result<(), ParseError> {
+        if let Some(SourceParameter::NullPointer { mode }) =
+            self.candidate_source_parameter(candidate, logical_index)
+        {
+            let value = value.require_value()?;
+            match mode {
+                ParameterMode::Reference { qualifiers } => {
+                    self.require_null_pointer_reference(value, qualifiers)?;
+                }
+                ParameterMode::Value => {
+                    self.require_null_pointer_value(value)?;
+                }
+                ParameterMode::Pointer { .. } => unreachable!(),
+            }
+        } else {
+            self.require_thread_block(value)?;
+        }
+        Ok(())
     }
 
     pub(super) fn deferred_marker(

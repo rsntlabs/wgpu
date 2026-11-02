@@ -128,6 +128,12 @@ impl Parser<'_> {
         } else {
             Qualifiers::NONE
         };
+        if argument.is_null_pointer() {
+            return Ok(Some(TemplateValue::Type {
+                ty: TypeSpecifier::NullPointer,
+                qualifiers,
+            }));
+        }
         if let Some(pointer) = argument.pointer_type(&self.module) {
             return Ok(Some(TemplateValue::Type {
                 ty: TypeSpecifier::Pointer {
@@ -219,12 +225,16 @@ impl Parser<'_> {
                     ParameterPattern::Shader {
                         mode: ParameterMode::Reference { .. },
                         ..
+                    } | ParameterPattern::NullPointer {
+                        mode: ParameterMode::Reference { .. }
                     }
                 ) && matches!(
                     actual,
                     ParameterPattern::Shader {
                         mode: ParameterMode::Reference { .. },
                         ..
+                    } | ParameterPattern::NullPointer {
+                        mode: ParameterMode::Reference { .. }
                     }
                 );
                 match_pattern(
@@ -238,6 +248,17 @@ impl Parser<'_> {
 
 const fn pattern_term(pattern: ParameterPattern, reference_qualifiers: bool) -> PatternTerm {
     match pattern {
+        ParameterPattern::NullPointer { mode } => PatternTerm::Type {
+            ty: PatternType::NullPointer,
+            qualifiers: if reference_qualifiers {
+                match mode {
+                    ParameterMode::Reference { qualifiers } => qualifiers,
+                    _ => Qualifiers::NONE,
+                }
+            } else {
+                Qualifiers::NONE
+            },
+        },
         ParameterPattern::ThreadBlock => PatternTerm::ThreadBlock,
         ParameterPattern::Shader {
             ty,

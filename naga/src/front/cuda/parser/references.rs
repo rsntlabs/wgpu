@@ -50,7 +50,7 @@ impl Parser<'_> {
             message: format!("unknown or unsupported field `{field}`"),
             span: field_span,
         };
-        let (index, ty) = match *value.ty().inner_with(&self.module.types) {
+        let (index, ty) = match *value.shader_type()?.inner_with(&self.module.types) {
             TypeInner::Vector { size, scalar } => {
                 let index = match field {
                     "x" => 0,
@@ -75,6 +75,10 @@ impl Parser<'_> {
         };
         let span = value.span().until(&field_span);
         match value {
+            ExpressionValue::NullPointer(value) => Err(ParseError {
+                message: String::from("nullptr_t values have no fields"),
+                span: value.span,
+            }),
             ExpressionValue::Pointer(pointer) => Err(ParseError {
                 message: String::from("pointer fields require dereferencing the pointer"),
                 span: pointer.span,
@@ -111,12 +115,12 @@ impl Parser<'_> {
             return self.pointer_index(value);
         }
         if !matches!(
-            *value.ty().inner_with(&self.module.types),
+            *value.shader_type()?.inner_with(&self.module.types),
             TypeInner::Array { .. }
         ) {
             return self.pointer_index(value);
         }
-        let (element_ty, count) = match *value.ty().inner_with(&self.module.types) {
+        let (element_ty, count) = match *value.shader_type()?.inner_with(&self.module.types) {
             TypeInner::Array { base, size, .. } => (
                 TypeResolution::Handle(base),
                 match size {
@@ -210,6 +214,10 @@ impl Parser<'_> {
                 Ok(ExpressionValue::Reference(reference))
             }
             ExpressionValue::Pointer(_) => unreachable!(),
+            ExpressionValue::NullPointer(value) => Err(ParseError {
+                message: String::from("nullptr_t values cannot be indexed"),
+                span: value.span,
+            }),
         }
     }
 
@@ -323,7 +331,7 @@ impl Parser<'_> {
 
     pub(super) fn rvalue(&mut self, expression: ExpressionValue) -> Result<Value, ParseError> {
         if matches!(
-            *expression.ty().inner_with(&self.module.types),
+            *expression.shader_type()?.inner_with(&self.module.types),
             TypeInner::Array { .. }
         ) {
             return Err(ParseError {
@@ -332,6 +340,12 @@ impl Parser<'_> {
             });
         }
         let reference = match expression {
+            ExpressionValue::NullPointer(value) => {
+                return Err(ParseError {
+                    message: String::from("nullptr_t values cannot be used as shader values"),
+                    span: value.span,
+                })
+            }
             ExpressionValue::Pointer(pointer) => {
                 return Err(ParseError {
                     message: String::from(

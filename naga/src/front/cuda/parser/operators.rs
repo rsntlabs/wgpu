@@ -86,6 +86,13 @@ impl Operator {
 }
 
 impl Parser<'_> {
+    pub(super) fn is_source_class_value(&self, value: &ExpressionValue) -> bool {
+        match value.source_type() {
+            SourceType::Shader(ty) => self.is_source_class(ty),
+            SourceType::NullPointer | SourceType::ThreadBlock => false,
+        }
+    }
+
     pub(super) fn operator_name(&mut self, span: Span) -> Result<(Operator, Span), ParseError> {
         let (token, end) = self.lexer.next()?;
         let operator = Operator::from_token(token).ok_or_else(|| ParseError {
@@ -111,7 +118,7 @@ impl Parser<'_> {
             .function
             .parameters
             .iter()
-            .any(|parameter| parameter.shader_type().is_none())
+            .any(|parameter| matches!(parameter, SourceParameter::ThreadBlock))
         {
             return Err(ParseError {
                 message: String::from("thread_block operator parameters are unsupported"),
@@ -152,7 +159,7 @@ impl Parser<'_> {
         if self.has_captured_candidate(name) {
             let (right, right_body) =
                 self.capture_block(|parser| parser.expression(precedence + 1))?;
-            if self.is_source_class(left.ty()) || self.is_source_class(right.ty()) {
+            if self.is_source_class_value(&left) || self.is_source_class_value(&right) {
                 let span = left.span().until(&right.span());
                 self.parameter_expansion_budget
                     .charge_slice::<CapturedArgument>(2, span)?;
@@ -191,7 +198,7 @@ impl Parser<'_> {
             left = self.rvalue(left)?.into();
         }
         let (right, right_body) = self.capture_block(|parser| parser.expression(precedence + 1))?;
-        if self.is_source_class(left.ty()) || self.is_source_class(right.ty()) {
+        if self.is_source_class_value(&left) || self.is_source_class_value(&right) {
             let left = self.rvalue(left)?;
             self.append_block(right_body);
             let right = self.rvalue(right)?;

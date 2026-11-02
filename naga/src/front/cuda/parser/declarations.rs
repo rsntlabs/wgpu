@@ -1,5 +1,18 @@
 use super::*;
 
+pub(super) fn parenthesized_function_declaration(
+    parser: &Parser<'_>,
+    mut lexer: Lexer<'_>,
+) -> Result<bool, ParseError> {
+    if lexer.peek()?.0 != Token::Paren('(') || !parameters(parser, &mut lexer, 0)? {
+        return Ok(false);
+    }
+    Ok(matches!(
+        lexer.peek()?.0,
+        Token::Separator(';') | Token::Operation('=') | Token::Separator(',') | Token::Paren('{')
+    ))
+}
+
 pub(super) fn parenthesized_declaration(
     parser: &Parser<'_>,
     mut lexer: Lexer<'_>,
@@ -67,18 +80,17 @@ fn parameters(parser: &Parser<'_>, lexer: &mut Lexer<'_>, depth: u32) -> Result<
         return Ok(true);
     }
     loop {
-        if !lexer.next_if(Token::Word("void"))? {
-            match lexer.peek()?.0 {
-                Token::Word("const") => {}
-                Token::Word(name) if parser.type_name(name).is_some() => {}
-                _ => return Ok(false),
-            }
-            parser.parse_type_from(lexer)?;
+        let mut type_lexer = lexer.clone();
+        if !type_lexer.next_if(Token::Word("void"))?
+            && parser.parse_type_from(&mut type_lexer).is_err()
+        {
+            return Ok(false);
         }
+        *lexer = type_lexer;
         if !matches!(
             lexer.peek()?.0,
             Token::Separator(',') | Token::Paren(')') | Token::Operation('=')
-        ) && !declarator(parser, lexer, depth + 1)?
+        ) && !parameter_declarator(parser, lexer, depth + 1)?
         {
             return Ok(false);
         }
@@ -104,6 +116,25 @@ fn parameters(parser: &Parser<'_>, lexer: &mut Lexer<'_>, depth: u32) -> Result<
             return Ok(false);
         }
     }
+}
+
+fn parameter_declarator(
+    parser: &Parser<'_>,
+    lexer: &mut Lexer<'_>,
+    depth: u32,
+) -> Result<bool, ParseError> {
+    check_depth(lexer, depth)?;
+    if lexer.peek()?.0 == Token::Paren('(') {
+        let mut lookahead = lexer.clone();
+        lookahead.next()?;
+        if lookahead.peek()?.0 == Token::Paren(')')
+            || lookahead.peek()?.0 == Token::Word("void")
+            || parser.parse_type_from(&mut lookahead).is_ok()
+        {
+            return parameters(parser, lexer, depth);
+        }
+    }
+    declarator(parser, lexer, depth)
 }
 
 fn balanced(lexer: &mut Lexer<'_>, depth: u32) -> Result<bool, ParseError> {

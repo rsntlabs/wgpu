@@ -122,6 +122,12 @@ impl Parser<'_> {
                     self.capture_block(|parser| parser.expression(precedence + 1))?;
                 if self.is_pointer_operand(&left_value) || self.is_pointer_operand(&right) {
                     left = self.pointer_binary(left_value, right, right_body, operator)?;
+                } else if matches!(left_value, ExpressionValue::NullPointer(_))
+                    || matches!(right, ExpressionValue::NullPointer(_))
+                {
+                    left = self
+                        .null_pointer_comparison(left_value, right, right_body, operator)?
+                        .into();
                 } else {
                     self.append_block(right_body);
                     left = self.binary_value(operator, left_value, right)?.into();
@@ -202,112 +208,10 @@ impl Parser<'_> {
                 .map(ExpressionResult::Value);
         }
         if self.lexer.next_if(Token::Paren('('))? {
-            if self.starts_type()? {
-                let mut lookahead = self.lexer.clone();
-                self.parse_type_from(&mut lookahead)?;
-                if lookahead.next_if(Token::Paren(')'))? {
-                    let target = self.cast_type()?;
-                    self.lexer.expect_span(Token::Paren(')'))?;
-                    let value = self.expression(UNARY_PRECEDENCE)?;
-                    let mut value = self.cast_value(value, &target)?;
-                    value.span = token.1.until(&value.span);
-                    return Ok(value.into());
-                }
-            }
-            let value = self.comma_expression_result()?;
-            self.lexer.expect_span(Token::Paren(')'))?;
-            return Ok(value);
+            return self.parenthesized_expression(token.1);
         }
         if matches!(token.0, Token::Operation('-' | '+' | '!' | '~' | '*' | '&')) {
-            self.lexer.next()?;
-            let value = if token.0 == Token::Operation('&') {
-                self.address_operand()?
-            } else {
-                self.expression(UNARY_PRECEDENCE)?
-            };
-            if self.is_source_class(value.ty()) {
-                return self.unary_operator(token.0, value, token.1);
-            }
-            if matches!(token.0, Token::Operation('*' | '&'))
-                || (token.0 == Token::Operation('+') && self.is_pointer_operand(&value))
-            {
-                return self.pointer_operator(token.0, value, token.1);
-            }
-            if token.0 == Token::Operation('!') {
-                let value = self.truthy(value)?;
-                let span = token.1.until(&value.span);
-                let handle = self.append(
-                    Expression::Unary {
-                        op: UnaryOperator::LogicalNot,
-                        expr: value.handle,
-                    },
-                    span,
-                )?;
-                return Ok(Value {
-                    category: ValueCategory::Prvalue,
-                    qualifiers: Qualifiers::NONE,
-                    constant: ConstantValue::evaluated(value.constant.literal.and_then(
-                        |literal| constant_evaluation::unary(UnaryOperator::LogicalNot, literal),
-                    )),
-                    handle,
-                    ty: scalar_resolution(Scalar::BOOL),
-                    span,
-                }
-                .into());
-            }
-            if token.0 == Token::Operation('~') {
-                let value = self.integral_operand(value)?;
-                let span = token.1.until(&value.span);
-                let handle = self.append(
-                    Expression::Unary {
-                        op: UnaryOperator::BitwiseNot,
-                        expr: value.handle,
-                    },
-                    span,
-                )?;
-                return Ok(Value {
-                    category: ValueCategory::Prvalue,
-                    qualifiers: Qualifiers::NONE,
-                    constant: ConstantValue::evaluated(value.constant.literal.and_then(
-                        |literal| constant_evaluation::unary(UnaryOperator::BitwiseNot, literal),
-                    )),
-                    handle,
-                    ty: value.ty,
-                    span,
-                }
-                .into());
-            }
-            let mut value = self.promote_integral(value)?;
-            if token.0 == Token::Operation('+') {
-                value.constant = value.constant.non_literal();
-                return Ok(value.into());
-            }
-            let span = token.1.until(&value.span);
-            let expression = if self.require_scalar_type(&value.ty, value.span)? == Scalar::U32 {
-                let zero = self.append(Expression::Literal(Literal::U32(0)), span)?;
-                Expression::Binary {
-                    op: BinaryOperator::Subtract,
-                    left: zero,
-                    right: value.handle,
-                }
-            } else {
-                Expression::Unary {
-                    op: UnaryOperator::Negate,
-                    expr: value.handle,
-                }
-            };
-            let handle = self.append(expression, span)?;
-            return Ok(Value {
-                category: ValueCategory::Prvalue,
-                qualifiers: Qualifiers::NONE,
-                constant: ConstantValue::evaluated(value.constant.literal.and_then(|literal| {
-                    constant_evaluation::unary(UnaryOperator::Negate, literal)
-                })),
-                handle,
-                ty: value.ty,
-                span,
-            }
-            .into());
+            return self.unary_expression(token.0, token.1);
         }
         if let Some(name) = self.qualified_item()? {
             return self.qualified_expression(name);
@@ -319,61 +223,192 @@ impl Parser<'_> {
             }
             Token::Word(name) => {
                 self.lexer.next()?;
-                if matches!(self.lookup_symbol(name), Some(Symbol::Member)) {
-                    return Err(ParseError {
-                        message: String::from("non-static structure member requires an object"),
-                        span: token.1,
-                    });
-                }
-                if name == "operator" {
-                    let (operator, span) = self.operator_name(token.1)?;
-                    return self.call(operator.name(), span);
-                }
-                if name == "static_cast" {
-                    self.lexer.expect_span(Token::Paren('<'))?;
-                    let target = self.cast_type()?;
-                    self.lexer.expect_span(Token::Paren('>'))?;
-                    self.lexer.expect_span(Token::Paren('('))?;
-                    let value = self.comma_expression()?;
-                    let end = self.lexer.expect_span(Token::Paren(')'))?;
-                    let mut value = self.cast_value(value, &target)?;
-                    value.span = token.1.until(&end);
-                    return Ok(value.into());
-                }
-                if let Some(target) = self.type_name(name) {
-                    if target.qualifiers.is_volatile
-                        && !matches!(target.ty, TypeSpecifier::Scalar(_))
-                    {
-                        return self.fail("volatile class value construction is unsupported");
-                    }
-                    return self.type_expression(target, token.1);
-                }
-                if matches!(name, "true" | "false") {
-                    let handle =
-                        self.append(Expression::Literal(Literal::Bool(name == "true")), token.1)?;
-                    return Ok(Value {
-                        category: ValueCategory::Prvalue,
-                        qualifiers: Qualifiers::NONE,
-                        constant: Literal::Bool(name == "true").into(),
-                        handle,
-                        ty: scalar_resolution(Scalar::BOOL),
-                        span: token.1,
-                    }
-                    .into());
-                }
-                if matches!(name, "threadIdx" | "blockIdx" | "blockDim" | "gridDim") {
-                    return self.builtin(name, token.1).map(Into::into);
-                }
-                if self.lexer.peek()?.0 == Token::Paren('<') && self.has_function_template(name) {
-                    return self.template_call(name, token.1);
-                }
-                if self.lexer.peek()?.0 == Token::Paren('(') {
-                    return self.call(name, token.1);
-                }
-                self.variable_expression(name, token.1)
+                self.word_expression(name, token.1)
             }
             _ => self.fail("expected a supported scalar expression"),
         }
+    }
+
+    fn parenthesized_expression(&mut self, span: Span) -> Result<ExpressionResult, ParseError> {
+        if self.starts_type()? {
+            let mut lookahead = self.lexer.clone();
+            self.parse_type_from(&mut lookahead)?;
+            if lookahead.next_if(Token::Paren(')'))? {
+                let target = self.cast_type()?;
+                self.lexer.expect_span(Token::Paren(')'))?;
+                let value = self.expression(UNARY_PRECEDENCE)?;
+                let span = span.until(&value.span());
+                return self.cast_source_value(value, target, span).map(Into::into);
+            }
+        }
+        let value = self.comma_expression_result()?;
+        self.lexer.expect_span(Token::Paren(')'))?;
+        Ok(value)
+    }
+
+    fn unary_expression(
+        &mut self,
+        operator: Token<'_>,
+        operator_span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lexer.next()?;
+        let value = if operator == Token::Operation('&') {
+            self.address_operand()?
+        } else {
+            self.expression(UNARY_PRECEDENCE)?
+        };
+        if self.is_source_class_value(&value) {
+            return self.unary_operator(operator, value, operator_span);
+        }
+        if matches!(operator, Token::Operation('*' | '&'))
+            || (operator == Token::Operation('+') && self.is_pointer_operand(&value))
+        {
+            return self.pointer_operator(operator, value, operator_span);
+        }
+        if operator == Token::Operation('!') {
+            let value = self.truthy(value)?;
+            let span = operator_span.until(&value.span);
+            let handle = self.append(
+                Expression::Unary {
+                    op: UnaryOperator::LogicalNot,
+                    expr: value.handle,
+                },
+                span,
+            )?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: ConstantValue::evaluated(value.constant.literal.and_then(|literal| {
+                    constant_evaluation::unary(UnaryOperator::LogicalNot, literal)
+                })),
+                handle,
+                ty: scalar_resolution(Scalar::BOOL),
+                span,
+            }
+            .into());
+        }
+        if operator == Token::Operation('~') {
+            let value = self.integral_operand(value)?;
+            let span = operator_span.until(&value.span);
+            let handle = self.append(
+                Expression::Unary {
+                    op: UnaryOperator::BitwiseNot,
+                    expr: value.handle,
+                },
+                span,
+            )?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: ConstantValue::evaluated(value.constant.literal.and_then(|literal| {
+                    constant_evaluation::unary(UnaryOperator::BitwiseNot, literal)
+                })),
+                handle,
+                ty: value.ty,
+                span,
+            }
+            .into());
+        }
+        let mut value = self.promote_integral(value)?;
+        if operator == Token::Operation('+') {
+            value.constant = value.constant.non_literal();
+            return Ok(value.into());
+        }
+        let span = operator_span.until(&value.span);
+        let expression = if self.require_scalar_type(&value.ty, value.span)? == Scalar::U32 {
+            let zero = self.append(Expression::Literal(Literal::U32(0)), span)?;
+            Expression::Binary {
+                op: BinaryOperator::Subtract,
+                left: zero,
+                right: value.handle,
+            }
+        } else {
+            Expression::Unary {
+                op: UnaryOperator::Negate,
+                expr: value.handle,
+            }
+        };
+        let handle = self.append(expression, span)?;
+        Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
+            constant: ConstantValue::evaluated(
+                value
+                    .constant
+                    .literal
+                    .and_then(|literal| constant_evaluation::unary(UnaryOperator::Negate, literal)),
+            ),
+            handle,
+            ty: value.ty,
+            span,
+        }
+        .into())
+    }
+
+    fn word_expression(&mut self, name: &str, span: Span) -> Result<ExpressionResult, ParseError> {
+        if name == "nullptr" {
+            self.activate_parameter_expansion(span)?;
+            self.parameter_expansion_budget.charge_nodes(1, span)?;
+            return Ok(ExpressionValue::NullPointer(NullPointerValue::literal(span)).into());
+        }
+        if name == "decltype" {
+            self.lexer.expect_span(Token::Paren('('))?;
+            self.expect_ident("nullptr")?;
+            self.lexer.expect_span(Token::Paren(')'))?;
+            return self.null_pointer_constructor(span);
+        }
+        if matches!(self.lookup_symbol(name), Some(Symbol::Member)) {
+            return Err(ParseError {
+                message: String::from("non-static structure member requires an object"),
+                span,
+            });
+        }
+        if name == "operator" {
+            let (operator, span) = self.operator_name(span)?;
+            return self.call(operator.name(), span);
+        }
+        if name == "static_cast" {
+            return self.static_cast_expression(span);
+        }
+        if let Some(target) = self.type_name(name) {
+            if target.qualifiers.is_volatile && !matches!(target.ty, TypeSpecifier::Scalar(_)) {
+                return self.fail("volatile class value construction is unsupported");
+            }
+            return self.type_expression(target, span);
+        }
+        if matches!(name, "true" | "false") {
+            let handle = self.append(Expression::Literal(Literal::Bool(name == "true")), span)?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: Literal::Bool(name == "true").into(),
+                handle,
+                ty: scalar_resolution(Scalar::BOOL),
+                span,
+            }
+            .into());
+        }
+        if matches!(name, "threadIdx" | "blockIdx" | "blockDim" | "gridDim") {
+            return self.builtin(name, span).map(Into::into);
+        }
+        if self.lexer.peek()?.0 == Token::Paren('<') && self.has_function_template(name) {
+            return self.template_call(name, span);
+        }
+        if self.lexer.peek()?.0 == Token::Paren('(') {
+            return self.call(name, span);
+        }
+        self.variable_expression(name, span)
+    }
+
+    fn static_cast_expression(&mut self, span: Span) -> Result<ExpressionResult, ParseError> {
+        self.lexer.expect_span(Token::Paren('<'))?;
+        let target = self.cast_type()?;
+        self.lexer.expect_span(Token::Paren('>'))?;
+        self.lexer.expect_span(Token::Paren('('))?;
+        let value = self.comma_expression()?;
+        let end = self.lexer.expect_span(Token::Paren(')'))?;
+        self.cast_source_value(value, target, span.until(&end))
+            .map(Into::into)
     }
 
     fn variable_expression(
@@ -392,6 +427,11 @@ impl Parser<'_> {
             symbol => symbol,
         };
         let (pointer, ty, qualifiers, span, constant) = match symbol {
+            Symbol::NullPointer(mut value) => {
+                self.parameter_expansion_budget.charge_nodes(1, span)?;
+                value.span = span;
+                return Ok(ExpressionValue::NullPointer(value).into());
+            }
             Symbol::TemplateParameter { scalar, literal } => {
                 return self.template_parameter_value(scalar, literal, span);
             }
@@ -551,6 +591,9 @@ impl Parser<'_> {
         target: TypeSpecifier,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
+        if matches!(target, TypeSpecifier::NullPointer) {
+            return self.null_pointer_constructor(span);
+        }
         if matches!(target, TypeSpecifier::ThreadBlock) {
             return self.thread_block_copy();
         }
@@ -583,7 +626,7 @@ impl Parser<'_> {
                 size: VectorSize::Tri,
                 scalar: Scalar::U32
             }
-        ) && self.is_dim3(value.ty())
+        ) && self.is_dim3(value.shader_type()?)
         {
             let target = self.lower_type(target, span)?;
             let mut value = self.convert_value(value, &target)?;
@@ -611,6 +654,9 @@ impl Parser<'_> {
     }
 
     pub(super) fn truthy(&mut self, value: ExpressionValue) -> Result<Value, ParseError> {
+        if let ExpressionValue::NullPointer(value) = value {
+            return self.null_pointer_boolean(value);
+        }
         if self.is_pointer_operand(&value) {
             return self.pointer_test(value, false);
         }
@@ -654,7 +700,7 @@ impl Parser<'_> {
         operator_span: Span,
     ) -> Result<ExpressionResult, ParseError> {
         let name = operators::Operator::from_binary(operator).unwrap().name();
-        if !self.is_source_class(left.ty()) && !self.has_function_candidate(name) {
+        if !self.is_source_class_value(&left) && !self.has_function_candidate(name) {
             return self
                 .builtin_logical(left, operator, |parser| parser.expression(precedence + 1))
                 .map(Into::into);
@@ -662,7 +708,7 @@ impl Parser<'_> {
         if self.has_captured_candidate(name) {
             let (right, right_body) =
                 self.capture_block(|parser| parser.expression(precedence + 1))?;
-            if self.is_source_class(left.ty()) || self.is_source_class(right.ty()) {
+            if self.is_source_class_value(&left) || self.is_source_class_value(&right) {
                 let span = left.span().until(&right.span());
                 self.parameter_expansion_budget
                     .charge_slice::<CapturedArgument>(2, span)?;
@@ -691,7 +737,7 @@ impl Parser<'_> {
         }
         let left = self.rvalue(left)?;
         let (right, right_body) = self.capture_block(|parser| parser.expression(precedence + 1))?;
-        if self.is_source_class(&left.ty) || self.is_source_class(right.ty()) {
+        if self.is_source_class(&left.ty) || self.is_source_class_value(&right) {
             self.append_block(right_body);
             let right = self.rvalue(right)?;
             let span = left.span.until(&right.span);

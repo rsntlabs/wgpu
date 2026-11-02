@@ -20,6 +20,7 @@ mod functions;
 mod inferred_declarations;
 mod initializers;
 mod loops;
+mod null_pointer;
 mod operators;
 mod parameter_calls;
 mod parameter_expansion;
@@ -86,6 +87,7 @@ enum Symbol {
     PendingPointer,
     PendingAuto,
     PendingThreadBlock,
+    NullPointer(NullPointerValue),
     Pointer(Handle<PointerValue>),
     DynamicShared(DynamicSharedDeclaration),
     Reference {
@@ -200,6 +202,7 @@ struct ConditionalReference {
 enum ValueCategory {
     Prvalue,
     Xvalue,
+    Lvalue,
 }
 
 #[derive(Clone, Debug)]
@@ -212,8 +215,25 @@ struct Value {
     constant: ConstantValue,
 }
 
+#[derive(Clone, Copy, Debug)]
+enum SourceType<T> {
+    Shader(T),
+    NullPointer,
+    ThreadBlock,
+}
+
+#[derive(Clone, Debug)]
+struct NullPointerValue {
+    category: ValueCategory,
+    qualifiers: Qualifiers,
+    span: Span,
+    constant: ConstantValue,
+    is_constant: bool,
+}
+
 #[derive(Debug)]
 enum ExpressionValue {
+    NullPointer(NullPointerValue),
     Plain(Value),
     Reference(ReferenceValue),
     Pointer(Box<PointerValue>),
@@ -222,22 +242,35 @@ enum ExpressionValue {
 impl ExpressionValue {
     const fn constant(&self) -> ConstantValue {
         match *self {
+            Self::NullPointer(ref value) => value.constant,
             Self::Plain(ref value) => value.constant,
             Self::Reference(ref reference) => reference.constant,
             Self::Pointer(ref pointer) => pointer.constant,
         }
     }
 
-    const fn ty(&self) -> &TypeResolution {
+    const fn source_type(&self) -> SourceType<&TypeResolution> {
         match *self {
-            Self::Plain(ref value) => &value.ty,
-            Self::Reference(ref reference) => &reference.ty,
-            Self::Pointer(ref pointer) => &pointer.ty,
+            Self::NullPointer(_) => SourceType::NullPointer,
+            Self::Plain(ref value) => SourceType::Shader(&value.ty),
+            Self::Reference(ref reference) => SourceType::Shader(&reference.ty),
+            Self::Pointer(ref pointer) => SourceType::Shader(&pointer.ty),
+        }
+    }
+
+    fn shader_type(&self) -> Result<&TypeResolution, ParseError> {
+        match self.source_type() {
+            SourceType::Shader(ty) => Ok(ty),
+            SourceType::NullPointer | SourceType::ThreadBlock => Err(ParseError {
+                message: String::from("nullptr_t values cannot be used as shader values"),
+                span: self.span(),
+            }),
         }
     }
 
     const fn span(&self) -> Span {
         match *self {
+            Self::NullPointer(ref value) => value.span,
             Self::Plain(ref value) => value.span,
             Self::Reference(ref reference) => reference.span,
             Self::Pointer(ref pointer) => pointer.span,
@@ -402,6 +435,14 @@ impl<'a> Parser<'a> {
             type_span,
             declarator_span: pointer_span,
         } = self.parameter_type()?;
+        if matches!(specifier, TypeSpecifier::NullPointer) {
+            return self.null_pointer_parameter(
+                qualifiers,
+                is_reference,
+                explicit_pointer_qualifiers.is_some(),
+                type_span,
+            );
+        }
         if matches!(specifier, TypeSpecifier::ThreadBlock) {
             if qualifiers.is_volatile {
                 return self.fail("volatile thread_block parameters are unsupported");
@@ -1095,6 +1136,9 @@ impl<'a> Parser<'a> {
                     Some(Symbol::Namespace(namespace))
                 }
                 Some(&GlobalDeclaration::PendingAuto) => Some(Symbol::PendingAuto),
+                Some(&GlobalDeclaration::NullPointer(ref value)) => {
+                    Some(Symbol::NullPointer(value.clone()))
+                }
                 Some(&GlobalDeclaration::DynamicShared(declaration)) => {
                     Some(Symbol::DynamicShared(declaration))
                 }

@@ -175,7 +175,7 @@ impl<'a> Parser<'a> {
         if singleton
             && first
                 .as_ref()
-                .is_some_and(|value| self.module.compare_types(value.ty(), ty))
+                .is_some_and(|value| matches!(value.source_type(), SourceType::Shader(source) if self.module.compare_types(source, ty)))
         {
             self.lexer.next_if(Token::Separator(','))?;
             self.lexer.expect_span(Token::Paren('}'))?;

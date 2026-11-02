@@ -1,3 +1,4 @@
+use super::functions::ReturnType;
 use super::*;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -15,6 +16,7 @@ pub(super) struct FunctionCall {
 
 pub(super) struct FunctionDeclaration {
     pub(super) parameters: Vec<SourceParameter>,
+    pub(super) source_result: ReturnType,
     pub(super) result_qualifiers: Qualifiers,
     pub(super) has_host: bool,
     pub(super) is_static: bool,
