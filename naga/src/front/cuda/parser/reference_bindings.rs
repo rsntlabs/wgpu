@@ -28,6 +28,12 @@ pub(super) struct BoundReference {
 
 pub(super) const INVALID_BOUND_ADDRESS: u32 = u32::MAX;
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub(super) enum ReferenceAddressKind {
+    Static,
+    Automatic,
+}
+
 fn bound_reference_error(span: Span) -> ParseError {
     ParseError {
         message: String::from("invalid CUDA bound reference"),
@@ -565,14 +571,30 @@ impl<'a> Parser<'a> {
         &mut self,
         reference: &ReferenceValue,
     ) -> Result<bool, ParseError> {
+        Ok(self.reference_address_kind(reference)? == Some(ReferenceAddressKind::Static))
+    }
+
+    pub(super) fn reference_address_kind(
+        &mut self,
+        reference: &ReferenceValue,
+    ) -> Result<Option<ReferenceAddressKind>, ParseError> {
         self.charge_reference_binding(1, reference.span)?;
         if !reference.constant.is_discardable {
-            return Ok(false);
+            return Ok(None);
         }
         match reference.reference {
-            Reference::PointerAccess(_) => Ok(reference.constant.is_discardable),
-            Reference::Bound(_) => Ok(true),
-            Reference::Constant(_) => Ok(false),
+            Reference::PointerAccess(access) => Ok(self.function.pointers.accesses[access]
+                .pointer
+                .constant_address
+                .map(|address| {
+                    if address.has_static_lifetime {
+                        ReferenceAddressKind::Static
+                    } else {
+                        ReferenceAddressKind::Automatic
+                    }
+                })),
+            Reference::Bound(_) => Ok(Some(ReferenceAddressKind::Static)),
+            Reference::Constant(_) => Ok(None),
             Reference::Pointer(mut pointer) => loop {
                 self.charge_reference_binding(1, reference.span)?;
                 match self.function.ir.expressions[pointer] {
@@ -580,11 +602,14 @@ impl<'a> Parser<'a> {
                         pointer = base
                     }
                     Expression::GlobalVariable(global) => {
-                        return Ok(
-                            self.module.global_variables[global].space == AddressSpace::WorkGroup
-                        )
+                        return Ok((self.module.global_variables[global].space
+                            == AddressSpace::WorkGroup)
+                            .then_some(ReferenceAddressKind::Static));
                     }
-                    _ => return Ok(false),
+                    Expression::LocalVariable(_) => {
+                        return Ok(Some(ReferenceAddressKind::Automatic));
+                    }
+                    _ => return Ok(None),
                 }
             },
             Reference::Conditional(handle) => {
@@ -594,9 +619,9 @@ impl<'a> Parser<'a> {
                 let selected = match conditional.constant_condition {
                     Some(true) => conditional.accept.reference.clone(),
                     Some(false) => conditional.reject.reference.clone(),
-                    None => return Ok(false),
+                    None => return Ok(None),
                 };
-                self.reference_has_static_address(&selected)
+                self.reference_address_kind(&selected)
             }
         }
     }

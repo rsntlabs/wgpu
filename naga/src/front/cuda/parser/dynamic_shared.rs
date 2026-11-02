@@ -377,7 +377,9 @@ impl<'a> Parser<'a> {
                     return Ok(self.function.pointers.accesses[access]
                         .pointer
                         .constant_address
-                        .is_some_and(|address| address.extent.is_none()));
+                        .is_some_and(|address| {
+                            address.has_static_lifetime && address.extent.is_none()
+                        }));
                 }
                 Reference::Conditional(handle) => {
                     let conditional = self.function.conditional_references[handle]

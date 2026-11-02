@@ -394,13 +394,26 @@ parameter, or form a conditional arm alongside a compatible pointer. Empty
 pointer initializers, `T *pointer{}` and `T *pointer = {}`, also produce null.
 Copies and qualification conversions preserve the null value.
 
+Pointer aliases support `Pointer()`, `Pointer{}`, `Pointer(source)`, and
+`Pointer{source}`. Empty construction produces a typed null pointer. Nonempty
+construction accepts null pointer constants, compatible pointer values, and
+array decay. Compatible `static_cast<T*>(source)` and C-style pointer casts use
+the same address-preserving conversion path, including alias targets. Pointee
+types must match, and conversions may add `const` or `volatile` but cannot remove
+them. Integer-address conversions and reinterpretation remain unsupported.
+Pointer values discard the target's top-level qualification while retaining
+pointee qualification. Copies capture the source pointer before later expressions
+can retarget it.
+Scalar constant expressions may discard pure pointer constructions and checked
+local or shared address calculations.
+
 Pointers support conditions, logical negation, Boolean conversions, and
 `==` or `!=` with literal zero in either operand order. Null converts to `false`;
 object pointers and one-past pointers convert to `true`, following the C++
 [Boolean conversion rules](https://timsong-cpp.github.io/cppwp/n4659/conv.bool).
 Boolean helper parameters also accept pointers. These conversions do not read
 the pointed-to object. Guard a pointer before accessing it when it may be null.
-Comparisons between two pointers and pointer casts remain unsupported.
+Comparisons between two pointers remain unsupported.
 
 `nullptr` has its own source type, available as `decltype(nullptr)` or
 `std::nullptr_t`. The built-in `<cstddef>` include exposes this type only;
@@ -501,8 +514,9 @@ they do not describe an exact allocator or process memory limit.
 Helpers have no resource bindings. Pointer and reference results,
 whole-array references and static shared declarations in helper bodies remain unsupported. Kernel prototypes
 remain unsupported.
-Pointer members, general pointer comparisons and differences, pointer casts,
-and general pointer declarators remain unsupported. Arrays selected from temporary struct values
+Pointer members, general pointer comparisons and differences, casts that change
+the addressed type or remove pointee qualifiers, and general pointer declarators
+remain unsupported. Arrays selected from temporary struct values
 cannot supply borrowed pointers.
 
 Both helpers and kernels accept `static` and standard `inline` in the function
@@ -824,8 +838,9 @@ constness.
 
 Aliases preserve the current restrictions on nested pointers, pointer references,
 pointer arrays and members, shared pointer objects, pointer `constexpr`
-declarations, pointer function results, and pointer casts. Aliases cannot supply
-boolean kernel buffer parameters.
+declarations, pointer function results, and casts that change the addressed type
+or remove pointee qualifiers. Aliases cannot supply boolean kernel buffer
+parameters.
 
 Vector values support `float2`, `float3`, `float4`, `int2`, `int3`, `int4`,
 `uint2`, `uint3`, and `uint4`. These types can appear in local variables,

@@ -235,11 +235,18 @@ fn cuda_null_pointers_keep_type_and_const_safety_rejections() {
         "float *input = 0; int *output = input;",
         "int *pointer = 0; int value = pointer;",
         "int *pointer = 0; int value = int(pointer);",
-        "int *pointer = (int *)0;",
-        "int *pointer = static_cast<int *>(0);",
+        "int *pointer = (int *)1;",
+        "int *pointer = static_cast<int *>(1);",
     ] {
         rejected(&format!("__global__ void kernel() {{ {statement} }}"));
     }
+    roundtrip(
+        "__global__ void kernel(unsigned *output) {
+            int *first = (int *)0;
+            int *second = static_cast<int *>(0);
+            output[0] = unsigned(!first) + unsigned(!second);
+        }",
+    );
 }
 
 #[test]

@@ -281,7 +281,12 @@ impl<'a> Parser<'a> {
     ) -> Result<ExpressionResult, ParseError> {
         match name.item {
             QualifiedItem::Type(ty) => {
-                if ty.qualifiers.is_volatile && !matches!(ty.ty, TypeSpecifier::Scalar(_)) {
+                if ty.qualifiers.is_volatile
+                    && !matches!(
+                        ty.ty,
+                        TypeSpecifier::Scalar(_) | TypeSpecifier::Pointer { .. }
+                    )
+                {
                     return self.fail("volatile class value construction is unsupported");
                 }
                 self.type_expression(ty, name.span)
