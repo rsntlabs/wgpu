@@ -1,12 +1,17 @@
 use alloc::{string::String, vec::Vec};
+use core::mem::size_of;
 
 use crate::{FastHashMap, Span};
 
 use super::{
     check_predefined, conditions, error,
     lex::{Kind, RawToken},
-    Budget, Definition, ExpandedToken, ParseError, MAX_DEPTH,
+    Budget, Definition, ExpandedToken, ParseError, Spelling, MAX_DEPTH,
 };
+
+mod pasting;
+
+use pasting::HideSet;
 
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum Mode {
@@ -15,23 +20,23 @@ pub(super) enum Mode {
     Argument,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct Token<'a> {
     value: ExpandedToken<'a>,
     original: bool,
-    unavailable: bool,
+    hidden: HideSet,
 }
 
 impl<'a> Token<'a> {
-    const fn original(raw: &'a RawToken) -> Self {
+    fn original(raw: &'a RawToken) -> Self {
         Self {
             value: ExpandedToken {
                 kind: raw.kind,
-                spelling: raw.spelling.as_str(),
+                spelling: Spelling::Borrowed(raw.spelling.as_str()),
                 span: raw.span,
             },
             original: true,
-            unavailable: false,
+            hidden: HideSet::default(),
         }
     }
 }
@@ -39,12 +44,11 @@ impl<'a> Token<'a> {
 struct Frame<'a> {
     tokens: Vec<Token<'a>>,
     next: usize,
-    disabled: Option<usize>,
+    macro_identifier: Option<usize>,
     span: Span,
 }
 
 struct Context {
-    inherited_disabled: Vec<usize>,
     pending_depth: usize,
     outer_span: Option<Span>,
     mode: Mode,
@@ -55,7 +59,6 @@ struct Expander<'a, 'budget> {
     definitions: &'a FastHashMap<String, Definition>,
     budget: &'budget mut Budget,
     frames: Vec<Frame<'a>>,
-    inherited_disabled: Vec<usize>,
     pending_depth: usize,
     outer_span: Option<Span>,
     mode: Mode,
@@ -79,7 +82,6 @@ pub(super) fn expand<'a>(
         definitions,
         budget,
         Context {
-            inherited_disabled: Vec::new(),
             pending_depth: 0,
             outer_span: None,
             mode,
@@ -97,7 +99,6 @@ impl<'a, 'budget> Expander<'a, 'budget> {
         context: Context,
     ) -> Result<Self, ParseError> {
         let Context {
-            inherited_disabled,
             pending_depth,
             outer_span,
             mode,
@@ -114,7 +115,7 @@ impl<'a, 'budget> Expander<'a, 'budget> {
             Frame {
                 tokens,
                 next: 0,
-                disabled: None,
+                macro_identifier: None,
                 span,
             },
             span,
@@ -123,7 +124,6 @@ impl<'a, 'budget> Expander<'a, 'budget> {
             definitions,
             budget,
             frames,
-            inherited_disabled,
             pending_depth,
             outer_span,
             mode,
@@ -136,44 +136,15 @@ impl<'a, 'budget> Expander<'a, 'budget> {
             + self
                 .frames
                 .iter()
-                .filter(|frame| frame.disabled.is_some())
+                .filter(|frame| frame.macro_identifier.is_some())
                 .count()
-    }
-
-    fn disabled(&mut self, identifier: usize, span: Span) -> Result<bool, ParseError> {
-        for &disabled in &self.inherited_disabled {
-            self.budget.step(span)?;
-            if disabled == identifier {
-                return Ok(true);
-            }
-        }
-        for frame in &self.frames {
-            self.budget.step(span)?;
-            if frame.disabled == Some(identifier) {
-                return Ok(true);
-            }
-        }
-        Ok(false)
-    }
-
-    fn disabled_context(&mut self, span: Span) -> Result<Vec<usize>, ParseError> {
-        let mut disabled = Vec::new();
-        for &identifier in &self.inherited_disabled {
-            self.budget.push(&mut disabled, identifier, span)?;
-        }
-        for frame in &self.frames {
-            if let Some(identifier) = frame.disabled {
-                self.budget.push(&mut disabled, identifier, span)?;
-            }
-        }
-        Ok(disabled)
     }
 
     fn peek(&mut self) -> Result<Option<Token<'a>>, ParseError> {
         for frame in self.frames.iter().rev() {
             self.budget.step(frame.span)?;
             if let Some(token) = frame.tokens.get(frame.next) {
-                return Ok(Some(*token));
+                return Ok(Some(token.clone()));
             }
         }
         Ok(None)
@@ -185,7 +156,7 @@ impl<'a, 'budget> Expander<'a, 'budget> {
                 return Ok(None);
             };
             self.budget.step(frame.span)?;
-            let Some(mut token) = frame.tokens.get(frame.next).copied() else {
+            let Some(mut token) = frame.tokens.get(frame.next).cloned() else {
                 self.frames.pop();
                 continue;
             };
@@ -194,13 +165,7 @@ impl<'a, 'budget> Expander<'a, 'budget> {
                 token.value.span = span;
             }
             self.budget
-                .visit(token.value.spelling.len(), token.value.span)?;
-            if token.value.kind == Kind::Word && !token.unavailable {
-                // Preserve suppression before argument collection can pop this frame.
-                if let Some(definition) = self.definitions.get(token.value.spelling) {
-                    token.unavailable = self.disabled(definition.identifier, token.value.span)?;
-                }
-            }
+                .visit(token.value.spelling.as_str().len(), token.value.span)?;
             return Ok(Some(token));
         }
     }
@@ -211,7 +176,7 @@ impl<'a, 'budget> Expander<'a, 'budget> {
     ) -> Result<(), ParseError> {
         while let Some(mut token) = self.next()? {
             if token.value.kind == Kind::Word {
-                if self.mode == Mode::Condition && token.value.spelling == "defined" {
+                if self.mode == Mode::Condition && token.value.spelling.as_str() == "defined" {
                     if !token.original {
                         return Err(error(
                             "macro expansion producing defined is unsupported",
@@ -220,13 +185,19 @@ impl<'a, 'budget> Expander<'a, 'budget> {
                     }
                     token = self.query(token)?;
                 } else {
-                    check_predefined(token.value.spelling, token.value.span)?;
-                    if !token.unavailable {
-                        self.budget
-                            .visit(token.value.spelling.len(), token.value.span)?;
-                        if let Some(definition) = self.definitions.get(token.value.spelling) {
+                    check_predefined(token.value.spelling.as_str(), token.value.span)?;
+                    self.budget
+                        .visit(token.value.spelling.as_str().len(), token.value.span)?;
+                    if let Some(definition) = self.definitions.get(token.value.spelling.as_str()) {
+                        if !token.hidden.contains(
+                            definition.identifier,
+                            self.budget,
+                            token.value.span,
+                        )? {
                             let invoked = definition.parameters.is_none()
-                                || self.peek()?.is_some_and(|next| next.value.spelling == "(");
+                                || self
+                                    .peek()?
+                                    .is_some_and(|next| next.value.spelling.as_str() == "(");
                             if invoked {
                                 self.invoke(token, definition)?;
                                 continue;
@@ -238,7 +209,8 @@ impl<'a, 'budget> Expander<'a, 'budget> {
             self.budget.emit(token.value.span)?;
             self.budget.step(token.value.span)?;
             self.budget
-                .visit(token.value.spelling.len(), token.value.span)?;
+                .visit(token.value.spelling.as_str().len(), token.value.span)?;
+            self.budget.own(size_of::<Token<'_>>(), token.value.span)?;
             emit(token)?;
         }
         Ok(())
@@ -251,7 +223,7 @@ impl<'a, 'budget> Expander<'a, 'budget> {
                 operator.value.span,
             )
         })?;
-        let parenthesized = operand.value.spelling == "(";
+        let parenthesized = operand.value.spelling.as_str() == "(";
         if parenthesized {
             operand = self.next()?.ok_or_else(|| {
                 error(
@@ -260,22 +232,26 @@ impl<'a, 'budget> Expander<'a, 'budget> {
                 )
             })?;
         }
-        if operand.value.kind != Kind::Word || conditions::is_alternative(operand.value.spelling) {
+        if operand.value.kind != Kind::Word
+            || conditions::is_alternative(operand.value.spelling.as_str())
+        {
             return Err(error(
                 "expected preprocessing macro name after defined",
                 operand.value.span,
             ));
         }
-        check_predefined(operand.value.spelling, operand.value.span)?;
+        check_predefined(operand.value.spelling.as_str(), operand.value.span)?;
         self.budget
-            .visit(operand.value.spelling.len(), operand.value.span)?;
-        let value = self.definitions.contains_key(operand.value.spelling);
+            .visit(operand.value.spelling.as_str().len(), operand.value.span)?;
+        let value = self
+            .definitions
+            .contains_key(operand.value.spelling.as_str());
         let mut span = operator.value.span;
         span.subsume(operand.value.span);
         if parenthesized {
             let closing = self
                 .next()?
-                .filter(|token| token.value.spelling == ")")
+                .filter(|token| token.value.spelling.as_str() == ")")
                 .ok_or_else(|| {
                     error(
                         "expected closing parenthesis after defined",
@@ -287,11 +263,11 @@ impl<'a, 'budget> Expander<'a, 'budget> {
         Ok(Token {
             value: ExpandedToken {
                 kind: Kind::Number,
-                spelling: if value { "1" } else { "0" },
+                spelling: Spelling::Borrowed(if value { "1" } else { "0" }),
                 span,
             },
             original: false,
-            unavailable: false,
+            hidden: HideSet::default(),
         })
     }
 
@@ -299,7 +275,7 @@ impl<'a, 'budget> Expander<'a, 'budget> {
         &mut self,
         invocation: Span,
         parameter_count: usize,
-    ) -> Result<(Vec<Vec<Token<'a>>>, Span), ParseError> {
+    ) -> Result<(Vec<Vec<Token<'a>>>, Span, HideSet), ParseError> {
         let opening = self
             .next()?
             .ok_or_else(|| error("expected CUDA macro opening parenthesis", invocation))?;
@@ -320,7 +296,7 @@ impl<'a, 'budget> Expander<'a, 'budget> {
                 )
             })?;
             span.subsume(token.value.span);
-            match token.value.spelling {
+            match token.value.spelling.as_str() {
                 "(" => {
                     if parentheses == MAX_DEPTH {
                         return Err(error(
@@ -338,7 +314,7 @@ impl<'a, 'budget> Expander<'a, 'budget> {
                     if arguments.len() != parameter_count {
                         return Err(error("incorrect CUDA macro argument count", span));
                     }
-                    return Ok((arguments, span));
+                    return Ok((arguments, span, token.hidden));
                 }
                 ")" => parentheses -= 1,
                 "," if parentheses == 0 => {
@@ -350,85 +326,5 @@ impl<'a, 'budget> Expander<'a, 'budget> {
             }
             self.budget.push(&mut argument, token, span)?;
         }
-    }
-
-    fn invoke(&mut self, token: Token<'a>, definition: &'a Definition) -> Result<(), ParseError> {
-        if self.depth() == MAX_DEPTH {
-            return Err(error(
-                "CUDA macro expansion depth limit exceeded",
-                token.value.span,
-            ));
-        }
-        let mut span = token.value.span;
-        let mut expanded_arguments: Vec<Option<Vec<Token<'a>>>> = Vec::new();
-        if let Some(ref parameters) = definition.parameters {
-            let (mut arguments, invocation_span) = self.arguments(span, parameters.len())?;
-            span = invocation_span;
-            for _ in parameters {
-                self.budget.push(&mut expanded_arguments, None, span)?;
-            }
-            for &slot in &definition.parameter_slots {
-                self.budget.step(span)?;
-                if let Some(index) = slot {
-                    if expanded_arguments[index].is_none() {
-                        let disabled = self.disabled_context(span)?;
-                        let depth = self.depth() + 1;
-                        let argument = core::mem::take(&mut arguments[index]);
-                        let mut expanded = Vec::new();
-                        let mut prescan = Expander::new(
-                            argument,
-                            self.definitions,
-                            self.budget,
-                            Context {
-                                mode: Mode::Argument,
-                                pending_depth: depth,
-                                inherited_disabled: disabled,
-                                outer_span: Some(span),
-                                directive: false,
-                            },
-                        )?;
-                        prescan.run(&mut |token| {
-                            expanded.push(token);
-                            Ok(())
-                        })?;
-                        expanded_arguments[index] = Some(expanded);
-                    }
-                }
-            }
-        }
-        let mut replacement = Vec::new();
-        for (raw, &slot) in definition
-            .replacement
-            .iter()
-            .zip(&definition.parameter_slots)
-        {
-            if let Some(index) = slot {
-                if let Some(ref argument) = expanded_arguments[index] {
-                    for &argument_token in argument {
-                        let mut substituted = argument_token;
-                        substituted.original = false;
-                        substituted.value.span = span;
-                        self.budget.push(&mut replacement, substituted, span)?;
-                    }
-                }
-            } else {
-                let mut replacement_token = Token::original(raw);
-                replacement_token.original = false;
-                replacement_token.value.span = span;
-                self.budget
-                    .push(&mut replacement, replacement_token, span)?;
-            }
-        }
-        self.budget.push(
-            &mut self.frames,
-            Frame {
-                tokens: replacement,
-                next: 0,
-                disabled: Some(definition.identifier),
-                span,
-            },
-            span,
-        )?;
-        Ok(())
     }
 }

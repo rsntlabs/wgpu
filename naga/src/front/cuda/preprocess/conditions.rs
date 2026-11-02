@@ -6,7 +6,7 @@ use super::{
     error, expansion,
     lex::{Kind, RawToken},
     literal::{self, Value},
-    Budget, Definition, ExpandedToken, ParseError, MAX_DEPTH,
+    Budget, Definition, ExpandedToken, ParseError, TokenView, MAX_DEPTH,
 };
 
 pub(super) fn is_alternative(name: &str) -> bool {
@@ -67,16 +67,16 @@ struct Parser<'a, 'tokens, 'budget> {
     span: Span,
 }
 
-impl<'a> Parser<'a, '_, '_> {
-    fn peek(&self) -> Option<ExpandedToken<'a>> {
-        self.tokens.get(self.next).copied()
+impl<'tokens> Parser<'_, 'tokens, '_> {
+    fn peek(&self) -> Option<TokenView<'tokens>> {
+        self.tokens.get(self.next).map(ExpandedToken::view)
     }
 
-    fn next(&mut self) -> Result<ExpandedToken<'a>, ParseError> {
+    fn next(&mut self) -> Result<TokenView<'tokens>, ParseError> {
         let token = self
             .tokens
             .get(self.next)
-            .copied()
+            .map(ExpandedToken::view)
             .ok_or_else(|| error("expected preprocessing condition expression", self.span))?;
         self.budget.step(token.span)?;
         self.next += 1;

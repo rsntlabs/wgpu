@@ -88,6 +88,7 @@ mod switches;
 mod thread_block;
 mod thread_block_dimensions;
 mod thread_block_parameters;
+mod token_pasting;
 mod trigonometry;
 mod type_aliases;
 mod type_templates;

@@ -225,9 +225,13 @@ fn cuda_preprocessing_reports_active_deferred_directives_and_macro_features() {
         "#define FUNCTION(value) value",
         "out[0] = FUNCTION(7u);",
     ));
+    validate(&kernel(
+        "#define PASTE left ## right",
+        "unsigned leftright = 7u; out[0] = PASTE;",
+    ));
     for directive in [
         "#define FUNCTION(...) __VA_ARGS__",
-        "#define PASTE left ## right",
+        "#define STRINGIZE(value) #value",
         "#include <cuda_runtime.h>",
         "#include \"never-read.h\"",
         "#line 12 \"other.cu\"",

@@ -1252,6 +1252,19 @@ can form further invocations with following source tokens. A directive between
 the name and `(` leaves the name unexpanded; directives inside an open invocation
 are unsupported.
 
+Object-like and function-like replacements support `##` token pasting, following
+the C++ [token-pasting rules](https://timsong-cpp.github.io/cppwp/n4659/cpp.concat). Parameters
+next to `##` substitute their unexpanded argument tokens; other occurrences use
+the expanded argument. A wrapper macro can expand arguments before pasting them.
+Pasting joins only the adjacent boundary tokens, preserving the rest of a
+multi-token argument. Empty arguments act as placemarkers and disappear after
+pasting. Each nonempty concatenation must form exactly one preprocessing token,
+which is then rescanned for macro replacement. For example, `JOIN(0x1p, 2f)`
+with `#define JOIN(left, right) left ## right` produces `0x1p2f`.
+Leading or trailing `##` in a replacement and invalid pasted tokens produce
+diagnostics. The order of multiple pastes is unspecified. Macro expansion retains
+the ordinary recursion and resource limits.
+
 An initial UTF-8 BOM and LF, CRLF, or CR line endings are accepted. Backslash
 line continuations are joined before recognizing comments and tokens, including
 optional whitespace before the newline. Quoted and raw literals are opaque
@@ -1282,7 +1295,7 @@ forms, floating constants, casts, calls, and assignments remain unsupported.
 Only the first selected group is processed. Inactive groups skip ordinary
 directives and unevaluated conditions while checking conditional structure.
 
-Variadic macros, stringization, token pasting, includes, predefined macro
+Variadic macros, stringization, includes, predefined macro
 providers, universal character names, and digraphs remain unsupported. No host
 or device macros are supplied implicitly; source may explicitly define
 compiler-specific names such as `__CUDACC__`. Needed provider use, query,
