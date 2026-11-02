@@ -736,7 +736,8 @@ and block- and system-scope variants remain unsupported.
 ## Constant expressions
 
 Scalar `constexpr` variables support `bool`, `int`, `unsigned int`, `float`,
-and their aliases with an `= expression` or braced initializer. They are read-only and
+and their aliases with copy, braced, or single-expression parenthesized
+initialization. They are read-only and
 can appear in blocks, `for` initializers, and at file scope before, between,
 or after functions. File-scope variables require `constexpr`; they become Naga
 constants without consuming buffer bindings.
@@ -982,6 +983,16 @@ support default construction. Other const locals require an initializer.
 Local declarations can list comma-separated names, as in
 `int first = 1, next = first + 1;`. Each initializer finishes before the next
 declarator, and all names share the declared type and qualification.
+
+Scalar declarations accept one parenthesized expression, including through
+aliases: `int count(4);`, `float scale(count);`, and `const unsigned size(3);`.
+They use ordinary scalar conversions, so `int truncated(3.75f);` is valid while
+the corresponding braced initializer rejects narrowing. A comma expression
+requires inner parentheses, as in `int next((counter += 1, counter));`.
+Empty parentheses and ambiguous type-headed forms follow the C++
+[declaration rules](https://timsong-cpp.github.io/cppwp/n4659/dcl.ambig.res):
+`int value();` and `int value(int(seed));` declare unsupported functions;
+`int value((int(seed)));` initializes an object.
 
 `auto` declarations infer the supported value or borrowed pointer type from an
 initializer. Values copy scalars, vectors, or structs without retaining a source

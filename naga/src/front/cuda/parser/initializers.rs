@@ -31,7 +31,10 @@ impl Parser<'_> {
             return self.scalar_list_initializer(scalar, !has_equals);
         }
         if !has_equals
-            && *target.inner_with(&self.module.types) == TypeInner::Scalar(Scalar::BOOL)
+            && matches!(
+                *target.inner_with(&self.module.types),
+                TypeInner::Scalar(Scalar::BOOL | Scalar::I32 | Scalar::U32 | Scalar::F32)
+            )
             && self.lexer.peek()?.0 == Token::Paren('(')
         {
             if declarations::parenthesized_function_declaration(self, self.lexer.clone())? {
