@@ -49,6 +49,7 @@ mod multiple_kernels;
 mod multiply24;
 mod operator_addition;
 mod operator_functions;
+mod operator_null_constants;
 mod overloads;
 mod parameters;
 mod pointer_aliases;

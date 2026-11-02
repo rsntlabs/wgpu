@@ -218,6 +218,7 @@ impl Parser<'_> {
             constant: ConstantValue {
                 literal: None,
                 is_discardable,
+                is_null_pointer_constant: false,
             },
         })
     }

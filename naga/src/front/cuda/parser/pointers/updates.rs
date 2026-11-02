@@ -60,6 +60,7 @@ impl Parser<'_> {
             constant: ConstantValue {
                 literal: None,
                 is_discardable: true,
+                is_null_pointer_constant: false,
             },
             constant_address: None,
             category: PointerValueCategory::Variable {
@@ -97,6 +98,7 @@ impl Parser<'_> {
         pointer.constant = ConstantValue {
             literal: None,
             is_discardable: true,
+            is_null_pointer_constant: false,
         };
         pointer.constant_address = None;
         Ok(pointer)

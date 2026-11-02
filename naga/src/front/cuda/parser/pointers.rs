@@ -462,6 +462,7 @@ impl<'a> Parser<'a> {
             constant: ConstantValue {
                 literal: None,
                 is_discardable: true,
+                is_null_pointer_constant: false,
             },
             constant_address: None,
             category: PointerValueCategory::Value { position: None },
@@ -558,6 +559,7 @@ impl<'a> Parser<'a> {
         let constant = ConstantValue {
             literal: None,
             is_discardable: constant_address.is_some(),
+            is_null_pointer_constant: false,
         };
         let binding = self.freeze_reference(reference)?;
         let expression =
@@ -606,6 +608,7 @@ impl<'a> Parser<'a> {
         let constant = ConstantValue {
             literal: None,
             is_discardable: constant_address.is_some(),
+            is_null_pointer_constant: false,
         };
         let binding = self.freeze_reference(reference)?;
         let expression =
@@ -691,6 +694,7 @@ impl<'a> Parser<'a> {
             is_discardable: pointer.constant.is_discardable
                 && offset.constant.is_discardable
                 && pointer.constant_address.is_some(),
+            is_null_pointer_constant: false,
         };
         Ok(pointer)
     }
@@ -718,6 +722,7 @@ impl<'a> Parser<'a> {
                             .is_some_and(|offset| offset < i64::from(extent))
                     })
                 }),
+            is_null_pointer_constant: false,
         };
         let access = self.function.pointers.accesses.append(
             PointerAccess {

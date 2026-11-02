@@ -162,6 +162,7 @@ impl Parser<'_> {
                     constant: ConstantValue {
                         literal: None,
                         is_discardable: discardable,
+                        is_null_pointer_constant: false,
                     },
                 }
                 .into())
@@ -188,6 +189,7 @@ impl Parser<'_> {
                                 ConstantValue {
                                     literal: None,
                                     is_discardable: discardable,
+                                    is_null_pointer_constant: false,
                                 },
                                 span,
                             )
@@ -203,6 +205,7 @@ impl Parser<'_> {
                 reference.constant = ConstantValue {
                     literal: None,
                     is_discardable: discardable,
+                    is_null_pointer_constant: false,
                 };
                 Ok(ExpressionValue::Reference(reference))
             }
@@ -225,6 +228,7 @@ impl Parser<'_> {
                     ty,
                     ConstantValue {
                         literal: None,
+                        is_null_pointer_constant: false,
                         ..reference.constant
                     },
                     span,

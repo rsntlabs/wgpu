@@ -123,6 +123,7 @@ struct ConstantValue {
     literal: Option<Literal>,
     // Discarded glvalues can qualify without a constant rvalue.
     is_discardable: bool,
+    is_null_pointer_constant: bool,
 }
 
 impl From<Literal> for ConstantValue {
@@ -130,6 +131,7 @@ impl From<Literal> for ConstantValue {
         Self {
             literal: Some(literal),
             is_discardable: true,
+            is_null_pointer_constant: false,
         }
     }
 }
@@ -139,9 +141,14 @@ impl ConstantValue {
         literal.map(Self::from).unwrap_or_default()
     }
 
+    const fn non_literal(mut self) -> Self {
+        self.is_null_pointer_constant = false;
+        self
+    }
+
     fn after(self, earlier: Self) -> Self {
         if earlier.is_discardable {
-            self
+            self.non_literal()
         } else {
             Self::default()
         }
@@ -881,7 +888,10 @@ impl<'a> Parser<'a> {
         Ok(Value {
             category: ValueCategory::Prvalue,
             qualifiers: Qualifiers::NONE,
-            constant: literal.into(),
+            constant: ConstantValue {
+                is_null_pointer_constant: matches!(literal, Literal::I32(0) | Literal::U32(0)),
+                ..literal.into()
+            },
             handle,
             ty: scalar_resolution(literal.scalar()),
             span,
