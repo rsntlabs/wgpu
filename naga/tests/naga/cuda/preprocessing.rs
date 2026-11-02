@@ -590,9 +590,13 @@ fn cuda_preprocessing_preserves_public_parser_lookahead_and_delayed_references()
     for body in [
         "Packet value{}; (Packet)value;",
         "float2 value{}; (float2)value;",
-        "int (*pointer);",
-        "Packet{3",
     ] {
+        validate(&kernel(
+            "#define ACTIVE\nstruct Packet { int value; };",
+            body,
+        ));
+    }
+    for body in ["int (*pointer);", "Packet{3"] {
         let source = kernel("#define ACTIVE\nstruct Packet { int value; };", body);
         let first = rejected(&source);
         let second = rejected(&source);

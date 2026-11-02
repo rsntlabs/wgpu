@@ -327,13 +327,8 @@ fn cuda_vector_values_reject_unsupported_indexing_swizzles_and_casts() {
                 String::from("value.xy"),
                 String::from("value.r"),
                 String::from("value.rgba"),
-                format!("({scalar}{width})value"),
                 format!("{scalar}{width}(value)"),
-                format!("static_cast<{scalar}{width}>(value)"),
-                String::from("(float3)value"),
                 String::from("float3(value)"),
-                String::from("static_cast<uint3>(value)"),
-                String::from("(int2)value"),
                 String::from("int3(1)"),
                 String::from("int(value)"),
                 String::from("make_int3(value, 1, 2)"),
@@ -341,6 +336,17 @@ fn cuda_vector_values_reject_unsupported_indexing_swizzles_and_casts() {
                 rejected(&format!(
                     "__global__ void kernel() {{ {scalar}{width} value = make_{scalar}{width}({arguments}); {expression}; }}"
                 ));
+            }
+            for (target, expression) in [
+                ("float3", "(float3)value"),
+                ("uint3", "static_cast<uint3>(value)"),
+                ("int2", "(int2)value"),
+            ] {
+                if target != format!("{scalar}{width}") {
+                    rejected(&format!(
+                        "__global__ void kernel() {{ {scalar}{width} value = make_{scalar}{width}({arguments}); {expression}; }}"
+                    ));
+                }
             }
         }
     }

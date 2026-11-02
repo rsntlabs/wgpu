@@ -17,6 +17,7 @@ mod auto_declarations;
 mod bitcasts;
 mod cached_math;
 mod ceilf;
+mod class_values;
 mod comma;
 mod conditionals;
 mod constant_expressions;
@@ -107,6 +108,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_BITCASTS,
         CUDA_CACHED_MATH,
         CUDA_CEILF,
+        CUDA_CLASS_VALUES,
         CUDA_COMMA,
         CUDA_CONDITIONALS,
         CUDA_CONSTANT_EXPRESSIONS,
@@ -470,6 +472,8 @@ static CUDA_BITCASTS: GpuTestConfiguration = configuration(bitcasts::cases);
 static CUDA_CACHED_MATH: GpuTestConfiguration = configuration(cached_math::cases);
 #[apply(gpu_test!)]
 static CUDA_CEILF: GpuTestConfiguration = configuration(ceilf::cases);
+#[apply(gpu_test!)]
+static CUDA_CLASS_VALUES: GpuTestConfiguration = configuration(class_values::cases);
 #[apply(gpu_test!)]
 static CUDA_COMMA: GpuTestConfiguration = configuration(comma::cases);
 #[apply(gpu_test!)]

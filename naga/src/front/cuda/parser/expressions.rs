@@ -606,43 +606,54 @@ impl Parser<'_> {
                 span,
             });
         }
-        if matches!(target, TypeSpecifier::Structure(_)) {
-            if self.lexer.peek()?.0 != Token::Paren('{') {
-                return self.fail("structure values require a typed initializer list");
+        if matches!(
+            target,
+            TypeSpecifier::Structure(_) | TypeSpecifier::Vector { .. }
+        ) {
+            if self.lexer.peek()?.0 == Token::Paren('{') {
+                return self.aggregate_value(target, span).map(Into::into);
             }
-            return self.aggregate_value(target, span).map(Into::into);
-        }
-        if matches!(target, TypeSpecifier::Vector { .. })
-            && self.lexer.peek()?.0 == Token::Paren('{')
-        {
-            return self.aggregate_value(target, span).map(Into::into);
+            return self.class_value_constructor(target, span).map(Into::into);
         }
         self.lexer.expect_span(Token::Paren('('))?;
         let value = self.expression(0)?;
         let end = self.lexer.expect_span(Token::Paren(')'))?;
-        if matches!(
-            target,
-            TypeSpecifier::Vector {
-                size: VectorSize::Tri,
-                scalar: Scalar::U32
-            }
-        ) && self.is_dim3(value.shader_type()?)
-        {
-            let target = self.lower_type(target, span)?;
-            let mut value = self.convert_value(value, &target)?;
-            value.span = span.until(&end);
-            return Ok(value.into());
-        }
-        if !matches!(target, TypeSpecifier::Scalar(_)) {
-            return Err(ParseError {
-                message: String::from("vector casts are unsupported"),
-                span: span.until(&end),
-            });
-        }
         let target = self.lower_type(target, span)?;
         let mut value = self.cast_value(value, &target)?;
         value.span = span.until(&end);
         Ok(value.into())
+    }
+
+    fn class_value_constructor(
+        &mut self,
+        target: TypeSpecifier,
+        span: Span,
+    ) -> Result<Value, ParseError> {
+        self.lexer.expect_span(Token::Paren('('))?;
+        let ty = self.lower_type(target, span)?;
+        if self.lexer.peek()?.0 == Token::Paren(')') {
+            let end = self.lexer.next()?.1;
+            let span = span.until(&end);
+            let target_type = self.type_handle(&ty, span);
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                handle: self.default_initializer_value(target_type, span)?,
+                ty,
+                span,
+                constant: ConstantValue {
+                    literal: None,
+                    is_discardable: !self.requires_default_constructor(target_type)
+                        || self.const_default_constructible(target_type),
+                    is_null_pointer_constant: false,
+                },
+            });
+        }
+        let expression = self.expression(0)?;
+        let end = self.lexer.expect_span(Token::Paren(')'))?;
+        let mut value = self.cast_value(expression, &ty)?;
+        value.span = span.until(&end);
+        Ok(value)
     }
 
     fn address_operand(&mut self) -> Result<ExpressionValue, ParseError> {

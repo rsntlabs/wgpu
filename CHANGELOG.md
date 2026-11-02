@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA vector and struct value construction and casts, preserving target constness and constructor defaults.
 - Reject CUDA `dim3` declarations that C++ interprets as local functions.
 - Support CUDA vector and struct copies with single-expression parenthesized initialization.
 - Support CUDA pointer and reference declarations with single-expression parenthesized initialization.

@@ -655,13 +655,21 @@ impl Parser<'_> {
         ty: Handle<Type>,
         span: Span,
     ) -> Result<(), ParseError> {
-        let value = if self.requires_default_constructor(ty) {
-            self.constructor_default_value(ty, &mut FastHashMap::default(), span)?
-        } else {
-            self.append(Expression::ZeroValue(ty), span)?
-        };
+        let value = self.default_initializer_value(ty, span)?;
         self.push_statement(Statement::Store { pointer, value }, span);
         Ok(())
+    }
+
+    pub(super) fn default_initializer_value(
+        &mut self,
+        ty: Handle<Type>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        if self.requires_default_constructor(ty) {
+            self.constructor_default_value(ty, &mut FastHashMap::default(), span)
+        } else {
+            self.append(Expression::ZeroValue(ty), span)
+        }
     }
 
     fn constructor_default_value(
