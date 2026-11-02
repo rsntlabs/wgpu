@@ -1,7 +1,8 @@
 use super::*;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(super) enum TypeSpecifier {
+    TemplateParameter(u32),
     ThreadBlock,
     Dim3,
     Scalar(Scalar),
@@ -28,7 +29,7 @@ pub(super) const VECTOR_TYPES: [(&str, &str, VectorSize, Scalar); 9] = [
     ("uint4", "make_uint4", VectorSize::Quad, Scalar::U32),
 ];
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub(super) struct QualifiedType {
     pub ty: TypeSpecifier,
     pub qualifiers: Qualifiers,
@@ -100,6 +101,7 @@ fn type_name(
         _ => {
             return match symbols.lookup(name) {
                 Some(&Symbol::Type(ref ty)) => Some(ty.clone()),
+                Some(&Symbol::TemplateTypeParameter { ref ty }) => Some(ty.clone()),
                 Some(_) => None,
                 None => match globals.get(name) {
                     Some(&GlobalDeclaration::Type(ref ty)) => Some(ty.clone()),
@@ -272,6 +274,12 @@ impl<'a> Parser<'a> {
         span: Span,
     ) -> Result<TypeResolution, ParseError> {
         let (size, scalar) = match ty {
+            TypeSpecifier::TemplateParameter(_) => {
+                return Err(ParseError {
+                    message: String::from("dependent type requires an instantiation"),
+                    span,
+                });
+            }
             TypeSpecifier::ThreadBlock => {
                 return Err(ParseError {
                     message: String::from(
@@ -453,7 +461,10 @@ impl<'a> Parser<'a> {
         self.insert_type(name, ty, span, global)
     }
 
-    fn alias_declarator(&mut self, ty: QualifiedType) -> Result<QualifiedType, ParseError> {
+    pub(super) fn alias_declarator(
+        &mut self,
+        ty: QualifiedType,
+    ) -> Result<QualifiedType, ParseError> {
         let span = self.lexer.peek()?.1;
         if !self.lexer.next_if(Token::Operation('*'))? {
             return Ok(ty);

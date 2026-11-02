@@ -113,6 +113,9 @@ enum Symbol {
         scalar: Scalar,
         literal: Option<Literal>,
     },
+    TemplateTypeParameter {
+        ty: QualifiedType,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -915,7 +918,7 @@ impl<'a> Parser<'a> {
         if Self::reserved_name(name)
             || matches!(
                 self.function.symbol_table.lookup(name),
-                Some(Symbol::TemplateParameter { .. })
+                Some(Symbol::TemplateParameter { .. } | Symbol::TemplateTypeParameter { .. })
             )
         {
             Err(ParseError {

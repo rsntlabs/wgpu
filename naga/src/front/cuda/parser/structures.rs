@@ -1,6 +1,7 @@
 use super::*;
 
 pub(super) struct Structure {
+    pub(super) source_name: Option<String>,
     pub(super) depth: u32,
     pub(super) requires_default_constructor: bool,
     pub(super) const_default_constructible: bool,
@@ -25,7 +26,12 @@ impl<'a> Parser<'a> {
         self.function.symbol_table.add(name, Symbol::Member);
         let definition = self.structure_members();
         self.function.pop_scope(initialization_start);
-        let (members, size, structure) = definition?;
+        let (members, size, mut structure) = definition?;
+        self.parameter_expansion_budget
+            .charge_bytes(name.len(), name_span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<String>(1, name_span)?;
+        structure.source_name = Some(String::from(name));
         self.lexer.expect_span(Token::Separator(';'))?;
         let declaration_id = self.next_structure_id;
         self.next_structure_id = declaration_id.checked_add(1).ok_or_else(|| ParseError {
@@ -156,6 +162,7 @@ impl<'a> Parser<'a> {
             members,
             size,
             Structure {
+                source_name: None,
                 depth,
                 requires_default_constructor,
                 const_default_constructible,

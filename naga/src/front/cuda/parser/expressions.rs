@@ -441,7 +441,7 @@ impl Parser<'_> {
                     span,
                 });
             }
-            Symbol::Type(_) => {
+            Symbol::Type(_) | Symbol::TemplateTypeParameter { .. } => {
                 return Err(ParseError {
                     message: format!("type `{name}` cannot be used as a value"),
                     span,
@@ -629,10 +629,12 @@ impl Parser<'_> {
                     name,
                     alloc::vec![
                         CapturedArgument {
+                            is_null_pointer_constant: false,
                             value: left.into(),
                             body: crate::Block::new()
                         },
                         CapturedArgument {
+                            is_null_pointer_constant: false,
                             value: right.into(),
                             body: right_body
                         }
