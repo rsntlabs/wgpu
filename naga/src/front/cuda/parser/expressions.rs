@@ -615,6 +615,13 @@ impl Parser<'_> {
             }
             return self.class_value_constructor(target, span).map(Into::into);
         }
+        if let TypeSpecifier::Scalar(scalar) = target {
+            if self.lexer.peek()?.0 == Token::Paren('{') {
+                let mut value = self.scalar_list_initializer(scalar, true)?;
+                value.span = span.until(&value.span);
+                return Ok(value.into());
+            }
+        }
         self.lexer.expect_span(Token::Paren('('))?;
         if let TypeSpecifier::Scalar(scalar) = target {
             if self.lexer.peek()?.0 == Token::Paren(')') {

@@ -73,6 +73,7 @@ mod reference_bindings;
 mod reference_categories;
 mod restrict;
 mod saturate;
+mod scalar_braces;
 mod scalar_promotion;
 mod shared_vectors;
 mod signed;
@@ -165,6 +166,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_REFERENCE_CATEGORIES,
         CUDA_RESTRICT,
         CUDA_SATURATE,
+        CUDA_SCALAR_BRACES,
         CUDA_SCALAR_PROMOTION,
         CUDA_SHARED_VECTORS,
         CUDA_SIGNED,
@@ -596,6 +598,8 @@ static CUDA_REFERENCE_CATEGORIES: GpuTestConfiguration = configuration(reference
 static CUDA_RESTRICT: GpuTestConfiguration = configuration(restrict::cases);
 #[apply(gpu_test!)]
 static CUDA_SATURATE: GpuTestConfiguration = configuration(saturate::cases);
+#[apply(gpu_test!)]
+static CUDA_SCALAR_BRACES: GpuTestConfiguration = configuration(scalar_braces::cases);
 #[apply(gpu_test!)]
 static CUDA_SCALAR_PROMOTION: GpuTestConfiguration = configuration(scalar_promotion::cases);
 #[apply(gpu_test!)]
