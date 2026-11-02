@@ -400,8 +400,27 @@ object pointers and one-past pointers convert to `true`, following the C++
 [Boolean conversion rules](https://timsong-cpp.github.io/cppwp/n4659/conv.bool).
 Boolean helper parameters also accept pointers. These conversions do not read
 the pointed-to object. Guard a pointer before accessing it when it may be null.
-The `nullptr` source type, comparisons between two pointers, and pointer casts
-remain unsupported.
+Comparisons between two pointers and pointer casts remain unsupported.
+
+`nullptr` has its own source type, available as `decltype(nullptr)` or
+`std::nullptr_t`. The built-in `<cstddef>` include exposes this type only;
+other header contents and include forms remain unsupported. It supports named
+`auto` values, aliases,
+local objects, mutable and const references, helper parameters and results,
+and function template deduction. These values convert to compatible pointers
+without becoming integer zero. Direct and contextual Boolean conversions
+produce `false`; implicit Boolean and numeric conversions are rejected.
+Named reads can be constant expressions even after an effectful initializer;
+the initializer and calls still execute where written.
+
+The source type has no shader storage representation. Null-valued helper
+parameters and results are erased from the shader signature while calls,
+side effects, barriers, and source return checks remain effective. Kernel
+parameters, arrays, object addresses, shared storage, and volatile objects or
+references of this type remain unsupported.
+Parenthesized initializers follow the C++ [declaration ambiguity rules](https://timsong-cpp.github.io/cppwp/n4659/dcl.ambig.res):
+`Null value(Null());` declares an unsupported function; `Null value((Null()));`
+creates a null object.
 
 Borrowed expressions support `*pointer`, unary `+pointer`, `pointer + index`,
 `index + pointer`, `pointer - index`, and both subscript orders. Indices must
@@ -483,8 +502,7 @@ Helpers have no resource bindings. Pointer and reference results,
 whole-array references and static shared declarations in helper bodies remain unsupported. Kernel prototypes
 remain unsupported.
 Pointer members, general pointer comparisons and differences, pointer casts,
-the `nullptr` source type, and general pointer
-declarators remain unsupported. Arrays selected from temporary struct values
+and general pointer declarators remain unsupported. Arrays selected from temporary struct values
 cannot supply borrowed pointers.
 
 Both helpers and kernels accept `static` and standard `inline` in the function

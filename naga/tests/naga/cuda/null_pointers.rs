@@ -262,13 +262,11 @@ fn cuda_null_pointers_stay_distinct_from_uninitialized_pointer_objects() {
 }
 
 #[test]
-fn cuda_null_pointers_keep_general_equality_and_nullptr_source_type_unsupported() {
+fn cuda_null_pointers_keep_general_pointer_equality_unsupported() {
     for statement in [
         "int *first = 0; int *second = 0; bool same = first == second;",
         "int first = 1, second = 2; bool different = &first != &second;",
         "int values[2]{}; bool same = values + 1 == &values[1];",
-        "int *pointer = nullptr;",
-        "auto null_value = nullptr;",
     ] {
         rejected(&format!("__global__ void kernel() {{ {statement} }}"));
     }

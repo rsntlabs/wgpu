@@ -8,6 +8,9 @@ enum Declarator {
 }
 
 enum DeducedType {
+    NullPointer {
+        qualifiers: Qualifiers,
+    },
     Value {
         ty: TypeResolution,
         qualifiers: Qualifiers,
@@ -17,6 +20,9 @@ enum DeducedType {
 }
 
 enum InferredBinding {
+    NullPointer {
+        qualifiers: Qualifiers,
+    },
     ThreadBlock,
     Value(Value),
     Pointer {
@@ -51,6 +57,10 @@ impl<'a> Parser<'a> {
             })?;
             self.check_deduced_type(&mut deduced_type, deduced, span)?;
             match binding {
+                InferredBinding::NullPointer { qualifiers } => {
+                    self.append_block(body);
+                    self.bind_null_pointer_symbol(name, span, qualifiers)?;
+                }
                 InferredBinding::ThreadBlock => {
                     self.append_block(body);
                     self.function.symbol_table.add(name, Symbol::ThreadBlock);
@@ -106,6 +116,22 @@ impl<'a> Parser<'a> {
             })?;
             self.check_deduced_type(&mut deduced_type, deduced, span)?;
             let InferredBinding::Value(value) = binding else {
+                if let InferredBinding::NullPointer { qualifiers } = binding {
+                    self.activate_parameter_expansion(span)?;
+                    self.parameter_expansion_budget.charge_nodes(1, span)?;
+                    self.parameter_expansion_budget
+                        .charge_map_entry::<&str, GlobalDeclaration>(1, span)?;
+                    let mut value = NullPointerValue::literal(span);
+                    value.category = ValueCategory::Lvalue;
+                    value.qualifiers = qualifiers;
+                    self.global_declarations
+                        .insert(name, GlobalDeclaration::NullPointer(value));
+                    if self.lexer.next_if(Token::Separator(','))? {
+                        continue;
+                    }
+                    self.lexer.expect_span(Token::Separator(';'))?;
+                    return Ok(());
+                }
                 return self.fail("constexpr requires a scalar variable");
             };
             let scalar = self.require_scalar_type(&value.ty, value.span)?;
@@ -147,7 +173,12 @@ impl<'a> Parser<'a> {
                 return self.fail("auto initializer lists are unsupported");
             }
             Token::Paren('{') => Some('}'),
-            Token::Paren('(') if !has_equals => Some(')'),
+            Token::Paren('(') if !has_equals => {
+                if declarations::parenthesized_function_declaration(self, self.lexer.clone())? {
+                    return self.fail("local function declarations are unsupported");
+                }
+                Some(')')
+            }
             _ if has_equals => None,
             _ => return self.fail("auto declaration requires an initializer"),
         };
@@ -191,6 +222,43 @@ impl<'a> Parser<'a> {
             }
             result => result.require_value()?,
         };
+        if let ExpressionValue::NullPointer(value) = value {
+            if is_constexpr && matches!(declarator, Declarator::Reference) {
+                return self.fail("constexpr reference declarations are unsupported");
+            }
+            if qualifiers.is_volatile {
+                return self.fail("volatile nullptr_t objects are unsupported");
+            }
+            let deduced_qualifiers = if matches!(declarator, Declarator::Reference) {
+                value.qualifiers.without(qualifiers)
+            } else {
+                Qualifiers::NONE
+            };
+            let binding_qualifiers = if matches!(declarator, Declarator::Reference) {
+                let source = value.qualifiers;
+                self.require_null_pointer_reference(
+                    ExpressionValue::NullPointer(value.clone()),
+                    qualifiers.union(source),
+                )?;
+                qualifiers.union(source)
+            } else {
+                qualifiers
+            };
+            if matches!(declarator, Declarator::Pointer { .. }) {
+                return self.fail("auto pointer deduction requires a pointer or array");
+            }
+            if is_constexpr && !value.is_constant {
+                return self.fail("constexpr requires a constant expression");
+            }
+            return Ok((
+                DeducedType::NullPointer {
+                    qualifiers: deduced_qualifiers,
+                },
+                InferredBinding::NullPointer {
+                    qualifiers: binding_qualifiers,
+                },
+            ));
+        }
         match declarator {
             Declarator::Reference => {
                 if is_constexpr {
@@ -198,7 +266,7 @@ impl<'a> Parser<'a> {
                 }
                 if matches!(value, ExpressionValue::Pointer(_))
                     || matches!(
-                        *value.ty().inner_with(&self.module.types),
+                        *value.shader_type()?.inner_with(&self.module.types),
                         TypeInner::Array { .. }
                     )
                 {
@@ -209,12 +277,12 @@ impl<'a> Parser<'a> {
                         span: value.span(),
                     });
                 }
-                self.require_inferred_value_type(value.ty(), value.span())?;
+                self.require_inferred_value_type(value.shader_type()?, value.span())?;
                 let source_qualifiers = match value {
                     ExpressionValue::Reference(ref reference) => reference.qualifiers,
                     _ => Qualifiers::NONE,
                 };
-                let ty = value.ty().clone();
+                let ty = value.shader_type()?.clone();
                 Ok((
                     DeducedType::Value {
                         ty: ty.clone(),
@@ -315,6 +383,12 @@ impl<'a> Parser<'a> {
     ) -> Result<(), ParseError> {
         if let Some(previous) = previous.as_ref() {
             let consistent = match (previous, &deduced) {
+                (
+                    &DeducedType::NullPointer {
+                        qualifiers: previous,
+                    },
+                    &DeducedType::NullPointer { qualifiers },
+                ) => previous == qualifiers,
                 (&DeducedType::ThreadBlock, &DeducedType::ThreadBlock) => true,
                 (
                     &DeducedType::Value {

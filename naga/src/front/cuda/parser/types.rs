@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(super) enum TypeSpecifier {
+    NullPointer,
     TemplateParameter(u32),
     ThreadBlock,
     Dim3,
@@ -42,6 +43,7 @@ pub(super) enum DeclarationType {
 
 #[derive(Clone, Debug)]
 pub(super) enum GlobalDeclaration {
+    NullPointer(NullPointerValue),
     Namespace(Namespace),
     PendingAuto,
     Type(QualifiedType),
@@ -188,6 +190,17 @@ fn declaration_type(
             span: token.1,
         };
         match token.0 {
+            Token::Word("decltype") if ty.is_none() && !inferred => {
+                lexer.next()?;
+                lexer.expect_span(Token::Paren('('))?;
+                lexer.expect_span(Token::Word("nullptr"))?;
+                lexer.expect_span(Token::Paren(')'))?;
+                ty = Some(QualifiedType {
+                    ty: TypeSpecifier::NullPointer,
+                    qualifiers: Qualifiers::NONE,
+                });
+                continue;
+            }
             Token::Word("struct") => {
                 return Err(invalid("elaborated struct type spellings are unsupported"));
             }
@@ -277,6 +290,12 @@ impl<'a> Parser<'a> {
             TypeSpecifier::TemplateParameter(_) => {
                 return Err(ParseError {
                     message: String::from("dependent type requires an instantiation"),
+                    span,
+                });
+            }
+            TypeSpecifier::NullPointer => {
+                return Err(ParseError {
+                    message: String::from("nullptr_t has no shader storage representation"),
                     span,
                 });
             }
@@ -422,7 +441,7 @@ impl<'a> Parser<'a> {
             ));
         }
         Ok(match self.lexer.peek()?.0 {
-            Token::Word("const" | "volatile" | "constexpr") => true,
+            Token::Word("const" | "volatile" | "constexpr" | "decltype") => true,
             Token::Word(name) => self.type_name(name).is_some(),
             _ => false,
         })

@@ -28,6 +28,9 @@ impl<'a> Parser<'a> {
         if ty.qualifiers.is_volatile {
             return self.fail("volatile constexpr objects are unsupported");
         }
+        if matches!(ty.ty, TypeSpecifier::NullPointer) {
+            return self.global_null_pointer_declaration(ty.qualifiers);
+        }
         let TypeSpecifier::Scalar(scalar) = ty.ty else {
             return self.fail("constexpr requires a scalar variable");
         };

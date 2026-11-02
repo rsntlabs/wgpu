@@ -48,6 +48,7 @@ mod multidimensional_arrays;
 mod multiple_kernels;
 mod multiply24;
 mod null_pointers;
+mod nullptr;
 mod operator_addition;
 mod operator_functions;
 mod operator_null_constants;

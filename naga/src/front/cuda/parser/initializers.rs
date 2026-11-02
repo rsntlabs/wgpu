@@ -17,7 +17,7 @@ impl Parser<'_> {
         if !has_equals && self.is_uint3(target) && self.lexer.next_if(Token::Paren('('))? {
             let value = self.expression(0)?;
             let end = self.lexer.expect_span(Token::Paren(')'))?;
-            if !self.is_dim3(value.ty()) {
+            if !self.is_dim3(value.shader_type()?) {
                 return Err(ParseError {
                     message: String::from("parenthesized uint3 initialization requires dim3"),
                     span: value.span().until(&end),
@@ -28,7 +28,19 @@ impl Parser<'_> {
         if self.lexer.peek()?.0 == Token::Paren('{') {
             let span = self.lexer.peek()?.1;
             let scalar = self.require_scalar_type(target, span)?;
-            return self.scalar_list_initializer(scalar);
+            return self.scalar_list_initializer(scalar, !has_equals);
+        }
+        if !has_equals
+            && *target.inner_with(&self.module.types) == TypeInner::Scalar(Scalar::BOOL)
+            && self.lexer.peek()?.0 == Token::Paren('(')
+        {
+            if declarations::parenthesized_function_declaration(self, self.lexer.clone())? {
+                return self.fail("local function declarations are unsupported");
+            }
+            self.lexer.next()?;
+            let value = self.expression(0)?;
+            self.lexer.expect_span(Token::Paren(')'))?;
+            return self.cast_value(value, target);
         }
         if !has_equals {
             self.lexer.expect_span(Token::Operation('='))?;
@@ -243,7 +255,7 @@ impl Parser<'_> {
                         pointer, actual_ty, has_braces, opening, None,
                     )?;
                 }
-                TypeSpecifier::ThreadBlock => {
+                TypeSpecifier::ThreadBlock | TypeSpecifier::NullPointer => {
                     return self.fail("arrays of thread_block handles are unsupported");
                 }
                 TypeSpecifier::Pointer { .. } => {
@@ -445,7 +457,7 @@ impl Parser<'_> {
 
     fn scalar_initializer_clause(&mut self, scalar: Scalar) -> Result<Value, ParseError> {
         if self.lexer.peek()?.0 == Token::Paren('{') {
-            self.scalar_list_initializer(scalar)
+            self.scalar_list_initializer(scalar, false)
         } else {
             let expression = self.expression(0)?;
             let value = self.rvalue(expression)?;
@@ -453,7 +465,11 @@ impl Parser<'_> {
         }
     }
 
-    fn scalar_list_initializer(&mut self, scalar: Scalar) -> Result<Value, ParseError> {
+    fn scalar_list_initializer(
+        &mut self,
+        scalar: Scalar,
+        direct: bool,
+    ) -> Result<Value, ParseError> {
         let start = self.lexer.expect_span(Token::Paren('{'))?;
         let mut value = if self.lexer.peek()?.0 == Token::Paren('}') {
             let literal = match scalar {
@@ -476,8 +492,17 @@ impl Parser<'_> {
                 return self.fail("nested scalar initializer lists are unsupported");
             }
             let expression = self.expression(0)?;
-            let value = self.rvalue(expression)?;
-            let value = self.list_convert_scalar(value, scalar)?;
+            let value = if direct && scalar == Scalar::BOOL {
+                if let ExpressionValue::NullPointer(value) = expression {
+                    self.null_pointer_boolean(value)?
+                } else {
+                    let value = self.rvalue(expression)?;
+                    self.list_convert_scalar(value, scalar)?
+                }
+            } else {
+                let value = self.rvalue(expression)?;
+                self.list_convert_scalar(value, scalar)?
+            };
             self.lexer.next_if(Token::Separator(','))?;
             value
         };

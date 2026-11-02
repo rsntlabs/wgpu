@@ -84,12 +84,14 @@ struct SignatureSource<'a> {
 struct ResolvedSignature {
     parameters: Vec<SourceParameter>,
     result: Option<Handle<Type>>,
+    source_result: ReturnType,
     result_qualifiers: Qualifiers,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum PatternType {
     Concrete(Handle<Type>),
+    NullPointer,
     Parameter(u32),
 }
 
@@ -97,6 +99,9 @@ enum PatternType {
 enum ParameterPattern {
     Shader {
         ty: PatternType,
+        mode: ParameterMode,
+    },
+    NullPointer {
         mode: ParameterMode,
     },
     ThreadBlock,
@@ -549,6 +554,24 @@ impl<'a> Parser<'a> {
             });
         }
         let (base, qualifiers, is_pointer) = match ty.ty {
+            TypeSpecifier::NullPointer => {
+                if pointer || ty.qualifiers.is_volatile {
+                    return Err(ParseError {
+                        message: String::from(
+                            "pointers, arrays and volatile nullptr_t parameters are unsupported",
+                        ),
+                        span: type_span,
+                    });
+                }
+                let mode = if is_reference {
+                    ParameterMode::Reference {
+                        qualifiers: ty.qualifiers,
+                    }
+                } else {
+                    ParameterMode::Value
+                };
+                return Ok(ParameterPattern::NullPointer { mode });
+            }
             TypeSpecifier::ThreadBlock => {
                 if pointer || is_reference || ty.qualifiers.is_volatile {
                     return Err(ParseError {
@@ -881,6 +904,7 @@ impl<'a> Parser<'a> {
             TypeSpecifier::Scalar(Scalar::F32) => String::from("float"),
             TypeSpecifier::Scalar(Scalar::BOOL) => String::from("bool"),
             TypeSpecifier::Dim3 => String::from("dim3"),
+            TypeSpecifier::NullPointer => String::from("decltype(nullptr)"),
             TypeSpecifier::ThreadBlock => String::from("cooperative_groups::thread_block"),
             TypeSpecifier::Vector { size, scalar } => {
                 let name = types::VECTOR_TYPES
@@ -1009,6 +1033,7 @@ impl<'a> Parser<'a> {
             Ok(ResolvedSignature {
                 parameters: core::mem::take(&mut self.function.parameters),
                 result,
+                source_result: self.function.source_result,
                 result_qualifiers: header.result_qualifiers,
             })
         })();
@@ -1050,6 +1075,7 @@ impl<'a> Parser<'a> {
         let ResolvedSignature {
             parameters: signature,
             result,
+            source_result,
             result_qualifiers,
         } = self.resolved_template_signature(template, &key.arguments, span)?;
         let declaration = &self.templates.declarations[template];
@@ -1105,6 +1131,7 @@ impl<'a> Parser<'a> {
                 function,
                 FunctionDeclaration {
                     parameters: signature,
+                    source_result,
                     result_qualifiers,
                     has_host: declaration.header.has_host,
                     is_static: declaration.header.is_static,
@@ -1198,6 +1225,11 @@ impl<'a> Parser<'a> {
         argument: &CapturedArgument,
         span: Span,
     ) -> Result<Option<ArgumentConversion>, ParseError> {
+        if let ParameterPattern::NullPointer { mode } = pattern {
+            return Ok(self
+                .null_pointer_argument_conversion(mode, argument)
+                .map(|rank| ArgumentConversion { rank, mode }));
+        }
         let ParameterPattern::Shader { ty, mode } = pattern else {
             return Ok(argument.is_thread_block().then_some(ArgumentConversion {
                 rank: 0,
@@ -1205,6 +1237,11 @@ impl<'a> Parser<'a> {
             }));
         };
         let (target, mode) = match ty {
+            PatternType::NullPointer => {
+                return Ok(self
+                    .null_pointer_argument_conversion(mode, argument)
+                    .map(|rank| ArgumentConversion { rank, mode }))
+            }
             PatternType::Concrete(ty) => (TypeResolution::Handle(ty), mode),
             PatternType::Parameter(parameter) => {
                 if let TemplateValue::ArrayType { ty, qualifiers } = values[parameter as usize] {
@@ -1262,6 +1299,11 @@ impl<'a> Parser<'a> {
                     return Ok((argument.is_thread_block()
                         && !matches!(mode, ParameterMode::Pointer { .. }))
                     .then_some(ArgumentConversion { rank: 0, mode }));
+                }
+                if ty == TypeSpecifier::NullPointer {
+                    return Ok(self
+                        .null_pointer_argument_conversion(mode, argument)
+                        .map(|rank| ArgumentConversion { rank, mode }));
                 }
                 if let (
                     ParameterMode::Reference { qualifiers },

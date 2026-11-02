@@ -11,10 +11,10 @@ impl Parser<'_> {
         {
             return self.truthy(value);
         }
-        if self.module.compare_types(value.ty(), target) {
+        if self.module.compare_types(value.shader_type()?, target) {
             return self.rvalue(value);
         }
-        if self.dimension_conversion(value.ty(), target) {
+        if self.dimension_conversion(value.shader_type()?, target) {
             return self.convert_dimension(value, target);
         }
         let scalar = self.require_scalar_type(target, value.span())?;
@@ -71,8 +71,8 @@ impl Parser<'_> {
         right: ExpressionValue,
     ) -> Result<(Value, Value), ParseError> {
         let common = Self::arithmetic_scalar(
-            self.require_scalar_type(left.ty(), left.span())?,
-            self.require_scalar_type(right.ty(), right.span())?,
+            self.require_scalar_type(left.shader_type()?, left.span())?,
+            self.require_scalar_type(right.shader_type()?, right.span())?,
         );
         Ok((
             self.convert_scalar(left, common)?,
@@ -101,7 +101,11 @@ impl Parser<'_> {
     }
 
     pub(super) fn integral_operand(&mut self, value: ExpressionValue) -> Result<Value, ParseError> {
-        if self.require_scalar_type(value.ty(), value.span())?.kind == ScalarKind::Float {
+        if self
+            .require_scalar_type(value.shader_type()?, value.span())?
+            .kind
+            == ScalarKind::Float
+        {
             return Err(ParseError {
                 message: String::from("operator requires integral operands"),
                 span: value.span(),
@@ -198,9 +202,12 @@ impl Parser<'_> {
         })
     }
 
-    pub(super) fn cast_type(&mut self) -> Result<TypeResolution, ParseError> {
+    pub(super) fn cast_type(&mut self) -> Result<SourceType<TypeResolution>, ParseError> {
         let span = self.lexer.peek()?.1;
         let ty = self.parse_type()?.ty;
+        if matches!(ty, TypeSpecifier::NullPointer) {
+            return Ok(SourceType::NullPointer);
+        }
         if matches!(ty, TypeSpecifier::Pointer { .. }) {
             return Err(ParseError {
                 message: String::from("pointer casts are unsupported"),
@@ -213,7 +220,28 @@ impl Parser<'_> {
                 span,
             });
         }
-        self.lower_type(ty, span)
+        self.lower_type(ty, span).map(SourceType::Shader)
+    }
+
+    pub(super) fn cast_source_value(
+        &mut self,
+        value: ExpressionValue,
+        target: SourceType<TypeResolution>,
+        span: Span,
+    ) -> Result<ExpressionValue, ParseError> {
+        match target {
+            SourceType::NullPointer => {
+                let mut value = self.require_null_pointer_value(value)?;
+                value.span = span;
+                Ok(ExpressionValue::NullPointer(value.rvalue()))
+            }
+            SourceType::Shader(target) => {
+                let mut value = self.cast_value(value, &target)?;
+                value.span = span;
+                Ok(value.into())
+            }
+            SourceType::ThreadBlock => self.fail("thread_block casts are unsupported"),
+        }
     }
 
     pub(super) fn cast_value(
@@ -221,10 +249,15 @@ impl Parser<'_> {
         value: ExpressionValue,
         target: &TypeResolution,
     ) -> Result<Value, ParseError> {
+        if *target.inner_with(&self.module.types) == TypeInner::Scalar(Scalar::BOOL) {
+            if let ExpressionValue::NullPointer(value) = value {
+                return self.null_pointer_boolean(value);
+            }
+        }
         if *target.inner_with(&self.module.types) != TypeInner::Scalar(Scalar::BOOL)
             || !self.is_pointer_operand(&value)
         {
-            self.require_scalar_type(value.ty(), value.span())?;
+            self.require_scalar_type(value.shader_type()?, value.span())?;
         }
         let mut value = self.convert_value(value, target)?;
         value.constant = value.constant.non_literal();

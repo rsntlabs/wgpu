@@ -223,11 +223,10 @@ fn cuda_uninitialized_pointers_keep_const_type_and_scope_errors() {
 }
 
 #[test]
-fn cuda_uninitialized_pointers_keep_self_reference_and_unsupported_nullptr_rejected() {
+fn cuda_uninitialized_pointers_keep_self_reference_and_constant_reads_rejected() {
     for source in [
         "__global__ void kernel() { int *selected = selected; }",
         "__global__ void kernel() { int values[2]{2,3}; int *selected = values; { int *selected = selected + 1; } }",
-        "__global__ void kernel() { int *selected = nullptr; }",
         "__global__ void kernel() { int *selected; constexpr int Count = (selected + 0, 4); int values[Count]{}; }",
     ] {
         rejected(source);

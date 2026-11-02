@@ -491,10 +491,6 @@ __global__ void kernel() {
 }
 "#,
         r#"__global__ void kernel() {
-    int *pointer = nullptr;
-}
-"#,
-        r#"__global__ void kernel() {
     int *pointer = 3;
 }
 "#,

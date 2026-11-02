@@ -390,6 +390,12 @@ impl Preprocessor<'_> {
             _ if !self.active() => {}
             "define" => self.define(payload, directive.span)?,
             "pragma" => self.pragma(payload, span)?,
+            "include"
+                if matches!(payload, [opening, header, closing]
+                if opening.kind == Kind::Punctuation && opening.spelling == "<"
+                    && header.kind == Kind::Word && header.spelling == "cstddef" && !header.separated
+                    && closing.kind == Kind::Punctuation && closing.spelling == ">" && !closing.separated) =>
+                {}
             "undef" => {
                 let operand = Self::operand(payload, directive.span)?;
                 self.budget.visit(operand.spelling.len(), operand.span)?;

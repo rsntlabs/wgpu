@@ -161,6 +161,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             GlobalDeclaration::Namespace(Namespace::CooperativeGroups),
         )))
         .chain(core::iter::once((
+            "std",
+            GlobalDeclaration::Namespace(Namespace::Standard),
+        )))
+        .chain(core::iter::once((
             "dim3",
             GlobalDeclaration::Type(QualifiedType {
                 ty: TypeSpecifier::Dim3,
@@ -394,6 +398,15 @@ impl<'a> Parser<'a> {
         loop {
             let token = self.lexer.peek()?;
             if result.is_none() {
+                if token.0 == Token::Word("decltype") {
+                    self.lexer.next()?;
+                    self.lexer.expect_span(Token::Paren('('))?;
+                    self.lexer.expect_span(Token::Word("nullptr"))?;
+                    let end = self.lexer.expect_span(Token::Paren(')'))?;
+                    result = Some(ReturnType::Value(TypeSpecifier::NullPointer));
+                    result_span.get_or_insert(token.1.until(&end));
+                    continue;
+                }
                 if let Some(name) = self.qualified_item()? {
                     let cooperative_groups::QualifiedItem::Type(ty) = name.item else {
                         return self.fail("expected a supported function return type");
@@ -519,7 +532,9 @@ impl<'a> Parser<'a> {
                 result,
                 ReturnType::Void
                     | ReturnType::Value(
-                        TypeSpecifier::Scalar(_) | TypeSpecifier::TemplateParameter(_)
+                        TypeSpecifier::Scalar(_)
+                            | TypeSpecifier::TemplateParameter(_)
+                            | TypeSpecifier::NullPointer
                     )
             )
         {
@@ -658,12 +673,15 @@ impl<'a> Parser<'a> {
         header: &FunctionHeader<'a>,
     ) -> Result<(), ParseError> {
         self.function.ir.name = Some(String::from(header.name));
+        self.function.source_result = header.result;
         if let ReturnType::Value(ty) = header.result {
-            let ty = self.lower_type(ty, header.result_span)?;
-            self.function.ir.result = Some(crate::FunctionResult {
-                ty: self.type_handle(&ty, header.result_span),
-                binding: None,
-            });
+            if ty != TypeSpecifier::NullPointer {
+                let ty = self.lower_type(ty, header.result_span)?;
+                self.function.ir.result = Some(crate::FunctionResult {
+                    ty: self.type_handle(&ty, header.result_span),
+                    binding: None,
+                });
+            }
         }
         Ok(())
     }
@@ -808,7 +826,8 @@ impl<'a> Parser<'a> {
                     span: header.name_span,
                 });
             }
-            if declaration.result_qualifiers != header.result_qualifiers
+            if declaration.source_result != header.result
+                || declaration.result_qualifiers != header.result_qualifiers
                 || self.module.functions[previous]
                     .result
                     .as_ref()
@@ -836,6 +855,7 @@ impl<'a> Parser<'a> {
                     handle,
                     FunctionDeclaration {
                         parameters: core::mem::take(&mut self.function.parameters),
+                        source_result: header.result,
                         result_qualifiers: header.result_qualifiers,
                         has_host: header.has_host,
                         is_static: header.is_static,
@@ -852,7 +872,7 @@ impl<'a> Parser<'a> {
         self.function.current_declaration = previous;
         self.lexer.expect_span(Token::Paren('{'))?;
         let terminated = self.block_contents()?;
-        if self.function.ir.result.is_some() && !terminated {
+        if self.function.source_result != ReturnType::Void && !terminated {
             return Err(ParseError {
                 message: String::from("device helper must return a value on every supported path"),
                 span: header.name_span,
@@ -897,6 +917,7 @@ impl<'a> Parser<'a> {
                 handle,
                 FunctionDeclaration {
                     parameters: function.parameters,
+                    source_result: header.result,
                     result_qualifiers: header.result_qualifiers,
                     has_host: header.has_host,
                     is_static: header.is_static,
@@ -953,6 +974,62 @@ impl<'a> Parser<'a> {
         };
         let ty = self.lower_type(ty, span)?;
         Ok(Some(self.type_handle(&ty, span)))
+    }
+
+    pub(super) fn null_pointer_parameter(
+        &mut self,
+        qualifiers: Qualifiers,
+        is_reference: bool,
+        is_pointer: bool,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        if self.function.kind == FunctionKind::Kernel {
+            return self.fail("nullptr_t kernel parameters are unsupported");
+        }
+        if is_pointer || self.lexer.peek()?.0 == Token::Paren('[') {
+            return self.fail("pointers and arrays of nullptr_t objects are unsupported");
+        }
+        if qualifiers.is_volatile {
+            return self.fail("volatile nullptr_t parameters are unsupported");
+        }
+        self.activate_parameter_expansion(span)?;
+        if self.function.physical_parameter_modes.is_none() {
+            self.parameter_expansion_budget
+                .charge_slice::<ParameterMode>(self.function.parameters.len(), span)?;
+            self.parameter_expansion_budget
+                .charge_work(self.function.parameters.len(), span)?;
+            self.function.physical_parameter_modes = Some(
+                self.function
+                    .parameters
+                    .iter()
+                    .filter_map(|parameter| parameter.shader_type().map(|_| parameter.mode()))
+                    .collect(),
+            );
+        }
+        let mode = if is_reference {
+            ParameterMode::Reference { qualifiers }
+        } else {
+            ParameterMode::Value
+        };
+        self.parameter_expansion_budget
+            .charge_slice::<SourceParameter>(1, span)?;
+        self.parameter_expansion_budget.charge_work(1, span)?;
+        self.function
+            .parameters
+            .push(SourceParameter::NullPointer { mode });
+        if matches!(
+            self.lexer.peek()?.0,
+            Token::Separator(',') | Token::Paren(')')
+        ) {
+            return Ok(());
+        }
+        let (name, name_span) = self.identifier()?;
+        self.check_name(name, name_span)?;
+        if self.lexer.peek()?.0 == Token::Paren('[') {
+            return self.fail("arrays of nullptr_t objects are unsupported");
+        }
+        self.insert_symbol(name, Symbol::PendingAuto, name_span)?;
+        self.bind_null_pointer_symbol(name, name_span, qualifiers)
     }
 
     pub(super) fn device_parameter(
@@ -1372,8 +1449,25 @@ impl<'a> Parser<'a> {
         );
         Ok(match value {
             Some(value) => value.into(),
-            None => ExpressionResult::Void(span),
+            None => self.erased_call_result(function, span),
         })
+    }
+
+    pub(super) fn erased_call_result(
+        &self,
+        function: Handle<Function>,
+        span: Span,
+    ) -> ExpressionResult {
+        if self.function_declarations[&function].source_result
+            == ReturnType::Value(TypeSpecifier::NullPointer)
+        {
+            let mut value = NullPointerValue::literal(span);
+            value.is_constant = false;
+            value.constant = ConstantValue::default();
+            ExpressionValue::NullPointer(value).into()
+        } else {
+            ExpressionResult::Void(span)
+        }
     }
 
     fn float_minmax(
@@ -1717,6 +1811,11 @@ impl<'a> Parser<'a> {
         logical_index: usize,
         argument: &impl CallArgument,
     ) -> Option<u8> {
+        if let Some(SourceParameter::NullPointer { mode }) =
+            self.candidate_source_parameter(candidate, logical_index)
+        {
+            return self.null_pointer_argument_conversion(mode, argument);
+        }
         let target = self.candidate_type(candidate, logical_index);
         if target.is_none() {
             return argument.is_thread_block().then_some(0);
@@ -1751,6 +1850,49 @@ impl<'a> Parser<'a> {
             );
         }
         self.value_argument_conversion(&target, mode, argument)
+    }
+
+    pub(super) fn candidate_source_parameter(
+        &self,
+        candidate: FunctionCandidate,
+        logical_index: usize,
+    ) -> Option<SourceParameter> {
+        match candidate {
+            FunctionCandidate::Defined(handle) => self
+                .function_declarations
+                .get(&handle)?
+                .parameters
+                .get(logical_index)
+                .copied(),
+            FunctionCandidate::Current => self.function.parameters.get(logical_index).copied(),
+            _ => None,
+        }
+    }
+
+    pub(super) fn null_pointer_argument_conversion(
+        &self,
+        mode: ParameterMode,
+        argument: &impl CallArgument,
+    ) -> Option<u8> {
+        let rank = if argument.is_null_pointer() {
+            0
+        } else if argument.is_null_pointer_constant() {
+            2
+        } else {
+            return None;
+        };
+        match mode {
+            ParameterMode::Value => Some(rank),
+            ParameterMode::Reference { qualifiers } => {
+                if rank == 0 {
+                    if let Some(source) = argument.reference_qualifiers() {
+                        return qualifiers.contains(source).then_some(rank);
+                    }
+                }
+                (qualifiers.is_const && !qualifiers.is_volatile).then_some(rank)
+            }
+            ParameterMode::Pointer { .. } => None,
+        }
     }
 
     pub(super) fn pointer_argument_conversion(

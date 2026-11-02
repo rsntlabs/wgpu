@@ -1,3 +1,4 @@
+use super::functions::ReturnType;
 use super::*;
 
 use core::num::NonZeroU32;
@@ -97,7 +98,13 @@ impl<'a> Parser<'a> {
             });
         }
         if self.take_ident("return")? {
-            let value = if let Some(ref result) = self.function.ir.result {
+            let value = if self.function.source_result
+                == ReturnType::Value(TypeSpecifier::NullPointer)
+            {
+                let value = self.comma_expression()?;
+                self.require_null_pointer_value(value)?;
+                None
+            } else if let Some(ref result) = self.function.ir.result {
                 let ty = TypeResolution::Handle(result.ty);
                 let value = self.comma_expression()?;
                 Some(self.convert_value(value, &ty)?.handle)
@@ -224,7 +231,11 @@ impl<'a> Parser<'a> {
         )?
         .is_none()
         {
-            lookahead.next()?;
+            if lookahead.next()?.0 == Token::Word("decltype") {
+                lookahead.expect_span(Token::Paren('('))?;
+                lookahead.expect_span(Token::Word("nullptr"))?;
+                lookahead.expect_span(Token::Paren(')'))?;
+            }
         }
         let next = lookahead.peek()?;
         if next.0 == Token::Paren('{') {
@@ -266,6 +277,9 @@ impl<'a> Parser<'a> {
             }
         };
         let is_const = qualifiers.is_const;
+        if matches!(specifier, TypeSpecifier::NullPointer) {
+            return self.null_pointer_declaration(qualifiers, is_constexpr);
+        }
         if is_constexpr && !matches!(specifier, TypeSpecifier::Scalar(_)) {
             return self.fail("constexpr requires a scalar variable");
         }

@@ -3,6 +3,10 @@ use super::*;
 impl Parser<'_> {
     fn mutable_reference(&self, expression: ExpressionValue) -> Result<ReferenceValue, ParseError> {
         match expression {
+            ExpressionValue::NullPointer(value) => Err(ParseError {
+                message: String::from("nullptr_t does not support this object operation"),
+                span: value.span,
+            }),
             ExpressionValue::Reference(reference) if reference.writable() => Ok(reference),
             ExpressionValue::Reference(reference) => Err(ParseError {
                 message: String::from("cannot modify a const value"),
@@ -24,6 +28,9 @@ impl Parser<'_> {
         left: ExpressionValue,
         operator: Option<BinaryOperator>,
     ) -> Result<ExpressionValue, ParseError> {
+        if let ExpressionValue::NullPointer(value) = left {
+            return self.null_pointer_assignment(value, operator);
+        }
         if let ExpressionValue::Pointer(pointer) = left {
             return self.pointer_assignment(*pointer, operator);
         }

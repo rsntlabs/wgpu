@@ -58,8 +58,8 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
         let is_null = operator == BinaryOperator::Equal;
-        let left_null = matches!(left, ExpressionValue::Plain(ref value) if value.constant.is_null_pointer_constant);
-        let right_null = matches!(right, ExpressionValue::Plain(ref value) if value.constant.is_null_pointer_constant);
+        let left_null = left.is_null_pointer_constant();
+        let right_null = right.is_null_pointer_constant();
         let pointer = if self.is_pointer_operand(&left) && right_null {
             let pointer = self.borrowed_pointer(left)?;
             self.append_block(right_body);
