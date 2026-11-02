@@ -29,7 +29,7 @@ fn exchange(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin(workgro
     var local_13: u32;
 
     output = array<u32, 2>();
-    output[0] = 0u;
+    output[0] = 2u;
     output[1] = 0u;
     let lane = threadIdx.x;
     let base = (blockIdx.x * 8u);
@@ -60,7 +60,7 @@ fn exchange(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin(workgro
     storageBarrier();
     workgroupBarrier();
     pointer = array<u32, 2>();
-    pointer[0] = 1u;
+    pointer[0] = 3u;
     pointer[1] = 0u;
     let _e65 = pointer;
     local_2 = _e65;

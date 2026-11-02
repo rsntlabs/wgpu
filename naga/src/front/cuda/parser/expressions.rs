@@ -117,6 +117,17 @@ impl Parser<'_> {
                 left = self.binary_operator(left_value, operator, precedence, operator_span)?;
                 continue;
             }
+            if matches!(operator, BinaryOperator::Equal | BinaryOperator::NotEqual) {
+                let (right, right_body) =
+                    self.capture_block(|parser| parser.expression(precedence + 1))?;
+                if self.is_pointer_operand(&left_value) || self.is_pointer_operand(&right) {
+                    left = self.pointer_binary(left_value, right, right_body, operator)?;
+                } else {
+                    self.append_block(right_body);
+                    left = self.binary_value(operator, left_value, right)?.into();
+                }
+                continue;
+            }
             let right = self.expression(precedence + 1)?;
             left = self.binary_value(operator, left_value, right)?.into();
         }
@@ -600,6 +611,9 @@ impl Parser<'_> {
     }
 
     pub(super) fn truthy(&mut self, value: ExpressionValue) -> Result<Value, ParseError> {
+        if self.is_pointer_operand(&value) {
+            return self.pointer_test(value, false);
+        }
         let value = self.rvalue(value)?;
         let scalar = self.require_scalar_type(&value.ty, value.span)?;
         if scalar == Scalar::BOOL {

@@ -6,11 +6,16 @@ struct OriginAddress {
     projections: Vec<OriginProjection>,
 }
 
+struct OriginAddresses {
+    addresses: Vec<OriginAddress>,
+    is_nullable: bool,
+}
+
 struct Inventory<'a> {
     function: &'a Function,
     source: &'a FunctionParameterState,
     families: Vec<OriginFamily>,
-    cells: FastHashMap<Handle<LocalVariable>, Vec<u32>>,
+    cells: FastHashMap<Handle<LocalVariable>, Vec<RuntimeOrigin>>,
 }
 
 pub(super) fn writable_root(parser: &Parser<'_>, root: OriginRoot) -> bool {
@@ -37,12 +42,12 @@ impl Inventory<'_> {
     fn clone_set(
         &self,
         parser: &mut Parser<'_>,
-        values: &[u32],
+        values: &[RuntimeOrigin],
         span: Span,
-    ) -> Result<Vec<u32>, ParseError> {
+    ) -> Result<Vec<RuntimeOrigin>, ParseError> {
         parser
             .parameter_expansion_budget
-            .charge_slice::<u32>(values.len(), span)?;
+            .charge_slice::<RuntimeOrigin>(values.len(), span)?;
         parser
             .parameter_expansion_budget
             .charge_work(values.len(), span)?;
@@ -52,8 +57,8 @@ impl Inventory<'_> {
     fn union(
         &self,
         parser: &mut Parser<'_>,
-        destination: &mut Vec<u32>,
-        values: &[u32],
+        destination: &mut Vec<RuntimeOrigin>,
+        values: &[RuntimeOrigin],
         span: Span,
     ) -> Result<bool, ParseError> {
         let mut changed = false;
@@ -64,7 +69,7 @@ impl Inventory<'_> {
             if !destination.contains(&value) {
                 parser
                     .parameter_expansion_budget
-                    .charge_slice::<u32>(1, span)?;
+                    .charge_slice::<RuntimeOrigin>(1, span)?;
                 destination.push(value);
                 changed = true;
             }
@@ -127,7 +132,7 @@ impl Inventory<'_> {
         parser: &mut Parser<'_>,
         binding: Handle<BoundReference>,
         span: Span,
-    ) -> Result<Vec<u32>, ParseError> {
+    ) -> Result<Vec<RuntimeOrigin>, ParseError> {
         let mut result = Vec::new();
         for local in self.binding_cells(parser, binding, span)? {
             let families = self.cells.get(&local).ok_or_else(|| runtime_error(span))?;
@@ -140,7 +145,7 @@ impl Inventory<'_> {
         &mut self,
         parser: &mut Parser<'_>,
         destination: Handle<LocalVariable>,
-        values: &[u32],
+        values: &[RuntimeOrigin],
         value_qualifiers: Qualifiers,
         span: Span,
     ) -> Result<bool, ParseError> {
@@ -153,8 +158,11 @@ impl Inventory<'_> {
         if !cell.qualifiers.contains(value_qualifiers) {
             return Err(runtime_error(span));
         }
-        for &family in values {
+        for &origin in values {
             parser.parameter_expansion_budget.charge_work(1, span)?;
+            let RuntimeOrigin::Family(family) = origin else {
+                continue;
+            };
             let family = self
                 .families
                 .get(family as usize)
@@ -310,13 +318,14 @@ impl Inventory<'_> {
         handle: Handle<BoundAddress>,
         depth: u32,
         span: Span,
-    ) -> Result<Vec<OriginAddress>, ParseError> {
+    ) -> Result<OriginAddresses, ParseError> {
         self.depth(parser, depth, span)?;
         let source = self.source;
         let address = source
             .bound_addresses
             .try_get(handle)
             .map_err(|_| runtime_error(span))?;
+        let mut is_nullable = false;
         let mut result = match self.function.expressions[address.root] {
             Expression::LocalVariable(local) => {
                 if let Some(&access) = source.pointers.validation_addresses.get(&local) {
@@ -331,8 +340,12 @@ impl Inventory<'_> {
                         .parameter_expansion_budget
                         .charge_slice::<OriginAddress>(families.len(), span)?;
                     let mut views = Vec::with_capacity(families.len());
-                    for tag in families {
-                        let family = &self.families[tag as usize];
+                    for origin in families {
+                        let RuntimeOrigin::Family(family) = origin else {
+                            is_nullable = true;
+                            continue;
+                        };
+                        let family = &self.families[family as usize];
                         let extra = usize::from(family.kind == OriginKind::Array);
                         parser
                             .parameter_expansion_budget
@@ -381,7 +394,10 @@ impl Inventory<'_> {
         for view in &mut result {
             self.append_projections(parser, view, &address.projections, span)?;
         }
-        Ok(result)
+        Ok(OriginAddresses {
+            addresses: result,
+            is_nullable,
+        })
     }
 
     fn expression(
@@ -390,7 +406,7 @@ impl Inventory<'_> {
         handle: Handle<PointerExpression>,
         depth: u32,
         span: Span,
-    ) -> Result<Vec<u32>, ParseError> {
+    ) -> Result<Vec<RuntimeOrigin>, ParseError> {
         self.depth(parser, depth, span)?;
         let source = self.source;
         let expression = source
@@ -399,6 +415,7 @@ impl Inventory<'_> {
             .try_get(handle)
             .map_err(|_| runtime_error(span))?;
         match expression.kind {
+            PointerExpressionKind::Null => self.clone_set(parser, &[RuntimeOrigin::Null], span),
             PointerExpressionKind::Parameter(_) => Err(runtime_error(span)),
             PointerExpressionKind::Object(binding) => self.binding_families(parser, binding, span),
             PointerExpressionKind::Snapshot(local) => {
@@ -421,11 +438,18 @@ impl Inventory<'_> {
                     .try_get(binding)
                     .map_err(|_| runtime_error(span))?;
                 let mut result = Vec::new();
+                if reference.is_nullable {
+                    self.union(parser, &mut result, &[RuntimeOrigin::Null], span)?;
+                }
                 for target in &reference.targets {
-                    for address in self.address(parser, target.address, depth, span)? {
+                    let addresses = self.address(parser, target.address, depth, span)?;
+                    if addresses.is_nullable {
+                        self.union(parser, &mut result, &[RuntimeOrigin::Null], span)?;
+                    }
+                    for address in addresses.addresses {
                         let family =
                             self.intern(parser, address, is_array, expression.pointee, span)?;
-                        self.union(parser, &mut result, &[family], span)?;
+                        self.union(parser, &mut result, &[RuntimeOrigin::Family(family)], span)?;
                     }
                 }
                 Ok(result)
@@ -440,6 +464,7 @@ impl Inventory<'_> {
         span: Span,
     ) -> Result<bool, ParseError> {
         match *operation {
+            PointerOperation::Test { .. } => Ok(false),
             PointerOperation::Initialize {
                 destination,
                 ref value,
@@ -529,7 +554,10 @@ pub(super) fn build(
     }
     parser
         .parameter_expansion_budget
-        .charge_map_entry::<Handle<LocalVariable>, Vec<u32>>(source.pointers.cells.len(), span)?;
+        .charge_map_entry::<Handle<LocalVariable>, Vec<RuntimeOrigin>>(
+            source.pointers.cells.len(),
+            span,
+        )?;
     let mut cells = FastHashMap::default();
     for &local in source.pointers.cells.keys() {
         cells.insert(local, Vec::new());
@@ -543,8 +571,8 @@ pub(super) fn build(
     let count = source.pointers.expressions.len();
     parser
         .parameter_expansion_budget
-        .charge_slice::<Vec<u32>>(count, span)?;
-    let mut expression_families: Vec<Vec<u32>> = (0..count).map(|_| Vec::new()).collect();
+        .charge_slice::<Vec<RuntimeOrigin>>(count, span)?;
+    let mut expression_families: Vec<Vec<RuntimeOrigin>> = (0..count).map(|_| Vec::new()).collect();
     loop {
         for (handle, _) in source.pointers.expressions.iter() {
             expression_families[handle.index()] = inventory.expression(parser, handle, 1, span)?;

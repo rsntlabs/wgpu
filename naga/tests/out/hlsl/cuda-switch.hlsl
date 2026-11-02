@@ -502,7 +502,7 @@ void switches()
     uint local_157 = (uint)0;
 
     out_ = ZeroValuearray2_uint_();
-    out_[0] = 0u;
+    out_[0] = 2u;
     out_[1] = 0u;
     const int _e9 = case_chain(naga_neg(int(1)));
     uint _e12[2] = out_;

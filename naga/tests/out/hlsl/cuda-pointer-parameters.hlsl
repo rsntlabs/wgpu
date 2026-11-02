@@ -519,7 +519,7 @@ void pointer_parameters()
     uint local_452 = (uint)0;
 
     out_ = ZeroValuearray3_uint_();
-    out_[0] = 0u;
+    out_[0] = 2u;
     out_[1] = 0u;
     values[0] = int(1);
     values[1] = int(2);
@@ -539,13 +539,13 @@ void pointer_parameters()
     local_92 = ZeroValueint();
     local_93 = ZeroValueint();
     first = ZeroValuearray3_uint_();
-    first[0] = 1u;
+    first[0] = 3u;
     first[1] = 0u;
     uint _e49 = local;
     uint _e51 = first[1];
     first[1] = (_e51 + _e49);
     second = ZeroValuearray3_uint_();
-    second[0] = 1u;
+    second[0] = 3u;
     second[1] = 0u;
     uint _e60 = local_1;
     uint _e62 = second[1];
@@ -716,7 +716,7 @@ void pointer_parameters()
     local_98 = ZeroValueint();
     local_99 = ZeroValueint();
     value = ZeroValuearray3_uint_();
-    value[0] = 1u;
+    value[0] = 3u;
     value[1] = 0u;
     uint _e355 = local_12;
     uint _e357 = value[1];
@@ -781,7 +781,7 @@ void pointer_parameters()
     local_104 = ZeroValueint();
     local_105 = ZeroValueint();
     value_1 = ZeroValuearray3_uint_();
-    value_1[0] = 1u;
+    value_1[0] = 3u;
     value_1[1] = 0u;
     uint _e470 = local_16;
     uint _e472 = value_1[1];
@@ -851,7 +851,7 @@ void pointer_parameters()
     local_116 = ZeroValueint();
     local_117 = ZeroValueint();
     value_2 = ZeroValuearray3_uint_();
-    value_2[0] = 1u;
+    value_2[0] = 3u;
     value_2[1] = 0u;
     uint _e595 = local_18;
     uint _e597 = value_2[1];
@@ -881,7 +881,7 @@ void pointer_parameters()
     uint _e642 = local_245[2];
     local_248 = uint(_e642);
     value_3 = ZeroValuearray3_uint_();
-    value_3[0] = 1u;
+    value_3[0] = 3u;
     uint _e649 = local_247;
     value_3[1] = _e649;
     uint _e652[3] = value_3;
@@ -972,7 +972,7 @@ void pointer_parameters()
     local_122 = ZeroValueint();
     local_123 = ZeroValueint();
     value_4 = ZeroValuearray3_uint_();
-    value_4[0] = 1u;
+    value_4[0] = 3u;
     uint _e801 = local_23;
     value_4[1] = _e801;
     uint _e804[3] = value_4;
@@ -1051,7 +1051,7 @@ void pointer_parameters()
     out_1.Store(_e928*4, asuint(uint(_e902)));
     local_125 = ZeroValueuint();
     value_5 = ZeroValuearray3_uint_();
-    value_5[0] = 2u;
+    value_5[0] = 4u;
     value_5[1] = 0u;
     uint _e939[3] = value_5;
     local_124 = _e939;
@@ -1090,7 +1090,7 @@ void pointer_parameters()
     local_127 = ZeroValueuint();
     local_128 = ZeroValueint();
     value_6 = ZeroValuearray3_uint_();
-    value_6[0] = 3u;
+    value_6[0] = 5u;
     value_6[1] = 0u;
     amount = int(2);
     int _e1009 = amount;
@@ -1146,7 +1146,7 @@ void pointer_parameters()
     local_141 = ZeroValueint();
     local_142 = ZeroValueint();
     value_7 = ZeroValuearray3_uint_();
-    value_7[0] = 4u;
+    value_7[0] = 6u;
     value_7[1] = 0u;
     uint _e1111[3] = value_7;
     local_131 = _e1111;
@@ -1344,10 +1344,10 @@ void pointer_parameters()
     local_153 = ZeroValueint();
     local_154 = ZeroValueint();
     value_8 = ZeroValuearray3_uint_();
-    value_8[0] = 5u;
+    value_8[0] = 7u;
     value_8[1] = 0u;
     view = ZeroValuearray3_uint_();
-    view[0] = 5u;
+    view[0] = 7u;
     view[1] = 0u;
     uint _e1485[3] = view;
     local_145 = _e1485;
@@ -1498,7 +1498,7 @@ void pointer_parameters()
     uint _e1746 = local_52;
     local_156 = ZeroValueuint();
     value_9 = ZeroValuearray3_uint_();
-    value_9[0] = 6u;
+    value_9[0] = 8u;
     value_9[1] = 0u;
     value_9[2] = _e1746;
     uint _e1756 = local_53;
@@ -1544,7 +1544,7 @@ void pointer_parameters()
     local_158 = ZeroValueuint();
     local_159 = ZeroValueint();
     value_10 = ZeroValuearray3_uint_();
-    value_10[0] = 7u;
+    value_10[0] = 9u;
     value_10[1] = 0u;
     value_10[2] = _e1828;
     amount_1 = int(3);
@@ -1597,13 +1597,13 @@ void pointer_parameters()
     local_167 = ZeroValuefloat();
     local_168 = ZeroValuefloat();
     value_11 = ZeroValuearray3_uint_();
-    value_11[0] = 8u;
+    value_11[0] = 10u;
     value_11[1] = 0u;
     uint _e1939 = local_59;
     uint _e1941 = value_11[1];
     value_11[1] = (_e1941 + _e1939);
     view_1 = ZeroValuearray3_uint_();
-    view_1[0] = 8u;
+    view_1[0] = 10u;
     view_1[1] = 0u;
     uint _e1951[3] = view_1;
     local_162 = _e1951;
@@ -1723,7 +1723,7 @@ void pointer_parameters()
     local_177 = ZeroValuebool();
     local_178 = ZeroValuebool();
     value_12 = ZeroValuearray3_uint_();
-    value_12[0] = 9u;
+    value_12[0] = 11u;
     value_12[1] = 0u;
     uint _e2160[3] = value_12;
     local_171 = _e2160;
@@ -1830,7 +1830,7 @@ void pointer_parameters()
     fixed[0] = int(3);
     fixed[1] = int(4);
     value_13 = ZeroValuearray3_uint_();
-    value_13[0] = 1u;
+    value_13[0] = 3u;
     value_13[1] = 0u;
     local_72 = int(10);
     int _e2344 = local_72;
@@ -1851,7 +1851,7 @@ void pointer_parameters()
     uint _e2370 = local_435;
     out_1.Store(_e2370*4, asuint(uint(_e2344)));
     value_14 = ZeroValuearray3_uint_();
-    value_14[0] = 10u;
+    value_14[0] = 12u;
     value_14[1] = 0u;
     local_75 = int(20);
     int _e2380 = local_75;
@@ -1877,7 +1877,7 @@ void pointer_parameters()
     local_183 = ZeroValueint();
     local_184 = ZeroValueint();
     value_15 = ZeroValuearray3_uint_();
-    value_15[0] = 1u;
+    value_15[0] = 3u;
     value_15[1] = 0u;
     uint _e2425 = local_78;
     uint _e2427 = value_15[1];

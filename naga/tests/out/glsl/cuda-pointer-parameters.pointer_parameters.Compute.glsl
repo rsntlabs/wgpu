@@ -498,7 +498,7 @@ void main() {
     uint local_451 = 0u;
     uint local_452 = 0u;
     out_ = uint[3](0u, 0u, 0u);
-    out_[0] = 0u;
+    out_[0] = 2u;
     out_[1] = 0u;
     values[0] = 1;
     values[1] = 2;
@@ -518,13 +518,13 @@ void main() {
     local_92 = 0;
     local_93 = 0;
     first = uint[3](0u, 0u, 0u);
-    first[0] = 1u;
+    first[0] = 3u;
     first[1] = 0u;
     uint _e49 = local;
     uint _e51 = first[1];
     first[1] = (_e51 + _e49);
     second = uint[3](0u, 0u, 0u);
-    second[0] = 1u;
+    second[0] = 3u;
     second[1] = 0u;
     uint _e60 = local_1;
     uint _e62 = second[1];
@@ -695,7 +695,7 @@ void main() {
     local_98 = 0;
     local_99 = 0;
     value = uint[3](0u, 0u, 0u);
-    value[0] = 1u;
+    value[0] = 3u;
     value[1] = 0u;
     uint _e355 = local_12;
     uint _e357 = value[1];
@@ -760,7 +760,7 @@ void main() {
     local_104 = 0;
     local_105 = 0;
     value_1 = uint[3](0u, 0u, 0u);
-    value_1[0] = 1u;
+    value_1[0] = 3u;
     value_1[1] = 0u;
     uint _e470 = local_16;
     uint _e472 = value_1[1];
@@ -830,7 +830,7 @@ void main() {
     local_116 = 0;
     local_117 = 0;
     value_2 = uint[3](0u, 0u, 0u);
-    value_2[0] = 1u;
+    value_2[0] = 3u;
     value_2[1] = 0u;
     uint _e595 = local_18;
     uint _e597 = value_2[1];
@@ -860,7 +860,7 @@ void main() {
     uint _e642 = local_245[2];
     local_248 = uint(_e642);
     value_3 = uint[3](0u, 0u, 0u);
-    value_3[0] = 1u;
+    value_3[0] = 3u;
     uint _e649 = local_247;
     value_3[1] = _e649;
     uint _e652[3] = value_3;
@@ -951,7 +951,7 @@ void main() {
     local_122 = 0;
     local_123 = 0;
     value_4 = uint[3](0u, 0u, 0u);
-    value_4[0] = 1u;
+    value_4[0] = 3u;
     uint _e801 = local_23;
     value_4[1] = _e801;
     uint _e804[3] = value_4;
@@ -1030,7 +1030,7 @@ void main() {
     _group_0_binding_0_cs[_e928] = uint(_e902);
     local_125 = 0u;
     value_5 = uint[3](0u, 0u, 0u);
-    value_5[0] = 2u;
+    value_5[0] = 4u;
     value_5[1] = 0u;
     uint _e939[3] = value_5;
     local_124 = _e939;
@@ -1069,7 +1069,7 @@ void main() {
     local_127 = 0u;
     local_128 = 0;
     value_6 = uint[3](0u, 0u, 0u);
-    value_6[0] = 3u;
+    value_6[0] = 5u;
     value_6[1] = 0u;
     amount = 2;
     int _e1009 = amount;
@@ -1125,7 +1125,7 @@ void main() {
     local_141 = 0;
     local_142 = 0;
     value_7 = uint[3](0u, 0u, 0u);
-    value_7[0] = 4u;
+    value_7[0] = 6u;
     value_7[1] = 0u;
     uint _e1111[3] = value_7;
     local_131 = _e1111;
@@ -1323,10 +1323,10 @@ void main() {
     local_153 = 0;
     local_154 = 0;
     value_8 = uint[3](0u, 0u, 0u);
-    value_8[0] = 5u;
+    value_8[0] = 7u;
     value_8[1] = 0u;
     view = uint[3](0u, 0u, 0u);
-    view[0] = 5u;
+    view[0] = 7u;
     view[1] = 0u;
     uint _e1485[3] = view;
     local_145 = _e1485;
@@ -1477,7 +1477,7 @@ void main() {
     uint _e1746 = local_52;
     local_156 = 0u;
     value_9 = uint[3](0u, 0u, 0u);
-    value_9[0] = 6u;
+    value_9[0] = 8u;
     value_9[1] = 0u;
     value_9[2] = _e1746;
     uint _e1756 = local_53;
@@ -1523,7 +1523,7 @@ void main() {
     local_158 = 0u;
     local_159 = 0;
     value_10 = uint[3](0u, 0u, 0u);
-    value_10[0] = 7u;
+    value_10[0] = 9u;
     value_10[1] = 0u;
     value_10[2] = _e1828;
     amount_1 = 3;
@@ -1576,13 +1576,13 @@ void main() {
     local_167 = 0.0;
     local_168 = 0.0;
     value_11 = uint[3](0u, 0u, 0u);
-    value_11[0] = 8u;
+    value_11[0] = 10u;
     value_11[1] = 0u;
     uint _e1939 = local_59;
     uint _e1941 = value_11[1];
     value_11[1] = (_e1941 + _e1939);
     view_1 = uint[3](0u, 0u, 0u);
-    view_1[0] = 8u;
+    view_1[0] = 10u;
     view_1[1] = 0u;
     uint _e1951[3] = view_1;
     local_162 = _e1951;
@@ -1702,7 +1702,7 @@ void main() {
     local_177 = false;
     local_178 = false;
     value_12 = uint[3](0u, 0u, 0u);
-    value_12[0] = 9u;
+    value_12[0] = 11u;
     value_12[1] = 0u;
     uint _e2160[3] = value_12;
     local_171 = _e2160;
@@ -1809,7 +1809,7 @@ void main() {
     fixed_[0] = 3;
     fixed_[1] = 4;
     value_13 = uint[3](0u, 0u, 0u);
-    value_13[0] = 1u;
+    value_13[0] = 3u;
     value_13[1] = 0u;
     local_72 = 10;
     int _e2344 = local_72;
@@ -1830,7 +1830,7 @@ void main() {
     uint _e2370 = local_435;
     _group_0_binding_0_cs[_e2370] = uint(_e2344);
     value_14 = uint[3](0u, 0u, 0u);
-    value_14[0] = 10u;
+    value_14[0] = 12u;
     value_14[1] = 0u;
     local_75 = 20;
     int _e2380 = local_75;
@@ -1856,7 +1856,7 @@ void main() {
     local_183 = 0;
     local_184 = 0;
     value_15 = uint[3](0u, 0u, 0u);
-    value_15[0] = 1u;
+    value_15[0] = 3u;
     value_15[1] = 0u;
     uint _e2425 = local_78;
     uint _e2427 = value_15[1];

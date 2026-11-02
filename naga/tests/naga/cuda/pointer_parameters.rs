@@ -487,7 +487,6 @@ fn cuda_pointer_parameters_reject_escaping_and_unsupported_pointer_storage() {
         "struct Record { int *value; }; __global__ void kernel() {}",
         "__device__ int *read(int *value) { return value; } __global__ void kernel() {}",
         "__device__ void read(int *value) {} __global__ void kernel() { read(nullptr); }",
-        "__device__ void read(int *value) {} __global__ void kernel() { read(0); }",
         "__device__ void read(void *value) {} __global__ void kernel() {}",
         "__device__ void read(int **value) {} __global__ void kernel() {}",
         "__device__ void read(int *&value) {} __global__ void kernel() {}",

@@ -32,12 +32,27 @@ struct OriginFamily {
     pointee: Handle<Type>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RuntimeOrigin {
+    Null,
+    Family(u32),
+}
+
+const NULL_TAG: u32 = 1;
+
+fn family_tag(index: u32, span: Span) -> Result<u32, ParseError> {
+    index
+        .checked_add(2)
+        .filter(|&tag| tag != u32::MAX)
+        .ok_or_else(|| runtime_error(span))
+}
+
 #[derive(Clone)]
 pub(in super::super) struct PointerRuntime {
     pub(in super::super) state_type: Handle<Type>,
     families: Vec<OriginFamily>,
-    expression_families: Vec<Vec<u32>>,
-    cell_families: FastHashMap<Handle<LocalVariable>, Vec<u32>>,
+    expression_families: Vec<Vec<RuntimeOrigin>>,
+    cell_families: FastHashMap<Handle<LocalVariable>, Vec<RuntimeOrigin>>,
     coordinate_count: usize,
 }
 
@@ -316,6 +331,9 @@ impl PointerRuntime {
             _ => return Err(runtime_error(span)),
         };
         let binding = parser.remap_bound_binding(source, binding, mapper, span)?;
+        if parser.function.bound_references[binding].is_nullable {
+            self.write_null(parser, write.destination, span)?;
+        }
         parser.with_bound_target(binding, span, &mut |parser, handle| {
             let checkpoint = mapper.checkpoint();
             let result = self.write_address(parser, write, handle, expression, mapper);
@@ -362,7 +380,10 @@ impl PointerRuntime {
             },
             span,
         )?;
-        let tag = parser.append(Expression::Literal(Literal::U32(family)), span)?;
+        let tag = parser.append(
+            Expression::Literal(Literal::U32(family_tag(family, span)?)),
+            span,
+        )?;
         self.store_word(parser, destination, 0, tag, span)?;
         let position = match initial {
             Some(AddressProjection::Field(index)) => {
@@ -383,6 +404,25 @@ impl PointerRuntime {
             }
         }
         Ok(())
+    }
+
+    fn write_null(
+        &self,
+        parser: &mut Parser<'_>,
+        destination: Handle<Expression>,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        self.check_state_pointer(parser, destination, span)?;
+        let zero = parser.append(Expression::ZeroValue(self.state_type), span)?;
+        parser.generated_pointer_statement(
+            Statement::Store {
+                pointer: destination,
+                value: zero,
+            },
+            span,
+        )?;
+        let tag = parser.append(Expression::Literal(Literal::U32(NULL_TAG)), span)?;
+        self.store_word(parser, destination, 0, tag, span)
     }
 
     fn write_expression(
@@ -408,6 +448,7 @@ impl PointerRuntime {
             .try_get(expression)
             .map_err(|_| runtime_error(span))?;
         match expression.kind {
+            PointerExpressionKind::Null => self.write_null(parser, destination, span),
             PointerExpressionKind::Parameter(_) => Err(runtime_error(span)),
             PointerExpressionKind::Object(binding) => {
                 self.copy_binding(parser, source, binding, destination, mapper, span)
@@ -501,6 +542,36 @@ impl PointerRuntime {
         span: Span,
     ) -> Result<(), ParseError> {
         match *operation {
+            PointerOperation::Test {
+                destination,
+                ref value,
+                is_null,
+            } => {
+                let destination = mapped_value(parser, mapper, destination, span)?;
+                let state = self.temporary_state(parser, span)?;
+                self.write_value(parser, source, value, state, mapper, span)?;
+                let tag = self.load_word(parser, state, 0, span)?;
+                let null = parser.append(Expression::Literal(Literal::U32(NULL_TAG)), span)?;
+                let value = parser.append(
+                    Expression::Binary {
+                        op: if is_null {
+                            BinaryOperator::Equal
+                        } else {
+                            BinaryOperator::NotEqual
+                        },
+                        left: tag,
+                        right: null,
+                    },
+                    span,
+                )?;
+                parser.generated_pointer_statement(
+                    Statement::Store {
+                        pointer: destination,
+                        value,
+                    },
+                    span,
+                )
+            }
             PointerOperation::Initialize {
                 destination,
                 ref value,
@@ -592,10 +663,17 @@ impl PointerRuntime {
             .parameter_expansion_budget
             .charge_slice::<BoundTarget>(families.len(), span)?;
         let mut targets = Vec::with_capacity(families.len());
-        for &tag in families {
+        parser
+            .parameter_expansion_budget
+            .charge_work(families.len(), span)?;
+        let is_nullable = families.contains(&RuntimeOrigin::Null);
+        for &origin in families {
+            let RuntimeOrigin::Family(family_index) = origin else {
+                continue;
+            };
             let family = self
                 .families
-                .get(tag as usize)
+                .get(family_index as usize)
                 .ok_or_else(|| runtime_error(span))?;
             parser
                 .parameter_expansion_budget
@@ -637,12 +715,13 @@ impl PointerRuntime {
                 span,
             )?;
             targets.push(BoundTarget {
-                selector: tag,
+                selector: family_tag(family_index, span)?,
                 address,
             });
         }
-        let selector = (targets.len() > 1).then_some(selector);
-        let binding = parser.retain_bound_reference(selector, targets, span)?;
+        let selector = (is_nullable || targets.len() > 1).then_some(selector);
+        let binding =
+            parser.retain_bound_reference_with_nullability(selector, targets, is_nullable, span)?;
         Ok(ReferenceValue {
             discard_read: true,
             reference: Reference::Bound(binding),

@@ -334,7 +334,6 @@ fn cuda_pointer_assignments_reject_invalid_rhs_and_unsupported_compounds() {
         "int2{1,2}",
         "nothing()",
         "nullptr",
-        "0",
         "{}",
         "{first}",
     ] {

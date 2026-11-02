@@ -16,6 +16,11 @@ pub(in super::super) struct PointerCell {
 
 #[derive(Clone, Debug)]
 pub(in super::super) enum PointerOperation {
+    Test {
+        destination: Handle<Expression>,
+        value: PointerValue,
+        is_null: bool,
+    },
     Initialize {
         destination: Handle<LocalVariable>,
         value: PointerValue,

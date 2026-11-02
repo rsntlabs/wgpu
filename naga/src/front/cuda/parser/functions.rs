@@ -1776,12 +1776,18 @@ impl<'a> Parser<'a> {
         argument: &impl CallArgument,
     ) -> Option<u8> {
         let source = argument.ty()?;
-        let rank = conversion_rank(
-            source,
-            target,
-            &self.module,
-            self.dimension_conversion(source, target),
-        )?;
+        let rank = if *target.inner_with(&self.module.types) == TypeInner::Scalar(Scalar::BOOL)
+            && argument.pointer_type(&self.module).is_some()
+        {
+            2
+        } else {
+            conversion_rank(
+                source,
+                target,
+                &self.module,
+                self.dimension_conversion(source, target),
+            )?
+        };
         match mode {
             ParameterMode::Value => Some(rank),
             ParameterMode::Reference { qualifiers } => {

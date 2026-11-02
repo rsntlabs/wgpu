@@ -167,7 +167,7 @@ fn kernel() {
     var local_157: u32;
 
     output = array<u32, 2>();
-    output[0] = 0u;
+    output[0] = 2u;
     output[1] = 0u;
     let _e7 = output;
     local = _e7;

@@ -203,10 +203,13 @@ fn cuda_operator_null_literals_do_not_fall_back_after_selecting_pointer_overload
                 overloads(symbol, zero_on_left, false),
                 expression(symbol, zero_on_left, "0"),
             );
-            let error = rejected(&source);
+            let (module, _) = validate(&source);
             assert!(
-                error.message.contains("expected a borrowed CUDA pointer"),
-                "{source}: {error}",
+                !naga::proc::any_statement(
+                    &module.entry_points[0].function.body,
+                    &mut |statement| { matches!(statement, naga::Statement::Call { .. }) }
+                ),
+                "the selected pointer helper should be expanded: {source}",
             );
         }
     }

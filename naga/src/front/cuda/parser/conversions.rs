@@ -6,6 +6,11 @@ impl Parser<'_> {
         value: ExpressionValue,
         target: &TypeResolution,
     ) -> Result<Value, ParseError> {
+        if *target.inner_with(&self.module.types) == TypeInner::Scalar(Scalar::BOOL)
+            && self.is_pointer_operand(&value)
+        {
+            return self.truthy(value);
+        }
         if self.module.compare_types(value.ty(), target) {
             return self.rvalue(value);
         }
@@ -21,6 +26,9 @@ impl Parser<'_> {
         value: ExpressionValue,
         target: Scalar,
     ) -> Result<Value, ParseError> {
+        if target == Scalar::BOOL && self.is_pointer_operand(&value) {
+            return self.truthy(value);
+        }
         let value = self.rvalue(value)?;
         if self.require_scalar_type(&value.ty, value.span)? == target {
             return Ok(value);
@@ -213,7 +221,11 @@ impl Parser<'_> {
         value: ExpressionValue,
         target: &TypeResolution,
     ) -> Result<Value, ParseError> {
-        self.require_scalar_type(value.ty(), value.span())?;
+        if *target.inner_with(&self.module.types) != TypeInner::Scalar(Scalar::BOOL)
+            || !self.is_pointer_operand(&value)
+        {
+            self.require_scalar_type(value.ty(), value.span())?;
+        }
         let mut value = self.convert_value(value, target)?;
         value.constant = value.constant.non_literal();
         Ok(value)

@@ -44,7 +44,7 @@ void main() {
     uint local_12 = 0u;
     uint local_13 = 0u;
     output_ = uint[2](0u, 0u);
-    output_[0] = 0u;
+    output_[0] = 2u;
     output_[1] = 0u;
     uint lane = threadIdx.x;
     uint base = (blockIdx.x * 8u);
@@ -78,7 +78,7 @@ void main() {
     memoryBarrierShared();
     barrier();
     pointer = uint[2](0u, 0u);
-    pointer[0] = 1u;
+    pointer[0] = 3u;
     pointer[1] = 0u;
     uint _e65[2] = pointer;
     local_2 = _e65;

@@ -262,7 +262,7 @@ fn local_pointers() {
     var local_230: u32;
 
     out = array<u32, 3>();
-    out[0] = 0u;
+    out[0] = 2u;
     out[1] = 0u;
     values[0] = 2i;
     values[1] = 3i;
@@ -273,7 +273,7 @@ fn local_pointers() {
     index = (_e17 + 1i);
     local = u32(_e17);
     first = array<u32, 3>();
-    first[0] = 1u;
+    first[0] = 3u;
     first[1] = 0u;
     let _e28 = local;
     let _e30 = first[1];
@@ -290,7 +290,7 @@ fn local_pointers() {
     index = (_e43 + 1i);
     local_3 = u32(_e43);
     offset = array<u32, 3>();
-    offset[0] = 1u;
+    offset[0] = 3u;
     offset[1] = 0u;
     let _e54 = local_3;
     let _e56 = offset[1];
@@ -309,14 +309,14 @@ fn local_pointers() {
     let _e77 = local_6;
     if (_e77 != 0u) {
         selected = array<u32, 3>();
-        selected[0] = 1u;
+        selected[0] = 3u;
         selected[1] = 0u;
         let _e87 = local_4;
         let _e89 = selected[1];
         selected[1] = (_e89 + _e87);
     } else {
         selected = array<u32, 3>();
-        selected[0] = 1u;
+        selected[0] = 3u;
         selected[1] = 0u;
         let _e99 = local_5;
         let _e101 = selected[1];
@@ -536,7 +536,7 @@ fn local_pointers() {
     out_1[_e461] = _e436;
     value = 31i;
     object = array<u32, 3>();
-    object[0] = 2u;
+    object[0] = 4u;
     object[1] = 0u;
     let _e472 = object;
     local_30 = _e472;
@@ -551,7 +551,7 @@ fn local_pointers() {
     let _e488 = value;
     value = (_e488 + 2i);
     frozen = array<u32, 3>();
-    frozen[0] = 2u;
+    frozen[0] = 4u;
     frozen[1] = 0u;
     let _e498 = frozen;
     local_33 = _e498;
@@ -586,7 +586,7 @@ fn local_pointers() {
     points[1].y = 7i;
     local_34 = u32(1i);
     pair = array<u32, 3>();
-    pair[0] = 3u;
+    pair[0] = 5u;
     pair[1] = 0u;
     let _e561 = local_34;
     let _e563 = pair[1];
@@ -616,7 +616,7 @@ fn local_pointers() {
     let _e605 = local_143[2];
     local_146 = u32(_e605);
     component = array<u32, 3>();
-    component[0] = 7u;
+    component[0] = 9u;
     component[1] = 0u;
     let _e614 = local_145;
     component[2] = _e614;
@@ -687,7 +687,7 @@ fn local_pointers() {
     records[1].samples[1] = 17i;
     local_43 = u32(1i);
     record = array<u32, 3>();
-    record[0] = 4u;
+    record[0] = 6u;
     record[1] = 0u;
     let _e744 = local_43;
     let _e746 = record[1];
@@ -703,7 +703,7 @@ fn local_pointers() {
     let _e763 = local_163[2];
     local_166 = u32(_e763);
     sample = array<u32, 3>();
-    sample[0] = 6u;
+    sample[0] = 8u;
     sample[1] = 0u;
     let _e772 = local_165;
     sample[2] = _e772;
@@ -870,7 +870,7 @@ fn local_pointers() {
     matrix[1][1] = 31i;
     local_62 = u32(1i);
     row = array<u32, 3>();
-    row[0] = 5u;
+    row[0] = 7u;
     row[1] = 0u;
     let _e1063 = local_62;
     row[2] = _e1063;

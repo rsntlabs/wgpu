@@ -58,7 +58,9 @@ fn pointer_dependencies(
 ) -> Result<(), ParseError> {
     match node {
         PointerDependency::Expression(handle) => match state.pointers.expressions[handle].kind {
-            PointerExpressionKind::Parameter(_) | PointerExpressionKind::Snapshot(_) => {}
+            PointerExpressionKind::Null
+            | PointerExpressionKind::Parameter(_)
+            | PointerExpressionKind::Snapshot(_) => {}
             PointerExpressionKind::Object(binding) => {
                 visit(PointerDependency::Reference(binding))?;
             }
@@ -299,6 +301,11 @@ impl Parser<'_> {
         if base != expression.pointee {
             return Err(pointer_state_error(value.span));
         }
+        if matches!(expression.kind, PointerExpressionKind::Null)
+            && value.constant_address.is_some()
+        {
+            return Err(pointer_state_error(value.span));
+        }
         self.validate_pointer_rvalue(state, value.expression, value.qualifiers, value.span)?;
         if let Some(address) = value.constant_address {
             if let Some(extent) = address.extent {
@@ -335,6 +342,7 @@ impl Parser<'_> {
                 .check_contains_handle(expression.pointee)
                 .map_err(|_| pointer_state_error(span))?;
             let expected_depth = match expression.kind {
+                PointerExpressionKind::Null => 1,
                 PointerExpressionKind::Object(binding) => {
                     self.validate_pointer_objects(state, function, binding, span, |cell| {
                         if cell.pointee == expression.pointee {
@@ -500,9 +508,9 @@ impl Parser<'_> {
         for (_, reference) in state.bound_references.iter() {
             self.parameter_expansion_budget
                 .charge_work(reference.targets.len() + 1, span)?;
-            if reference.targets.is_empty()
-                || (reference.selector.is_none() && reference.targets.len() != 1)
-            {
+            self.parameter_expansion_budget
+                .charge_map_entry::<u32, ()>(reference.targets.len(), span)?;
+            if !reference_bindings::bound_reference_is_valid(reference) {
                 return Err(pointer_state_error(span));
             }
             if let Some(selector) = reference.selector {

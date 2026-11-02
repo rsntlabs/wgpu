@@ -40,10 +40,10 @@ fn kernel() {
     var local_28: u32;
 
     output = array<u32, 2>();
-    output[0] = 0u;
+    output[0] = 2u;
     output[1] = 0u;
     input = array<u32, 2>();
-    input[0] = 1u;
+    input[0] = 3u;
     input[1] = 0u;
     let _e13 = output;
     local = _e13;

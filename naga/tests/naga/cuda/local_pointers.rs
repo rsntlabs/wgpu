@@ -481,14 +481,6 @@ __global__ void kernel() {
 }
 "#,
         r#"__global__ void kernel() {
-    int *pointer{};
-}
-"#,
-        r#"__global__ void kernel() {
-    int *pointer = {};
-}
-"#,
-        r#"__global__ void kernel() {
     int values[2]{2, 3};
     int *pointer{values, values + 1};
 }
@@ -500,14 +492,6 @@ __global__ void kernel() {
 "#,
         r#"__global__ void kernel() {
     int *pointer = nullptr;
-}
-"#,
-        r#"__global__ void kernel() {
-    int *pointer = 0;
-}
-"#,
-        r#"__global__ void kernel() {
-    int *pointer{0};
 }
 "#,
         r#"__global__ void kernel() {

@@ -229,7 +229,9 @@ impl<'a> Analysis<'a> {
                     },
                 )
             }
-            PointerOperation::Assign { .. } | PointerOperation::Update { .. } => return Ok(false),
+            PointerOperation::Assign { .. }
+            | PointerOperation::Update { .. }
+            | PointerOperation::Test { .. } => return Ok(false),
         };
         Ok(self.define(definition.0, definition.1))
     }

@@ -37,7 +37,8 @@ impl Parser<'_> {
             .bound_references
             .try_get(binding)
             .map_err(|_| pointer_state_error(span))?;
-        if reference.targets.is_empty()
+        if reference.is_nullable
+            || reference.targets.is_empty()
             || (reference.selector.is_none() && reference.targets.len() != 1)
         {
             return Err(pointer_state_error(span));
@@ -162,6 +163,35 @@ impl Parser<'_> {
                 return Err(pointer_state_error(span));
             }
             match *operation {
+                PointerOperation::Test {
+                    destination,
+                    ref value,
+                    ..
+                } => {
+                    self.validate_source_pointer_value(&state.pointers, function, value)?;
+                    let Expression::LocalVariable(local) = *function
+                        .expressions
+                        .try_get(destination)
+                        .map_err(|_| pointer_state_error(span))?
+                    else {
+                        return Err(pointer_state_error(span));
+                    };
+                    let variable = function
+                        .local_variables
+                        .try_get(local)
+                        .map_err(|_| pointer_state_error(span))?;
+                    self.module
+                        .types
+                        .check_contains_handle(variable.ty)
+                        .map_err(|_| pointer_state_error(span))?;
+                    if variable.init.is_some()
+                        || state.pointers.cells.contains_key(&local)
+                        || state.pointers.validation_addresses.contains_key(&local)
+                        || self.module.types[variable.ty].inner != TypeInner::Scalar(Scalar::BOOL)
+                    {
+                        return Err(pointer_state_error(span));
+                    }
+                }
                 PointerOperation::Initialize {
                     destination,
                     ref value,

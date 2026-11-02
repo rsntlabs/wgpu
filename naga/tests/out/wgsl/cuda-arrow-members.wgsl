@@ -359,7 +359,7 @@ fn arrow_members() {
     var local_321: u32;
 
     out = array<u32, 3>();
-    out[0] = 0u;
+    out[0] = 2u;
     out[1] = 0u;
     records[0].nested.value = 2i;
     records[0].point.x = 3i;
@@ -506,13 +506,13 @@ fn arrow_members() {
     local_95 = i32();
     local_96 = i32();
     record = array<u32, 3>();
-    record[0] = 1u;
+    record[0] = 3u;
     record[1] = 0u;
     let _e326 = local_12;
     let _e328 = record[1];
     record[1] = (_e328 + _e326);
     view = array<u32, 3>();
-    view[0] = 1u;
+    view[0] = 3u;
     view[1] = 0u;
     let _e338 = view;
     local_84 = _e338;
@@ -664,7 +664,7 @@ fn arrow_members() {
     local_99 = i32();
     local_100 = i32();
     value = array<u32, 3>();
-    value[0] = 1u;
+    value[0] = 3u;
     value[1] = 0u;
     let _e615 = local_19;
     let _e617 = value[1];
@@ -741,15 +741,15 @@ fn arrow_members() {
     local_109 = i32();
     local_110 = i32();
     whole = array<u32, 3>();
-    whole[0] = 1u;
+    whole[0] = 3u;
     whole[1] = 0u;
     field = array<u32, 3>();
-    field[0] = 2u;
+    field[0] = 4u;
     field[1] = 0u;
     let _e768 = local_101;
     field[2] = _e768;
     view_1 = array<u32, 3>();
-    view_1[0] = 1u;
+    view_1[0] = 3u;
     view_1[1] = 0u;
     let _e777 = whole;
     local_102 = _e777;
@@ -860,7 +860,7 @@ fn arrow_members() {
     local_113 = u32();
     local_114 = i32();
     value_1 = array<u32, 3>();
-    value_1[0] = 1u;
+    value_1[0] = 3u;
     value_1[1] = 0u;
     let _e981 = local_30;
     let _e983 = value_1[1];
@@ -931,7 +931,7 @@ fn arrow_members() {
     local_120 = i32();
     local_121 = i32();
     value_2 = array<u32, 3>();
-    value_2[0] = 3u;
+    value_2[0] = 5u;
     value_2[1] = 0u;
     value_2[2] = _e1097;
     let _e1114 = value_2;

@@ -494,7 +494,7 @@ fn pointer_parameters() {
     var local_452: u32;
 
     out = array<u32, 3>();
-    out[0] = 0u;
+    out[0] = 2u;
     out[1] = 0u;
     values[0] = 1i;
     values[1] = 2i;
@@ -514,13 +514,13 @@ fn pointer_parameters() {
     local_92 = i32();
     local_93 = i32();
     first = array<u32, 3>();
-    first[0] = 1u;
+    first[0] = 3u;
     first[1] = 0u;
     let _e49 = local;
     let _e51 = first[1];
     first[1] = (_e51 + _e49);
     second = array<u32, 3>();
-    second[0] = 1u;
+    second[0] = 3u;
     second[1] = 0u;
     let _e60 = local_1;
     let _e62 = second[1];
@@ -691,7 +691,7 @@ fn pointer_parameters() {
     local_98 = i32();
     local_99 = i32();
     value = array<u32, 3>();
-    value[0] = 1u;
+    value[0] = 3u;
     value[1] = 0u;
     let _e355 = local_12;
     let _e357 = value[1];
@@ -756,7 +756,7 @@ fn pointer_parameters() {
     local_104 = i32();
     local_105 = i32();
     value_1 = array<u32, 3>();
-    value_1[0] = 1u;
+    value_1[0] = 3u;
     value_1[1] = 0u;
     let _e470 = local_16;
     let _e472 = value_1[1];
@@ -826,7 +826,7 @@ fn pointer_parameters() {
     local_116 = i32();
     local_117 = i32();
     value_2 = array<u32, 3>();
-    value_2[0] = 1u;
+    value_2[0] = 3u;
     value_2[1] = 0u;
     let _e595 = local_18;
     let _e597 = value_2[1];
@@ -856,7 +856,7 @@ fn pointer_parameters() {
     let _e642 = local_245[2];
     local_248 = u32(_e642);
     value_3 = array<u32, 3>();
-    value_3[0] = 1u;
+    value_3[0] = 3u;
     let _e649 = local_247;
     value_3[1] = _e649;
     let _e652 = value_3;
@@ -947,7 +947,7 @@ fn pointer_parameters() {
     local_122 = i32();
     local_123 = i32();
     value_4 = array<u32, 3>();
-    value_4[0] = 1u;
+    value_4[0] = 3u;
     let _e801 = local_23;
     value_4[1] = _e801;
     let _e804 = value_4;
@@ -1026,7 +1026,7 @@ fn pointer_parameters() {
     out_1[_e928] = u32(_e902);
     local_125 = u32();
     value_5 = array<u32, 3>();
-    value_5[0] = 2u;
+    value_5[0] = 4u;
     value_5[1] = 0u;
     let _e939 = value_5;
     local_124 = _e939;
@@ -1065,7 +1065,7 @@ fn pointer_parameters() {
     local_127 = u32();
     local_128 = i32();
     value_6 = array<u32, 3>();
-    value_6[0] = 3u;
+    value_6[0] = 5u;
     value_6[1] = 0u;
     amount = 2i;
     let _e1009 = amount;
@@ -1121,7 +1121,7 @@ fn pointer_parameters() {
     local_141 = i32();
     local_142 = i32();
     value_7 = array<u32, 3>();
-    value_7[0] = 4u;
+    value_7[0] = 6u;
     value_7[1] = 0u;
     let _e1111 = value_7;
     local_131 = _e1111;
@@ -1319,10 +1319,10 @@ fn pointer_parameters() {
     local_153 = i32();
     local_154 = i32();
     value_8 = array<u32, 3>();
-    value_8[0] = 5u;
+    value_8[0] = 7u;
     value_8[1] = 0u;
     view = array<u32, 3>();
-    view[0] = 5u;
+    view[0] = 7u;
     view[1] = 0u;
     let _e1485 = view;
     local_145 = _e1485;
@@ -1473,7 +1473,7 @@ fn pointer_parameters() {
     let _e1746 = local_52;
     local_156 = u32();
     value_9 = array<u32, 3>();
-    value_9[0] = 6u;
+    value_9[0] = 8u;
     value_9[1] = 0u;
     value_9[2] = _e1746;
     let _e1756 = local_53;
@@ -1519,7 +1519,7 @@ fn pointer_parameters() {
     local_158 = u32();
     local_159 = i32();
     value_10 = array<u32, 3>();
-    value_10[0] = 7u;
+    value_10[0] = 9u;
     value_10[1] = 0u;
     value_10[2] = _e1828;
     amount_1 = 3i;
@@ -1572,13 +1572,13 @@ fn pointer_parameters() {
     local_167 = f32();
     local_168 = f32();
     value_11 = array<u32, 3>();
-    value_11[0] = 8u;
+    value_11[0] = 10u;
     value_11[1] = 0u;
     let _e1939 = local_59;
     let _e1941 = value_11[1];
     value_11[1] = (_e1941 + _e1939);
     view_1 = array<u32, 3>();
-    view_1[0] = 8u;
+    view_1[0] = 10u;
     view_1[1] = 0u;
     let _e1951 = view_1;
     local_162 = _e1951;
@@ -1698,7 +1698,7 @@ fn pointer_parameters() {
     local_177 = bool();
     local_178 = bool();
     value_12 = array<u32, 3>();
-    value_12[0] = 9u;
+    value_12[0] = 11u;
     value_12[1] = 0u;
     let _e2160 = value_12;
     local_171 = _e2160;
@@ -1805,7 +1805,7 @@ fn pointer_parameters() {
     fixed[0] = 3i;
     fixed[1] = 4i;
     value_13 = array<u32, 3>();
-    value_13[0] = 1u;
+    value_13[0] = 3u;
     value_13[1] = 0u;
     local_72 = 10i;
     let _e2344 = local_72;
@@ -1826,7 +1826,7 @@ fn pointer_parameters() {
     let _e2370 = local_435;
     out_1[_e2370] = u32(_e2344);
     value_14 = array<u32, 3>();
-    value_14[0] = 10u;
+    value_14[0] = 12u;
     value_14[1] = 0u;
     local_75 = 20i;
     let _e2380 = local_75;
@@ -1852,7 +1852,7 @@ fn pointer_parameters() {
     local_183 = i32();
     local_184 = i32();
     value_15 = array<u32, 3>();
-    value_15[0] = 1u;
+    value_15[0] = 3u;
     value_15[1] = 0u;
     let _e2425 = local_78;
     let _e2427 = value_15[1];

@@ -290,6 +290,11 @@ impl Parser<'_> {
             (0..self.candidate_arity(candidate)).any(|logical_index| {
                 self.candidate_mode(candidate, logical_index).is_indirect()
                     || self.candidate_type(candidate, logical_index).is_none()
+                    || self
+                        .candidate_type(candidate, logical_index)
+                        .is_some_and(|ty| {
+                            *ty.inner_with(&self.module.types) == TypeInner::Scalar(Scalar::BOOL)
+                        })
             })
         })
     }

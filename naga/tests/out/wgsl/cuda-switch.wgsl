@@ -470,7 +470,7 @@ fn switches() {
     var local_157: u32;
 
     out = array<u32, 2>();
-    out[0] = 0u;
+    out[0] = 2u;
     out[1] = 0u;
     let _e9 = case_chain(-(1i));
     let _e12 = out;

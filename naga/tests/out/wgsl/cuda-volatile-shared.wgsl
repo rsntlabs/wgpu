@@ -42,7 +42,7 @@ fn exchange(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin(workgro
     var local_28: u32;
 
     output = array<u32, 2>();
-    output[0] = 0u;
+    output[0] = 2u;
     output[1] = 0u;
     let lane = threadIdx.x;
     let block = blockIdx.x;
@@ -58,7 +58,7 @@ fn exchange(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin(workgro
     local_6 = u32();
     local_7 = u32();
     values = array<u32, 2>();
-    values[0] = 1u;
+    values[0] = 3u;
     values[1] = 0u;
     index = ((lane + 1u) % 4u);
     let _e41 = values;
@@ -108,7 +108,7 @@ fn exchange(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin(workgro
     local_12 = u32();
     local_13 = u32();
     values_1 = array<u32, 2>();
-    values_1[0] = 1u;
+    values_1[0] = 3u;
     values_1[1] = 0u;
     index_1 = ((lane + 3u) % 4u);
     let _e117 = values_1;
