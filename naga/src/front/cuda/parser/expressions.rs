@@ -233,6 +233,8 @@ impl Parser<'_> {
                     span,
                 )?;
                 return Ok(Value {
+                    category: ValueCategory::Prvalue,
+                    qualifiers: Qualifiers::NONE,
                     constant: ConstantValue::evaluated(value.constant.literal.and_then(
                         |literal| constant_evaluation::unary(UnaryOperator::LogicalNot, literal),
                     )),
@@ -253,6 +255,8 @@ impl Parser<'_> {
                     span,
                 )?;
                 return Ok(Value {
+                    category: ValueCategory::Prvalue,
+                    qualifiers: Qualifiers::NONE,
                     constant: ConstantValue::evaluated(value.constant.literal.and_then(
                         |literal| constant_evaluation::unary(UnaryOperator::BitwiseNot, literal),
                     )),
@@ -282,6 +286,8 @@ impl Parser<'_> {
             };
             let handle = self.append(expression, span)?;
             return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
                 constant: ConstantValue::evaluated(value.constant.literal.and_then(|literal| {
                     constant_evaluation::unary(UnaryOperator::Negate, literal)
                 })),
@@ -328,12 +334,14 @@ impl Parser<'_> {
                     {
                         return self.fail("volatile class value construction is unsupported");
                     }
-                    return self.type_expression(target.ty, token.1);
+                    return self.type_expression(target, token.1);
                 }
                 if matches!(name, "true" | "false") {
                     let handle =
                         self.append(Expression::Literal(Literal::Bool(name == "true")), token.1)?;
                     return Ok(Value {
+                        category: ValueCategory::Prvalue,
+                        qualifiers: Qualifiers::NONE,
                         constant: Literal::Bool(name == "true").into(),
                         handle,
                         ty: scalar_resolution(Scalar::BOOL),
@@ -512,6 +520,18 @@ impl Parser<'_> {
 
     pub(super) fn type_expression(
         &mut self,
+        target: QualifiedType,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        let mut result = self.type_value_expression(target.ty, span)?;
+        if let ExpressionResult::Value(ExpressionValue::Plain(ref mut value)) = result {
+            value.qualifiers = self.prvalue_qualifiers(&value.ty, target.qualifiers);
+        }
+        Ok(result)
+    }
+
+    fn type_value_expression(
+        &mut self,
         target: TypeSpecifier,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
@@ -596,6 +616,8 @@ impl Parser<'_> {
             value.span,
         )?;
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
             constant: ConstantValue::evaluated(value.constant.literal.and_then(|value| {
                 constant_evaluation::binary(BinaryOperator::NotEqual, value, literal)
             })),
@@ -725,6 +747,8 @@ impl Parser<'_> {
             _ => None,
         };
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
             constant: ConstantValue::evaluated(constant),
             handle,
             ty: scalar_resolution(Scalar::BOOL),

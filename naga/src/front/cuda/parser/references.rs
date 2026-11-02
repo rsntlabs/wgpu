@@ -1,6 +1,18 @@
 use super::*;
 
 impl Parser<'_> {
+    pub(super) fn prvalue_qualifiers(
+        &self,
+        ty: &TypeResolution,
+        qualifiers: Qualifiers,
+    ) -> Qualifiers {
+        if self.is_source_class(ty) {
+            qualifiers
+        } else {
+            Qualifiers::NONE
+        }
+    }
+
     pub(super) fn member_access(
         &mut self,
         value: ExpressionResult,
@@ -76,6 +88,8 @@ impl Parser<'_> {
                     span,
                 )?;
                 Ok(Value {
+                    category: ValueCategory::Xvalue,
+                    qualifiers: value.qualifiers,
                     handle,
                     ty,
                     span,
@@ -140,6 +154,8 @@ impl Parser<'_> {
                     span,
                 )?;
                 Ok(Value {
+                    category: ValueCategory::Xvalue,
+                    qualifiers: value.qualifiers,
                     handle,
                     ty: element_ty,
                     span,
@@ -320,12 +336,17 @@ impl Parser<'_> {
                     span: pointer.span,
                 })
             }
-            ExpressionValue::Plain(value) => return Ok(value),
+            ExpressionValue::Plain(mut value) => {
+                value.category = ValueCategory::Prvalue;
+                value.qualifiers = self.prvalue_qualifiers(&value.ty, value.qualifiers);
+                return Ok(value);
+            }
             ExpressionValue::Reference(reference) => reference,
         };
         let ty = reference.ty.clone();
         let span = reference.span;
         let reference_volatile = reference.qualifiers.is_volatile;
+        let qualifiers = self.prvalue_qualifiers(&ty, reference.qualifiers);
         self.require_volatile_scalar(reference.qualifiers, &ty, span)?;
         let constant = reference.constant;
         if !matches!(
@@ -349,6 +370,8 @@ impl Parser<'_> {
         })?;
         let handle = self.append(Expression::Load { pointer }, span)?;
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers,
             handle,
             ty,
             span,
@@ -383,6 +406,8 @@ impl Parser<'_> {
             self.record_volatile_load(handle, span)?;
         }
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: self.prvalue_qualifiers(&reference.ty, reference.qualifiers),
             handle,
             ty: reference.ty,
             span,
@@ -402,6 +427,8 @@ impl Parser<'_> {
     ) -> Result<Value, ParseError> {
         let handle = self.append(Expression::Load { pointer }, span)?;
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
             handle,
             ty: ty.clone(),
             span,

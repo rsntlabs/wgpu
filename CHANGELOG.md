@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Preserve CUDA value qualifiers and categories through function results, construction, members, and conditionals.
 - Support CUDA function templates with type arguments, argument deduction, and typed kernel instances.
 - Support CUDA function templates with explicit integral arguments and kernel instantiation definitions.
 - Support CUDA volatile scalar accesses through storage and shared-memory pointer and reference views.

@@ -189,8 +189,16 @@ struct ConditionalReference {
     depth: u32,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ValueCategory {
+    Prvalue,
+    Xvalue,
+}
+
 #[derive(Clone, Debug)]
 struct Value {
+    category: ValueCategory,
+    qualifiers: Qualifiers,
     handle: Handle<Expression>,
     ty: TypeResolution,
     span: Span,
@@ -740,6 +748,8 @@ impl<'a> Parser<'a> {
             self.append(Expression::AccessIndex { base, index }, span)?
         };
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
             constant: ConstantValue::default(),
             handle,
             ty: scalar_resolution(Scalar::U32),
@@ -869,6 +879,8 @@ impl<'a> Parser<'a> {
         let literal = number::parse(text).ok_or_else(invalid)?;
         let handle = self.append(Expression::Literal(literal), span)?;
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
             constant: literal.into(),
             handle,
             ty: scalar_resolution(literal.scalar()),

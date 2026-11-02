@@ -84,6 +84,8 @@ impl Parser<'_> {
         let ty = self.type_handle(target, span);
         let handle = self.append(Expression::Compose { ty, components }, span)?;
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
             handle,
             ty: target.clone(),
             span,
@@ -208,6 +210,8 @@ impl Parser<'_> {
             span,
         )?;
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
             handle,
             ty,
             span,

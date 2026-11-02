@@ -88,6 +88,12 @@ ordering of the supported template parameter patterns. An explicit `<...>` or
 `<>` selects only templates. Equal normalized template arguments reuse one
 helper instance regardless of whether arguments were explicit or deduced.
 
+Class-valued function results and qualified constructors retain source
+qualification. Members of temporary class values retain that qualification when
+binding references; creating a scalar value removes its top-level qualification.
+These rules also apply to ordinary helpers. Repeated helper declarations must
+agree on result qualification.
+
 Device helpers accept explicit `int`, `unsigned int`, and `bool` template
 parameters, including aliases and top-level `const` or `volatile` qualification.
 Template arguments must be scalar constant expressions that convert to the
@@ -140,6 +146,7 @@ as `copy_typed<unsigned>`, even when the instantiation uses a type alias.
 Class templates, dependent non-type parameter types, default template arguments,
 parameter packs, explicit specializations, `if constexpr`, and overloaded kernel
 templates are unsupported.
+Selected array-reference and pointer-reference instances remain unsupported.
 Unrequested template bodies receive structural checks; full semantic checking
 happens when an instance is requested. This does not yet implement all C++
 diagnostics for unused template bodies. Instance creation and source replay use

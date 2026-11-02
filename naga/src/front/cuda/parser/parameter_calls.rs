@@ -93,6 +93,7 @@ pub(super) trait CallArgument {
     fn is_thread_block(&self) -> bool;
     fn span(&self) -> Span;
     fn reference_qualifiers(&self) -> Option<Qualifiers>;
+    fn value_qualifiers(&self) -> Option<Qualifiers>;
     fn pointer_type(&self, module: &Module) -> Option<SourcePointerType>;
     fn pointer_object_qualifiers(&self) -> Option<Qualifiers> {
         None
@@ -114,6 +115,9 @@ impl CallArgument for Value {
     }
     fn reference_qualifiers(&self) -> Option<Qualifiers> {
         None
+    }
+    fn value_qualifiers(&self) -> Option<Qualifiers> {
+        Some(self.qualifiers)
     }
     fn pointer_type(&self, _module: &Module) -> Option<SourcePointerType> {
         None
@@ -142,6 +146,12 @@ impl CallArgument for CapturedArgument {
             ExpressionResult::Value(ExpressionValue::Reference(ref reference)) => {
                 Some(reference.qualifiers)
             }
+            _ => None,
+        }
+    }
+    fn value_qualifiers(&self) -> Option<Qualifiers> {
+        match self.value {
+            ExpressionResult::Value(ExpressionValue::Plain(ref value)) => Some(value.qualifiers),
             _ => None,
         }
     }
@@ -456,7 +466,14 @@ impl Parser<'_> {
         );
         self.push_statement(Statement::Block(body), span);
         match (result_pointer, result_ty) {
-            (Some(pointer), Some(ty)) => Ok(self.load_pointer(pointer, &ty, span)?.into()),
+            (Some(pointer), Some(ty)) => {
+                let mut value = self.load_pointer(pointer, &ty, span)?;
+                value.qualifiers = self.prvalue_qualifiers(
+                    &ty,
+                    self.function_declarations[&function].result_qualifiers,
+                );
+                Ok(value.into())
+            }
             _ => Ok(ExpressionResult::Void(span)),
         }
     }

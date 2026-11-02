@@ -81,6 +81,12 @@ struct SignatureSource<'a> {
     end: LexerPosition,
 }
 
+struct ResolvedSignature {
+    parameters: Vec<SourceParameter>,
+    result: Option<Handle<Type>>,
+    result_qualifiers: Qualifiers,
+}
+
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum PatternType {
     Concrete(Handle<Type>),
@@ -173,6 +179,8 @@ impl<'a> Parser<'a> {
         })?;
         let handle = self.append(Expression::Literal(literal), span)?;
         Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
             handle,
             ty: scalar_resolution(scalar),
             span,
@@ -969,7 +977,7 @@ impl<'a> Parser<'a> {
         template: usize,
         arguments: &[TemplateValue],
         span: Span,
-    ) -> Result<(Vec<SourceParameter>, Option<Handle<Type>>), ParseError> {
+    ) -> Result<ResolvedSignature, ParseError> {
         let declaration = &self.templates.declarations[template];
         self.parameter_expansion_budget
             .charge_slice::<TemplateParameter<'_>>(declaration.parameters.len(), span)?;
@@ -998,7 +1006,11 @@ impl<'a> Parser<'a> {
             self.parameters()?;
             self.lexer.expect_span(Token::End)?;
             let result = self.function.ir.result.as_ref().map(|result| result.ty);
-            Ok((core::mem::take(&mut self.function.parameters), result))
+            Ok(ResolvedSignature {
+                parameters: core::mem::take(&mut self.function.parameters),
+                result,
+                result_qualifiers: header.result_qualifiers,
+            })
         })();
         self.templates.parsing_signature = previous_signature;
         self.function = previous_function;
@@ -1035,8 +1047,11 @@ impl<'a> Parser<'a> {
         }
         let name = self.templates.declarations[template].header.name;
         let name = self.template_selector(name, &key.arguments, span)?;
-        let (signature, result) =
-            self.resolved_template_signature(template, &key.arguments, span)?;
+        let ResolvedSignature {
+            parameters: signature,
+            result,
+            result_qualifiers,
+        } = self.resolved_template_signature(template, &key.arguments, span)?;
         let declaration = &self.templates.declarations[template];
         self.parameter_expansion_budget
             .charge_slice::<Instance>(1, span)?;
@@ -1090,6 +1105,7 @@ impl<'a> Parser<'a> {
                 function,
                 FunctionDeclaration {
                     parameters: signature,
+                    result_qualifiers,
                     has_host: declaration.header.has_host,
                     is_static: declaration.header.is_static,
                     inlining: declaration.header.inlining,
@@ -1535,8 +1551,8 @@ impl<'a> Parser<'a> {
             let Some(values) = self.normalized_template_arguments(id, &arguments, span)? else {
                 continue;
             };
-            let (instantiated, _) = self.resolved_template_signature(id, &values, span)?;
-            if instantiated == signature {
+            let instantiated = self.resolved_template_signature(id, &values, span)?;
+            if instantiated.parameters == signature {
                 selected = Some((id, values));
                 break;
             }

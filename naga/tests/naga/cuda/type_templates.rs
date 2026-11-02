@@ -664,6 +664,16 @@ fn cuda_type_templates_strip_only_qualifiers_written_on_reference_patterns() {
 }
 
 #[test]
+fn cuda_type_templates_keep_class_prvalue_constness_for_reference_deduction() {
+    roundtrip(
+        "struct Record { unsigned value; };
+        __device__ const Record make() { return Record{7u}; }
+        template<class Value> __device__ unsigned selected(Value &value) { return value.value; }
+        __global__ void kernel(unsigned *output) { output[0] = selected(make()); }",
+    );
+}
+
+#[test]
 fn cuda_type_templates_bound_nested_deduced_calls_without_losing_instance_reuse() {
     let source = |depth| {
         format!(
@@ -682,4 +692,188 @@ fn cuda_type_templates_bound_nested_deduced_calls_without_losing_instance_reuse(
         error.message.contains("limit") || error.message.contains("nesting"),
         "{error}"
     );
+}
+
+#[test]
+fn cuda_type_templates_retain_const_array_member_types_before_selected_diagnostics() {
+    let error = rejected(
+        "struct Record { unsigned values[2]; };
+        __device__ const Record make() { return Record{{3u, 5u}}; }
+        template<class Value> __device__ unsigned selected(Value &value) { return 1u; }
+        __global__ void kernel(unsigned *output) { output[0] = selected(make().values); }",
+    );
+    assert!(
+        error.message.contains("array") && error.message.contains("reference"),
+        "{error}"
+    );
+}
+
+#[test]
+fn cuda_type_templates_keep_class_result_qualifiers_across_call_paths() {
+    for declaration in [
+        "__device__ const Record make(unsigned value) { return Record{value}; }",
+        "__device__ const Record make(const unsigned &value) { return Record{value}; }",
+        "template<class Result> __device__ Result make(unsigned value) { return Result{value}; }",
+    ] {
+        let invocation = if declaration.starts_with("template") {
+            "make<const Record>(input)"
+        } else {
+            "make(input)"
+        };
+        roundtrip(&format!(
+            "struct Record {{ unsigned value; }};
+            {declaration}
+            template<class Value> __device__ unsigned selected(Value &value) {{ return value.value; }}
+            __global__ void kernel(unsigned *output) {{
+                unsigned input = 7u; output[0] = selected({invocation});
+            }}"
+        ));
+    }
+}
+
+#[test]
+fn cuda_type_templates_keep_qualified_alias_constructor_values() {
+    for (definition, expression, member) in [
+        (
+            "struct Record { unsigned value; }; using Frozen = const Record;",
+            "Frozen{7u}",
+            "value",
+        ),
+        ("using Frozen = const float2;", "Frozen{3.0f, 4.0f}", "x"),
+        ("using Frozen = const dim3;", "Frozen(7u)", "x"),
+    ] {
+        roundtrip(&format!(
+            "{definition}
+            template<class Value> __device__ unsigned selected(Value &value) {{ return unsigned(value.{member}); }}
+            __global__ void kernel(unsigned *output) {{ output[0] = selected({expression}); }}"
+        ));
+    }
+}
+
+#[test]
+fn cuda_type_templates_keep_class_conditional_prvalue_qualifiers_in_both_orders() {
+    for expression in [
+        "condition ? make() : Record{9u}",
+        "condition ? Record{9u} : make()",
+        "condition ? local : make()",
+        "condition ? make() : local",
+        "condition ? frozen : Record{9u}",
+        "condition ? Record{9u} : frozen",
+    ] {
+        roundtrip(&format!(
+            "struct Record {{ unsigned value; }};
+            __device__ const Record make() {{ return Record{{7u}}; }}
+            template<class Value> __device__ unsigned selected(Value &value) {{ return value.value; }}
+            __global__ void kernel(unsigned *output, unsigned condition) {{
+                Record local{{3u}}; const Record frozen{{5u}};
+                output[0] = selected({expression});
+            }}"
+        ));
+    }
+}
+
+#[test]
+fn cuda_type_templates_preserve_const_xvalue_members_and_parenthesized_values() {
+    for expression in [
+        "make().inner",
+        "make().inner.value",
+        "((make().inner.value))",
+        "(0u, make().inner.value)",
+        "condition ? make().inner.value : make().inner.value",
+    ] {
+        let body = if expression == "make().inner" {
+            "return value.value;"
+        } else {
+            "return value;"
+        };
+        roundtrip(&format!(
+            "struct Record {{ unsigned value; }};
+            struct Outer {{ Record inner; }};
+            __device__ const Outer make() {{ return Outer{{Record{{7u}}}}; }}
+            template<class Value> __device__ unsigned selected(Value &value) {{ {body} }}
+            __global__ void kernel(unsigned *output, unsigned condition) {{ output[0] = selected({expression}); }}"
+        ));
+    }
+}
+
+#[test]
+fn cuda_type_templates_drop_cv_when_class_members_become_scalar_prvalues() {
+    for expression in [
+        "unsigned(make().value)",
+        "static_cast<const unsigned>(make().value)",
+        "(const unsigned)make().value",
+        "+make().value",
+        "condition ? make().value : 9u",
+        "condition ? 9u : make().value",
+        "condition ? local : make().value",
+        "condition ? make().value : local",
+        "make_scalar()",
+        "Frozen(3u)",
+    ] {
+        rejected(&format!(
+            "struct Record {{ unsigned value; }};
+            using Frozen = const unsigned;
+            __device__ const Record make() {{ return Record{{7u}}; }}
+            __device__ const unsigned make_scalar() {{ return 7u; }}
+            template<class Value> __device__ unsigned selected(Value &value) {{ return unsigned(value); }}
+            __global__ void kernel(unsigned *output, unsigned condition) {{
+                unsigned local = 5u; output[0] = selected({expression});
+            }}"
+        ));
+    }
+}
+
+#[test]
+fn cuda_type_templates_keep_unqualified_class_values_as_prvalues() {
+    for expression in [
+        "Record{7u}",
+        "condition ? local : Record{9u}",
+        "condition ? Record{9u} : local",
+    ] {
+        rejected(&format!(
+            "struct Record {{ unsigned value; }};
+            template<class Value> __device__ unsigned selected(Value &value) {{ return value.value; }}
+            __global__ void kernel(unsigned *output, unsigned condition) {{
+                Record local{{3u}}; output[0] = selected({expression});
+            }}"
+        ));
+    }
+}
+
+#[test]
+fn cuda_type_templates_drop_top_cv_for_by_value_deduction() {
+    let (module, _) = roundtrip(
+        "struct Record { unsigned value; };
+        __device__ const Record make() { return Record{7u}; }
+        template<class Value> __device__ unsigned selected(Value value) { return value.value; }
+        __global__ void kernel(unsigned *output) {
+            output[0] = selected(make()); output[1] = selected(Record{9u});
+        }",
+    );
+    let targets = calls(&module.entry_points[0].function);
+    assert_eq!(targets.len(), 3);
+    assert_eq!(targets[1], targets[2]);
+}
+
+#[test]
+fn cuda_helpers_reject_incompatible_return_qualifiers() {
+    for (first, second) in [
+        ("const Record", "Record"),
+        ("Record", "const Record"),
+        ("const unsigned", "unsigned"),
+        ("unsigned", "const unsigned"),
+    ] {
+        let value = if first.ends_with("Record") {
+            "Record{7u}"
+        } else {
+            "7u"
+        };
+        let error = rejected(&format!(
+            "struct Record {{ unsigned value; }};
+            __device__ {first} make();
+            __device__ {second} make() {{ return {value}; }}
+            __global__ void kernel() {{}}"
+        ));
+        assert!(error.message.contains("result type"), "{error}");
+    }
 }
