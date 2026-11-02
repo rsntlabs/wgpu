@@ -53,6 +53,61 @@ compatibility helpers. Calls reuse each helper across the module, keeping the
 integer algorithms out of source functions while preserving their numerical
 behavior. Other operations can still produce temporary expressions.
 
+## Integral function templates
+
+Device helpers accept explicit `int`, `unsigned int`, and `bool` template
+parameters, including aliases and top-level `const` or `volatile` qualification.
+Template arguments must be scalar constant expressions that convert to the
+parameter type without narrowing. Parameters behave as immutable values and do
+not add shader arguments or buffers. Equal converted arguments reuse the same
+helper instance.
+
+```cuda
+template<int Bias>
+__device__ unsigned adjusted(unsigned value) {
+    return value + unsigned(Bias);
+}
+
+__global__ void apply(unsigned *output) {
+    output[threadIdx.x] = adjusted<3>(threadIdx.x);
+}
+```
+
+Template parameters can supply local and shared array bounds and arguments to
+other templates. Helpers retain the ordinary rules for overloads, pointer and
+reference arguments, Cooperative Groups handles, and synchronization. Names in
+a template body use its definition's scope.
+
+Kernel templates require explicit instantiation definitions in the source:
+
+```cuda
+template<int Width>
+__global__ void fill(unsigned *output) {
+    __shared__ unsigned values[Width];
+    values[threadIdx.x] = threadIdx.x;
+    __syncthreads();
+    output[threadIdx.x] = values[threadIdx.x];
+}
+
+template __global__ void fill<4>(unsigned *);
+```
+
+This example requires `--cuda-workgroup-size 4,1,1` to match its launch shape.
+`Options::workgroup_size` still applies to every emitted kernel; template
+arguments do not select a workgroup size. Requested kernel instances appear in
+request order with canonical source selectors such as `fill<4>`. Use
+`--entry-point 'fill<4>'` to select one in the CLI. Backend identifier rules can
+change the emitted entry name, so library callers should inspect the generated
+backend entry names.
+
+Every template argument must be supplied explicitly. Type and class templates,
+argument deduction, default template arguments, parameter packs, explicit
+specializations, `if constexpr`, and overloaded kernel templates are unsupported.
+Unrequested template bodies receive structural checks; full semantic checking
+happens when an instance is requested. This does not yet implement all C++
+diagnostics for unused template bodies. Instance creation and source replay use
+the frontend's compilation budgets, and recursive calls are rejected.
+
 ## Volatile access
 
 `volatile` scalar accesses through pointers and references can target kernel
@@ -1321,7 +1376,7 @@ includes and other preprocessing forms outside the subset above, host code and l
 pointer operations outside the borrowed subset above,
 mixed-type dynamic shared views, volatile objects and views outside the subset above,
 atomic operations outside the integer overloads above,
-other synchronization primitives, templates,
+other synchronization primitives, template forms outside the subset above,
 double precision, and inline PTX. No CUDA runtime ABI or NVIDIA device code is
 generated.
 

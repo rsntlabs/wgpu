@@ -265,6 +265,15 @@ impl Parser<'_> {
         self.parameter_expansion_budget
             .charge_work(arguments.len(), span)?;
         let candidate = self.resolve_overload(name, &arguments, name_span)?;
+        self.lower_captured_call(candidate, arguments, span)
+    }
+
+    pub(super) fn lower_captured_call(
+        &mut self,
+        candidate: functions::FunctionCandidate,
+        arguments: Vec<CapturedArgument>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
         if matches!(
             candidate,
             functions::FunctionCandidate::Atomic { .. }

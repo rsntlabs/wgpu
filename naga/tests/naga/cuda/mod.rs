@@ -36,6 +36,7 @@ mod inline;
 mod integer_intrinsics;
 mod integer_math;
 mod integer_operators;
+mod integral_templates;
 mod list_initialization;
 mod literals;
 mod local_arrays;

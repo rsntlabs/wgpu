@@ -298,7 +298,7 @@ impl<'a> Lexer<'a> {
         Span::from(offset..self.last_end_offset)
     }
 
-    pub(super) fn position(&self) -> LexerPosition {
+    pub(super) const fn position(&self) -> LexerPosition {
         LexerPosition {
             offset: if self.prepared.is_some() {
                 self.last_end_offset

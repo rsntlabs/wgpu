@@ -344,163 +344,170 @@ impl Parser<'_> {
                 if matches!(name, "threadIdx" | "blockIdx" | "blockDim" | "gridDim") {
                     return self.builtin(name, token.1).map(Into::into);
                 }
+                if self.lexer.peek()?.0 == Token::Paren('<') && self.has_function_template(name) {
+                    return self.template_call(name, token.1);
+                }
                 if self.lexer.peek()?.0 == Token::Paren('(') {
                     return self.call(name, token.1);
                 }
-                let symbol = self.lookup_symbol(name).ok_or_else(|| ParseError {
-                    message: format!("unknown variable `{name}`"),
-                    span: token.1,
-                })?;
-                let symbol = match symbol {
-                    Symbol::DynamicShared(declaration) => {
-                        self.dynamic_shared_symbol(name, declaration, token.1)?
-                    }
-                    symbol => symbol,
-                };
-                let (pointer, ty, qualifiers, span, constant) = match symbol {
-                    Symbol::DynamicShared(_) => unreachable!(),
-                    Symbol::Namespace(_) => {
-                        return Err(ParseError {
-                            message: String::from("namespace cannot be used as a value"),
-                            span: token.1,
-                        })
-                    }
-                    Symbol::ThreadBlock => {
-                        return Ok(ExpressionResult::ThreadBlock(ThreadBlockValue {
-                            span: token.1,
-                            constant: ConstantValue {
-                                literal: None,
-                                is_discardable: true,
-                            },
-                        }))
-                    }
-                    Symbol::Pointer(pointer) => {
-                        return self.pointer_symbol_value(pointer, token.1);
-                    }
-                    Symbol::PendingPointer => {
-                        return Err(ParseError {
-                            message: String::from("pointer initializer cannot use its own binding"),
-                            span: token.1,
-                        });
-                    }
-                    Symbol::PendingAuto => {
-                        return Err(ParseError {
-                            message: String::from("auto initializer cannot use its own binding"),
-                            span: token.1,
-                        });
-                    }
-                    Symbol::PendingThreadBlock => {
-                        return Err(ParseError {
-                            message: String::from(
-                                "thread_block initializer cannot use its own binding",
-                            ),
-                            span: token.1,
-                        })
-                    }
-                    Symbol::PendingReference => {
-                        return Err(ParseError {
-                            message: String::from(
-                                "reference initializer cannot use its own binding",
-                            ),
-                            span: token.1,
-                        });
-                    }
-                    Symbol::Reference {
-                        binding,
-                        ty,
-                        qualifiers,
-                        constant,
-                    } => {
-                        return Ok(ExpressionResult::Value(ExpressionValue::Reference(
-                            ReferenceValue {
-                                discard_read: true,
-                                reference: Reference::Bound(binding),
-                                qualifiers,
-                                ty,
-                                span: token.1,
-                                constant,
-                            },
-                        )));
-                    }
-                    Symbol::Member => {
-                        return Err(ParseError {
-                            message: String::from("non-static structure member requires an object"),
-                            span: token.1,
-                        });
-                    }
-                    Symbol::Type(_) => {
-                        return Err(ParseError {
-                            message: format!("type `{name}` cannot be used as a value"),
-                            span: token.1,
-                        });
-                    }
-                    Symbol::Array {
-                        pointer,
-                        ty,
-                        qualifiers,
-                    } => {
-                        if self.function.address_operand
-                            || self.lexer.peek()?.0 != Token::Paren('[')
-                        {
-                            return self.borrowed_array_value(pointer, qualifiers, token.1);
-                        }
-                        let (pointer, ty, is_discardable) =
-                            self.array_element(pointer, ty, token.1)?;
-                        (
-                            pointer,
-                            ty,
-                            qualifiers,
-                            self.function.ir.expressions.get_span(pointer),
-                            ConstantValue {
-                                literal: None,
-                                is_discardable,
-                            },
-                        )
-                    }
-                    Symbol::Variable {
-                        pointer,
-                        ty,
-                        qualifiers,
-                    } => (
-                        pointer,
-                        ty,
-                        qualifiers,
-                        token.1,
-                        self.pointer_constant(pointer),
-                    ),
-                    Symbol::Constant {
-                        handle,
-                        scalar,
-                        literal,
-                    } => {
-                        return Ok(ExpressionResult::Value(ExpressionValue::Reference(
-                            ReferenceValue {
-                                discard_read: true,
-                                reference: Reference::Constant(handle),
-                                qualifiers: Qualifiers::CONST,
-                                ty: scalar_resolution(scalar),
-                                span: token.1,
-                                constant: ConstantValue {
-                                    literal,
-                                    is_discardable: true,
-                                },
-                            },
-                        )));
-                    }
-                };
-                Ok(ExpressionResult::Value(ExpressionValue::Reference(
+                self.variable_expression(name, token.1)
+            }
+            _ => self.fail("expected a supported scalar expression"),
+        }
+    }
+
+    fn variable_expression(
+        &mut self,
+        name: &str,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        let symbol = self.lookup_symbol(name).ok_or_else(|| ParseError {
+            message: format!("unknown variable `{name}`"),
+            span,
+        })?;
+        let symbol = match symbol {
+            Symbol::DynamicShared(declaration) => {
+                self.dynamic_shared_symbol(name, declaration, span)?
+            }
+            symbol => symbol,
+        };
+        let (pointer, ty, qualifiers, span, constant) = match symbol {
+            Symbol::TemplateParameter { scalar, literal } => {
+                return self.template_parameter_value(scalar, literal, span);
+            }
+            Symbol::DynamicShared(_) => unreachable!(),
+            Symbol::Namespace(_) => {
+                return Err(ParseError {
+                    message: String::from("namespace cannot be used as a value"),
+                    span,
+                })
+            }
+            Symbol::ThreadBlock => {
+                return Ok(ExpressionResult::ThreadBlock(ThreadBlockValue {
+                    span,
+                    constant: ConstantValue {
+                        literal: None,
+                        is_discardable: true,
+                    },
+                }))
+            }
+            Symbol::Pointer(pointer) => {
+                return self.pointer_symbol_value(pointer, span);
+            }
+            Symbol::PendingPointer => {
+                return Err(ParseError {
+                    message: String::from("pointer initializer cannot use its own binding"),
+                    span,
+                });
+            }
+            Symbol::PendingAuto => {
+                return Err(ParseError {
+                    message: String::from("auto initializer cannot use its own binding"),
+                    span,
+                });
+            }
+            Symbol::PendingThreadBlock => {
+                return Err(ParseError {
+                    message: String::from("thread_block initializer cannot use its own binding"),
+                    span,
+                })
+            }
+            Symbol::PendingReference => {
+                return Err(ParseError {
+                    message: String::from("reference initializer cannot use its own binding"),
+                    span,
+                });
+            }
+            Symbol::Reference {
+                binding,
+                ty,
+                qualifiers,
+                constant,
+            } => {
+                return Ok(ExpressionResult::Value(ExpressionValue::Reference(
                     ReferenceValue {
                         discard_read: true,
-                        reference: Reference::Pointer(pointer),
+                        reference: Reference::Bound(binding),
                         qualifiers,
                         ty,
                         span,
                         constant,
                     },
-                )))
+                )));
             }
-            _ => self.fail("expected a supported scalar expression"),
-        }
+            Symbol::Member => {
+                return Err(ParseError {
+                    message: String::from("non-static structure member requires an object"),
+                    span,
+                });
+            }
+            Symbol::Type(_) => {
+                return Err(ParseError {
+                    message: format!("type `{name}` cannot be used as a value"),
+                    span,
+                });
+            }
+            Symbol::Array {
+                pointer,
+                ty,
+                qualifiers,
+            } => {
+                if self.function.address_operand || self.lexer.peek()?.0 != Token::Paren('[') {
+                    return self.borrowed_array_value(pointer, qualifiers, span);
+                }
+                let (pointer, ty, is_discardable) = self.array_element(pointer, ty, span)?;
+                (
+                    pointer,
+                    ty,
+                    qualifiers,
+                    self.function.ir.expressions.get_span(pointer),
+                    ConstantValue {
+                        literal: None,
+                        is_discardable,
+                    },
+                )
+            }
+            Symbol::Variable {
+                pointer,
+                ty,
+                qualifiers,
+            } => (
+                pointer,
+                ty,
+                qualifiers,
+                span,
+                self.pointer_constant(pointer),
+            ),
+            Symbol::Constant {
+                handle,
+                scalar,
+                literal,
+            } => {
+                return Ok(ExpressionResult::Value(ExpressionValue::Reference(
+                    ReferenceValue {
+                        discard_read: true,
+                        reference: Reference::Constant(handle),
+                        qualifiers: Qualifiers::CONST,
+                        ty: scalar_resolution(scalar),
+                        span,
+                        constant: ConstantValue {
+                            literal,
+                            is_discardable: true,
+                        },
+                    },
+                )));
+            }
+        };
+        Ok(ExpressionResult::Value(ExpressionValue::Reference(
+            ReferenceValue {
+                discard_read: true,
+                reference: Reference::Pointer(pointer),
+                qualifiers,
+                ty,
+                span,
+                constant,
+            },
+        )))
     }
 
     pub(super) fn type_expression(
