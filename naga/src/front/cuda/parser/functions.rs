@@ -175,22 +175,23 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         .collect()
 }
 
-#[derive(Clone)]
-enum ReturnType {
+#[derive(Clone, Copy)]
+pub(super) enum ReturnType {
     Void,
     Value(TypeSpecifier),
 }
 
-struct FunctionHeader<'a> {
-    kind: FunctionKind,
-    result: ReturnType,
-    result_span: Span,
-    name: &'a str,
-    name_span: Span,
-    has_host: bool,
-    is_static: bool,
-    inlining: Option<Inlining>,
-    operator: Option<operators::Operator>,
+#[derive(Clone)]
+pub(super) struct FunctionHeader<'a> {
+    pub(super) kind: FunctionKind,
+    pub(super) result: ReturnType,
+    pub(super) result_span: Span,
+    pub(super) name: &'a str,
+    pub(super) name_span: Span,
+    pub(super) has_host: bool,
+    pub(super) is_static: bool,
+    pub(super) inlining: Option<Inlining>,
+    pub(super) operator: Option<operators::Operator>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -300,7 +301,10 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn function_header(&mut self, extern_c: bool) -> Result<FunctionHeader<'a>, ParseError> {
+    pub(super) fn function_header(
+        &mut self,
+        extern_c: bool,
+    ) -> Result<FunctionHeader<'a>, ParseError> {
         let mut kind = None;
         let mut host_span = None;
         let mut result = None;
@@ -512,7 +516,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn kernel(&mut self, header: FunctionHeader<'a>) -> Result<(), ParseError> {
+    pub(super) fn kernel(&mut self, header: FunctionHeader<'a>) -> Result<(), ParseError> {
         if !self.kernels.is_empty() {
             self.activate_parameter_expansion(header.name_span)?;
         }
@@ -560,7 +564,10 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn device_function(&mut self, header: FunctionHeader<'a>) -> Result<(), ParseError> {
+    pub(super) fn initialize_function_header(
+        &mut self,
+        header: &FunctionHeader<'a>,
+    ) -> Result<(), ParseError> {
         self.function.ir.name = Some(String::from(header.name));
         if let ReturnType::Value(ty) = header.result {
             let ty = self.lower_type(ty, header.result_span)?;
@@ -569,6 +576,11 @@ impl<'a> Parser<'a> {
                 binding: None,
             });
         }
+        Ok(())
+    }
+
+    pub(super) fn device_function(&mut self, header: FunctionHeader<'a>) -> Result<(), ParseError> {
+        self.initialize_function_header(&header)?;
         self.parameters()?;
         if let Some(operator) = header.operator {
             self.check_operator_parameters(operator, header.name_span)?;
