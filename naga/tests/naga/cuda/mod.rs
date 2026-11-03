@@ -34,6 +34,7 @@ mod fabs;
 mod float_math;
 mod float_separators;
 mod floorf;
+mod fmodf;
 mod function_macros;
 mod helper_builtins;
 mod helper_parameters;

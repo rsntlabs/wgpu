@@ -38,6 +38,7 @@ mod float_division;
 mod float_math;
 mod float_separators;
 mod floorf;
+mod fmodf;
 mod function_macros;
 mod helper_builtins;
 mod helper_parameters;
@@ -143,6 +144,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FLOAT_MATH,
         CUDA_FLOAT_SEPARATORS,
         CUDA_FLOORF,
+        CUDA_FMODF,
         CUDA_ROUNDF,
         CUDA_RSQRTF,
         CUDA_FUNCTION_MACROS,
@@ -555,6 +557,8 @@ static CUDA_FLOAT_MATH: GpuTestConfiguration = configuration(float_math::cases);
 static CUDA_FLOAT_SEPARATORS: GpuTestConfiguration = configuration(float_separators::cases);
 #[apply(gpu_test!)]
 static CUDA_FLOORF: GpuTestConfiguration = configuration(floorf::cases);
+#[apply(gpu_test!)]
+static CUDA_FMODF: GpuTestConfiguration = configuration(fmodf::cases);
 #[apply(gpu_test!)]
 static CUDA_ROUNDF: GpuTestConfiguration = configuration(roundf::cases);
 #[apply(gpu_test!)]

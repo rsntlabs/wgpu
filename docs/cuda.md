@@ -48,7 +48,7 @@ capture storage after bounds and use checks. Mutable indices, runtime arithmetic
 and captures that fail these checks retain their existing storage and evaluation
 timing.
 
-CUDA floating-point division, absolute value, rounding, and square root use
+CUDA floating-point division, remainder, absolute value, rounding, and square root use
 cached compatibility helpers. Calls reuse each helper across the module, keeping the
 integer algorithms out of source functions while preserving their numerical
 behavior. Other operations can still produce temporary expressions.
@@ -637,6 +637,17 @@ use `fabsf` or explicitly convert to `float`. Exact user-defined integral
 overloads still participate and take precedence over the library templates.
 Calls execute at runtime and are not constant expressions.
 
+`fmodf(float, float)` returns the remainder after dividing the first argument
+by the second with the quotient truncated toward zero. Scalar arguments convert
+to `float` first. Integer significand reduction computes exact finite remainders,
+preserving subnormal values and the first argument's sign, including signed zero.
+A finite first argument and an infinite second argument return the first argument.
+An infinite first argument, a zero second argument, or a NaN argument produces
+the canonical quiet NaN `0x7fc00000`. CUDA leaves its representation unspecified.
+These results follow NVIDIA's
+[`fmodf` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__SINGLE.html).
+Calls execute at runtime and are not constant expressions.
+
 `sqrtf(float)` returns `float` and accepts scalar arguments that convert to
 `float`. The `sqrt(float)` overload uses the same implementation, following
 CUDA's [overloaded math functions](https://docs.nvidia.com/cuda/archive/13.0.1/cuda-math-api/index.html).
@@ -723,7 +734,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, or `cosf` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, or `cosf` remain unsupported.
 
 ## Bit reinterpretation
 
