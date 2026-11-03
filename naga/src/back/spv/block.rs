@@ -2527,10 +2527,25 @@ impl BlockContext<'_> {
                 Cast::Unary(spirv::Op::UConvert, expr_id)
             }
             (Sk::Uint, Sk::Sint, Some(dst_width)) if src_scalar.width != dst_width => {
-                Cast::Unary(spirv::Op::SConvert, expr_id)
+                let unsigned_type =
+                    NumericType::from_inner(ty)
+                        .unwrap()
+                        .with_scalar(crate::Scalar {
+                            kind: Sk::Uint,
+                            width: dst_width,
+                        });
+                let unsigned_type_id = self.get_numeric_type_id(unsigned_type);
+                let converted_id = self.gen_id();
+                block.body.push(Instruction::unary(
+                    spirv::Op::UConvert,
+                    unsigned_type_id,
+                    converted_id,
+                    expr_id,
+                ));
+                Cast::Unary(spirv::Op::Bitcast, converted_id)
             }
             (Sk::Sint, Sk::Uint, Some(dst_width)) if src_scalar.width != dst_width => {
-                Cast::Unary(spirv::Op::UConvert, expr_id)
+                Cast::Unary(spirv::Op::SConvert, expr_id)
             }
             // We assume it's either an identity cast, or int-uint.
             _ => Cast::Unary(spirv::Op::Bitcast, expr_id),
