@@ -144,6 +144,10 @@ impl From<Literal> for ConstantValue {
 }
 
 impl ConstantValue {
+    const fn is_nonfinite(self) -> bool {
+        matches!(self.literal, Some(Literal::F32(value)) if !value.is_finite())
+    }
+
     fn evaluated(literal: Option<Literal>) -> Self {
         literal.map(Self::from).unwrap_or_default()
     }

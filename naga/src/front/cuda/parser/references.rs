@@ -416,7 +416,16 @@ impl Parser<'_> {
                 self.append(Expression::Load { pointer }, span)?
             }
             Reference::Pointer(pointer) => self.append(Expression::Load { pointer }, span)?,
-            Reference::Constant(Some(handle)) => self.append(Expression::Constant(handle), span)?,
+            Reference::Constant(Some(handle)) => {
+                if *reference.ty.inner_with(&self.module.types) == TypeInner::Scalar(Scalar::F32)
+                    && self.module.types[self.module.constants[handle].ty].inner
+                        == TypeInner::Scalar(Scalar::U32)
+                {
+                    self.materialize_float_bits(Expression::Constant(handle), span)?
+                } else {
+                    self.append(Expression::Constant(handle), span)?
+                }
+            }
             Reference::Constant(None) => {
                 // Unselected branches can reference the variable being initialized.
                 let ty = self.type_handle(&reference.ty, span);

@@ -850,10 +850,17 @@ by constant expressions. An ordinary `const float` local does not; use
 Constant evaluation supports the existing scalar operators and casts with
 C++20 [constant-expression rules](https://timsong-cpp.github.io/cppwp/n4861/expr.const).
 Unsigned arithmetic and left shifts wrap; signed
-arithmetic overflow, invalid shift counts, division by zero, and out-of-range
+arithmetic overflow, invalid shift counts, integer division by zero, and out-of-range
 float-to-integer conversions cannot provide required constant values.
-Floating-point constant evaluation currently requires finite results;
-overflow to infinity produces an unsupported-constant diagnostic.
+Floating-point constant evaluation includes infinities, NaNs, overflow, and
+finite results recovered through nonfinite intermediates. For example,
+`constexpr float Infinity = 1.0f / 0.0f;` can supply both a device value and
+`constexpr bool Positive = Infinity > 0.0f;`.
+Nonfinite globals use integer bit constants, and device reads reconstruct the
+source `float` value. Known constant comparisons and arithmetic fold before
+backend emission. Binary operations producing NaN use the canonical quiet NaN
+`0x7fc00000`; unary negation flips its sign bit. Floating-point values must have
+finite, representable truncated results when converted to integer constants.
 
 Only evaluated operands contribute to constant-expression eligibility, so
 `true ? 3 : runtime_value` and `false && helper()` can be constant expressions.

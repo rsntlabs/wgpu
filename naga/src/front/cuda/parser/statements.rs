@@ -393,7 +393,7 @@ impl<'a> Parser<'a> {
             } else if is_constexpr {
                 let literal = self.constant_initializer(&declared_ty)?;
                 self.function.constant_locals.insert(local, literal);
-                Some(self.append(Expression::Literal(literal), span)?)
+                Some(self.materialize_literal(literal, span)?)
             } else if !has_initializer && requires_default_constructor {
                 if is_const && !self.const_default_constructible(ty) {
                     return Err(ParseError {
@@ -476,7 +476,7 @@ impl<'a> Parser<'a> {
     ) -> Result<Handle<Expression>, ParseError> {
         if let Some(literal) = value.constant.literal {
             self.function.constant_locals.insert(local, literal);
-            self.append(Expression::Literal(literal), value.span)
+            self.materialize_literal(literal, value.span)
         } else {
             self.append_block(body);
             Ok(value.handle)

@@ -53,7 +53,7 @@ impl<'a> Parser<'a> {
                 },
             );
             let literal = self.constant_initializer(&scalar_resolution(scalar))?;
-            self.bind_global_constant(name, scalar, literal, span);
+            self.bind_global_constant(name, scalar, literal, span)?;
             if !self.lexer.next_if(Token::Separator(','))? {
                 self.lexer.expect_span(Token::Separator(';'))?;
                 return Ok(());
@@ -67,15 +67,34 @@ impl<'a> Parser<'a> {
         scalar: Scalar,
         literal: Literal,
         span: Span,
-    ) {
-        let ty = self.scalar_handle(scalar, span);
+    ) -> Result<(), ParseError> {
+        let nonfinite = ConstantValue::from(literal).is_nonfinite();
+        let (physical_scalar, physical_literal) = match literal {
+            Literal::F32(value) if nonfinite => {
+                self.activate_parameter_expansion(span)?;
+                self.parameter_expansion_budget.charge_nodes(2, span)?;
+                self.parameter_expansion_budget
+                    .charge_slice::<(Expression, Span)>(1, span)?;
+                self.parameter_expansion_budget
+                    .charge_slice::<(crate::Constant, Span)>(1, span)?;
+                self.parameter_expansion_budget
+                    .charge_bytes(name.len() + "_bits".len(), span)?;
+                (Scalar::U32, Literal::U32(value.to_bits()))
+            }
+            _ => (scalar, literal),
+        };
+        let ty = self.scalar_handle(physical_scalar, span);
         let init = self
             .module
             .global_expressions
-            .append(Expression::Literal(literal), span);
+            .append(Expression::Literal(physical_literal), span);
         let constant_handle = self.module.constants.append(
             crate::Constant {
-                name: Some(String::from(name)),
+                name: Some(if nonfinite {
+                    format!("{name}_bits")
+                } else {
+                    String::from(name)
+                }),
                 ty,
                 init,
             },
@@ -90,6 +109,49 @@ impl<'a> Parser<'a> {
             },
         );
         self.function = FunctionContext::new(FunctionKind::Kernel);
+        Ok(())
+    }
+
+    pub(super) fn materialize_literal(
+        &mut self,
+        literal: Literal,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        match literal {
+            Literal::F32(value) if !value.is_finite() => self
+                .materialize_float_bits(Expression::Literal(Literal::U32(value.to_bits())), span),
+            _ => self.append(Expression::Literal(literal), span),
+        }
+    }
+
+    pub(super) fn materialize_float_bits(
+        &mut self,
+        bits: Expression,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let bits = self.append(bits, span)?;
+        let pointer = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
+        self.parameter_expansion_budget.charge_nodes(1, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<(Statement, Span)>(1, span)?;
+        self.push_statement(
+            Statement::Store {
+                pointer,
+                value: bits,
+            },
+            span,
+        );
+        let loaded = self.append(Expression::Load { pointer }, span)?;
+        self.append(
+            Expression::As {
+                expr: loaded,
+                kind: ScalarKind::Float,
+                convert: None,
+            },
+            span,
+        )
     }
 
     pub(super) fn constant_initializer(

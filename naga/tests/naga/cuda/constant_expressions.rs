@@ -371,13 +371,16 @@ fn cuda_constant_expressions_check_float_to_integer_truncated_ranges_and_finite_
     ] {
         validate(&format!("__global__ void kernel(int *out) {{ constexpr {name} value = {expression}; out[0] = int(value); }}"));
     }
+    for expression in ["1.0f / 0.0f", "3.4e38f * 2.0f"] {
+        validate(&format!(
+            "__global__ void kernel(float *out) {{ constexpr float value = {expression}; out[0] = value; }}"
+        ));
+    }
     for (name, expression) in [
         ("int", "2147483648.0f"),
         ("int", "-2147483904.0f"),
         ("unsigned", "4294967296.0f"),
         ("unsigned", "-1.0f"),
-        ("float", "1.0f / 0.0f"),
-        ("float", "3.4e38f * 2.0f"),
     ] {
         rejected(&format!(
             "__global__ void kernel() {{ constexpr {name} value = {expression}; }}"
