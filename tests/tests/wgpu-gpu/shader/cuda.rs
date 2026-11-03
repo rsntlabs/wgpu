@@ -80,6 +80,7 @@ mod reference_bindings;
 mod reference_categories;
 mod restrict;
 mod roundf;
+mod rsqrtf;
 mod saturate;
 mod scalar_braces;
 mod scalar_promotion;
@@ -142,6 +143,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FLOAT_SEPARATORS,
         CUDA_FLOORF,
         CUDA_ROUNDF,
+        CUDA_RSQRTF,
         CUDA_FUNCTION_MACROS,
         CUDA_HELPER_BUILTINS,
         CUDA_HELPER_PARAMETERS,
@@ -553,6 +555,8 @@ static CUDA_FLOAT_SEPARATORS: GpuTestConfiguration = configuration(float_separat
 static CUDA_FLOORF: GpuTestConfiguration = configuration(floorf::cases);
 #[apply(gpu_test!)]
 static CUDA_ROUNDF: GpuTestConfiguration = configuration(roundf::cases);
+#[apply(gpu_test!)]
+static CUDA_RSQRTF: GpuTestConfiguration = configuration(rsqrtf::cases);
 #[apply(gpu_test!)]
 static CUDA_FUNCTION_MACROS: GpuTestConfiguration = configuration(function_macros::cases);
 #[apply(gpu_test!)]
