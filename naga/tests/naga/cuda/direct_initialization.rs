@@ -299,6 +299,7 @@ fn cuda_direct_scalar_initializers_keep_expression_and_declaration_lookahead_dep
 
 #[test]
 fn cuda_direct_scalar_initializers_keep_other_declarators_and_storage_rejections() {
+    roundtrip("__global__ void kernel() { float2 value(1.0f, 2.0f); }");
     for statement in [
         "int(value);",
         "int((value));",
@@ -310,7 +311,6 @@ fn cuda_direct_scalar_initializers_keep_other_declarators_and_storage_rejections
         "int value(1));",
         "volatile int value(2);",
         "int values[2](1);",
-        "float2 value(1.0f, 2.0f);",
     ] {
         rejected(&format!("__global__ void kernel() {{ {statement} }}"));
     }

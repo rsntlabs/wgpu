@@ -322,6 +322,16 @@ fn cuda_vector_values_reject_unsupported_indexing_swizzles_and_casts() {
     for scalar in ["float", "int", "uint"] {
         for width in [2, 3, 4] {
             let arguments = vec!["1"; width].join(", ");
+            let (module, info) = validate(&format!(
+                "__global__ void kernel() {{ {scalar}{width} value = make_{scalar}{width}({arguments}); int3(1); }}"
+            ));
+            #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+            super::helpers::wgsl_roundtrip(
+                &module,
+                &info,
+                naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+            );
+            let _ = (module, info);
             for expression in [
                 String::from("value[0]"),
                 String::from("value.xy"),
@@ -329,7 +339,6 @@ fn cuda_vector_values_reject_unsupported_indexing_swizzles_and_casts() {
                 String::from("value.rgba"),
                 format!("{scalar}{width}(value)"),
                 String::from("float3(value)"),
-                String::from("int3(1)"),
                 String::from("int(value)"),
                 String::from("make_int3(value, 1, 2)"),
             ] {

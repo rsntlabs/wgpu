@@ -144,6 +144,19 @@ impl Parser<'_> {
                 return self.cache_invocation_expression(invocation, handle, mapped);
             }
             Expression::LocalVariable(local) => {
+                let destination = match invocation.source_state {
+                    Some(state) => state.result_objects.destination(
+                        local,
+                        &source.expressions,
+                        &mut self.parameter_expansion_budget,
+                        span,
+                    )?,
+                    None => None,
+                };
+                if let Some(destination) = destination {
+                    let mapped = self.invocation_expression(invocation, destination)?;
+                    return self.cache_invocation_expression(invocation, handle, mapped);
+                }
                 if let Some(state) = invocation.source_state {
                     if let Some(&access) = state.pointers.validation_addresses.get(&local) {
                         let reference = self.remap_pointer_access(state, access, invocation)?;

@@ -174,31 +174,41 @@ impl Parser<'_> {
                 } else {
                     qualifiers
                 };
+                let is_result_object =
+                    category == ValueCategory::Prvalue && self.is_source_class(&ty);
                 let pointer = self.temporary_pointer(&ty, span)?;
                 let (accept_constant, accept) = self.capture_block(|parser| {
                     parser.append_block(accept_body);
                     let value = parser.convert_value(accept, &ty)?;
                     let constant = value.constant;
-                    parser.push_statement(
-                        Statement::Store {
-                            pointer,
-                            value: value.handle,
-                        },
-                        span,
-                    );
+                    if is_result_object {
+                        parser.store_initializer(pointer, value.handle, span)?;
+                    } else {
+                        parser.push_statement(
+                            Statement::Store {
+                                pointer,
+                                value: value.handle,
+                            },
+                            span,
+                        );
+                    }
                     Ok(constant)
                 })?;
                 let (reject_constant, reject) = self.capture_block(|parser| {
                     parser.append_block(reject_body);
                     let value = parser.convert_value(reject, &ty)?;
                     let constant = value.constant;
-                    parser.push_statement(
-                        Statement::Store {
-                            pointer,
-                            value: value.handle,
-                        },
-                        span,
-                    );
+                    if is_result_object {
+                        parser.store_initializer(pointer, value.handle, span)?;
+                    } else {
+                        parser.push_statement(
+                            Statement::Store {
+                                pointer,
+                                value: value.handle,
+                            },
+                            span,
+                        );
+                    }
                     Ok(constant)
                 })?;
                 self.push_statement(
@@ -210,6 +220,9 @@ impl Parser<'_> {
                     span,
                 );
                 let handle = self.append(Expression::Load { pointer }, span)?;
+                if is_result_object {
+                    self.record_constructed_result(handle, pointer, span)?;
+                }
                 let constant = match condition.constant.literal {
                     Some(Literal::Bool(true)) => accept_constant,
                     Some(Literal::Bool(false)) => reject_constant,

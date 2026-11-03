@@ -110,14 +110,18 @@ fn cuda_direct_aggregate_initializers_keep_exact_types_and_source_constness() {
         }",
     );
     for source in [
+        "__global__ void kernel() { float2 copied(1.0f); }",
+        "__global__ void kernel() { uint3 copied(1u); }",
+        "struct Record { int value; }; __global__ void kernel() { Record copied(3); }",
+    ] {
+        roundtrip(source);
+    }
+    for source in [
         "__global__ void kernel() { float2 source{}; int2 copied(source); }",
         "__global__ void kernel() { int2 source{}; uint2 copied(source); }",
         "__global__ void kernel() { float2 source{}; float3 copied(source); }",
-        "__global__ void kernel() { float2 copied(1.0f); }",
-        "__global__ void kernel() { uint3 copied(1u); }",
         "__global__ void kernel() { float2 *pointer = nullptr; float2 copied(pointer); }",
         "__global__ void kernel() { float2 copied(nullptr); }",
-        "struct Record { int value; }; __global__ void kernel() { Record copied(3); }",
         "struct First { int value; }; struct Second { int value; }; __global__ void kernel() { First source{}; Second copied(source); }",
         "__global__ void kernel() { float2 source{}; const float2 copied(source); copied.x = 7.0f; }",
         "struct Record { int value; }; __global__ void kernel() { Record source{}; const Record copied(source); copied.value = 7; }",
@@ -288,6 +292,13 @@ fn cuda_direct_aggregate_initializers_keep_bounds_and_other_aggregate_grammars()
         "Record copied(1, 2);",
         "float2 source{}; float2 copied({source});",
         "Record source{}; Record copied({source});",
+    ] {
+        roundtrip(&format!(
+            "struct Record {{ int first; int second; }};
+            __global__ void kernel() {{ {declaration} }}"
+        ));
+    }
+    for declaration in [
         "Record source{}; Record values[2](source);",
         "float2 source{}; float2(source);",
         "Record source{}; Record(source);",

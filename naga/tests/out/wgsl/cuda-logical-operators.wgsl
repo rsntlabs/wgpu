@@ -111,18 +111,17 @@ fn logical_operators(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
     var evaluated: Sample_cuda_record_0_;
     var local_19: Sample_cuda_record_0_;
     var local_20: Sample_cuda_record_0_;
-    var local_21: Sample_cuda_record_0_;
+    var local_21: u32;
     var local_22: u32;
     var local_23: u32;
-    var local_24: u32;
-    var local_25: bool;
-    var local_26: u32;
-    var local_27: bool;
-    var local_28: u32;
-    var local_29: bool;
-    var local_30: u32;
-    var local_31: bool;
-    var local_32: u32;
+    var local_24: bool;
+    var local_25: u32;
+    var local_26: bool;
+    var local_27: u32;
+    var local_28: bool;
+    var local_29: u32;
+    var local_30: bool;
+    var local_31: u32;
 
     let base = (threadIdx.x * 24u);
     left.value = 2i;
@@ -260,7 +259,7 @@ fn logical_operators(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
         let _e250 = local_19;
         let _e251 = right;
         let _e252 = operator_u0026_u0026_(_e250, _e251);
-        local_21 = _e252;
+        evaluated = _e252;
     } else {
         let _e254 = left;
         let _e255 = counter;
@@ -270,61 +269,59 @@ fn logical_operators(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
         local_20.payload[1] = 2i;
         let _e265 = local_20;
         let _e266 = operator_u007c_u007c(_e254, _e265);
-        local_21 = _e266;
+        evaluated = _e266;
     }
-    let _e269 = local_21;
-    evaluated = _e269;
-    let _e272 = evaluated.value;
-    local_22 = u32((base + 17u));
-    let _e278 = local_22;
-    out[_e278] = u32(_e272);
-    let _e280 = counter;
-    local_23 = u32((base + 18u));
-    let _e286 = local_23;
-    out[_e286] = u32(_e280);
-    local_25 = false;
+    let _e270 = evaluated.value;
+    local_21 = u32((base + 17u));
+    let _e276 = local_21;
+    out[_e276] = u32(_e270);
+    let _e278 = counter;
+    local_22 = u32((base + 18u));
+    let _e284 = local_22;
+    out[_e284] = u32(_e278);
+    local_24 = false;
     if false {
-        let _e290 = left;
-        let _e291 = right;
-        let _e292 = operator_u0026_u0026_(_e290, _e291);
-        local_25 = (_e292.value != 0i);
+        let _e288 = left;
+        let _e289 = right;
+        let _e290 = operator_u0026_u0026_(_e288, _e289);
+        local_24 = (_e290.value != 0i);
     }
-    let _e296 = local_25;
-    local_24 = u32((base + 19u));
-    let _e302 = local_24;
-    out[_e302] = u32(_e296);
-    local_27 = true;
+    let _e294 = local_24;
+    local_23 = u32((base + 19u));
+    let _e300 = local_23;
+    out[_e300] = u32(_e294);
+    local_26 = true;
     if true {
     } else {
-        let _e306 = left;
-        let _e307 = right;
-        let _e308 = operator_u007c_u007c(_e306, _e307);
-        local_27 = (_e308.value != 0i);
+        let _e304 = left;
+        let _e305 = right;
+        let _e306 = operator_u007c_u007c(_e304, _e305);
+        local_26 = (_e306.value != 0i);
     }
-    let _e312 = local_27;
-    local_26 = u32((base + 20u));
-    let _e318 = local_26;
-    out[_e318] = u32(_e312);
-    let _e322 = (2i != 0i);
-    local_29 = _e322;
-    if _e322 {
-        local_29 = (3i != 0i);
+    let _e310 = local_26;
+    local_25 = u32((base + 20u));
+    let _e316 = local_25;
+    out[_e316] = u32(_e310);
+    let _e320 = (2i != 0i);
+    local_28 = _e320;
+    if _e320 {
+        local_28 = (3i != 0i);
     }
-    let _e327 = local_29;
-    local_28 = u32((base + 21u));
-    let _e333 = local_28;
-    out[_e333] = u32(_e327);
-    let _e337 = (0i != 0i);
-    local_31 = _e337;
-    if _e337 {
+    let _e325 = local_28;
+    local_27 = u32((base + 21u));
+    let _e331 = local_27;
+    out[_e331] = u32(_e325);
+    let _e335 = (0i != 0i);
+    local_30 = _e335;
+    if _e335 {
     } else {
-        local_31 = (4i != 0i);
+        local_30 = (4i != 0i);
     }
-    let _e342 = local_31;
-    local_30 = u32((base + 22u));
-    let _e348 = local_30;
-    out[_e348] = u32(_e342);
-    local_32 = u32((base + 23u));
-    let _e355 = local_32;
-    out[_e355] = threadIdx.x;
+    let _e340 = local_30;
+    local_29 = u32((base + 22u));
+    let _e346 = local_29;
+    out[_e346] = u32(_e340);
+    local_31 = u32((base + 23u));
+    let _e353 = local_31;
+    out[_e353] = threadIdx.x;
 }

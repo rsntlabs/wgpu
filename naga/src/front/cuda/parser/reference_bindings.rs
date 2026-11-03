@@ -119,13 +119,7 @@ impl<'a> Parser<'a> {
                 }
                 let value = self.convert_value(value, &ty)?;
                 let pointer = self.temporary_pointer(&ty, span)?;
-                self.push_statement(
-                    Statement::Store {
-                        pointer,
-                        value: value.handle,
-                    },
-                    span.until(&value.span),
-                );
+                self.store_initializer(pointer, value.handle, span.until(&value.span))?;
                 let binding = self.freeze_reference(ReferenceValue {
                     discard_read: true,
                     reference: Reference::Pointer(pointer),

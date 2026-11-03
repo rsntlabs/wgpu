@@ -300,7 +300,13 @@ impl Parser<'_> {
         if self.is_source_class(target) {
             let value = self.rvalue(value)?;
             self.require_volatile_scalar(value.qualifiers, &value.ty, value.span)?;
-            let mut value = self.convert_value(value.into(), target)?;
+            let mut value = if self.module.compare_types(&value.ty, target)
+                || self.dimension_conversion(&value.ty, target)
+            {
+                self.convert_value(value.into(), target)?
+            } else {
+                self.aggregate_cast_value(value, target)?
+            };
             value.category = ValueCategory::Prvalue;
             value.qualifiers = Qualifiers::NONE;
             value.constant = value.constant.non_literal();
