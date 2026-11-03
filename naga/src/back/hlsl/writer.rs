@@ -42,6 +42,8 @@ pub(crate) const ABS_FUNCTION: &str = "naga_abs";
 pub(crate) const DIV_FUNCTION: &str = "naga_div";
 pub(crate) const MOD_FUNCTION: &str = "naga_mod";
 pub(crate) const NEG_FUNCTION: &str = "naga_neg";
+pub(crate) const F2I16_FUNCTION: &str = "naga_f2i16";
+pub(crate) const F2U16_FUNCTION: &str = "naga_f2u16";
 pub(crate) const F2I32_FUNCTION: &str = "naga_f2i32";
 pub(crate) const F2U32_FUNCTION: &str = "naga_f2u32";
 pub(crate) const F2I64_FUNCTION: &str = "naga_f2i64";
@@ -4458,12 +4460,14 @@ impl<'a, W: fmt::Write> super::Writer<'a, W> {
                 if inner.scalar_kind() == Some(ScalarKind::Float)
                     && (kind == ScalarKind::Sint || kind == ScalarKind::Uint)
                     && convert.is_some()
-                    && matches!(convert, Some(4) | Some(8))
+                    && matches!(convert, Some(2) | Some(4) | Some(8))
                 {
                     // Use helper functions for float to int casts in order to
                     // avoid undefined behaviour when value is out of range for
                     // the target type.
                     let fun_name = match (kind, convert) {
+                        (ScalarKind::Sint, Some(2)) => F2I16_FUNCTION,
+                        (ScalarKind::Uint, Some(2)) => F2U16_FUNCTION,
                         (ScalarKind::Sint, Some(4)) => F2I32_FUNCTION,
                         (ScalarKind::Uint, Some(4)) => F2U32_FUNCTION,
                         (ScalarKind::Sint, Some(8)) => F2I64_FUNCTION,
