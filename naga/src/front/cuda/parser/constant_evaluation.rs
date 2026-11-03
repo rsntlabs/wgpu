@@ -23,6 +23,12 @@ pub(super) fn unary(op: UnaryOperator, value: Literal) -> Option<Literal> {
         let expr = evaluator.try_eval_and_append(Expression::Literal(value), Span::UNDEFINED)?;
         evaluator.try_eval_and_append(Expression::Unary { op, expr }, Span::UNDEFINED)
     })
+    .or_else(|| match (op, value) {
+        (UnaryOperator::Negate, Literal::F32(value)) => {
+            Some(Literal::F32(f32::from_bits(value.to_bits() ^ 0x8000_0000)))
+        }
+        _ => None,
+    })
 }
 
 pub(super) fn binary(op: BinaryOperator, left: Literal, mut right: Literal) -> Option<Literal> {
@@ -64,9 +70,6 @@ pub(super) fn binary(op: BinaryOperator, left: Literal, mut right: Literal) -> O
         (BinaryOperator::Divide | BinaryOperator::Modulo, Literal::U32(_), Literal::U32(0)) => {
             return None
         }
-        (BinaryOperator::Divide, Literal::F32(_), Literal::F32(0.0)) => {
-            return None;
-        }
         (BinaryOperator::Modulo, Literal::F32(_), Literal::F32(_)) => return None,
         _ => {}
     }
@@ -75,6 +78,31 @@ pub(super) fn binary(op: BinaryOperator, left: Literal, mut right: Literal) -> O
         let right = evaluator.try_eval_and_append(Expression::Literal(right), Span::UNDEFINED)?;
         evaluator.try_eval_and_append(Expression::Binary { op, left, right }, Span::UNDEFINED)
     })
+    .or_else(|| float_binary(op, left, right))
+}
+
+fn float_binary(op: BinaryOperator, left: Literal, right: Literal) -> Option<Literal> {
+    let (Literal::F32(left), Literal::F32(right)) = (left, right) else {
+        return None;
+    };
+    let value = match op {
+        BinaryOperator::Add => left + right,
+        BinaryOperator::Subtract => left - right,
+        BinaryOperator::Multiply => left * right,
+        BinaryOperator::Divide => left / right,
+        BinaryOperator::Equal => return Some(Literal::Bool(left == right)),
+        BinaryOperator::NotEqual => return Some(Literal::Bool(left != right)),
+        BinaryOperator::Less => return Some(Literal::Bool(left < right)),
+        BinaryOperator::LessEqual => return Some(Literal::Bool(left <= right)),
+        BinaryOperator::Greater => return Some(Literal::Bool(left > right)),
+        BinaryOperator::GreaterEqual => return Some(Literal::Bool(left >= right)),
+        _ => return None,
+    };
+    Some(Literal::F32(if value.is_nan() {
+        f32::from_bits(0x7fc0_0000)
+    } else {
+        value
+    }))
 }
 
 pub(super) fn convert(value: Literal, target: Scalar) -> Option<Literal> {
@@ -105,12 +133,16 @@ pub(super) fn convert(value: Literal, target: Scalar) -> Option<Literal> {
             Span::UNDEFINED,
         )
     })
+    .or(match (value, target) {
+        (Literal::F32(value), Scalar::F32) => Some(Literal::F32(value)),
+        (Literal::F32(value), Scalar::BOOL) => Some(Literal::Bool(value != 0.0)),
+        _ => None,
+    })
 }
 
 const fn supported_literal(value: Literal) -> bool {
     match value {
-        Literal::Bool(_) | Literal::I32(_) | Literal::U32(_) => true,
-        Literal::F32(value) => value.is_finite(),
+        Literal::Bool(_) | Literal::I32(_) | Literal::U32(_) | Literal::F32(_) => true,
         _ => false,
     }
 }

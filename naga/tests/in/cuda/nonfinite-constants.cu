@@ -1,0 +1,106 @@
+constexpr float Positive = 1.0f / 0.0f;
+constexpr float Negative = -Positive;
+constexpr float NotANumber = 0.0f / 0.0f;
+constexpr float Overflow = 3.4e38f * 2.0f;
+constexpr auto Inferred = Positive;
+constexpr unsigned Count = NotANumber != NotANumber ? 3u : 1u;
+
+struct Packet { float value; float values[2]; };
+
+template<unsigned Value> __device__ unsigned selected() { return Value; }
+__device__ float copied(float value) { return value; }
+__device__ float inspected(const float &value) { return value; }
+__device__ void replace(float &target, float value) { target = value; }
+
+__global__ void nonfinite_constants(unsigned *output) {
+    output[0] = __float_as_uint(Positive);
+    output[1] = __float_as_uint(Negative);
+    output[2] = __float_as_uint(NotANumber);
+    output[3] = __float_as_uint(-NotANumber);
+    output[4] = __float_as_uint(Overflow);
+    output[5] = __float_as_uint(Inferred);
+    constexpr float LocalInfinity = 1.0f / 0.0f;
+    constexpr float LocalNaN = 0.0f / 0.0f;
+    constexpr float LocalOverflow = 3.402823466e38f / 0.5f;
+    constexpr auto LocalInferred = Negative;
+    using Sample = const float;
+    constexpr Sample Braced{Positive};
+    constexpr float Direct(Negative);
+    output[6] = __float_as_uint(LocalInfinity);
+    output[7] = __float_as_uint(LocalNaN);
+    output[8] = __float_as_uint(LocalOverflow);
+    output[9] = __float_as_uint(LocalInferred);
+    output[10] = __float_as_uint(Braced);
+    output[11] = __float_as_uint(Direct);
+    constexpr bool InfinityTrue = bool(Positive);
+    constexpr bool NaNTrue = bool(NotANumber);
+    constexpr bool NotNaN = !NotANumber;
+    constexpr bool Unordered = NotANumber != NotANumber;
+    constexpr bool EqualNaN = NotANumber == NotANumber;
+    output[12] = unsigned(InfinityTrue);
+    output[13] = unsigned(NaNTrue);
+    output[14] = unsigned(NotNaN);
+    output[15] = unsigned(Unordered);
+    output[16] = unsigned(EqualNaN);
+    constexpr float Cancellation = Positive + Negative;
+    constexpr float ZeroProduct = NotANumber * 0.0f;
+    constexpr float PositiveZero = 1.0f / Positive;
+    constexpr float NegativeZero = 1.0f / Negative;
+    constexpr float NaNQuotient = NotANumber / Positive;
+    constexpr float InfiniteQuotient = Positive / Positive;
+    output[17] = __float_as_uint(Cancellation);
+    output[18] = __float_as_uint(ZeroProduct);
+    output[19] = __float_as_uint(PositiveZero);
+    output[20] = __float_as_uint(NegativeZero);
+    output[21] = __float_as_uint(NaNQuotient);
+    output[22] = __float_as_uint(InfiniteQuotient);
+    output[23] = __float_as_uint(+NotANumber);
+    float samples[Count] = {Positive, Negative, NotANumber};
+    output[24] = __float_as_uint(samples[0]);
+    output[25] = __float_as_uint(samples[1]);
+    output[26] = __float_as_uint(samples[2]);
+    Packet packet{Positive, {Negative, NotANumber}};
+    output[27] = __float_as_uint(packet.value);
+    output[28] = __float_as_uint(packet.values[0]);
+    output[29] = __float_as_uint(packet.values[1]);
+    float3 vector{Positive, Negative, NotANumber};
+    output[30] = __float_as_uint(vector.x);
+    output[31] = __float_as_uint(vector.y);
+    output[32] = __float_as_uint(vector.z);
+    const float &local_reference = LocalInfinity;
+    const float &temporary_reference = 1.0f / 0.0f;
+    output[33] = __float_as_uint(inspected(local_reference));
+    output[34] = __float_as_uint(inspected(temporary_reference));
+    output[35] = __float_as_uint(copied(Positive));
+    constexpr unsigned Size = (Positive, 3u);
+    output[36] = Size;
+    output[37] = selected<Size>();
+    output[38] = selected<(unsigned(bool(NotANumber)))>();
+    const auto &inferred_reference = Braced;
+    output[39] = __float_as_uint(inferred_reference);
+    const auto local_float = Positive;
+    output[40] = __float_as_uint(local_float);
+    float mutable_value = Negative;
+    output[41] = __float_as_uint(mutable_value);
+    replace(mutable_value, Positive);
+    output[42] = __float_as_uint(mutable_value);
+    unsigned counter = 0u;
+    float first = (counter++, Positive);
+    output[43] = __float_as_uint(first);
+    output[44] = counter;
+    const auto later = (counter++, NotANumber);
+    output[45] = __float_as_uint(later);
+    output[46] = counter;
+    bool choose = false;
+    float chosen = choose ? (counter++, Positive) : (counter++, Negative);
+    output[47] = __float_as_uint(chosen);
+    output[48] = counter;
+    constexpr int CommaCount = (NotANumber, 3);
+    constexpr bool Disabled = false && Positive;
+    constexpr bool Enabled = true || NotANumber;
+    constexpr bool NaNCondition = NotANumber ? true : false;
+    output[49] = CommaCount;
+    output[50] = unsigned(Disabled);
+    output[51] = unsigned(Enabled);
+    output[52] = unsigned(NaNCondition);
+}

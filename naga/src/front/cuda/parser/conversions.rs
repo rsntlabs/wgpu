@@ -42,26 +42,29 @@ impl Parser<'_> {
                 span: value.span,
             });
         }
-        let handle = self.append(
-            Expression::As {
-                expr: value.handle,
-                kind: target.kind,
-                convert: Some(target.width),
-            },
-            value.span,
-        )?;
+        let constant = value
+            .constant
+            .literal
+            .and_then(|literal| constant_evaluation::convert(literal, target));
+        let handle = if let Some(literal) = constant.filter(|_| value.constant.is_nonfinite()) {
+            self.materialize_literal(literal, value.span)?
+        } else {
+            self.append(
+                Expression::As {
+                    expr: value.handle,
+                    kind: target.kind,
+                    convert: Some(target.width),
+                },
+                value.span,
+            )?
+        };
         Ok(Value {
             category: ValueCategory::Prvalue,
             qualifiers: Qualifiers::NONE,
             handle,
             ty: scalar_resolution(target),
             span: value.span,
-            constant: ConstantValue::evaluated(
-                value
-                    .constant
-                    .literal
-                    .and_then(|literal| constant_evaluation::convert(literal, target)),
-            ),
+            constant: ConstantValue::evaluated(constant),
         })
     }
 
@@ -184,9 +187,16 @@ impl Parser<'_> {
             | BinaryOperator::GreaterEqual => Scalar::BOOL,
             _ => self.require_scalar_type(&left.ty, left.span)?,
         };
-        let handle = if operator == BinaryOperator::Divide && scalar == Scalar::F32 {
+        let folded = constant.filter(|literal| {
+            left.constant.is_nonfinite()
+                || right.constant.is_nonfinite()
+                || ConstantValue::from(*literal).is_nonfinite()
+        });
+        let handle = if let Some(literal) = folded {
+            self.materialize_literal(literal, span)?
+        } else if operator == BinaryOperator::Divide && scalar == Scalar::F32 {
             if let Some(literal @ Literal::F32(_)) = constant {
-                self.append(Expression::Literal(literal), span)?
+                self.materialize_literal(literal, span)?
             } else {
                 self.divide_f32(left.handle, right.handle, span)?
             }

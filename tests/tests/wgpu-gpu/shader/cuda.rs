@@ -59,6 +59,7 @@ mod logical_operators;
 mod multidimensional_arrays;
 mod multiple_kernels;
 mod multiply24;
+mod nonfinite_constants;
 mod null_pointers;
 mod nullptr;
 mod operator_addition;
@@ -164,6 +165,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_MULTIDIMENSIONAL_ARRAYS,
         CUDA_MULTIPLE_KERNELS,
         CUDA_MULTIPLY24,
+        CUDA_NONFINITE_CONSTANTS,
         CUDA_NULL_POINTERS,
         CUDA_NULLPTR,
         CUDA_NULLPTR_ASSIGNMENT_ORDER,
@@ -599,6 +601,8 @@ static CUDA_MULTIDIMENSIONAL_ARRAYS: GpuTestConfiguration =
 static CUDA_MULTIPLE_KERNELS: GpuTestConfiguration = configuration(multiple_kernels::cases);
 #[apply(gpu_test!)]
 static CUDA_MULTIPLY24: GpuTestConfiguration = configuration(multiply24::cases);
+#[apply(gpu_test!)]
+static CUDA_NONFINITE_CONSTANTS: GpuTestConfiguration = configuration(nonfinite_constants::cases);
 #[apply(gpu_test!)]
 static CUDA_NULL_POINTERS: GpuTestConfiguration = configuration(null_pointers::cases);
 #[apply(gpu_test!)]

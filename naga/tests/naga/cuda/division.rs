@@ -266,11 +266,12 @@ fn cuda_float_division_reuses_its_helper_across_callers_templates_and_entry_poin
 #[test]
 fn cuda_float_division_keeps_literal_exceptions_runtime_and_wgsl_valid() {
     let (module, _) = roundtrip(
-        "__global__ void kernel(unsigned *output) {
+        "__global__ void kernel(unsigned *output, float denominator) {
             output[0] = __float_as_uint(0.0f / 0.0f);
             output[1] = __float_as_uint(1.0f / 0.0f);
             output[2] = __float_as_uint(-1.0f / 0.0f);
             output[3] = __float_as_uint(1.0f / -0.0f);
+            output[4] = __float_as_uint(1.0f / denominator);
         }",
     );
     assert_eq!(division_helpers(&module).len(), 1);
@@ -310,10 +311,10 @@ fn cuda_float_division_retains_local_global_template_and_array_constant_expressi
         naga::TypeInner::Array { size: naga::ArraySize::Constant(count), .. } if count.get() == 3
     )));
     for expression in ["1.0f / 0.0f", "0.0f / 0.0f", "3.402823466e38f / 0.5f"] {
-        rejected(&format!(
+        roundtrip(&format!(
             "constexpr float Quotient = {expression}; __global__ void kernel() {{}}"
         ));
-        rejected(&format!(
+        roundtrip(&format!(
             "__global__ void kernel() {{ constexpr float Quotient = {expression}; }}"
         ));
     }
@@ -332,7 +333,7 @@ fn cuda_float_division_preserves_lazy_and_discarded_constant_eligibility() {
             output[0] = Selected + Chosen + float(Disabled) + float(Enabled) + values[1];
         }",
     );
-    rejected("__global__ void kernel() { constexpr int Count = (1.0f / 0.0f, 2); }");
+    roundtrip("__global__ void kernel() { constexpr int Count = (1.0f / 0.0f, 2); }");
 }
 
 #[test]

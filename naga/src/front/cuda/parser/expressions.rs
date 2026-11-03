@@ -327,16 +327,19 @@ impl Parser<'_> {
                 expr: value.handle,
             }
         };
-        let handle = self.append(expression, span)?;
+        let constant = value
+            .constant
+            .literal
+            .and_then(|literal| constant_evaluation::unary(UnaryOperator::Negate, literal));
+        let handle = if let Some(literal) = constant.filter(|_| value.constant.is_nonfinite()) {
+            self.materialize_literal(literal, span)?
+        } else {
+            self.append(expression, span)?
+        };
         Ok(Value {
             category: ValueCategory::Prvalue,
             qualifiers: Qualifiers::NONE,
-            constant: ConstantValue::evaluated(
-                value
-                    .constant
-                    .literal
-                    .and_then(|literal| constant_evaluation::unary(UnaryOperator::Negate, literal)),
-            ),
+            constant: ConstantValue::evaluated(constant),
             handle,
             ty: value.ty,
             span,
@@ -705,21 +708,26 @@ impl Parser<'_> {
             ScalarKind::Float => Literal::F32(0.0),
             _ => return self.fail("condition requires a scalar value"),
         };
-        let zero = self.append(Expression::Literal(literal), value.span)?;
-        let handle = self.append(
-            Expression::Binary {
-                op: BinaryOperator::NotEqual,
-                left: value.handle,
-                right: zero,
-            },
-            value.span,
-        )?;
+        let constant = value.constant.literal.and_then(|value| {
+            constant_evaluation::binary(BinaryOperator::NotEqual, value, literal)
+        });
+        let handle = if let Some(literal) = constant.filter(|_| value.constant.is_nonfinite()) {
+            self.materialize_literal(literal, value.span)?
+        } else {
+            let zero = self.append(Expression::Literal(literal), value.span)?;
+            self.append(
+                Expression::Binary {
+                    op: BinaryOperator::NotEqual,
+                    left: value.handle,
+                    right: zero,
+                },
+                value.span,
+            )?
+        };
         Ok(Value {
             category: ValueCategory::Prvalue,
             qualifiers: Qualifiers::NONE,
-            constant: ConstantValue::evaluated(value.constant.literal.and_then(|value| {
-                constant_evaluation::binary(BinaryOperator::NotEqual, value, literal)
-            })),
+            constant: ConstantValue::evaluated(constant),
             handle,
             ty: scalar_resolution(Scalar::BOOL),
             span: value.span,
