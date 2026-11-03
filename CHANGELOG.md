@@ -378,6 +378,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 #### Naga
 
 - Preserve source signedness when converting between integer widths in SPIR-V output.
+- Handle floating-point conversions to 16-bit integers in Metal output and clamp signed half-precision conversions within range.
 - Support WGSL output for switch statements with nonempty fallthrough cases.
 - Preserve function call result names in WGSL output.
 - Fix SPIR-V fallthrough after grouped switch labels.

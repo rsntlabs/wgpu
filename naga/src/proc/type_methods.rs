@@ -652,10 +652,15 @@ macro_rules! define_int_float_limits {
     };
 }
 
-// i16 range [-32768, 32767] fits exactly in f16 (max 65504), f32, and f64.
+// The largest f16 value in the i16 range is 32752.
 // u16 range [0, 65535] fits exactly in f32 and f64. For f16, max exactly
 // representable is 65504 (f16::MAX).
-define_int_float_limits!(i16, half::f16, half::f16::MIN, half::f16::MAX);
+define_int_float_limits!(
+    i16,
+    half::f16,
+    half::f16::from_f32(-32768.0),
+    half::f16::from_f32(32752.0)
+);
 define_int_float_limits!(u16, half::f16, half::f16::ZERO, half::f16::MAX);
 define_int_float_limits!(i16, f32, -32768.0f32, 32767.0f32);
 define_int_float_limits!(u16, f32, 0.0f32, 65535.0f32);
