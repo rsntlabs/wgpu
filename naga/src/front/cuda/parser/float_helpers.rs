@@ -1,11 +1,12 @@
 use super::rounding::Rounding;
 use super::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub(super) enum FloatMathFunction {
     Floor,
     Ceil,
     AbsoluteValue,
+    Round,
 }
 
 impl FloatMathFunction {
@@ -14,6 +15,7 @@ impl FloatMathFunction {
             Self::Floor => 0,
             Self::Ceil => 1,
             Self::AbsoluteValue => 2,
+            Self::Round => 3,
         }
     }
 
@@ -22,6 +24,7 @@ impl FloatMathFunction {
             Self::Floor => "_naga_floorf",
             Self::Ceil => "_naga_ceilf",
             Self::AbsoluteValue => "_naga_fabsf",
+            Self::Round => "_naga_roundf",
         }
     }
 }
@@ -102,6 +105,9 @@ impl Parser<'_> {
             FloatMathFunction::Floor => self.rounding_bits(input_bits, Rounding::Floor, span)?,
             FloatMathFunction::Ceil => self.rounding_bits(input_bits, Rounding::Ceil, span)?,
             FloatMathFunction::AbsoluteValue => self.absolute_value_bits(input_bits, span)?,
+            FloatMathFunction::Round => {
+                self.rounding_bits(input_bits, Rounding::NearestAway, span)?
+            }
         };
         self.push_statement(
             Statement::Return {

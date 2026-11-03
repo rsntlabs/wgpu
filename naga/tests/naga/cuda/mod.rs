@@ -77,6 +77,7 @@ mod prototypes;
 mod reference_bindings;
 mod reference_categories;
 mod restrict;
+mod roundf;
 mod saturate;
 mod scalar_braces;
 mod scalar_promotion;

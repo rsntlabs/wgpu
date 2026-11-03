@@ -4,6 +4,7 @@ use super::*;
 pub(super) enum Rounding {
     Floor,
     Ceil,
+    NearestAway,
 }
 
 impl Parser<'_> {
@@ -57,6 +58,16 @@ impl Parser<'_> {
         let rounds_away_from_zero = match rounding {
             Rounding::Floor => is_negative,
             Rounding::Ceil => self.rounding_binary(BinaryOperator::Equal, sign, zero, span)?,
+            Rounding::NearestAway => {
+                let half_unit =
+                    self.rounding_binary(BinaryOperator::ShiftRight, integral_unit, one, span)?;
+                self.rounding_binary(
+                    BinaryOperator::GreaterEqual,
+                    discarded_bits,
+                    half_unit,
+                    span,
+                )?
+            }
         };
         let adjust = self.rounding_binary(
             BinaryOperator::LogicalAnd,
@@ -74,6 +85,15 @@ impl Parser<'_> {
             Rounding::Ceil => {
                 let positive_one = self.rounding_literal(0x3f80_0000, span)?;
                 self.rounding_select(is_negative, sign_mask, positive_one, span)?
+            }
+            Rounding::NearestAway => {
+                let half_bits = self.rounding_literal(0x3f00_0000, span)?;
+                let rounds_to_one =
+                    self.rounding_binary(BinaryOperator::GreaterEqual, magnitude, half_bits, span)?;
+                let positive_one = self.rounding_literal(0x3f80_0000, span)?;
+                let signed_one =
+                    self.rounding_binary(BinaryOperator::InclusiveOr, sign, positive_one, span)?;
+                self.rounding_select(rounds_to_one, signed_one, sign, span)?
             }
         };
         let is_zero = self.rounding_binary(BinaryOperator::Equal, magnitude, zero, span)?;

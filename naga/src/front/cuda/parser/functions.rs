@@ -32,7 +32,15 @@ const BITCAST_BUILTINS: [(&str, Scalar, Scalar); 4] = [
     ("__uint_as_float", Scalar::U32, Scalar::F32),
 ];
 
-const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 11] = [
+const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 5] = [
+    ("floorf", FloatMathFunction::Floor),
+    ("ceilf", FloatMathFunction::Ceil),
+    ("fabsf", FloatMathFunction::AbsoluteValue),
+    ("fabs", FloatMathFunction::AbsoluteValue),
+    ("roundf", FloatMathFunction::Round),
+];
+
+const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 7] = [
     (
         "__clz",
         MathFunction::CountLeadingZeros,
@@ -57,10 +65,6 @@ const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 11] = [
         Scalar::U32,
         Scalar::U32,
     ),
-    ("floorf", MathFunction::Floor, Scalar::F32, Scalar::F32),
-    ("ceilf", MathFunction::Ceil, Scalar::F32, Scalar::F32),
-    ("fabsf", MathFunction::Abs, Scalar::F32, Scalar::F32),
-    ("fabs", MathFunction::Abs, Scalar::F32, Scalar::F32),
     ("sinf", MathFunction::Sin, Scalar::F32, Scalar::F32),
     ("cosf", MathFunction::Cos, Scalar::F32, Scalar::F32),
     (
@@ -130,6 +134,12 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             )
         }))
         .chain(UNARY_BUILTINS.into_iter().map(|(name, _, _, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
+        .chain(FLOAT_MATH_BUILTINS.into_iter().map(|(name, _)| {
             (
                 name,
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
@@ -236,6 +246,7 @@ pub(super) enum FunctionCandidate {
         source: Scalar,
         result: Scalar,
     },
+    FloatMath(FloatMathFunction),
     IntegralDouble {
         source: Scalar,
     },
@@ -749,6 +760,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::WrappingAtomic(_)
                         | FunctionCandidate::Bitcast { .. }
                         | FunctionCandidate::Unary { .. }
+                        | FunctionCandidate::FloatMath(_)
                         | FunctionCandidate::Sqrt
                         | FunctionCandidate::Constructor { .. }
                 )
@@ -983,7 +995,9 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
             FunctionCandidate::WrappingAtomic(_) => TypeSpecifier::Scalar(Scalar::U32),
             FunctionCandidate::IntegralDouble { .. } => unreachable!(),
-            FunctionCandidate::Sqrt => TypeSpecifier::Scalar(Scalar::F32),
+            FunctionCandidate::FloatMath(_) | FunctionCandidate::Sqrt => {
+                TypeSpecifier::Scalar(Scalar::F32)
+            }
             FunctionCandidate::Constructor { size, scalar } => {
                 TypeSpecifier::Vector { size, scalar }
             }
@@ -1241,6 +1255,20 @@ impl<'a> Parser<'a> {
             }
             .into());
         }
+        if let FunctionCandidate::FloatMath(operation) = candidate {
+            let argument =
+                self.convert_scalar(arguments.into_iter().next().unwrap().into(), Scalar::F32)?;
+            let handle = self.call_float_math(argument.handle, operation, span)?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: ConstantValue::default(),
+                handle,
+                ty: scalar_resolution(Scalar::F32),
+                span,
+            }
+            .into());
+        }
         if candidate == FunctionCandidate::Sqrt {
             let argument =
                 self.convert_scalar(arguments.into_iter().next().unwrap().into(), Scalar::F32)?;
@@ -1289,15 +1317,6 @@ impl<'a> Parser<'a> {
             let argument =
                 self.convert_scalar(arguments.into_iter().next().unwrap().into(), source)?;
             let handle = match function {
-                MathFunction::Floor => {
-                    self.call_float_math(argument.handle, FloatMathFunction::Floor, span)?
-                }
-                MathFunction::Ceil => {
-                    self.call_float_math(argument.handle, FloatMathFunction::Ceil, span)?
-                }
-                MathFunction::Abs => {
-                    self.call_float_math(argument.handle, FloatMathFunction::AbsoluteValue, span)?
-                }
                 MathFunction::Saturate => self.saturate(argument.handle, span)?,
                 MathFunction::Sin | MathFunction::Cos => {
                     self.trigonometry(argument.handle, function == MathFunction::Cos, span)?
@@ -1683,6 +1702,13 @@ impl<'a> Parser<'a> {
                     }),
             )
             .chain(
+                FLOAT_MATH_BUILTINS
+                    .into_iter()
+                    .find(|&(candidate, _)| candidate == name)
+                    .filter(move |_| builtin_visible)
+                    .map(|(_, operation)| FunctionCandidate::FloatMath(operation)),
+            )
+            .chain(
                 (builtin_visible && SQRT_BUILTINS.contains(&name))
                     .then_some(FunctionCandidate::Sqrt),
             )
@@ -1724,6 +1750,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::AtomicCompareExchange(_) => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::Unary { .. }
+            | FunctionCandidate::FloatMath(_)
             | FunctionCandidate::IntegralDouble { .. }
             | FunctionCandidate::Sqrt => 1,
             FunctionCandidate::Constructor { size, .. } => size as usize,
@@ -1764,7 +1791,9 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::IntegralDouble { source } => {
                 return Some(scalar_resolution(source))
             }
-            FunctionCandidate::Sqrt => return Some(scalar_resolution(Scalar::F32)),
+            FunctionCandidate::FloatMath(_) | FunctionCandidate::Sqrt => {
+                return Some(scalar_resolution(Scalar::F32))
+            }
             FunctionCandidate::Constructor { scalar, .. } => {
                 return Some(scalar_resolution(scalar))
             }
