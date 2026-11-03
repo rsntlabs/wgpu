@@ -661,6 +661,15 @@ These results follow NVIDIA's
 Calls execute at runtime and are not constant expressions. Double-precision
 `ceil` remains unsupported.
 
+`roundf(float)` returns the nearest integral value as `float`, with halfway
+cases rounded away from zero. Scalar arguments convert to `float` first.
+Integer operations preserve signed zero, infinity, and large integral values.
+Values with magnitude below `0.5f`, including subnormals, produce zero with
+the input sign. NaNs produce the canonical quiet NaN `0x7fc00000`.
+These results follow NVIDIA's
+[`roundf` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__SINGLE.html).
+Calls execute at runtime and are not constant expressions.
+
 `__saturatef(float)` clamps its argument to `[+0.0, 1.0]` and returns `float`.
 Scalar arguments convert to `float` first. Negative values, both signed zeros,
 and NaNs produce positive zero; values greater than one produce one. Positive
@@ -690,7 +699,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `sqrt`, `sqrtf`, `floorf`, `ceilf`, `__saturatef`, `sinf`, or `cosf` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `sqrt`, `sqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, or `cosf` remain unsupported.
 
 ## Bit reinterpretation
 

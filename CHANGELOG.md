@@ -245,6 +245,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 - Support the CUDA `sqrt(float)` overload with shared square-root lowering and integral overload selection.
 - Support CUDA scalar `floorf`, including negative subnormals and large integral values.
 - Support CUDA scalar `ceilf`, including subnormal inputs and signed zero results.
+- Support CUDA scalar `roundf`, including halfway cases rounded away from zero.
 - Support CUDA scalar `__saturatef`, including NaNs, signed zeros, and subnormal inputs.
 - Support CUDA scalar `sinf` and `cosf` across the full finite input range.
 - Support CUDA `fabsf` and the `fabs(float)` overload, preserving scalar conversions and overload selection.
