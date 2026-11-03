@@ -142,6 +142,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 
 #### Naga
 
+- Support CUDA launch-bound attributes and check configured workgroup sizes against positive thread limits.
 - Support CUDA macro token pasting with raw arguments, empty arguments, and rescanning.
 - Support CUDA hexadecimal floating-point literals with direct binary32 rounding and digit separators.
 - Support CUDA pointer value construction and compatible pointer casts with shared conversion and capture rules.

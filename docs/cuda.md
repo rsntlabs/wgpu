@@ -238,9 +238,25 @@ The frontend maps CUDA's built-in variables as follows:
 
 CUDA chooses block dimensions at launch. Naga compute shaders encode their
 workgroup shape in the module, so compile a separate module for each required
-block shape. `__launch_bounds__` does not specify that shape and is unsupported.
+block shape.
 These mappings follow NVIDIA's [built-in variable definitions](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-c-programming-guide/index.html#built-in-variables)
 and WGSL's [compute built-in inputs](https://gpuweb.github.io/gpuweb/wgsl/#builtin-inputs-outputs).
+
+`__launch_bounds__(max_threads, min_blocks, max_cluster_blocks)` accepts one to
+three integral constant arguments, including macros and template parameters.
+Dependent template operands receive structural checks before instantiation;
+instantiated bounds require integral constant values.
+Arguments become signed 32-bit attribute values; nonpositive values impose no
+bound. For a positive first argument on a kernel, the product of all three
+`Options::workgroup_size` dimensions must not exceed it. The attribute does not
+choose the workgroup shape. Attributes on device helpers are validated but do
+not limit the caller's workgroup.
+
+The current execution model launches individual workgroups. Cluster launches
+and cluster builtins remain unsupported, and occupancy and cluster arguments
+do not become backend tuning metadata. NVIDIA describes CUDA's scheduling
+hints and launch limits in its
+[launch-bound definitions](https://docs.nvidia.com/cuda/archive/13.1.0/cuda-programming-guide/05-appendices/cpp-language-extensions.html#launch-bounds).
 
 ### HLSL dispatch dimensions
 

@@ -19,6 +19,7 @@ mod function_declarations;
 mod functions;
 mod inferred_declarations;
 mod initializers;
+mod launch_bounds;
 mod loops;
 mod null_pointer;
 mod operators;

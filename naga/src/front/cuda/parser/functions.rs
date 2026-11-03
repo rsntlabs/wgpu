@@ -3,6 +3,7 @@ use super::*;
 use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
 use super::float_helpers::FloatMathFunction;
 use super::function_declarations::Inlining;
+use super::launch_bounds::LaunchBounds;
 use super::types::{IntegerSpecifiers, VECTOR_TYPES};
 use crate::MathFunction;
 
@@ -211,6 +212,7 @@ pub(super) struct FunctionHeader<'a> {
     pub(super) is_static: bool,
     pub(super) inlining: Option<Inlining>,
     pub(super) operator: Option<operators::Operator>,
+    pub(super) launch_bounds: Option<LaunchBounds>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -395,6 +397,7 @@ impl<'a> Parser<'a> {
         let mut volatile_result = false;
         let mut const_result = false;
         let mut integers = IntegerSpecifiers::default();
+        let mut launch_bounds = None;
         loop {
             let token = self.lexer.peek()?;
             if result.is_none() {
@@ -419,6 +422,11 @@ impl<'a> Parser<'a> {
                 }
             }
             match token.0 {
+                Token::Word("__launch_bounds__") => {
+                    let bounds = self.launch_bounds()?;
+                    launch_bounds.get_or_insert(bounds);
+                    continue;
+                }
                 Token::Word("inline") => {
                     if inlining == Some(Inlining::Inline) {
                         return self.fail("duplicate inline specifier");
@@ -583,6 +591,7 @@ impl<'a> Parser<'a> {
             is_static: seen_static,
             inlining,
             operator,
+            launch_bounds,
         })
     }
 
@@ -619,7 +628,8 @@ impl<'a> Parser<'a> {
         if !self.kernels.is_empty() {
             self.activate_parameter_expansion(header.name_span)?;
         }
-        self.kernel_body(&header)?;
+        let bounds = self.kernel_body(&header)?;
+        self.check_launch_bounds(bounds)?;
         let function = core::mem::replace(
             &mut self.function,
             FunctionContext::new(FunctionKind::Kernel),
@@ -653,19 +663,23 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    pub(super) fn kernel_body(&mut self, header: &FunctionHeader<'a>) -> Result<(), ParseError> {
+    pub(super) fn kernel_body(
+        &mut self,
+        header: &FunctionHeader<'a>,
+    ) -> Result<Option<LaunchBounds>, ParseError> {
         if !matches!(header.result, ReturnType::Void) {
             return Err(ParseError {
                 message: String::from("CUDA kernels must return void"),
                 span: header.result_span,
             });
         }
-        self.parameters()?;
+        let mut bounds = header.launch_bounds;
+        self.parameters_with_launch_bounds(&mut bounds)?;
         self.lexer.expect_span(Token::Paren('{'))?;
         self.initialize_helper_builtins()?;
         self.block_contents()?;
         self.flush_emitter();
-        Ok(())
+        Ok(bounds)
     }
 
     pub(super) fn initialize_function_header(
@@ -692,7 +706,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn device_function_with_target(
         &mut self,
-        header: FunctionHeader<'a>,
+        mut header: FunctionHeader<'a>,
         target: Option<Handle<Function>>,
     ) -> Result<(), ParseError> {
         self.initialize_function_header(&header)?;
@@ -706,7 +720,7 @@ impl<'a> Parser<'a> {
             )?;
             self.function.ir.name = self.module.functions[target].name.clone();
         }
-        self.parameters()?;
+        self.parameters_with_launch_bounds(&mut header.launch_bounds)?;
         if let Some(target) = target {
             if self.function_declarations[&target].parameters != self.function.parameters {
                 return self.fail("incompatible instantiated function parameter types");

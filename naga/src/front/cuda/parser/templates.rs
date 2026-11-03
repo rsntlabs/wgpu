@@ -76,6 +76,7 @@ struct TemplateParameter<'a> {
     span: Span,
 }
 
+#[derive(Clone)]
 struct SignatureSource<'a> {
     start: Lexer<'a>,
     end: LexerPosition,
@@ -115,6 +116,13 @@ struct FunctionTemplate<'a> {
     source: SignatureSource<'a>,
     globals: FastHashMap<&'a str, GlobalDeclaration>,
     definition: Option<LexerPosition>,
+    launch_bounds: Option<TemplateLaunchBounds<'a>>,
+}
+
+struct TemplateLaunchBounds<'a> {
+    source: SignatureSource<'a>,
+    parameters: Vec<TemplateParameter<'a>>,
+    globals: FastHashMap<&'a str, GlobalDeclaration>,
 }
 
 #[derive(Clone, Eq, Hash, PartialEq)]
@@ -289,6 +297,7 @@ impl<'a> Parser<'a> {
             source,
             ..
         } = declaration;
+        let bounds_source = header.launch_bounds.map(|_| source.clone());
         let mut source = Some(source);
         let is_definition = self.lexer.peek()?.0 == Token::Paren('{');
         if is_definition {
@@ -393,6 +402,7 @@ impl<'a> Parser<'a> {
                 source: source.take().unwrap(),
                 globals: FastHashMap::default(),
                 definition: None,
+                launch_bounds: None,
             });
             let &mut GlobalDeclaration::Functions(ref mut overloads) = self
                 .global_declarations
@@ -404,6 +414,20 @@ impl<'a> Parser<'a> {
             overloads.templates.push(id);
             id
         };
+        if self.templates.declarations[id].definition.is_none() {
+            if let Some(source) = bounds_source {
+                self.parameter_expansion_budget
+                    .charge_slice::<TemplateLaunchBounds<'_>>(1, span)?;
+                self.parameter_expansion_budget
+                    .charge_slice::<TemplateParameter<'_>>(parameters.len(), span)?;
+                let globals = self.clone_template_environment(span)?;
+                self.templates.declarations[id].launch_bounds = Some(TemplateLaunchBounds {
+                    source,
+                    parameters: parameters.clone(),
+                    globals,
+                });
+            }
+        }
         if previous.is_none() || is_definition {
             let globals = self.clone_template_environment(span)?;
             let declaration = &mut self.templates.declarations[id];
@@ -468,13 +492,15 @@ impl<'a> Parser<'a> {
             self.lexer.expect_span(Token::Separator(','))?;
         }
         let source = self.lexer.clone();
-        let header = self.function_header(false)?;
+        let mut header = self.function_header(false)?;
         if header.operator.is_some() {
             return self.fail("operator templates are unsupported");
         }
         self.check_name(header.name, header.name_span)?;
         self.check_dynamic_shared_linkage(header.name, header.name_span)?;
+        self.function.symbol_table.push_scope();
         let signature = self.template_parameter_patterns()?;
+        self.trailing_launch_bounds(&mut header.launch_bounds)?;
         let end = self.lexer.position();
         Ok(FunctionTemplate {
             result: header.result,
@@ -484,6 +510,7 @@ impl<'a> Parser<'a> {
             source: SignatureSource { start: source, end },
             globals: FastHashMap::default(),
             definition: None,
+            launch_bounds: None,
         })
     }
 
@@ -1023,11 +1050,11 @@ impl<'a> Parser<'a> {
         let parsed = (|| {
             self.prepare_parameter_bindings(span)?;
             self.bind_template_parameters(&parameters, Some(arguments))?;
-            let header = self.function_header(false)?;
+            let mut header = self.function_header(false)?;
             self.parameter_expansion_budget
                 .charge_bytes(header.name.len(), span)?;
             self.initialize_function_header(&header)?;
-            self.parameters()?;
+            self.parameters_with_launch_bounds(&mut header.launch_bounds)?;
             self.lexer.expect_span(Token::End)?;
             let result = self.function.ir.result.as_ref().map(|result| result.ty);
             Ok(ResolvedSignature {
@@ -1554,7 +1581,7 @@ impl<'a> Parser<'a> {
     }
 
     fn explicit_kernel_instantiation(&mut self, span: Span) -> Result<(), ParseError> {
-        let header = self.function_header(false)?;
+        let mut header = self.function_header(false)?;
         if header.kind != FunctionKind::Kernel || !matches!(header.result, ReturnType::Void) {
             return self.fail("only explicit kernel instantiation declarations are supported");
         }
@@ -1571,7 +1598,7 @@ impl<'a> Parser<'a> {
         );
         let parsed = (|| {
             self.prepare_parameter_bindings(span)?;
-            self.parameters()?;
+            self.parameters_with_launch_bounds(&mut header.launch_bounds)?;
             Ok::<_, ParseError>(core::mem::take(&mut self.function.parameters))
         })();
         self.function = saved;
@@ -1624,7 +1651,60 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    fn check_template_launch_bounds(&mut self, instance: usize) -> Result<(), ParseError> {
+        let instance = &self.templates.instances[instance];
+        let span = instance.span;
+        let is_kernel = matches!(instance.target, InstanceTarget::Kernel(_));
+        let Some(bounds) = self.templates.declarations[instance.key.template]
+            .launch_bounds
+            .as_ref()
+        else {
+            return Ok(());
+        };
+        self.parameter_expansion_budget
+            .charge_slice::<TemplateParameter<'_>>(bounds.parameters.len(), span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<TemplateValue>(instance.key.arguments.len(), span)?;
+        Self::charge_template_environment(
+            &bounds.globals,
+            &mut self.parameter_expansion_budget,
+            span,
+        )?;
+        let lexer = bounds.source.start.bounded(bounds.source.end);
+        let parameters = bounds.parameters.clone();
+        let arguments = instance.key.arguments.clone();
+        let globals = bounds.globals.clone();
+        let previous_globals = core::mem::replace(&mut self.global_declarations, globals);
+        let previous_lexer = core::mem::replace(&mut self.lexer, lexer);
+        let previous_function = core::mem::replace(
+            &mut self.function,
+            FunctionContext::new(FunctionKind::Device),
+        );
+        let previous_signature = core::mem::replace(&mut self.templates.parsing_signature, true);
+        let result = (|| {
+            self.prepare_parameter_bindings(span)?;
+            self.bind_template_parameters(&parameters, Some(&arguments))?;
+            let mut header = self.function_header(false)?;
+            self.parameter_expansion_budget
+                .charge_bytes(header.name.len(), span)?;
+            self.initialize_function_header(&header)?;
+            self.parameters_with_launch_bounds(&mut header.launch_bounds)?;
+            self.lexer.expect_span(Token::End)?;
+            Ok::<_, ParseError>(header.launch_bounds)
+        })();
+        self.templates.parsing_signature = previous_signature;
+        self.function = previous_function;
+        self.lexer = previous_lexer;
+        self.global_declarations = previous_globals;
+        let bounds = result?;
+        if is_kernel {
+            self.check_launch_bounds(bounds)?;
+        }
+        Ok(())
+    }
+
     fn materialize_template_instance(&mut self, instance: usize) -> Result<(), ParseError> {
+        self.check_template_launch_bounds(instance)?;
         let instance = &self.templates.instances[instance];
         let span = instance.span;
         let declaration = &self.templates.declarations[instance.key.template];
