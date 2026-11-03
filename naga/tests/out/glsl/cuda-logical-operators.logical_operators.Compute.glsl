@@ -111,18 +111,17 @@ void main() {
     Sample_cuda_record_0_ evaluated = Sample_cuda_record_0_(0, int[2](0, 0));
     Sample_cuda_record_0_ local_19 = Sample_cuda_record_0_(0, int[2](0, 0));
     Sample_cuda_record_0_ local_20 = Sample_cuda_record_0_(0, int[2](0, 0));
-    Sample_cuda_record_0_ local_21 = Sample_cuda_record_0_(0, int[2](0, 0));
+    uint local_21 = 0u;
     uint local_22 = 0u;
     uint local_23 = 0u;
-    uint local_24 = 0u;
-    bool local_25 = false;
-    uint local_26 = 0u;
-    bool local_27 = false;
-    uint local_28 = 0u;
-    bool local_29 = false;
-    uint local_30 = 0u;
-    bool local_31 = false;
-    uint local_32 = 0u;
+    bool local_24 = false;
+    uint local_25 = 0u;
+    bool local_26 = false;
+    uint local_27 = 0u;
+    bool local_28 = false;
+    uint local_29 = 0u;
+    bool local_30 = false;
+    uint local_31 = 0u;
     uint base = (threadIdx.x * 24u);
     left.value = 2;
     left.payload[0] = 3;
@@ -259,7 +258,7 @@ void main() {
         Sample_cuda_record_0_ _e250 = local_19;
         Sample_cuda_record_0_ _e251 = right;
         Sample_cuda_record_0_ _e252 = operator_u0026_u0026_(_e250, _e251);
-        local_21 = _e252;
+        evaluated = _e252;
     } else {
         Sample_cuda_record_0_ _e254 = left;
         int _e255 = counter;
@@ -269,62 +268,60 @@ void main() {
         local_20.payload[1] = 2;
         Sample_cuda_record_0_ _e265 = local_20;
         Sample_cuda_record_0_ _e266 = operator_u007c_u007c(_e254, _e265);
-        local_21 = _e266;
+        evaluated = _e266;
     }
-    Sample_cuda_record_0_ _e269 = local_21;
-    evaluated = _e269;
-    int _e272 = evaluated.value;
-    local_22 = uint((base + 17u));
-    uint _e278 = local_22;
-    _group_0_binding_0_cs[_e278] = uint(_e272);
-    int _e280 = counter;
-    local_23 = uint((base + 18u));
-    uint _e286 = local_23;
-    _group_0_binding_0_cs[_e286] = uint(_e280);
-    local_25 = false;
+    int _e270 = evaluated.value;
+    local_21 = uint((base + 17u));
+    uint _e276 = local_21;
+    _group_0_binding_0_cs[_e276] = uint(_e270);
+    int _e278 = counter;
+    local_22 = uint((base + 18u));
+    uint _e284 = local_22;
+    _group_0_binding_0_cs[_e284] = uint(_e278);
+    local_24 = false;
     if (false) {
-        Sample_cuda_record_0_ _e290 = left;
-        Sample_cuda_record_0_ _e291 = right;
-        Sample_cuda_record_0_ _e292 = operator_u0026_u0026_(_e290, _e291);
-        local_25 = (_e292.value != 0);
+        Sample_cuda_record_0_ _e288 = left;
+        Sample_cuda_record_0_ _e289 = right;
+        Sample_cuda_record_0_ _e290 = operator_u0026_u0026_(_e288, _e289);
+        local_24 = (_e290.value != 0);
     }
-    bool _e296 = local_25;
-    local_24 = uint((base + 19u));
-    uint _e302 = local_24;
-    _group_0_binding_0_cs[_e302] = uint(_e296);
-    local_27 = true;
+    bool _e294 = local_24;
+    local_23 = uint((base + 19u));
+    uint _e300 = local_23;
+    _group_0_binding_0_cs[_e300] = uint(_e294);
+    local_26 = true;
     if (true) {
     } else {
-        Sample_cuda_record_0_ _e306 = left;
-        Sample_cuda_record_0_ _e307 = right;
-        Sample_cuda_record_0_ _e308 = operator_u007c_u007c(_e306, _e307);
-        local_27 = (_e308.value != 0);
+        Sample_cuda_record_0_ _e304 = left;
+        Sample_cuda_record_0_ _e305 = right;
+        Sample_cuda_record_0_ _e306 = operator_u007c_u007c(_e304, _e305);
+        local_26 = (_e306.value != 0);
     }
-    bool _e312 = local_27;
-    local_26 = uint((base + 20u));
-    uint _e318 = local_26;
-    _group_0_binding_0_cs[_e318] = uint(_e312);
-    bool _e322 = (2 != 0);
-    local_29 = _e322;
-    if (_e322) {
-        local_29 = (3 != 0);
+    bool _e310 = local_26;
+    local_25 = uint((base + 20u));
+    uint _e316 = local_25;
+    _group_0_binding_0_cs[_e316] = uint(_e310);
+    bool _e320 = (2 != 0);
+    local_28 = _e320;
+    if (_e320) {
+        local_28 = (3 != 0);
     }
-    bool _e327 = local_29;
-    local_28 = uint((base + 21u));
-    uint _e333 = local_28;
-    _group_0_binding_0_cs[_e333] = uint(_e327);
-    bool _e337 = (0 != 0);
-    local_31 = _e337;
-    if (_e337) {
+    bool _e325 = local_28;
+    local_27 = uint((base + 21u));
+    uint _e331 = local_27;
+    _group_0_binding_0_cs[_e331] = uint(_e325);
+    bool _e335 = (0 != 0);
+    local_30 = _e335;
+    if (_e335) {
     } else {
-        local_31 = (4 != 0);
+        local_30 = (4 != 0);
     }
-    bool _e342 = local_31;
-    local_30 = uint((base + 22u));
-    uint _e348 = local_30;
-    _group_0_binding_0_cs[_e348] = uint(_e342);
-    local_32 = uint((base + 23u));
-    uint _e355 = local_32;
-    _group_0_binding_0_cs[_e355] = threadIdx.x;
+    bool _e340 = local_30;
+    local_29 = uint((base + 22u));
+    uint _e346 = local_29;
+    _group_0_binding_0_cs[_e346] = uint(_e340);
+    local_31 = uint((base + 23u));
+    uint _e353 = local_31;
+    _group_0_binding_0_cs[_e353] = threadIdx.x;
 }
 

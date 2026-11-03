@@ -71,6 +71,7 @@ pub(super) struct DeferredCall {
 pub(super) struct FunctionParameterState {
     pub(super) expression_graph_depths: Vec<u32>,
     pub(super) deferred_calls: FastHashMap<Handle<Expression>, DeferredCall>,
+    pub(super) result_objects: initializers::ResultObjects,
     pub(super) bound_addresses: Arena<BoundAddress>,
     pub(super) bound_address_indices: FastHashMap<BoundAddress, Handle<BoundAddress>>,
     pub(super) bound_references: Arena<BoundReference>,
@@ -288,6 +289,7 @@ impl Parser<'_> {
 
     pub(super) fn parameter_state_needed(&self) -> bool {
         !self.function.deferred_calls.is_empty()
+            || !self.function.result_objects.is_empty()
             || !self.function.pointers.is_empty()
             || !self.function.volatile_accesses.is_empty()
             || self.function.parameters.iter().any(|parameter| {
@@ -567,6 +569,7 @@ impl FunctionContext<'_> {
         FunctionParameterState {
             expression_graph_depths: core::mem::take(&mut self.expression_graph_depths),
             deferred_calls: core::mem::take(&mut self.deferred_calls),
+            result_objects: core::mem::take(&mut self.result_objects),
             bound_addresses: core::mem::take(&mut self.bound_addresses),
             bound_address_indices: core::mem::take(&mut self.bound_address_indices),
             bound_references: core::mem::take(&mut self.bound_references),
@@ -579,6 +582,7 @@ impl FunctionContext<'_> {
     pub(super) fn install_parameter_state(&mut self, state: FunctionParameterState) {
         self.expression_graph_depths = state.expression_graph_depths;
         self.deferred_calls = state.deferred_calls;
+        self.result_objects = state.result_objects;
         self.bound_addresses = state.bound_addresses;
         self.bound_address_indices = state.bound_address_indices;
         self.bound_references = state.bound_references;

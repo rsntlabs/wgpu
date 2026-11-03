@@ -230,11 +230,21 @@ fn cuda_class_values_keep_declaration_ambiguity_and_original_spans() {
 
 #[test]
 fn cuda_class_values_reject_unrelated_and_volatile_class_sources() {
+    for target in ["int2", "Record"] {
+        for expression in [
+            format!("{target}(source)"),
+            format!("static_cast<{target}>(source)"),
+            format!("({target})source"),
+        ] {
+            roundtrip(&format!(
+                "struct Record {{ unsigned value; }}; struct First {{ unsigned value; }};
+                __global__ void kernel() {{ unsigned source = 3u; auto copied = {expression}; }}"
+            ));
+        }
+    }
     for (declaration, target) in [
         ("uint2 source{3u, 5u};", "int2"),
         ("int3 source{3, 5, 7};", "int2"),
-        ("unsigned source = 3u;", "int2"),
-        ("unsigned source = 3u;", "Record"),
         ("First source{3u};", "Record"),
         ("Record *source = nullptr;", "Record"),
         ("Record source[1]{};", "Record"),
@@ -250,12 +260,13 @@ fn cuda_class_values_reject_unrelated_and_volatile_class_sources() {
             ));
         }
     }
-    for expression in [
-        "Record(3u, 5u)",
-        "int2(3, 5)",
-        "Record(nullptr)",
-        "int2(nullptr)",
-    ] {
+    for expression in ["Record(3u, 5u)", "int2(3, 5)"] {
+        roundtrip(&format!(
+            "struct Record {{ unsigned first; unsigned second; }};
+            __global__ void kernel() {{ auto copied = {expression}; }}"
+        ));
+    }
+    for expression in ["Record(nullptr)", "int2(nullptr)"] {
         rejected(&format!(
             "struct Record {{ unsigned first; unsigned second; }};
             __global__ void kernel() {{ auto copied = {expression}; }}"

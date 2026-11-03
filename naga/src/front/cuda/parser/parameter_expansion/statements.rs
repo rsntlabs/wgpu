@@ -443,6 +443,12 @@ impl Parser<'_> {
                     has_return |= body_return || continuing_return;
                 }
                 Statement::Store { pointer, value } => {
+                    if invocation
+                        .source_state
+                        .is_some_and(|state| state.result_objects.initializes(pointer, value))
+                    {
+                        continue;
+                    }
                     let volatile = invocation.source_state.is_some_and(|state| {
                         state.volatile_accesses.contains_store(pointer, value, span)
                     });

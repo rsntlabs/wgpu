@@ -300,6 +300,8 @@ impl<'a> Parser<'a> {
         let pointer = self.temporary_pointer(&resolution, span)?;
         self.aggregate_initializer(pointer, specifier, ty, None)?;
         let span = self.lexer.span_from(span.to_range().unwrap().start);
-        self.load_pointer(pointer, &resolution, span)
+        let value = self.load_pointer(pointer, &resolution, span)?;
+        self.record_constructed_result(value.handle, pointer, span)?;
+        Ok(value)
     }
 }

@@ -124,12 +124,11 @@ pub(super) fn limit_error(span: Span) -> ParseError {
 mod tests {
     use super::*;
 
-    #[test]
-    fn braced_aggregate_initialization_charges_nodes_without_parameter_state() {
+    fn aggregate_initializer_checks_node_budget(parenthesized: bool) {
         let fields = (0..16)
             .map(|index| format!("int field_{index};"))
             .collect::<String>();
-        let initializer = "{1}";
+        let initializer = if parenthesized { "(1)" } else { "{1}" };
         let source = format!("struct Record {{ {fields} }}; {initializer}");
         let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
         parser.structure_declaration(true).unwrap();
@@ -159,7 +158,14 @@ mod tests {
         assert_eq!(parser.function.ir.expressions.len(), 1);
         assert!(parser.function.ir.body.is_empty());
 
-        let result = parser.aggregate_initializer(pointer, TypeSpecifier::Structure(ty), ty, None);
+        let result = if parenthesized {
+            parser.lexer.expect_span(Token::Paren('(')).unwrap();
+            parser
+                .parenthesized_aggregate_initializer(pointer, ty, span, None)
+                .map(|_| ())
+        } else {
+            parser.aggregate_initializer(pointer, TypeSpecifier::Structure(ty), ty, None)
+        };
         let error = result.unwrap_err();
         assert_eq!(error.message, limit_error(span).message);
         assert!(parser.parameter_expansion_budget.is_exhausted());
@@ -173,6 +179,16 @@ mod tests {
         assert!(parser.function.parameters.is_empty());
         assert!(parser.module.functions.is_empty());
         assert!(parser.module.global_variables.is_empty());
+    }
+
+    #[test]
+    fn parenthesized_aggregate_initialization_charges_nodes_without_parameter_state() {
+        aggregate_initializer_checks_node_budget(true);
+    }
+
+    #[test]
+    fn braced_aggregate_initialization_charges_nodes_without_parameter_state() {
+        aggregate_initializer_checks_node_budget(false);
     }
 
     #[test]

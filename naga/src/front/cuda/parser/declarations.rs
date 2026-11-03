@@ -137,7 +137,7 @@ fn parameter_declarator(
     declarator(parser, lexer, depth)
 }
 
-fn balanced(lexer: &mut Lexer<'_>, depth: u32) -> Result<bool, ParseError> {
+pub(super) fn balanced(lexer: &mut Lexer<'_>, depth: u32) -> Result<bool, ParseError> {
     check_depth(lexer, depth)?;
     let closing = match lexer.next()?.0 {
         Token::Paren('(') => ')',

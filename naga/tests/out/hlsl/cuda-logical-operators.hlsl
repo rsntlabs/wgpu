@@ -119,18 +119,17 @@ void logical_operators(uint3 threadIdx : SV_GroupThreadID)
     Sample_cuda_record_0_ evaluated = (Sample_cuda_record_0_)0;
     Sample_cuda_record_0_ local_19 = (Sample_cuda_record_0_)0;
     Sample_cuda_record_0_ local_20 = (Sample_cuda_record_0_)0;
-    Sample_cuda_record_0_ local_21 = (Sample_cuda_record_0_)0;
+    uint local_21 = (uint)0;
     uint local_22 = (uint)0;
     uint local_23 = (uint)0;
-    uint local_24 = (uint)0;
-    bool local_25 = (bool)0;
-    uint local_26 = (uint)0;
-    bool local_27 = (bool)0;
-    uint local_28 = (uint)0;
-    bool local_29 = (bool)0;
-    uint local_30 = (uint)0;
-    bool local_31 = (bool)0;
-    uint local_32 = (uint)0;
+    bool local_24 = (bool)0;
+    uint local_25 = (uint)0;
+    bool local_26 = (bool)0;
+    uint local_27 = (uint)0;
+    bool local_28 = (bool)0;
+    uint local_29 = (uint)0;
+    bool local_30 = (bool)0;
+    uint local_31 = (uint)0;
 
     uint base = (threadIdx.x * 24u);
     left.value = int(2);
@@ -268,7 +267,7 @@ void logical_operators(uint3 threadIdx : SV_GroupThreadID)
         Sample_cuda_record_0_ _e250 = local_19;
         Sample_cuda_record_0_ _e251 = right;
         const Sample_cuda_record_0_ _e252 = operator_u0026_u0026_(_e250, _e251);
-        local_21 = _e252;
+        evaluated = _e252;
     } else {
         Sample_cuda_record_0_ _e254 = left;
         int _e255 = counter;
@@ -278,61 +277,59 @@ void logical_operators(uint3 threadIdx : SV_GroupThreadID)
         local_20.payload_[1] = int(2);
         Sample_cuda_record_0_ _e265 = local_20;
         const Sample_cuda_record_0_ _e266 = operator_u007c_u007c(_e254, _e265);
-        local_21 = _e266;
+        evaluated = _e266;
     }
-    Sample_cuda_record_0_ _e269 = local_21;
-    evaluated = _e269;
-    int _e272 = evaluated.value;
-    local_22 = uint((base + 17u));
-    uint _e278 = local_22;
-    out_.Store(_e278*4, asuint(uint(_e272)));
-    int _e280 = counter;
-    local_23 = uint((base + 18u));
-    uint _e286 = local_23;
-    out_.Store(_e286*4, asuint(uint(_e280)));
-    local_25 = false;
+    int _e270 = evaluated.value;
+    local_21 = uint((base + 17u));
+    uint _e276 = local_21;
+    out_.Store(_e276*4, asuint(uint(_e270)));
+    int _e278 = counter;
+    local_22 = uint((base + 18u));
+    uint _e284 = local_22;
+    out_.Store(_e284*4, asuint(uint(_e278)));
+    local_24 = false;
     if (false) {
-        Sample_cuda_record_0_ _e290 = left;
-        Sample_cuda_record_0_ _e291 = right;
-        const Sample_cuda_record_0_ _e292 = operator_u0026_u0026_(_e290, _e291);
-        local_25 = (_e292.value != int(0));
+        Sample_cuda_record_0_ _e288 = left;
+        Sample_cuda_record_0_ _e289 = right;
+        const Sample_cuda_record_0_ _e290 = operator_u0026_u0026_(_e288, _e289);
+        local_24 = (_e290.value != int(0));
     }
-    bool _e296 = local_25;
-    local_24 = uint((base + 19u));
-    uint _e302 = local_24;
-    out_.Store(_e302*4, asuint(uint(_e296)));
-    local_27 = true;
+    bool _e294 = local_24;
+    local_23 = uint((base + 19u));
+    uint _e300 = local_23;
+    out_.Store(_e300*4, asuint(uint(_e294)));
+    local_26 = true;
     if (true) {
     } else {
-        Sample_cuda_record_0_ _e306 = left;
-        Sample_cuda_record_0_ _e307 = right;
-        const Sample_cuda_record_0_ _e308 = operator_u007c_u007c(_e306, _e307);
-        local_27 = (_e308.value != int(0));
+        Sample_cuda_record_0_ _e304 = left;
+        Sample_cuda_record_0_ _e305 = right;
+        const Sample_cuda_record_0_ _e306 = operator_u007c_u007c(_e304, _e305);
+        local_26 = (_e306.value != int(0));
     }
-    bool _e312 = local_27;
-    local_26 = uint((base + 20u));
-    uint _e318 = local_26;
-    out_.Store(_e318*4, asuint(uint(_e312)));
-    bool _e322 = (int(2) != int(0));
-    local_29 = _e322;
-    if (_e322) {
-        local_29 = (int(3) != int(0));
+    bool _e310 = local_26;
+    local_25 = uint((base + 20u));
+    uint _e316 = local_25;
+    out_.Store(_e316*4, asuint(uint(_e310)));
+    bool _e320 = (int(2) != int(0));
+    local_28 = _e320;
+    if (_e320) {
+        local_28 = (int(3) != int(0));
     }
-    bool _e327 = local_29;
-    local_28 = uint((base + 21u));
-    uint _e333 = local_28;
-    out_.Store(_e333*4, asuint(uint(_e327)));
-    bool _e337 = (int(0) != int(0));
-    local_31 = _e337;
-    if (_e337) {
+    bool _e325 = local_28;
+    local_27 = uint((base + 21u));
+    uint _e331 = local_27;
+    out_.Store(_e331*4, asuint(uint(_e325)));
+    bool _e335 = (int(0) != int(0));
+    local_30 = _e335;
+    if (_e335) {
     } else {
-        local_31 = (int(4) != int(0));
+        local_30 = (int(4) != int(0));
     }
-    bool _e342 = local_31;
-    local_30 = uint((base + 22u));
-    uint _e348 = local_30;
-    out_.Store(_e348*4, asuint(uint(_e342)));
-    local_32 = uint((base + 23u));
-    uint _e355 = local_32;
-    out_.Store(_e355*4, asuint(threadIdx.x));
+    bool _e340 = local_30;
+    local_29 = uint((base + 22u));
+    uint _e346 = local_29;
+    out_.Store(_e346*4, asuint(uint(_e340)));
+    local_31 = uint((base + 23u));
+    uint _e353 = local_31;
+    out_.Store(_e353*4, asuint(threadIdx.x));
 }

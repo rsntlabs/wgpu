@@ -419,6 +419,19 @@ impl<'a> Parser<'a> {
             {
                 self.aggregate_initializer(pointer, specifier, ty, array_count)?;
                 None
+            } else if !is_array
+                && matches!(
+                    specifier,
+                    TypeSpecifier::Vector { .. } | TypeSpecifier::Structure(_)
+                )
+                && self.lexer.peek()?.0 == Token::Paren('(')
+            {
+                if declarations::parenthesized_function_declaration(self, self.lexer.clone())? {
+                    return self.fail("local function declarations are unsupported");
+                }
+                let opening = self.lexer.expect_span(Token::Paren('('))?;
+                self.parenthesized_aggregate_initializer(pointer, ty, opening, None)?;
+                None
             } else if is_const
                 && matches!(
                     specifier,
@@ -442,13 +455,7 @@ impl<'a> Parser<'a> {
                 self.lexer.expect_span(Token::Separator(';'))?;
             }
             if let Some(initializer) = initializer {
-                self.push_statement(
-                    Statement::Store {
-                        pointer,
-                        value: initializer,
-                    },
-                    span.until(&end),
-                );
+                self.store_initializer(pointer, initializer, span.until(&end))?;
             }
             if !has_next_declarator {
                 return Ok(());

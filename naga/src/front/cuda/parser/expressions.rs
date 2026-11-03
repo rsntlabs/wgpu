@@ -655,7 +655,7 @@ impl Parser<'_> {
         target: TypeSpecifier,
         span: Span,
     ) -> Result<Value, ParseError> {
-        self.lexer.expect_span(Token::Paren('('))?;
+        let opening = self.lexer.expect_span(Token::Paren('('))?;
         let ty = self.lower_type(target, span)?;
         if self.lexer.peek()?.0 == Token::Paren(')') {
             let end = self.lexer.next()?.1;
@@ -675,10 +675,29 @@ impl Parser<'_> {
                 },
             });
         }
-        let expression = self.expression(0)?;
-        let end = self.lexer.expect_span(Token::Paren(')'))?;
-        let mut value = self.cast_value(expression, &ty)?;
-        value.span = span.until(&end);
+        let pending_value = if self.lexer.peek()?.0 == Token::Paren('{') {
+            None
+        } else {
+            let expression = self.expression(0)?;
+            let value = self.rvalue(expression)?;
+            if self.module.compare_types(&value.ty, &ty)
+                || self.dimension_conversion(&value.ty, &ty)
+            {
+                let end = self.lexer.expect_span(Token::Paren(')'))?;
+                let mut value = self.cast_value(value.into(), &ty)?;
+                value.span = span.until(&end);
+                return Ok(value);
+            }
+            Some(value)
+        };
+        let target_type = self.type_handle(&ty, span);
+        let pointer = self.temporary_pointer(&ty, span)?;
+        let constant =
+            self.parenthesized_aggregate_initializer(pointer, target_type, opening, pending_value)?;
+        let span = self.lexer.span_from(span.to_range().unwrap().start);
+        let mut value = self.load_pointer(pointer, &ty, span)?;
+        self.record_constructed_result(value.handle, pointer, span)?;
+        value.constant = constant;
         Ok(value)
     }
 

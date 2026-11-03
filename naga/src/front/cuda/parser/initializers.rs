@@ -2,7 +2,176 @@ use super::*;
 
 use core::num::NonZeroU32;
 
+#[derive(Clone, Default)]
+pub(super) struct ResultObjects {
+    values: FastHashMap<Handle<Expression>, Handle<LocalVariable>>,
+    destinations: FastHashMap<Handle<LocalVariable>, Handle<Expression>>,
+}
+
+impl ResultObjects {
+    pub(super) fn is_empty(&self) -> bool {
+        self.destinations.is_empty()
+    }
+
+    pub(super) fn redirects(&self, local: Handle<LocalVariable>) -> bool {
+        self.destinations.contains_key(&local)
+    }
+
+    pub(super) fn initializes(
+        &self,
+        pointer: Handle<Expression>,
+        value: Handle<Expression>,
+    ) -> bool {
+        self.values
+            .get(&value)
+            .and_then(|local| self.destinations.get(local))
+            .is_some_and(|&destination| destination == pointer)
+    }
+
+    pub(super) fn inventory(
+        &self,
+        budget: &mut parameter_expansion::ExpansionBudget,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        budget.charge_nodes(self.values.len() + self.destinations.len(), span)?;
+        budget.charge_map_entry::<Handle<Expression>, Handle<LocalVariable>>(
+            self.values.len(),
+            span,
+        )?;
+        budget.charge_map_entry::<Handle<LocalVariable>, Handle<Expression>>(
+            self.destinations.len(),
+            span,
+        )?;
+        budget.charge_work(self.values.len() + self.destinations.len(), span)
+    }
+
+    pub(super) fn destination(
+        &self,
+        local: Handle<LocalVariable>,
+        expressions: &Arena<Expression>,
+        budget: &mut parameter_expansion::ExpansionBudget,
+        span: Span,
+    ) -> Result<Option<Handle<Expression>>, ParseError> {
+        let Some(&destination) = self.destinations.get(&local) else {
+            return Ok(None);
+        };
+        let mut current = local;
+        let mut remaining_depth = 64_usize;
+        loop {
+            let Some(&pointer) = self.destinations.get(&current) else {
+                return Ok(Some(destination));
+            };
+            budget.charge_work(1, span)?;
+            remaining_depth = remaining_depth
+                .checked_sub(1)
+                .ok_or_else(|| result_object_limit(span))?;
+            let mut root = pointer;
+            while let Expression::AccessIndex { base, .. } = expressions[root] {
+                budget.charge_work(1, span)?;
+                remaining_depth = remaining_depth
+                    .checked_sub(1)
+                    .ok_or_else(|| result_object_limit(span))?;
+                root = base;
+            }
+            let Expression::LocalVariable(next) = expressions[root] else {
+                return Err(ParseError {
+                    message: String::from(
+                        "CUDA result-object destinations require static local projections",
+                    ),
+                    span,
+                });
+            };
+            if next == local {
+                return Err(result_object_limit(span));
+            }
+            current = next;
+        }
+    }
+}
+
+fn result_object_limit(span: Span) -> ParseError {
+    ParseError {
+        message: String::from("CUDA result-object destination cycle or nesting limit exceeded"),
+        span,
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum AggregateInitialization {
+    Braced,
+    Elided,
+    ElidedParenthesized,
+    Parenthesized,
+    SingleExpression,
+}
+
+impl AggregateInitialization {
+    const fn closing(self) -> Option<char> {
+        match self {
+            Self::Braced => Some('}'),
+            Self::Parenthesized => Some(')'),
+            Self::Elided | Self::ElidedParenthesized | Self::SingleExpression => None,
+        }
+    }
+
+    const fn ordinary_conversions(self) -> bool {
+        matches!(
+            self,
+            Self::Parenthesized | Self::ElidedParenthesized | Self::SingleExpression
+        )
+    }
+}
+
 impl Parser<'_> {
+    pub(super) fn record_constructed_result(
+        &mut self,
+        value: Handle<Expression>,
+        pointer: Handle<Expression>,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let Expression::LocalVariable(local) = self.function.ir.expressions[pointer] else {
+            return Err(result_object_limit(span));
+        };
+        self.parameter_expansion_budget.charge_nodes(1, span)?;
+        self.parameter_expansion_budget
+            .charge_map_entry::<Handle<Expression>, Handle<LocalVariable>>(1, span)?;
+        self.function.result_objects.values.insert(value, local);
+        Ok(())
+    }
+
+    pub(super) fn store_initializer(
+        &mut self,
+        pointer: Handle<Expression>,
+        value: Handle<Expression>,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        if let Some(&local) = self.function.result_objects.values.get(&value) {
+            if let Some(&previous) = self.function.result_objects.destinations.get(&local) {
+                if previous != pointer {
+                    return Err(result_object_limit(span));
+                }
+            } else {
+                self.parameter_expansion_budget.charge_nodes(1, span)?;
+                self.parameter_expansion_budget
+                    .charge_map_entry::<Handle<LocalVariable>, Handle<Expression>>(1, span)?;
+                self.function
+                    .result_objects
+                    .destinations
+                    .insert(local, pointer);
+                self.function.result_objects.destination(
+                    local,
+                    &self.function.ir.expressions,
+                    &mut self.parameter_expansion_budget,
+                    span,
+                )?;
+            }
+        }
+        self.push_statement(Statement::Store { pointer, value }, span);
+        Ok(())
+    }
+
     pub(super) fn starts_list_initializer(&self) -> Result<bool, ParseError> {
         let mut lookahead = self.lexer.clone();
         lookahead.next_if(Token::Operation('='))?;
@@ -269,13 +438,95 @@ impl Parser<'_> {
         span: Span,
         pending_value: Option<Value>,
     ) -> Result<(), ParseError> {
+        let initialization = if has_braces {
+            AggregateInitialization::Braced
+        } else {
+            AggregateInitialization::Elided
+        };
+        self.initialize_aggregate(pointer, ty, initialization, span, pending_value)
+            .map(|_| ())
+    }
+
+    pub(super) fn parenthesized_aggregate_initializer(
+        &mut self,
+        pointer: Handle<Expression>,
+        ty: Handle<Type>,
+        span: Span,
+        pending_value: Option<Value>,
+    ) -> Result<ConstantValue, ParseError> {
+        if pending_value.is_none() && self.lexer.peek()?.0 == Token::Paren('{') {
+            let mut lookahead = self.lexer.clone();
+            if declarations::balanced(&mut lookahead, 0)?
+                && lookahead.peek()?.0 == Token::Paren(')')
+            {
+                let target = TypeResolution::Handle(ty);
+                let temporary = self.temporary_pointer(&target, span)?;
+                let opening = self.lexer.expect_span(Token::Paren('{'))?;
+                let constant = self.initialize_aggregate(
+                    temporary,
+                    ty,
+                    AggregateInitialization::Braced,
+                    opening,
+                    None,
+                )?;
+                let end = self.lexer.expect_span(Token::Paren(')'))?;
+                let value = self.load_pointer(temporary, &target, span.until(&end))?;
+                self.record_constructed_result(value.handle, temporary, value.span)?;
+                self.store_initializer(pointer, value.handle, value.span)?;
+                return Ok(constant);
+            }
+        }
+        self.initialize_aggregate(
+            pointer,
+            ty,
+            AggregateInitialization::Parenthesized,
+            span,
+            pending_value,
+        )
+    }
+
+    pub(super) fn aggregate_cast_value(
+        &mut self,
+        value: Value,
+        target: &TypeResolution,
+    ) -> Result<Value, ParseError> {
+        let span = value.span;
+        let ty = self.type_handle(target, span);
+        let pointer = self.temporary_pointer(target, span)?;
+        let constant = self.initialize_aggregate(
+            pointer,
+            ty,
+            AggregateInitialization::SingleExpression,
+            span,
+            Some(value),
+        )?;
+        let mut value = self.load_pointer(pointer, target, span)?;
+        self.record_constructed_result(value.handle, pointer, span)?;
+        value.constant = constant;
+        Ok(value)
+    }
+
+    fn initialize_aggregate(
+        &mut self,
+        pointer: Handle<Expression>,
+        ty: Handle<Type>,
+        initialization: AggregateInitialization,
+        span: Span,
+        pending_value: Option<Value>,
+    ) -> Result<ConstantValue, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         self.function.expression_depth += 1;
         let result = if self.function.expression_depth > 64 {
             self.fail("CUDA initializer nesting limit exceeded")
         } else {
-            self.record_aggregate_initializer_inner(pointer, ty, has_braces, span, pending_value)
+            self.record_aggregate_initializer_inner(
+                pointer,
+                ty,
+                initialization,
+                span,
+                pending_value,
+            )
         };
         self.function.expression_depth -= 1;
         result
@@ -285,12 +536,12 @@ impl Parser<'_> {
         &mut self,
         pointer: Handle<Expression>,
         ty: Handle<Type>,
-        has_braces: bool,
+        initialization: AggregateInitialization,
         span: Span,
         pending_value: Option<Value>,
-    ) -> Result<(), ParseError> {
+    ) -> Result<ConstantValue, ParseError> {
         if Some(ty) == self.dim3_type {
-            let value = if has_braces {
+            let value = if initialization == AggregateInitialization::Braced {
                 self.dim3_list_initializer(span, pending_value)?
             } else {
                 let value = match pending_value {
@@ -310,15 +561,22 @@ impl Parser<'_> {
                 },
                 value.span,
             );
-            return Ok(());
+            return Ok(value.constant);
         }
-        if pending_value.is_none() && has_braces && self.lexer.next_if(Token::Paren('}'))? {
-            if self.requires_default_constructor(ty) {
-                return self.store_default_initializer(pointer, ty, span);
-            }
-            let value = self.append(Expression::ZeroValue(ty), span)?;
-            self.push_statement(Statement::Store { pointer, value }, span);
-            return Ok(());
+        let closing = initialization.closing();
+        let is_empty = if let Some(closing) = closing {
+            pending_value.is_none() && self.lexer.next_if(Token::Paren(closing))?
+        } else {
+            false
+        };
+        if is_empty {
+            self.store_default_initializer(pointer, ty, span)?;
+            return Ok(ConstantValue {
+                literal: None,
+                is_discardable: !self.requires_default_constructor(ty)
+                    || self.const_default_constructible(ty),
+                is_null_pointer_constant: false,
+            });
         }
         let mut pending_value =
             if pending_value.is_some() || self.lexer.peek()?.0 == Token::Paren('{') {
@@ -332,23 +590,19 @@ impl Parser<'_> {
                 && (self
                     .module
                     .compare_types(&value.ty, &TypeResolution::Handle(ty))
-                    || (!has_braces
+                    || (initialization != AggregateInitialization::Braced
                         && self.dimension_conversion(&value.ty, &TypeResolution::Handle(ty))))
             {
                 let value = pending_value.take().unwrap();
                 let value = self.convert_value(value.into(), &TypeResolution::Handle(ty))?;
-                self.push_statement(
-                    Statement::Store {
-                        pointer,
-                        value: value.handle,
-                    },
-                    value.span,
-                );
-                if has_braces {
+                self.store_initializer(pointer, value.handle, value.span)?;
+                if initialization == AggregateInitialization::Braced {
                     self.lexer.next_if(Token::Separator(','))?;
-                    self.lexer.expect_span(Token::Paren('}'))?;
                 }
-                return Ok(());
+                if let Some(closing) = closing {
+                    self.lexer.expect_span(Token::Paren(closing))?;
+                }
+                return Ok(value.constant.non_literal());
             }
         }
         let count = match self.module.types[ty].inner {
@@ -361,6 +615,7 @@ impl Parser<'_> {
             _ => return self.fail("expected an aggregate initializer"),
         };
         let mut initialized_count = 0;
+        let mut is_discardable = true;
         loop {
             let member_ty = self.record_initializer_member(ty, initialized_count, span);
             let member = self.append(
@@ -370,22 +625,31 @@ impl Parser<'_> {
                 },
                 span,
             )?;
-            self.record_initializer_clause(member, member_ty, pending_value.take())?;
+            let constant = self.record_initializer_clause(
+                member,
+                member_ty,
+                pending_value.take(),
+                initialization,
+            )?;
+            is_discardable &= constant.is_discardable;
             initialized_count += 1;
-            if initialized_count == count {
+            if initialized_count == count
+                || initialization == AggregateInitialization::SingleExpression
+            {
                 break;
             }
             if !self.lexer.next_if(Token::Separator(','))?
-                || self.lexer.peek()?.0 == Token::Paren('}')
+                || (initialization != AggregateInitialization::Parenthesized
+                    && self.lexer.peek()?.0 == Token::Paren('}'))
             {
                 break;
             }
         }
-        if has_braces {
-            if initialized_count == count {
+        if let Some(closing) = closing {
+            if initialization == AggregateInitialization::Braced && initialized_count == count {
                 self.lexer.next_if(Token::Separator(','))?;
             }
-            self.lexer.expect_span(Token::Paren('}'))?;
+            self.lexer.expect_span(Token::Paren(closing))?;
         }
         if let TypeInner::Array {
             base,
@@ -407,9 +671,15 @@ impl Parser<'_> {
                     span,
                 )?;
                 self.store_default_initializer(member, member_ty, span)?;
+                is_discardable &= !self.requires_default_constructor(member_ty)
+                    || self.const_default_constructible(member_ty);
             }
         }
-        Ok(())
+        Ok(ConstantValue {
+            literal: None,
+            is_discardable,
+            is_null_pointer_constant: false,
+        })
     }
 
     fn record_initializer_member(
@@ -431,25 +701,48 @@ impl Parser<'_> {
         pointer: Handle<Expression>,
         ty: Handle<Type>,
         pending_value: Option<Value>,
-    ) -> Result<(), ParseError> {
-        if let TypeInner::Scalar(scalar) = self.module.types[ty].inner {
-            let value = match pending_value {
+        initialization: AggregateInitialization,
+    ) -> Result<ConstantValue, ParseError> {
+        let ordinary_conversions = initialization.ordinary_conversions()
+            && (pending_value.is_some() || self.lexer.peek()?.0 != Token::Paren('{'));
+        let value = if ordinary_conversions {
+            let expression = match pending_value {
+                Some(value) => value.into(),
+                None => self.expression(0)?,
+            };
+            let value = self.rvalue(expression)?;
+            let target = TypeResolution::Handle(ty);
+            if !matches!(self.module.types[ty].inner, TypeInner::Scalar(_))
+                && !self.module.compare_types(&value.ty, &target)
+                && !self.dimension_conversion(&value.ty, &target)
+            {
+                let initialization = if initialization == AggregateInitialization::SingleExpression
+                {
+                    AggregateInitialization::SingleExpression
+                } else {
+                    AggregateInitialization::ElidedParenthesized
+                };
+                let span = value.span;
+                return self.initialize_aggregate(pointer, ty, initialization, span, Some(value));
+            }
+            self.convert_value(value.into(), &target)?
+        } else if let TypeInner::Scalar(scalar) = self.module.types[ty].inner {
+            match pending_value {
                 Some(value) => self.list_convert_scalar(value, scalar)?,
                 None => self.scalar_initializer_clause(scalar)?,
-            };
-            self.push_statement(
-                Statement::Store {
-                    pointer,
-                    value: value.handle,
-                },
-                value.span,
-            );
-            Ok(())
+            }
         } else {
             let opening = self.lexer.peek()?.1;
             let has_braces = pending_value.is_none() && self.lexer.next_if(Token::Paren('{'))?;
-            self.record_aggregate_initializer(pointer, ty, has_braces, opening, pending_value)
-        }
+            let initialization = if has_braces {
+                AggregateInitialization::Braced
+            } else {
+                AggregateInitialization::Elided
+            };
+            return self.initialize_aggregate(pointer, ty, initialization, opening, pending_value);
+        };
+        self.store_initializer(pointer, value.handle, value.span)?;
+        Ok(value.constant)
     }
 
     fn scalar_initializer_clause(&mut self, scalar: Scalar) -> Result<Value, ParseError> {
@@ -591,13 +884,7 @@ impl Parser<'_> {
                     && self.dimension_conversion(&value.ty, &TypeResolution::Handle(actual_ty)))
             {
                 let value = self.convert_value(value.into(), &TypeResolution::Handle(actual_ty))?;
-                self.push_statement(
-                    Statement::Store {
-                        pointer,
-                        value: value.handle,
-                    },
-                    value.span,
-                );
+                self.store_initializer(pointer, value.handle, value.span)?;
                 if has_braces {
                     self.lexer.next_if(Token::Separator(','))?;
                     self.lexer.expect_span(Token::Paren('}'))?;

@@ -976,8 +976,8 @@ qualification prevents writes to individual fields as well as the complete value
 One-component vectors have one `.x` field and retain their own type identity.
 `make_float1(value)` and its integer counterparts construct these aggregates.
 Brace initialization such as `int1{3}` uses the existing narrowing rules.
-Conversions from a scalar through parenthesized aggregate initialization remain
-unsupported, including `float1(value)` and `static_cast<float1>(value)`.
+Parenthesized forms such as `int1(3)` and `static_cast<int1>(3)` initialize
+the same scalar field through ordinary numeric conversions.
 
 The fields `.x`, `.y`, `.z`, and `.w` select one scalar component, up to the
 vector's width. Field access works on locals, array elements, helper results,
@@ -995,8 +995,13 @@ four-byte alignment. Vector comparisons, truthiness, indexing, and swizzles rema
 unsupported. Vector arithmetic requires a visible source-defined operator.
 Same-type vector copies support `float2(source)`, `static_cast<float2>(source)`,
 and `(float2)source`. Empty `float2()` construction zeroes every component.
-Parenthesized component lists and casts between unrelated vector types remain
-unsupported, apart from the `dim3` conversions below. Named vector copies also
+Parenthesized component lists such as `float3(1.0f, 2.0f)` initialize components
+in order and zero omitted components. Named locals accept the same lists, as in
+`float3 point(1.0f, 2.0f);`. Explicit casts from one scalar initialize `.x` and
+zero the other components. These forms permit ordinary numeric conversions,
+including narrowing conversions. Braced initialization retains its narrowing
+checks. Casts between unrelated vector types remain unsupported, apart from
+the `dim3` conversions below. Named vector copies also
 accept one parenthesized expression, such as `float2 copied(source);`. By-value kernel
 parameters require the scalar types described in the kernel interface.
 Typed vector temporaries such as `float2{1.0f, 2.0f}` use the same list
@@ -1133,19 +1138,35 @@ such as `Pair`, for template selectors. Pointer-only aliases do not supply a
 canonical record name for template arguments. These forms use the same field
 layout, initialization, and member restrictions as standalone definitions.
 
-Locals support same-type copies with equals or a single parenthesized expression,
-such as `Sample copied(source);`, assignments, and braced initialization,
-including partial initialization and brace elision for nested aggregates.
+Locals support same-type copies, assignments, and braced or parenthesized element
+initialization. `Sample copied(source);` copies the complete object.
+Braced initialization includes partial initialization and brace elision for nested
+aggregates.
 Omitted fields use zero initialization, with `dim3` subobjects using their
 constructor defaults. Typed expressions such as `Sample{}` can
 be passed to helpers, returned, grouped in parentheses, discarded as statements,
 or read through their fields. Copying a struct
 also copies its fixed-array fields. Standalone arrays still cannot be copied
-or passed by value. These rules follow C++
+or passed by value. Braced forms follow C++
 [aggregate initialization](https://eel.is/c++draft/dcl.init.aggr).
 
 Struct value construction also supports `Sample(source)`,
 `static_cast<Sample>(source)`, and `(Sample)source` for a source of the same type.
+Parenthesized forms also accept element expressions, such as `Pair(3, 5)`.
+The CUDA compiler's recursive member initialization applies to nested records,
+vectors, and array members. For `struct Pair { int x; int y; };` and
+`struct Box { Pair pair; int tag; };`, `Box value(1, 2, 3);` initializes
+`pair.x`, `pair.y`, and `tag` in that order. Explicit inner braces select the
+existing braced-initialization rules. A single braced argument initializes the
+complete object, as in `Pair({1, 2})`.
+
+Each member is stored before the next initializer expression is evaluated.
+`Pair value(3, value.x + 1);` produces `(3, 4)`, and
+`Pair value(3, ++value.x);` produces `(4, 4)`.
+A constructor expression used to initialize a local writes directly into that
+local, including grouped and conditional forms.
+Explicit `static_cast` and C-style casts accept one expression, including a
+comma expression, and apply the same member conversions and omitted defaults.
 Empty `Sample()` construction zeroes numeric subobjects and applies the existing
 `dim3` defaults recursively. Class values retain the requested target's `const`
 qualification; an unqualified copy of a const source is mutable. Empty class

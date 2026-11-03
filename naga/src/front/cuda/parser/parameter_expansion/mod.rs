@@ -187,7 +187,7 @@ impl Parser<'_> {
         parameters: Vec<SourceParameter>,
         span: Span,
     ) -> Result<(), ParseError> {
-        if !state.pointers.is_empty() {
+        if !state.pointers.is_empty() || !state.result_objects.is_empty() {
             return self.clone_parameter_function(&function, state, parameters, None, span);
         }
         let body = core::mem::take(&mut function.body);
@@ -336,7 +336,8 @@ impl Parser<'_> {
         let mut locals = Vec::with_capacity(source.local_variables.len());
         for (handle, local) in source.local_variables.iter() {
             if state.is_some_and(|state| {
-                state.pointers.validation_addresses.contains_key(&handle)
+                state.result_objects.redirects(handle)
+                    || state.pointers.validation_addresses.contains_key(&handle)
                     || state
                         .pointers
                         .immutable
@@ -403,6 +404,9 @@ impl Parser<'_> {
         let source_state = match self.parameter_states.remove(&call.function) {
             Some(state) => {
                 self.inventory_parameter_state(&state, call.span)?;
+                state
+                    .result_objects
+                    .inventory(&mut self.parameter_expansion_budget, call.span)?;
                 let snapshot = state.clone();
                 self.parameter_states.insert(call.function, state);
                 Some(snapshot)
