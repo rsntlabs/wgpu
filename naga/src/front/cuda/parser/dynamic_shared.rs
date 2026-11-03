@@ -13,7 +13,6 @@ pub(super) struct DynamicShared<'a> {
     declarations: FastHashMap<&'a str, DynamicSharedDeclaration>,
     globals: FastHashMap<Handle<Type>, Handle<GlobalVariable>>,
     elements: FastHashMap<Handle<GlobalVariable>, Handle<Type>>,
-    eligible_types: Vec<bool>,
 }
 
 fn shared_error(message: &str, span: Span) -> ParseError {
@@ -160,7 +159,7 @@ impl<'a> Parser<'a> {
         element: Handle<Type>,
         span: Span,
     ) -> Result<DynamicSharedDeclaration, ParseError> {
-        if !self.dynamic_shared_type(element, span)? {
+        if !self.numeric_storage_type(element, span)? {
             return Err(shared_error(
                 "dynamic shared arrays require 32-bit numeric scalars, vectors, or POD records",
                 span,
@@ -193,48 +192,6 @@ impl<'a> Parser<'a> {
             count: NonZeroU32::new(count).unwrap(),
             qualifiers: Qualifiers::NONE,
         })
-    }
-
-    fn dynamic_shared_type(&mut self, ty: Handle<Type>, span: Span) -> Result<bool, ParseError> {
-        let start = self.dynamic_shared.eligible_types.len();
-        self.parameter_expansion_budget
-            .charge_slice::<bool>(self.module.types.len() - start, span)?;
-        for (handle, source) in self.module.types.iter().skip(start) {
-            self.parameter_expansion_budget.charge_work(1, span)?;
-            let child = |child: Handle<Type>| {
-                self.dynamic_shared
-                    .eligible_types
-                    .get(child.index())
-                    .copied()
-                    .ok_or_else(|| shared_error("invalid dynamic shared type layout", span))
-            };
-            let eligible = if self.dim3_type == Some(handle) {
-                false
-            } else {
-                match source.inner {
-                    TypeInner::Scalar(scalar) | TypeInner::Vector { scalar, .. } => {
-                        matches!(scalar, Scalar::I32 | Scalar::U32 | Scalar::F32)
-                    }
-                    TypeInner::Array {
-                        base,
-                        size: ArraySize::Constant(_),
-                        ..
-                    } => child(base)?,
-                    TypeInner::Struct { ref members, .. } => {
-                        self.parameter_expansion_budget
-                            .charge_work(members.len(), span)?;
-                        let mut eligible = true;
-                        for member in members {
-                            eligible &= child(member.ty)?;
-                        }
-                        eligible
-                    }
-                    _ => false,
-                }
-            };
-            self.dynamic_shared.eligible_types.push(eligible);
-        }
-        Ok(self.dynamic_shared.eligible_types[ty.index()])
     }
 
     fn declare_dynamic_shared(

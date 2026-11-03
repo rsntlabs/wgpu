@@ -1,0 +1,29 @@
+targets = "SPIRV | METAL | GLSL | HLSL | WGSL"
+
+[cuda-in]
+workgroup_size = [4, 1, 1]
+
+[msl]
+fake_missing_bindings = false
+
+[msl.per_entry_point_map.constant_memory]
+sizes_buffer = 6
+resources = [
+    { bind_target = { buffer = 0, mutable = true }, resource_binding = { group = 0, binding = 0 } },
+    { bind_target = { buffer = 1, mutable = false }, resource_binding = { group = 0, binding = 1 } },
+    { bind_target = { buffer = 2, mutable = false }, resource_binding = { group = 0, binding = 2 } },
+    { bind_target = { buffer = 3, mutable = false }, resource_binding = { group = 1, binding = 0 } },
+    { bind_target = { buffer = 4, mutable = false }, resource_binding = { group = 1, binding = 1 } },
+    { bind_target = { buffer = 5, mutable = false }, resource_binding = { group = 1, binding = 2 } },
+]
+
+[msl.per_entry_point_map.constant_references]
+sizes_buffer = 6
+resources = [
+    { bind_target = { buffer = 0, mutable = true }, resource_binding = { group = 0, binding = 0 } },
+    { bind_target = { buffer = 1, mutable = false }, resource_binding = { group = 0, binding = 1 } },
+    { bind_target = { buffer = 2, mutable = false }, resource_binding = { group = 0, binding = 2 } },
+    { bind_target = { buffer = 3, mutable = false }, resource_binding = { group = 1, binding = 0 } },
+    { bind_target = { buffer = 4, mutable = false }, resource_binding = { group = 1, binding = 1 } },
+    { bind_target = { buffer = 5, mutable = false }, resource_binding = { group = 1, binding = 2 } },
+]

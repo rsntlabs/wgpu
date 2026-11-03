@@ -678,7 +678,8 @@ impl PointerRuntime {
             parser
                 .parameter_expansion_budget
                 .charge_work(family.projections.len() + projections.len() + 1, span)?;
-            if !access.pointer.qualifiers.is_const && !inventory::writable_root(parser, family.root)
+            if !access.pointer.qualifiers.is_const
+                && !inventory::mutable_source_root(parser, family.root)
             {
                 return Err(runtime_error(span));
             }

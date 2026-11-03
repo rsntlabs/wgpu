@@ -62,6 +62,7 @@ impl InputStorageType {
 }
 
 struct ShaderBuffer {
+    group: u32,
     binding: u32,
     ty: wgpu::BufferBindingType,
     contents: Vec<u8>,
@@ -70,10 +71,17 @@ struct ShaderBuffer {
 impl ShaderBuffer {
     fn new<T: bytemuck::Pod>(binding: u32, ty: wgpu::BufferBindingType, initial: &[T]) -> Self {
         Self {
+            group: 0,
             binding,
             ty,
             contents: bytemuck::cast_slice(initial).to_vec(),
         }
+    }
+
+    fn binding_group(mut self, group: u32) -> Self {
+        self.group = group;
+
+        self
     }
 }
 
@@ -242,14 +250,14 @@ impl ShaderTest {
             if !module.buffers.iter().all(|buffer| {
                 !buffer.contents.is_empty()
                     && buffer.contents.len().is_multiple_of(4)
-                    && bindings.insert(buffer.binding)
+                    && bindings.insert((buffer.group, buffer.binding))
             }) {
                 return false;
             }
             let Some(output) = module
                 .buffers
                 .iter()
-                .find(|buffer| buffer.binding == module.output_binding)
+                .find(|buffer| buffer.group == 0 && buffer.binding == module.output_binding)
             else {
                 return false;
             };
@@ -361,7 +369,7 @@ async fn shader_input_output_test(
             let output_index = module
                 .buffers
                 .iter()
-                .position(|buffer| buffer.binding == module.output_binding)
+                .position(|buffer| buffer.group == 0 && buffer.binding == module.output_binding)
                 .unwrap();
             let buffers: Vec<_> = module
                 .buffers
@@ -372,7 +380,7 @@ async fn shader_input_output_test(
                             wgpu::BufferBindingType::Uniform => BufferUsages::UNIFORM,
                             wgpu::BufferBindingType::Storage { .. } => BufferUsages::STORAGE,
                         };
-                    if buffer.binding == module.output_binding {
+                    if buffer.group == 0 && buffer.binding == module.output_binding {
                         usage |= BufferUsages::COPY_SRC;
                     }
                     let resource = ctx.device.create_buffer_init(&BufferInitDescriptor {
@@ -380,7 +388,7 @@ async fn shader_input_output_test(
                         contents: &buffer.contents,
                         usage,
                     });
-                    (buffer.binding, buffer.ty, resource)
+                    (buffer.group, buffer.binding, buffer.ty, resource)
                 })
                 .collect();
             (buffers, output_index, module.workgroups)
@@ -393,8 +401,9 @@ async fn shader_input_output_test(
             };
             (
                 vec![
-                    (0, input_ty, input_buffer.clone()),
+                    (0, 0, input_ty, input_buffer.clone()),
                     (
+                        0,
                         1,
                         wgpu::BufferBindingType::Storage { read_only: false },
                         output_buffer.clone(),
@@ -404,43 +413,57 @@ async fn shader_input_output_test(
                 [1; 3],
             )
         };
-        let output = &buffers[output_index].2;
-        let layout_entries: Vec<_> = buffers
-            .iter()
-            .map(|&(binding, ty, _)| BindGroupLayoutEntry {
-                binding,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
+        let output = &buffers[output_index].3;
+        let group_count = buffers.iter().map(|buffer| buffer.0).max().unwrap() + 1;
+        assert!(group_count <= ctx.device.limits().max_bind_groups);
+        let layouts: Vec<_> = (0..group_count)
+            .map(|group| {
+                let layout_entries: Vec<_> = buffers
+                    .iter()
+                    .filter(|buffer| buffer.0 == group)
+                    .map(|&(_, binding, ty, _)| BindGroupLayoutEntry {
+                        binding,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: BindingType::Buffer {
+                            ty,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    })
+                    .collect();
+                ctx.device
+                    .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                        label: None,
+                        entries: &layout_entries,
+                    })
             })
             .collect();
-        let bgl = ctx
-            .device
-            .create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: None,
-                entries: &layout_entries,
-            });
-        let entries: Vec<_> = buffers
+        let groups: Vec<_> = layouts
             .iter()
-            .map(|(binding, _, buffer)| BindGroupEntry {
-                binding: *binding,
-                resource: buffer.as_entire_binding(),
+            .enumerate()
+            .map(|(group, layout)| {
+                let entries: Vec<_> = buffers
+                    .iter()
+                    .filter(|buffer| buffer.0 == group as u32)
+                    .map(|(_, binding, _, buffer)| BindGroupEntry {
+                        binding: *binding,
+                        resource: buffer.as_entire_binding(),
+                    })
+                    .collect();
+                ctx.device.create_bind_group(&BindGroupDescriptor {
+                    label: None,
+                    layout,
+                    entries: &entries,
+                })
             })
             .collect();
-        let bg = ctx.device.create_bind_group(&BindGroupDescriptor {
-            label: None,
-            layout: &bgl,
-            entries: &entries,
-        });
+        let layout_references: Vec<_> = layouts.iter().map(Some).collect();
         let pll = ctx
             .device
             .create_pipeline_layout(&PipelineLayoutDescriptor {
                 label: None,
-                bind_group_layouts: &[Some(&bgl)],
+                bind_group_layouts: &layout_references,
                 immediate_size: match storage_type {
                     InputStorageType::Immediate => MAX_BUFFER_SIZE as u32,
                     _ => 0,
@@ -507,7 +530,9 @@ async fn shader_input_output_test(
             timestamp_writes: None,
         });
         cpass.set_pipeline(&pipeline);
-        cpass.set_bind_group(0, &bg, &[]);
+        for (group, bind_group) in groups.iter().enumerate() {
+            cpass.set_bind_group(group as u32, bind_group, &[]);
+        }
 
         if let InputStorageType::Immediate = storage_type {
             cpass.set_immediates(0, bytemuck::cast_slice(&test.input_values))

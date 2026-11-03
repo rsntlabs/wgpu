@@ -196,15 +196,21 @@ impl<'a> UniformControlFlow<'a> {
                             ))
                         )
                     }),
-                Expression::GlobalVariable(global) => matches!(
-                    self.module.global_variables[global].space,
-                    AddressSpace::Uniform | AddressSpace::Immediate
-                ),
+                Expression::GlobalVariable(global) => {
+                    match self.module.global_variables[global].space {
+                        AddressSpace::Uniform | AddressSpace::Immediate => true,
+                        AddressSpace::Storage { access } => !access.contains(StorageAccess::STORE),
+                        _ => false,
+                    }
+                }
                 Expression::LocalVariable(_) => false,
-                Expression::Load { pointer } => match self.function.expressions[pointer] {
-                    Expression::LocalVariable(local) => self.locals[local.index()],
-                    _ => self.value(pointer),
-                },
+                Expression::Load { pointer } => {
+                    let uniform = match self.function.expressions[pointer] {
+                        Expression::LocalVariable(local) => self.locals[local.index()],
+                        _ => self.value(pointer),
+                    };
+                    uniform && !self.volatile_pointer(pointer)?
+                }
                 Expression::Access { base, index } => self.read(base) & self.read(index),
                 Expression::AccessIndex { base, .. } => self.read(base),
                 Expression::Unary { expr, .. }
@@ -251,6 +257,24 @@ impl<'a> UniformControlFlow<'a> {
             }
         }
         Ok(())
+    }
+
+    fn volatile_pointer(&mut self, mut pointer: Handle<Expression>) -> Result<bool, ParseError> {
+        for _ in 0..=64 {
+            self.budget.charge_work(1, self.span)?;
+            match self.function.expressions[pointer] {
+                Expression::Access { base, .. } | Expression::AccessIndex { base, .. } => {
+                    pointer = base
+                }
+                Expression::GlobalVariable(global) => {
+                    return Ok(self.module.global_variables[global]
+                        .memory_decorations
+                        .contains(crate::MemoryDecorations::VOLATILE));
+                }
+                _ => return Ok(false),
+            }
+        }
+        Err(barrier_error(self.span))
     }
 
     fn exits_uniform(

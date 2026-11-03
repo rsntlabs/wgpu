@@ -23,6 +23,7 @@ mod tests;
 
 struct Analysis<'a> {
     module: &'a Module,
+    constant_memory: &'a crate::FastHashSet<Handle<GlobalVariable>>,
     function: &'a Function,
     source: &'a FunctionParameterState,
     budget: &'a mut ExpansionBudget,
@@ -52,6 +53,7 @@ impl ImmutablePointers {
             .charge_work(function.local_variables.len(), span)?;
         let mut analysis = Analysis {
             module: &parser.module,
+            constant_memory: &parser.constant_memory.globals,
             function,
             source,
             budget: &mut parser.parameter_expansion_budget,
@@ -139,18 +141,20 @@ impl<'a> Analysis<'a> {
         else {
             return None;
         };
-        let global = self.module.global_variables.try_get(global).ok()?;
-        let AddressSpace::Storage { access } = global.space else {
+        let variable = self.module.global_variables.try_get(global).ok()?;
+        let AddressSpace::Storage { access } = variable.space else {
             return None;
         };
-        if global.binding.is_none()
+        if variable.binding.is_none()
             || !access.contains(StorageAccess::LOAD)
-            || (!value.qualifiers.is_const && !access.contains(StorageAccess::STORE))
+            || (!value.qualifiers.is_const
+                && !access.contains(StorageAccess::STORE)
+                && !self.constant_memory.contains(&global))
         {
             return None;
         }
-        self.module.types.check_contains_handle(global.ty).ok()?;
-        let TypeInner::Array { base, .. } = self.module.types[global.ty].inner else {
+        self.module.types.check_contains_handle(variable.ty).ok()?;
+        let TypeInner::Array { base, .. } = self.module.types[variable.ty].inner else {
             return None;
         };
         (base == cell.pointee).then_some(value.expression)

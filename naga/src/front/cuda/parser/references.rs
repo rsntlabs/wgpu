@@ -493,9 +493,11 @@ impl Parser<'_> {
         let handle = match reference.reference {
             Reference::PointerAccess(access) => {
                 let pointer = self.validation_pointer(access, reference.span)?;
+                self.check_writable_pointer(pointer, reference.span)?;
                 return action(self, pointer, &reference.ty, reference.span);
             }
             Reference::Pointer(pointer) => {
+                self.check_writable_pointer(pointer, reference.span)?;
                 return action(self, pointer, &reference.ty, reference.span);
             }
             Reference::Bound(handle) => {
@@ -506,6 +508,7 @@ impl Parser<'_> {
                         let Reference::Pointer(pointer) = source.reference else {
                             unreachable!()
                         };
+                        parser.check_writable_pointer(pointer, source.span)?;
                         action(parser, pointer, &source.ty, source.span)
                     },
                 );

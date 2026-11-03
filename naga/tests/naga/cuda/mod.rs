@@ -15,6 +15,7 @@ mod class_values;
 mod comma;
 mod conditionals;
 mod constant_expressions;
+mod constant_memory;
 mod control_flow;
 mod conversions;
 mod declarations;

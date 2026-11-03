@@ -1,5 +1,7 @@
 use super::*;
 
+mod captures;
+
 struct OriginAddress {
     root: OriginRoot,
     root_expression: Handle<Expression>,
@@ -27,6 +29,11 @@ pub(super) fn writable_root(parser: &Parser<'_>, root: OriginRoot) -> bool {
             _ => false,
         },
     }
+}
+
+pub(super) fn mutable_source_root(parser: &Parser<'_>, root: OriginRoot) -> bool {
+    writable_root(parser, root)
+        || matches!(root, OriginRoot::Global(global) if parser.constant_memory.globals.contains(&global))
 }
 
 impl Inventory<'_> {
@@ -168,7 +175,7 @@ impl Inventory<'_> {
                 .get(family as usize)
                 .ok_or_else(|| runtime_error(span))?;
             if family.pointee != cell.pointee
-                || (!cell.qualifiers.is_const && !writable_root(parser, family.root))
+                || (!cell.qualifiers.is_const && !mutable_source_root(parser, family.root))
             {
                 return Err(runtime_error(span));
             }
@@ -586,6 +593,9 @@ pub(super) fn build(
         if !changed {
             break;
         }
+    }
+    if !parser.constant_memory.globals.is_empty() {
+        inventory.refine_captures(parser, &mut expression_families, span)?;
     }
     let coordinate_count = inventory
         .families

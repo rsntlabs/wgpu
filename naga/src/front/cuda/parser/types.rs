@@ -50,6 +50,7 @@ pub(super) enum GlobalDeclaration {
     Functions(FunctionOverloads),
     Kernel,
     DynamicShared(DynamicSharedDeclaration),
+    ConstantMemory(ConstantMemoryDeclaration),
     Constant {
         handle: Option<Handle<crate::Constant>>,
         scalar: Scalar,
@@ -413,6 +414,54 @@ impl<'a> Parser<'a> {
             });
         }
         Ok(self.module.types.insert(Type { name: None, inner }, span))
+    }
+
+    pub(super) fn numeric_storage_type(
+        &mut self,
+        ty: Handle<Type>,
+        span: Span,
+    ) -> Result<bool, ParseError> {
+        let start = self.numeric_storage_types.len();
+        self.parameter_expansion_budget
+            .charge_slice::<bool>(self.module.types.len() - start, span)?;
+        for (handle, source) in self.module.types.iter().skip(start) {
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            let child = |child: Handle<Type>| {
+                self.numeric_storage_types
+                    .get(child.index())
+                    .copied()
+                    .ok_or_else(|| ParseError {
+                        message: String::from("invalid CUDA numeric storage layout"),
+                        span,
+                    })
+            };
+            let eligible = if self.dim3_type == Some(handle) {
+                false
+            } else {
+                match source.inner {
+                    TypeInner::Scalar(scalar) | TypeInner::Vector { scalar, .. } => {
+                        matches!(scalar, Scalar::I32 | Scalar::U32 | Scalar::F32)
+                    }
+                    TypeInner::Array {
+                        base,
+                        size: ArraySize::Constant(_),
+                        ..
+                    } => child(base)?,
+                    TypeInner::Struct { ref members, .. } => {
+                        self.parameter_expansion_budget
+                            .charge_work(members.len(), span)?;
+                        let mut eligible = true;
+                        for member in members {
+                            eligible &= child(member.ty)?;
+                        }
+                        eligible
+                    }
+                    _ => false,
+                }
+            };
+            self.numeric_storage_types.push(eligible);
+        }
+        Ok(self.numeric_storage_types[ty.index()])
     }
 
     pub(super) fn require_scalar_type(

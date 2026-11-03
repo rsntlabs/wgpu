@@ -430,6 +430,9 @@ impl Parser<'_> {
             Symbol::DynamicShared(declaration) => {
                 self.dynamic_shared_symbol(name, declaration, span)?
             }
+            Symbol::ConstantMemory(declaration) => {
+                self.constant_memory_symbol(declaration, span)?
+            }
             symbol => symbol,
         };
         let (pointer, ty, qualifiers, span, constant) = match symbol {
@@ -441,7 +444,7 @@ impl Parser<'_> {
             Symbol::TemplateParameter { scalar, literal } => {
                 return self.template_parameter_value(scalar, literal, span);
             }
-            Symbol::DynamicShared(_) => unreachable!(),
+            Symbol::DynamicShared(_) | Symbol::ConstantMemory(_) => unreachable!(),
             Symbol::Namespace(_) => {
                 return Err(ParseError {
                     message: String::from("namespace cannot be used as a value"),

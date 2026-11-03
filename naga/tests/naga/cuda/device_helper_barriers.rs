@@ -191,6 +191,7 @@ fn cuda_device_helper_barriers_keep_helper_returns_local_to_the_call() {
 
 #[test]
 fn cuda_device_helper_barriers_validate_every_callsite_entry_and_divergent_exit() {
+    roundtrip("__device__ void synchronize() { __syncthreads(); } __global__ void kernel(const unsigned *input) { if (input[0]) synchronize(); }");
     for source in [
         "__device__ void synchronize() { __syncthreads(); } __global__ void kernel() { synchronize(); if (threadIdx.x) synchronize(); }",
         "__device__ void leaf() { __syncthreads(); } __device__ void wrapper() { leaf(); } __global__ void kernel() { if (threadIdx.x) wrapper(); }",
@@ -201,7 +202,7 @@ fn cuda_device_helper_barriers_validate_every_callsite_entry_and_divergent_exit(
         "__device__ void synchronize(unsigned count) { switch (count) { case 0u: if (threadIdx.x) break; __syncthreads(); break; default: break; } } __global__ void kernel(unsigned count) { synchronize(count); }",
         "__device__ void synchronize(unsigned lane) { for (unsigned iteration = 0u; iteration < 3u; ++iteration) { __syncthreads(); if (lane) break; } } __global__ void kernel() { synchronize(threadIdx.x); }",
         "__device__ void synchronize(unsigned lane) { for (unsigned iteration = 0u; iteration < 3u; ++iteration) { __syncthreads(); if (lane) continue; __syncthreads(); } } __global__ void kernel() { synchronize(threadIdx.x); }",
-        "__device__ void synchronize() { __syncthreads(); } __global__ void kernel(const unsigned *input) { if (input[0]) synchronize(); }",
+        "__device__ void synchronize() { __syncthreads(); } __global__ void kernel(const unsigned *input) { if (input[threadIdx.x]) synchronize(); }",
         "__device__ void synchronize(unsigned count) { if (count) __syncthreads(); } __global__ void kernel(unsigned *output) { synchronize(atomicAdd(output, 0u)); }",
         "__device__ unsigned lane() { return threadIdx.x; } __device__ void synchronize(unsigned count) { if (count) __syncthreads(); } __global__ void kernel() { synchronize(lane()); }",
     ] { rejected(source); }

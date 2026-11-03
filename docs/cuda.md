@@ -180,6 +180,37 @@ atomic operations and barriers for those purposes. Volatile automatic objects,
 volatile pointer objects, accesses to function or private memory through volatile
 views, and volatile shared allocations containing atomics remain unsupported.
 
+## Constant memory
+
+File-scope `__constant__` declarations expose host-supplied, device-read-only
+storage. Supported declarations use the existing numeric scalar, vector, and
+record types, including fixed arrays.
+
+```cuda
+__constant__ float weights[17];
+
+__global__ void scale(float *output, const float *input) {
+    unsigned index = blockIdx.x * blockDim.x + threadIdx.x;
+    output[index] = input[index] * weights[0];
+}
+```
+
+These objects become read-only storage buffers in group 1. Bindings follow first
+declaration order, starting at zero, and compatible `extern` declarations reuse
+the same binding. Kernel parameters use group 0. Arrays and records use the
+packed CUDA layouts described below. The `weights` array occupies 68 bytes.
+The caller binds these buffers and uploads their contents, including updates
+between dispatches. Generated shaders load their current contents at runtime.
+When relying on CUDA's default zero initialization, bind zero-filled buffers.
+
+An unqualified `__constant__` declaration retains a mutable C++ source type for
+address formation, overload selection, and pointer or reference arguments.
+The frontend rejects device writes through every view. Values are runtime
+expressions, so constant-expression contexts reject their use. Const-qualified
+objects require an `extern` declaration. Individual `extern "C"` declarations
+participate in the same compatible redeclaration checks. The frontend rejects
+source initializers and incomplete arrays.
+
 ## Kernel interface
 
 Each source contains one or more `__global__ void` kernels, optionally preceded by
@@ -768,8 +799,9 @@ Scalar `constexpr` variables support `bool`, `int`, `unsigned int`, `float`,
 and their aliases with copy, braced, or single-expression parenthesized
 initialization. They are read-only and
 can appear in blocks, `for` initializers, and at file scope before, between,
-or after functions. File-scope variables require `constexpr`; they become Naga
-constants without consuming buffer bindings.
+or after functions. Apart from `__constant__` storage described above, file-scope
+variables require `constexpr`; they become Naga constants without consuming
+buffer bindings.
 
 For example, `constexpr int Width = 4 + 4;` can provide the extent in both
 `int local[Width]{};` and `__shared__ float3 shared[Width];`.

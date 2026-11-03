@@ -149,6 +149,7 @@ fn cuda_uniform_loop_barriers_reject_divergent_conditions_exits_and_backedge_tai
 
 #[test]
 fn cuda_uniform_loop_barriers_keep_unproved_bounds_and_existing_placement_restrictions() {
+    roundtrip("__global__ void kernel(const unsigned *input) { unsigned bound = input[0]; for (unsigned index = 0u; index < bound; ++index) { __syncthreads(); } }");
     for body in [
         "for (unsigned index = 0u; index < 3u; ++index) { if (true) { __syncthreads(); } }",
         "for (unsigned index = 0u; index < 3u; ++index) { switch (0u) { case 0u: __syncthreads(); break; default: break; } }",
@@ -165,7 +166,7 @@ fn cuda_uniform_loop_barriers_keep_unproved_bounds_and_existing_placement_restri
         "for (unsigned index = 0u; index < 3u; ++index) { switch (threadIdx.x) { case 0u: __syncthreads(); break; default: break; } }",
     ] { rejected(&kernel(body)); }
     for source in [
-        "__global__ void kernel(const unsigned *input) { unsigned bound = input[0]; for (unsigned index = 0u; index < bound; ++index) { __syncthreads(); } }",
+        "__global__ void kernel(const unsigned *input) { unsigned bound = input[threadIdx.x]; for (unsigned index = 0u; index < bound; ++index) { __syncthreads(); } }",
         "__device__ unsigned opaque() { return 3u; } __global__ void kernel() { for (unsigned index = 0u; index < opaque(); ++index) { __syncthreads(); } }",
         "__device__ void alter(unsigned &value) { value = threadIdx.x; } __global__ void kernel() { unsigned bound = 3u; for (unsigned index = 0u; index < bound; ++index) { __syncthreads(); alter(bound); } }",
     ] { rejected(source); }

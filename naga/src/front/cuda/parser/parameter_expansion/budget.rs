@@ -221,4 +221,102 @@ mod tests {
             assert_eq!(&source[error.span.to_range().unwrap()], "retained_state");
         }
     }
+
+    #[test]
+    fn constant_memory_allocations_preserve_binding_zero_after_budget_exhaustion() {
+        let source = "__constant__ unsigned retained_constant;";
+        let span = Span::new(0, source.len() as u32);
+        for exhaust_bytes in [false, true] {
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            parser.activate_parameter_expansion(span).unwrap();
+            let ty = parser.scalar_handle(Scalar::U32, span);
+            assert!(parser.numeric_storage_type(ty, span).unwrap());
+            if exhaust_bytes {
+                let remaining = size_of::<(GlobalVariable, Span)>() + "retained_constant".len() - 1;
+                let charge = BYTE_LIMIT - parser.parameter_expansion_budget.bytes - remaining;
+                parser
+                    .parameter_expansion_budget
+                    .charge_bytes(charge, span)
+                    .unwrap();
+            } else {
+                let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                parser
+                    .parameter_expansion_budget
+                    .charge_nodes(remaining, span)
+                    .unwrap();
+            }
+            let error = parser.constant_memory_declaration().unwrap_err();
+            assert!(error.message.contains("limit"), "{error}");
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_eq!(&source[error.span.to_range().unwrap()], "retained_constant");
+            assert!(parser.module.global_variables.is_empty());
+            assert!(parser.constant_memory.globals.is_empty());
+            assert!(!parser.global_declarations.values().any(|declaration| {
+                matches!(declaration, GlobalDeclaration::ConstantMemory(_))
+            }));
+
+            parser.parameter_expansion_budget = ExpansionBudget::default();
+            parser.lexer = Lexer::new("__constant__ unsigned next_constant;").unwrap();
+            parser.constant_memory_declaration().unwrap();
+            assert_eq!(parser.module.global_variables.len(), 1);
+            assert_eq!(parser.constant_memory.globals.len(), 1);
+            let (_, global) = parser.module.global_variables.iter().next().unwrap();
+            assert_eq!(global.name.as_deref(), Some("next_constant"));
+            assert_eq!(
+                global.binding,
+                Some(ResourceBinding {
+                    group: 1,
+                    binding: 0
+                })
+            );
+            assert!(!parser.global_declarations.contains_key("retained_constant"));
+        }
+    }
+
+    #[test]
+    fn constant_memory_write_audit_checks_work_budget_before_inspecting_the_root() {
+        let source = "__constant__ unsigned retained_constant;";
+        let span = Span::new(0, source.len() as u32);
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        parser.constant_memory_declaration().unwrap();
+        let (global, _) = parser.module.global_variables.iter().next().unwrap();
+        let pointer = parser
+            .function
+            .ir
+            .expressions
+            .append(Expression::GlobalVariable(global), span);
+        let value = parser
+            .function
+            .ir
+            .expressions
+            .append(Expression::Literal(Literal::U32(1)), span);
+        parser
+            .function
+            .ir
+            .body
+            .push(Statement::Store { pointer, value }, span);
+        let function = core::mem::take(&mut parser.function.ir);
+        parser.module.functions.append(function, span);
+        parser.parameter_expansion_budget = ExpansionBudget::default();
+        parser.parameter_expansion_budget.activate();
+        parser
+            .parameter_expansion_budget
+            .charge_work(WORK_LIMIT, span)
+            .unwrap();
+
+        let error = parser.check_constant_memory_accesses().unwrap_err();
+        assert_eq!(error.message, limit_error(span).message);
+        assert_eq!(error.span, span);
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+        assert_eq!(parser.module.global_variables.len(), 1);
+        let (_, function) = parser.module.functions.iter().next().unwrap();
+        assert_eq!(function.expressions.len(), 2);
+        assert_eq!(function.body.len(), 1);
+
+        parser.parameter_expansion_budget = ExpansionBudget::default();
+        parser.parameter_expansion_budget.activate();
+        let error = parser.check_constant_memory_accesses().unwrap_err();
+        assert!(error.message.contains("read-only"), "{error}");
+        assert!(!parser.parameter_expansion_budget.is_exhausted());
+    }
 }
