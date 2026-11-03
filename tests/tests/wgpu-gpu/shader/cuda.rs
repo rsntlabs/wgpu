@@ -46,6 +46,7 @@ mod integer_intrinsics;
 mod integer_math;
 mod integral_templates;
 mod kernels;
+mod launch_bounds;
 mod list_initialization;
 mod literals;
 mod local_arrays;
@@ -141,6 +142,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_INTEGER_INTRINSICS,
         CUDA_INTEGER_MATH,
         CUDA_INTEGRAL_TEMPLATES,
+        CUDA_LAUNCH_BOUNDS,
         CUDA_LIST_INITIALIZATION,
         CUDA_LITERALS,
         CUDA_LOGICAL_OPERATORS,
@@ -544,6 +546,8 @@ static CUDA_INTEGER_INTRINSICS: GpuTestConfiguration = configuration(integer_int
 static CUDA_INTEGER_MATH: GpuTestConfiguration = configuration(integer_math::cases);
 #[apply(gpu_test!)]
 static CUDA_INTEGRAL_TEMPLATES: GpuTestConfiguration = configuration(integral_templates::cases);
+#[apply(gpu_test!)]
+static CUDA_LAUNCH_BOUNDS: GpuTestConfiguration = configuration(launch_bounds::cases);
 #[apply(gpu_test!)]
 static CUDA_LIST_INITIALIZATION: GpuTestConfiguration = configuration(list_initialization::cases);
 #[apply(gpu_test!)]

@@ -43,6 +43,7 @@ mod integer_intrinsics;
 mod integer_math;
 mod integer_operators;
 mod integral_templates;
+mod launch_bounds;
 mod list_initialization;
 mod literals;
 mod local_arrays;
