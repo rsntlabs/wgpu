@@ -3,6 +3,7 @@ mod cuda;
 mod example_wgsl;
 mod glsl_integer16;
 mod helpers;
+mod hlsl_integer16;
 mod msl_integer16;
 mod snapshots;
 mod spirv_capabilities;
