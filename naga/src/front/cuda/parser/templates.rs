@@ -946,10 +946,13 @@ impl<'a> Parser<'a> {
             TypeSpecifier::Dim3 => String::from("dim3"),
             TypeSpecifier::NullPointer => String::from("decltype(nullptr)"),
             TypeSpecifier::ThreadBlock => String::from("cooperative_groups::thread_block"),
-            TypeSpecifier::Vector { size, scalar } => {
+            TypeSpecifier::Vector {
+                component_count,
+                scalar,
+            } => {
                 let name = types::VECTOR_TYPES
                     .iter()
-                    .find(|entry| entry.2 == size && entry.3 == scalar)
+                    .find(|entry| entry.2 == component_count && entry.3 == scalar)
                     .unwrap()
                     .0;
                 String::from(name)
@@ -1012,17 +1015,23 @@ impl<'a> Parser<'a> {
         }
         match self.module.types[ty].inner {
             TypeInner::Scalar(scalar) => Ok(TypeSpecifier::Scalar(scalar)),
-            TypeInner::Vector { size, scalar } => Ok(TypeSpecifier::Vector { size, scalar }),
+            TypeInner::Vector { size, scalar } => Ok(TypeSpecifier::Vector {
+                component_count: u8::from(size),
+                scalar,
+            }),
             TypeInner::Struct { .. } => {
                 if self.structures.contains_key(&ty) {
                     return Ok(TypeSpecifier::Structure(ty));
                 }
                 let name = self.module.types[ty].name.as_deref();
-                if let Some(&(_, _, size, scalar)) = types::VECTOR_TYPES
+                if let Some(&(_, _, component_count, scalar)) = types::VECTOR_TYPES
                     .iter()
                     .find(|entry| Some(entry.0) == name)
                 {
-                    return Ok(TypeSpecifier::Vector { size, scalar });
+                    return Ok(TypeSpecifier::Vector {
+                        component_count,
+                        scalar,
+                    });
                 }
                 Err(ParseError {
                     message: String::from("unsupported template source type"),
