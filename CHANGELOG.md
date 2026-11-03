@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA `short2`, `short3`, `short4`, and their unsigned forms with matching constructors and native layouts.
 - Support CUDA `short` and `unsigned short` with native two-byte storage and C++ integral promotions.
 - Read 16-bit integer constants from SPIR-V.
 - Emit the required GLSL 16-bit integer extension, explicitly typed zero initializers, and a valid GLSL 1.40 version header.

@@ -44,6 +44,7 @@ mod immutable_pointers;
 mod inferred_arrays;
 mod inline;
 mod integer16;
+mod integer16_vectors;
 mod integer_intrinsics;
 mod integer_math;
 mod integer_operators;

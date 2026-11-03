@@ -18,7 +18,7 @@ pub(super) enum TypeSpecifier {
     },
 }
 
-pub(super) const VECTOR_TYPES: [(&str, &str, VectorSize, Scalar); 9] = [
+pub(super) const VECTOR_TYPES: [(&str, &str, VectorSize, Scalar); 15] = [
     ("float2", "make_float2", VectorSize::Bi, Scalar::F32),
     ("float3", "make_float3", VectorSize::Tri, Scalar::F32),
     ("float4", "make_float4", VectorSize::Quad, Scalar::F32),
@@ -28,6 +28,12 @@ pub(super) const VECTOR_TYPES: [(&str, &str, VectorSize, Scalar); 9] = [
     ("uint2", "make_uint2", VectorSize::Bi, Scalar::U32),
     ("uint3", "make_uint3", VectorSize::Tri, Scalar::U32),
     ("uint4", "make_uint4", VectorSize::Quad, Scalar::U32),
+    ("short2", "make_short2", VectorSize::Bi, Scalar::I16),
+    ("short3", "make_short3", VectorSize::Tri, Scalar::I16),
+    ("short4", "make_short4", VectorSize::Quad, Scalar::I16),
+    ("ushort2", "make_ushort2", VectorSize::Bi, Scalar::U16),
+    ("ushort3", "make_ushort3", VectorSize::Tri, Scalar::U16),
+    ("ushort4", "make_ushort4", VectorSize::Quad, Scalar::U16),
 ];
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -355,6 +361,7 @@ impl<'a> Parser<'a> {
             return Ok(TypeResolution::Value(TypeInner::Vector { size, scalar }));
         }
         let base = self.scalar_handle(scalar, span);
+        let scalar_width = u32::from(scalar.width);
         let name = VECTOR_TYPES
             .into_iter()
             .find_map(|(name, _, candidate_size, candidate_scalar)| {
@@ -368,13 +375,16 @@ impl<'a> Parser<'a> {
                 name: Some(String::from(name)),
                 ty: base,
                 binding: None,
-                offset: index as u32 * 4,
+                offset: index as u32 * scalar_width,
             })
             .collect();
         let handle = self.module.types.insert(
             Type {
                 name: Some(String::from(name)),
-                inner: TypeInner::Struct { members, span: 12 },
+                inner: TypeInner::Struct {
+                    members,
+                    span: 3 * scalar_width,
+                },
             },
             span,
         );

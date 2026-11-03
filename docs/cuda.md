@@ -226,8 +226,9 @@ definitions can surround the kernels and are shared across the module. Every
 kernel body is parsed and checked, including kernels a caller does not dispatch.
 Parameter types are `float`, `short`, `unsigned short`, `int`, and `unsigned int`
 (`unsigned` is also accepted), either by value or as flat pointers. Pointer
-parameters also accept `float2`, `float3`, `float4`,
-`int2`, `int3`, `int4`, `uint2`, `uint3`, and `uint4`. Aliases and pointee
+parameters also accept `float2`, `float3`, `float4`, `int2`, `int3`, `int4`,
+`uint2`, `uint3`, `uint4`, `short2`, `short3`, `short4`, `ushort2`, `ushort3`,
+and `ushort4`. Aliases and pointee
 `const` qualification preserve the underlying element type.
 Pointer parameters also accept completed named structs described below.
 Parameter number `i` uses group 0, binding `i` independently for each kernel,
@@ -263,9 +264,12 @@ reads and writes. Element layouts are:
 | --- | --- | --- | --- |
 | `short` or `unsigned short` | 2 bytes | 2 bytes | 2 bytes |
 | 32-bit scalar | 4 bytes | 4 bytes | 4 bytes |
-| Two-component vector | 8 bytes | 8 bytes | 8 bytes |
-| Three-component vector | 12 bytes | 4 bytes | 12 bytes |
-| Four-component vector | 16 bytes | 16 bytes | 16 bytes |
+| Two-component 16-bit vector | 4 bytes | 4 bytes | 4 bytes |
+| Three-component 16-bit vector | 6 bytes | 2 bytes | 6 bytes |
+| Four-component 16-bit vector | 8 bytes | 8 bytes | 8 bytes |
+| Two-component 32-bit vector | 8 bytes | 8 bytes | 8 bytes |
+| Three-component 32-bit vector | 12 bytes | 4 bytes | 12 bytes |
+| Four-component 32-bit vector | 16 bytes | 16 bytes | 16 bytes |
 
 Struct fields use their element alignment, with padding before a field when
 needed. The struct's alignment is its greatest field alignment, and its size
@@ -961,7 +965,8 @@ or remove pointee qualifiers. Aliases cannot supply boolean kernel buffer
 parameters.
 
 Vector values support `float2`, `float3`, `float4`, `int2`, `int3`, `int4`,
-`uint2`, `uint3`, and `uint4`. These types can appear in local variables,
+`uint2`, `uint3`, `uint4`, `short2`, `short3`, `short4`, `ushort2`, `ushort3`,
+and `ushort4`. These types can appear in local variables,
 fixed local arrays, kernel buffer elements, and helper parameters and results.
 Copies, assignments, and conditional arms require matching vector types. Const
 qualification prevents writes to individual fields as well as the complete value.
@@ -976,8 +981,9 @@ left-to-right argument evaluation. Additional user-defined overloads participate
 in the same overload resolution as other helpers.
 
 These types follow CUDA's [built-in vector definitions](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-c-programming-guide/index.html#built-in-vector-types).
-In particular, three-component arrays have a 12-byte element stride and
-4-byte alignment. Vector comparisons, truthiness, indexing, and swizzles remain
+Three-component 16-bit arrays have a six-byte element stride and two-byte
+alignment. Three-component 32-bit arrays have a 12-byte element stride and
+four-byte alignment. Vector comparisons, truthiness, indexing, and swizzles remain
 unsupported. Vector arithmetic requires a visible source-defined operator.
 Same-type vector copies support `float2(source)`, `static_cast<float2>(source)`,
 and `(float2)source`. Empty `float2()` construction zeroes every component.
@@ -1526,7 +1532,8 @@ mutable numeric scalars, including vector fields. Assignment evaluates its right
 operand before its left operand. Built-in scalar logical short-circuiting also
 applies to assignments and updates inside the right operand.
 
-Static `__shared__` declarations support `float`, `int`, and `unsigned int`
+Static `__shared__` declarations support `float`, `short`, `unsigned short`,
+`int`, and `unsigned int`
 scalars, the numeric vector and struct types above, and fixed arrays of
 those types inside kernels and device helpers. Their aliases are also accepted;
 const-qualified shared types remain unsupported. Vector elements use the sizes, alignments, and
