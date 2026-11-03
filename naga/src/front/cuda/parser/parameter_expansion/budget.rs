@@ -124,6 +124,106 @@ pub(super) fn limit_error(span: Span) -> ParseError {
 mod tests {
     use super::*;
 
+    #[test]
+    fn braced_aggregate_initialization_charges_nodes_without_parameter_state() {
+        let fields = (0..16)
+            .map(|index| format!("int field_{index};"))
+            .collect::<String>();
+        let initializer = "{1}";
+        let source = format!("struct Record {{ {fields} }}; {initializer}");
+        let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
+        parser.structure_declaration(true).unwrap();
+        let TypeSpecifier::Structure(ty) = parser.type_name("Record").unwrap().ty else {
+            panic!("expected the declared record type");
+        };
+        let span = parser.lexer.peek().unwrap().1;
+        parser.function = FunctionContext::new(FunctionKind::Kernel);
+        let local = parser.function.ir.local_variables.append(
+            LocalVariable {
+                name: Some(String::from("value")),
+                ty,
+                init: None,
+            },
+            span,
+        );
+        let pointer = parser
+            .append(Expression::LocalVariable(local), span)
+            .unwrap();
+        parser.parameter_expansion_budget.activate();
+        let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+        parser
+            .parameter_expansion_budget
+            .charge_nodes(remaining, span)
+            .unwrap();
+        assert!(!parser.function.parameter_state_charged);
+        assert_eq!(parser.function.ir.expressions.len(), 1);
+        assert!(parser.function.ir.body.is_empty());
+
+        let result = parser.aggregate_initializer(pointer, TypeSpecifier::Structure(ty), ty, None);
+        let error = result.unwrap_err();
+        assert_eq!(error.message, limit_error(span).message);
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+        let range = error.span.to_range().unwrap();
+        assert!(!range.is_empty());
+        assert!(source.get(range).is_some());
+        assert_eq!(parser.function.ir.expressions.len(), 1);
+        assert_eq!(parser.function.expression_graph_depths.len(), 1);
+        assert_eq!(parser.function.ir.local_variables.len(), 1);
+        assert!(parser.function.ir.body.is_empty());
+        assert!(parser.function.parameters.is_empty());
+        assert!(parser.module.functions.is_empty());
+        assert!(parser.module.global_variables.is_empty());
+    }
+
+    #[test]
+    fn empty_aggregate_default_initialization_charges_nodes_without_parameter_state() {
+        let source = "struct Record { dim3 shape; int first; int second; int third; }; {}";
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        parser.structure_declaration(true).unwrap();
+        let TypeSpecifier::Structure(ty) = parser.type_name("Record").unwrap().ty else {
+            panic!("expected the declared record type");
+        };
+        assert!(parser.requires_default_constructor(ty));
+        let span = parser.lexer.peek().unwrap().1;
+        parser.function = FunctionContext::new(FunctionKind::Kernel);
+        let local = parser.function.ir.local_variables.append(
+            LocalVariable {
+                name: Some(String::from("value")),
+                ty,
+                init: None,
+            },
+            span,
+        );
+        let pointer = parser
+            .append(Expression::LocalVariable(local), span)
+            .unwrap();
+        parser.parameter_expansion_budget.activate();
+        let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+        parser
+            .parameter_expansion_budget
+            .charge_nodes(remaining, span)
+            .unwrap();
+        assert!(!parser.function.parameter_state_charged);
+        assert_eq!(parser.function.ir.expressions.len(), 1);
+        assert!(parser.function.ir.body.is_empty());
+
+        let error = parser
+            .aggregate_initializer(pointer, TypeSpecifier::Structure(ty), ty, None)
+            .unwrap_err();
+        assert_eq!(error.message, limit_error(span).message);
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+        let range = error.span.to_range().unwrap();
+        assert!(!range.is_empty());
+        assert!(source.get(range).is_some());
+        assert_eq!(parser.function.ir.expressions.len(), 1);
+        assert_eq!(parser.function.expression_graph_depths.len(), 1);
+        assert_eq!(parser.function.ir.local_variables.len(), 1);
+        assert!(parser.function.ir.body.is_empty());
+        assert!(parser.function.parameters.is_empty());
+        assert!(parser.module.functions.is_empty());
+        assert!(parser.module.global_variables.is_empty());
+    }
+
     fn dynamic_shared_source(calls: usize) -> String {
         let mut source = String::from("__device__ void no_op() {} __global__ void kernel() {");
         for index in 0..64 {
