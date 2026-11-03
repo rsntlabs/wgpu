@@ -61,7 +61,7 @@ impl ExpansionBudget {
         Ok(())
     }
 
-    pub(super) fn inventory_function(
+    pub(in super::super) fn inventory_function(
         &mut self,
         function: &Function,
         span: Span,

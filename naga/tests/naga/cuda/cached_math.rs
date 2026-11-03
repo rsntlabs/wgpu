@@ -242,14 +242,24 @@ fn cuda_cached_math_keeps_the_exact_particle_wave_compact_and_source_named() {
     let wave_calls = calls(&wave.body);
     assert_eq!(
         wave_calls.len(),
-        3,
-        "wave should call rounding once and absolute value twice"
+        4,
+        "wave should call division once, rounding once and absolute value twice"
     );
-    assert!(wave_calls
+    let division = &module.functions[wave_calls[0]];
+    assert_eq!(division.arguments.len(), 2);
+    assert!(division.arguments.iter().all(|argument| {
+        module.types[argument.ty].inner == naga::TypeInner::Scalar(naga::Scalar::U32)
+    }));
+    assert_eq!(
+        module.types[division.result.as_ref().unwrap().ty].inner,
+        naga::TypeInner::Scalar(naga::Scalar::U32)
+    );
+    let unary_calls = &wave_calls[1..];
+    assert!(unary_calls
         .iter()
         .all(|&handle| is_bit_helper(&module, handle)));
-    assert_ne!(wave_calls[0], wave_calls[1]);
-    assert_eq!(wave_calls[1], wave_calls[2]);
+    assert_ne!(unary_calls[0], unary_calls[1]);
+    assert_eq!(unary_calls[1], unary_calls[2]);
     assert!(!wave
         .expressions
         .iter()

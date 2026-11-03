@@ -184,14 +184,22 @@ impl Parser<'_> {
             | BinaryOperator::GreaterEqual => Scalar::BOOL,
             _ => self.require_scalar_type(&left.ty, left.span)?,
         };
-        let handle = self.append(
-            Expression::Binary {
-                op: operator,
-                left: left.handle,
-                right: right.handle,
-            },
-            span,
-        )?;
+        let handle = if operator == BinaryOperator::Divide && scalar == Scalar::F32 {
+            if let Some(literal @ Literal::F32(_)) = constant {
+                self.append(Expression::Literal(literal), span)?
+            } else {
+                self.divide_f32(left.handle, right.handle, span)?
+            }
+        } else {
+            self.append(
+                Expression::Binary {
+                    op: operator,
+                    left: left.handle,
+                    right: right.handle,
+                },
+                span,
+            )?
+        };
         Ok(Value {
             category: ValueCategory::Prvalue,
             qualifiers: Qualifiers::NONE,

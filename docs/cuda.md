@@ -48,12 +48,13 @@ capture storage after bounds and use checks. Mutable indices, runtime arithmetic
 and captures that fail these checks retain their existing storage and evaluation
 timing.
 
-CUDA floating-point absolute value, rounding, and square root use cached
-compatibility helpers. Calls reuse each helper across the module, keeping the
+CUDA floating-point division, absolute value, rounding, and square root use
+cached compatibility helpers. Calls reuse each helper across the module, keeping the
 integer algorithms out of source functions while preserving their numerical
 behavior. Other operations can still produce temporary expressions.
 
-Ordinary floating-point arithmetic follows the target language's guarantees.
+Floating-point addition, subtraction, and multiplication follow the target
+language's guarantees.
 WGSL permits either sign for zero, so reinterpreting an arithmetic result can
 expose a difference from CUDA. See the
 [WGSL floating-point rules](https://gpuweb.github.io/gpuweb/wgsl/#differences-from-ieee754).
@@ -588,6 +589,17 @@ Static variables and the `__inline_hint__` specifier remain unsupported.
 Top-level return `const`, including `const void`, does not change the result type.
 The frontend preserves ordinary value-only function calls; `inline` does not
 force substitution. Indirect parameter helpers require expansion even with `__noinline__`.
+
+## Floating-point division
+
+Scalar `float` division and `/=` use round-to-nearest, ties-to-even results,
+including gradual underflow and overflow. Integer operations on the received
+operand representations preserve subnormal inputs, signed zero results, and
+infinities. NaNs and invalid operations such as zero divided by zero produce the
+canonical quiet NaN `0x7fc00000`. This matches CUDA's default
+[`prec-div=true` mode](https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#prec-div-true-false-prec-div).
+Mixed scalar operands receive the usual arithmetic conversions before division.
+Source-defined vector operators can use the same scalar divisions componentwise.
 
 ## Mathematical functions
 

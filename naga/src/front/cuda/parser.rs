@@ -13,6 +13,7 @@ mod conversions;
 mod cooperative_groups;
 mod declarations;
 mod dim3;
+mod division;
 mod dynamic_shared;
 mod expressions;
 mod float_helpers;
@@ -344,6 +345,7 @@ pub(super) struct Parser<'a> {
     has_helper_barriers: bool,
     kernels: Vec<Kernel<'a>>,
     sqrtf_function: Option<Handle<Function>>,
+    division_function: Option<Handle<Function>>,
     float_math_functions: [Option<Handle<Function>>; 4],
     trigonometry_function: Option<Handle<Function>>,
     structures: FastHashMap<Handle<Type>, structures::Structure>,
@@ -377,6 +379,7 @@ impl<'a> Parser<'a> {
             has_helper_barriers: false,
             kernels: Vec::new(),
             sqrtf_function: None,
+            division_function: None,
             float_math_functions: [None; 4],
             trigonometry_function: None,
             structures: FastHashMap::default(),
