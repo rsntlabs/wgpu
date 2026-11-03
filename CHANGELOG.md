@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support fixed CUDA shared storage in device helpers, preserving allocations across calls and separating template specializations.
 - Support CUDA launch-bound attributes and check configured workgroup sizes against positive thread limits.
 - Support CUDA macro token pasting with raw arguments, empty arguments, and rescanning.
 - Support CUDA hexadecimal floating-point literals with direct binary32 rounding and digit separators.

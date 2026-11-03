@@ -402,9 +402,10 @@ fn cuda_pointer_parameters_bind_shared_and_storage_roots_with_existing_barrier_r
     };
     assert_eq!(stride, 20);
     validate("__device__ void wait(int *value) { __syncthreads(); } __global__ void kernel() {}");
-    rejected(
+    validate(
         "__device__ void update(int *value) { __shared__ int shared; } __global__ void kernel() {}",
     );
+    rejected("__device__ void update(int *value) { __shared__ int shared = 1; } __global__ void kernel() {}");
     rejected("__device__ void update(int *value) {} __global__ void kernel(int *out) { if (threadIdx.x == 0u) __syncthreads(); update(out); }");
 }
 

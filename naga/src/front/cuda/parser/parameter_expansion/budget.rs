@@ -190,4 +190,35 @@ mod tests {
         assert!(parser.parameter_expansion_budget.is_exhausted());
         assert_eq!(error.span.to_range(), Some(0..source.len()));
     }
+
+    #[test]
+    fn device_shared_allocations_check_node_and_name_budgets_before_append() {
+        let source = "__shared__ unsigned retained_state;";
+        let span = Span::new(0, source.len() as u32);
+        for exhaust_bytes in [false, true] {
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            parser.function = FunctionContext::new(FunctionKind::Device);
+            parser.activate_parameter_expansion(span).unwrap();
+            parser.prepare_parameter_bindings(span).unwrap();
+            if exhaust_bytes {
+                let remaining = size_of::<(GlobalVariable, Span)>() + "retained_state".len() - 1;
+                let charge = BYTE_LIMIT - parser.parameter_expansion_budget.bytes - remaining;
+                parser
+                    .parameter_expansion_budget
+                    .charge_bytes(charge, span)
+                    .unwrap();
+            } else {
+                let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                parser
+                    .parameter_expansion_budget
+                    .charge_nodes(remaining, span)
+                    .unwrap();
+            }
+            let error = parser.statement().unwrap_err();
+            assert!(error.message.contains("limit"), "{error}");
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert!(parser.module.global_variables.is_empty());
+            assert_eq!(&source[error.span.to_range().unwrap()], "retained_state");
+        }
+    }
 }

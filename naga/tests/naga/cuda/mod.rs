@@ -20,6 +20,7 @@ mod conversions;
 mod declarations;
 mod device_functions;
 mod device_helper_barriers;
+mod device_shared;
 mod dim3;
 mod direct_aggregate_initialization;
 mod direct_borrowed_initialization;
