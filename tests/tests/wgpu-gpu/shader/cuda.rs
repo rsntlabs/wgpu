@@ -34,6 +34,7 @@ mod dual_execution;
 mod dynamic_shared;
 mod empty_scalar_construction;
 mod fabs;
+mod float_division;
 mod float_math;
 mod float_separators;
 mod floorf;
@@ -136,6 +137,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_DYNAMIC_SHARED,
         CUDA_EMPTY_SCALAR_CONSTRUCTION,
         CUDA_FABS,
+        CUDA_FLOAT_DIVISION,
         CUDA_FLOAT_MATH,
         CUDA_FLOAT_SEPARATORS,
         CUDA_FLOORF,
@@ -541,6 +543,8 @@ static CUDA_EMPTY_SCALAR_CONSTRUCTION: GpuTestConfiguration =
     configuration(empty_scalar_construction::cases);
 #[apply(gpu_test!)]
 static CUDA_FABS: GpuTestConfiguration = configuration(fabs::cases);
+#[apply(gpu_test!)]
+static CUDA_FLOAT_DIVISION: GpuTestConfiguration = configuration(float_division::cases);
 #[apply(gpu_test!)]
 static CUDA_FLOAT_MATH: GpuTestConfiguration = configuration(float_math::cases);
 #[apply(gpu_test!)]
