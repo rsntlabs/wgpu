@@ -157,6 +157,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
             )
         }))
+        .chain(core::iter::once((
+            "fmodf",
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        )))
         .chain(INTEGER_ATOMICS.into_iter().map(|(name, _)| {
             (
                 name,
@@ -257,6 +261,7 @@ pub(super) enum FunctionCandidate {
         source: Scalar,
     },
     Sqrt,
+    Fmodf,
     Constructor {
         size: VectorSize,
         scalar: Scalar,
@@ -768,6 +773,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Unary { .. }
                         | FunctionCandidate::FloatMath(_)
                         | FunctionCandidate::Sqrt
+                        | FunctionCandidate::Fmodf
                         | FunctionCandidate::Constructor { .. }
                 )
                 && self.function.parameters.len() == self.candidate_arity(candidate)
@@ -1001,9 +1007,9 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
             FunctionCandidate::WrappingAtomic(_) => TypeSpecifier::Scalar(Scalar::U32),
             FunctionCandidate::IntegralDouble { .. } => unreachable!(),
-            FunctionCandidate::FloatMath(_) | FunctionCandidate::Sqrt => {
-                TypeSpecifier::Scalar(Scalar::F32)
-            }
+            FunctionCandidate::FloatMath(_)
+            | FunctionCandidate::Sqrt
+            | FunctionCandidate::Fmodf => TypeSpecifier::Scalar(Scalar::F32),
             FunctionCandidate::Constructor { size, scalar } => {
                 TypeSpecifier::Vector { size, scalar }
             }
@@ -1257,6 +1263,21 @@ impl<'a> Parser<'a> {
                 constant: ConstantValue::default(),
                 handle,
                 ty: scalar_resolution(result),
+                span,
+            }
+            .into());
+        }
+        if candidate == FunctionCandidate::Fmodf {
+            let mut arguments = arguments.into_iter();
+            let dividend = self.convert_scalar(arguments.next().unwrap().into(), Scalar::F32)?;
+            let divisor = self.convert_scalar(arguments.next().unwrap().into(), Scalar::F32)?;
+            let handle = self.call_fmodf(dividend.handle, divisor.handle, span)?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: ConstantValue::default(),
+                handle,
+                ty: scalar_resolution(Scalar::F32),
                 span,
             }
             .into());
@@ -1698,6 +1719,7 @@ impl<'a> Parser<'a> {
                 (builtin_visible && SQRT_BUILTINS.contains(&name))
                     .then_some(FunctionCandidate::Sqrt),
             )
+            .chain((builtin_visible && name == "fmodf").then_some(FunctionCandidate::Fmodf))
             .chain(atomic_function.into_iter().flat_map(|function| {
                 [Scalar::I32, Scalar::U32]
                     .map(|scalar| FunctionCandidate::Atomic { function, scalar })
@@ -1732,7 +1754,8 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Builtin(builtin) => builtin.parameters.len(),
             FunctionCandidate::Multiply24(_)
             | FunctionCandidate::Atomic { .. }
-            | FunctionCandidate::WrappingAtomic(_) => 2,
+            | FunctionCandidate::WrappingAtomic(_)
+            | FunctionCandidate::Fmodf => 2,
             FunctionCandidate::AtomicCompareExchange(_) => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::Unary { .. }
@@ -1777,9 +1800,9 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::IntegralDouble { source } => {
                 return Some(scalar_resolution(source))
             }
-            FunctionCandidate::FloatMath(_) | FunctionCandidate::Sqrt => {
-                return Some(scalar_resolution(Scalar::F32))
-            }
+            FunctionCandidate::FloatMath(_)
+            | FunctionCandidate::Sqrt
+            | FunctionCandidate::Fmodf => return Some(scalar_resolution(Scalar::F32)),
             FunctionCandidate::Constructor { scalar, .. } => {
                 return Some(scalar_resolution(scalar))
             }

@@ -375,7 +375,7 @@ impl Parser<'_> {
         Ok(())
     }
 
-    fn division_normalize(
+    pub(super) fn division_normalize(
         &mut self,
         magnitude: Handle<Expression>,
         significand_name: &str,
