@@ -60,7 +60,7 @@ fn cuda_ceilf_converts_scalar_arguments_and_returns_float() {
 fn cuda_ceilf_preserves_aliases_prototypes_overloads_and_name_hiding() {
     roundtrip(
         "using Sample = const float;
-        __device__ Sample ceilf(Sample);
+        __device__ float ceilf(Sample);
         __device__ float ceilf(int value) { return ceilf(float(value)); }
         __device__ int ceilf(bool value) { return value ? 7 : 9; }
         __global__ void kernel(float *output) {

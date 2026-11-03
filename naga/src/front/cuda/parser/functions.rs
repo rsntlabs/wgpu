@@ -774,7 +774,9 @@ impl<'a> Parser<'a> {
                 });
             }
             let result = self.candidate_result(candidate, header.result_span)?;
-            if self.function.ir.result.as_ref().map(|result| result.ty) != result {
+            if self.function.ir.result.as_ref().map(|result| result.ty) != result
+                || header.result_qualifiers != Qualifiers::NONE
+            {
                 return Err(ParseError {
                     message: format!("incompatible builtin result type `{}`", header.name),
                     span: header.name_span,

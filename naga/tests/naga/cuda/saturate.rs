@@ -57,7 +57,7 @@ fn cuda_saturate_accepts_canonical_prototypes_and_aliases() {
     let (module, _) = validate(
         "using Sample = const float;
         __device__ float __saturatef(float);
-        __device__ Sample __saturatef(Sample value);
+        __device__ float __saturatef(Sample value);
         __global__ void kernel(float *out) { out[0] = __saturatef(0.5f); }",
     );
     assert!(module.functions.is_empty());

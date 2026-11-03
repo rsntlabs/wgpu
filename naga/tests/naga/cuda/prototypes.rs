@@ -234,6 +234,74 @@ fn cuda_prototypes_merge_existing_intrinsics_without_emitting_stubs() {
 }
 
 #[test]
+fn cuda_prototypes_reject_qualified_builtin_result_declarations() {
+    for (name, result, parameters) in [
+        ("floorf", "float", "float"),
+        ("ceilf", "float", "float"),
+        ("fabsf", "float", "float"),
+        ("sqrtf", "float", "float"),
+        ("sinf", "float", "float"),
+        ("min", "int", "int, int"),
+        ("__clz", "int", "int"),
+        ("__float_as_uint", "unsigned", "float"),
+        ("__uint_as_float", "float", "unsigned"),
+        ("__mul24", "int", "int, int"),
+        ("atomicAdd", "unsigned", "unsigned *, unsigned"),
+        ("atomicCAS", "unsigned", "unsigned *, unsigned, unsigned"),
+        ("make_float2", "float2", "float, float"),
+    ] {
+        for qualifier in ["const", "volatile", "const volatile"] {
+            for result_declaration in [
+                format!("{qualifier} {result}"),
+                String::from("QualifiedResult"),
+            ] {
+                let source = format!(
+                    "/* λ */ using QualifiedResult = {qualifier} {result};
+                    __device__ {result_declaration} {name}({parameters});
+                    __global__ void kernel() {{}}"
+                );
+                let error = rejected(&source);
+                if result == "float2" && qualifier.contains("volatile") {
+                    assert_eq!(error.message, "volatile class return types are unsupported");
+                } else {
+                    assert!(
+                        error.message.contains("incompatible builtin result type"),
+                        "{error}"
+                    );
+                }
+                assert_eq!(&source[error.span.to_range().unwrap()], name);
+            }
+        }
+    }
+}
+
+#[test]
+fn cuda_prototypes_preserve_builtin_parameter_qualification_with_unqualified_results() {
+    let (module, info) = validate(
+        "using Frozen = const float; using Observed = const volatile float;
+        __device__ float floorf(Frozen);
+        __device__ float ceilf(Observed);
+        __device__ int __clz(const int);
+        __device__ float2 make_float2(Frozen, Frozen);
+        __device__ unsigned atomicAdd(unsigned *, const unsigned);
+        __global__ void kernel(unsigned *output) {
+            output[0] = __float_as_uint(floorf(2.5f));
+            output[1] = __float_as_uint(ceilf(-1.5f));
+            output[2] = unsigned(__clz(1));
+            output[3] = __float_as_uint(make_float2(3.0f, 4.0f).y);
+            output[4] = atomicAdd(output, 1u);
+        }",
+    );
+    #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+    super::helpers::wgsl_roundtrip(
+        &module,
+        &info,
+        naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+    );
+    let _ = (module, info);
+}
+
+#[test]
 fn cuda_prototypes_ordinary_overloads_coexist_with_intrinsics() {
     let (module, _) = validate(
         "__device__ int fabs(int); __device__ int floorf(int);
