@@ -143,6 +143,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 #### Naga
 
 - Read 16-bit integer constants from SPIR-V.
+- Emit the required GLSL 16-bit integer extension, explicitly typed zero initializers, and a valid GLSL 1.40 version header.
 - Support CUDA `fmodf` with exact finite remainders and special-value handling.
 - Reject incompatible return qualifiers in CUDA builtin prototypes.
 - Support all ten CUDA compound assignment operator functions with right-before-left operand sequencing.

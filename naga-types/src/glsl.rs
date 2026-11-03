@@ -140,6 +140,7 @@ impl PartialOrd for Version {
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
+            Version::Desktop(v) if v < 150 => write!(f, "{v}"),
             Version::Desktop(v) => write!(f, "{v} core"),
             Version::Embedded { version: v, .. } => write!(f, "{v} es"),
         }

@@ -137,3 +137,13 @@ fn integer16_vector_constants_roundtrip_to_spirv() {
         }));
     }
 }
+
+#[test]
+fn integer16_storage_fixture_roundtrips_to_spirv() {
+    let parsed = integer16_roundtrip(
+        include_str!("../in/wgsl/int16-glsl.wgsl"),
+        "integer_storage",
+    );
+    assert_eq!(parsed.entry_points.len(), 1);
+    assert_eq!(parsed.entry_points[0].workgroup_size, [4, 1, 1]);
+}

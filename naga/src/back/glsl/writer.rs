@@ -4414,6 +4414,16 @@ impl<'a, W: Write> Writer<'a, W> {
     fn write_zero_init_value(&mut self, ty: Handle<crate::Type>) -> BackendResult {
         let inner = &self.module.types[ty].inner;
         match *inner {
+            TypeInner::Scalar(scalar) | TypeInner::Atomic(scalar)
+                if scalar.width == 2
+                    && matches!(
+                        scalar.kind,
+                        crate::ScalarKind::Sint | crate::ScalarKind::Uint
+                    ) =>
+            {
+                self.write_value_type(inner)?;
+                write!(self.out, "(0)")?;
+            }
             TypeInner::Scalar(scalar) | TypeInner::Atomic(scalar) => {
                 self.write_zero_init_scalar(scalar.kind)?;
             }

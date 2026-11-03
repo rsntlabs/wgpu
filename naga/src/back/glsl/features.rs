@@ -59,6 +59,7 @@ bitflags::bitflags! {
         const SHADER_BARYCENTRICS = 1 << 26;
         /// Primitive index builtin
         const PRIMITIVE_INDEX = 1 << 27;
+        const INT16_TYPE = 1 << 28;
     }
 }
 
@@ -120,6 +121,7 @@ impl FeaturesManager {
         check_feature!(COMPUTE_SHADER, 420, 310);
         check_feature!(BUFFER_STORAGE, 400, 310);
         check_feature!(DOUBLE_TYPE, 150);
+        check_feature!(INT16_TYPE, 140, 310);
         check_feature!(CUBE_TEXTURES_ARRAY, 130, 310);
         check_feature!(MULTISAMPLED_TEXTURES, 150, 300);
         check_feature!(MULTISAMPLED_TEXTURE_ARRAYS, 150, 310);
@@ -177,6 +179,13 @@ impl FeaturesManager {
         if self.0.contains(Features::DOUBLE_TYPE) && options.version < Version::Desktop(400) {
             // https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_gpu_shader_fp64.txt
             writeln!(out, "#extension GL_ARB_gpu_shader_fp64 : require")?;
+        }
+
+        if self.0.contains(Features::INT16_TYPE) {
+            writeln!(
+                out,
+                "#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require"
+            )?;
         }
 
         if self.0.contains(Features::CUBE_TEXTURES_ARRAY) {
@@ -515,7 +524,16 @@ impl<W> Writer<'_, W> {
                 info.get_entry_point(entry_point_idx as usize),
             )))
         {
-            for (_, expr) in expressions.iter() {
+            for (handle, expr) in expressions.iter() {
+                if matches!(
+                    info[handle].ty.inner_with(&module.types).scalar(),
+                    Some(Scalar {
+                        kind: ScalarKind::Sint | ScalarKind::Uint,
+                        width: 2,
+                    })
+                ) {
+                    features.request(Features::INT16_TYPE);
+                }
                 match *expr {
                 // Check for queries that need aditonal features
                 Expression::ImageQuery {
@@ -624,6 +642,8 @@ impl<W> Writer<'_, W> {
     fn scalar_required_features(&mut self, scalar: Scalar) {
         if scalar.kind == ScalarKind::Float && scalar.width == 8 {
             self.features.request(Features::DOUBLE_TYPE);
+        } else if matches!(scalar.kind, ScalarKind::Sint | ScalarKind::Uint) && scalar.width == 2 {
+            self.features.request(Features::INT16_TYPE);
         }
     }
 
