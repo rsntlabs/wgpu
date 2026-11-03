@@ -174,7 +174,11 @@ impl Parser<'_> {
             let expression = parser.expression(0)?;
             parser.rvalue(expression)
         })?;
-        let literal = Self::required_constant(&value)?;
+        let literal = match Self::required_constant(&value)? {
+            Literal::I16(integer) => Literal::I32(i32::from(integer)),
+            Literal::U16(integer) => Literal::I32(i32::from(integer)),
+            literal => literal,
+        };
         let converted = match (selector, literal) {
             (Scalar::I32, Literal::Bool(boolean)) => {
                 Some(crate::SwitchValue::I32(i32::from(boolean)))

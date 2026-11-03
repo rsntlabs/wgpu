@@ -46,6 +46,7 @@ mod hex_float_literals;
 mod immutable_pointers;
 mod inferred_arrays;
 mod inline;
+mod integer16;
 mod integer_intrinsics;
 mod integer_math;
 mod integral_templates;
@@ -154,6 +155,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_IMMUTABLE_POINTERS,
         CUDA_INFERRED_ARRAYS,
         CUDA_INLINE,
+        CUDA_INTEGER16,
         CUDA_INTEGER_INTRINSICS,
         CUDA_INTEGER_MATH,
         CUDA_INTEGRAL_TEMPLATES,
@@ -710,3 +712,7 @@ static CUDA_VECTOR_RESOURCES: GpuTestConfiguration = configuration(vector_resour
 
 #[apply(gpu_test!)]
 static CUDA_VECTOR_VALUES: GpuTestConfiguration = configuration(vector_values::cases);
+
+#[apply(gpu_test!)]
+static CUDA_INTEGER16: GpuTestConfiguration =
+    configuration_with_features(integer16::cases, wgpu::Features::SHADER_I16);

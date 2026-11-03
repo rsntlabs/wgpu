@@ -39,8 +39,8 @@ impl<'a> Parser<'a> {
                 Token::Word("__constant__") => return Ok(true),
                 Token::Word("extern") => has_extern = true,
                 Token::Word(
-                    "static" | "__device__" | "const" | "volatile" | "int" | "signed" | "unsigned"
-                    | "constexpr",
+                    "static" | "__device__" | "const" | "volatile" | "int" | "short" | "signed"
+                    | "unsigned" | "constexpr",
                 )
                 | Token::String("C") => {}
                 Token::Word(name) if self.type_name(name).is_some() => {}
@@ -114,7 +114,7 @@ impl<'a> Parser<'a> {
                     }
                     qualifiers.is_volatile = true;
                 }
-                Token::Word(specifier @ ("int" | "signed" | "unsigned")) => {
+                Token::Word(specifier @ ("int" | "short" | "signed" | "unsigned")) => {
                     if ty.is_some() && integers.is_empty() {
                         return self.fail("incompatible or repeated type specifier");
                     }
@@ -151,7 +151,7 @@ impl<'a> Parser<'a> {
         let resolution = self.lower_type(qualified.ty, span)?;
         let base = self.type_handle(&resolution, span);
         if !self.numeric_storage_type(base, span)? || self.requires_default_constructor(base) {
-            return self.fail("constant memory requires 32-bit numeric values or POD records");
+            return self.fail("constant memory requires numeric values or POD records");
         }
         loop {
             let (name, name_span) = self.identifier()?;

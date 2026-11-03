@@ -197,7 +197,11 @@ impl<'a> Parser<'a> {
             let literal = Self::required_constant(&value)?;
             if !matches!(
                 literal,
-                Literal::Bool(_) | Literal::I32(_) | Literal::U32(_)
+                Literal::Bool(_)
+                    | Literal::I16(_)
+                    | Literal::U16(_)
+                    | Literal::I32(_)
+                    | Literal::U32(_)
             ) {
                 return Err(ParseError {
                     message: String::from("unroll factor requires an integral constant expression"),
@@ -418,7 +422,9 @@ impl<'a> Parser<'a> {
             } else if is_const
                 && matches!(
                     specifier,
-                    TypeSpecifier::Scalar(Scalar::BOOL | Scalar::I32 | Scalar::U32)
+                    TypeSpecifier::Scalar(
+                        Scalar::BOOL | Scalar::I16 | Scalar::U16 | Scalar::I32 | Scalar::U32
+                    )
                 )
             {
                 let (value, body) =
@@ -622,6 +628,8 @@ impl<'a> Parser<'a> {
         };
         let size = match value.constant.literal {
             Some(Literal::Bool(value)) => u32::from(value),
+            Some(Literal::I16(value)) => u32::try_from(value).map_err(|_| invalid())?,
+            Some(Literal::U16(value)) => u32::from(value),
             Some(Literal::I32(value)) => u32::try_from(value).map_err(|_| invalid())?,
             Some(Literal::U32(value)) => value,
             _ => return Err(invalid()),

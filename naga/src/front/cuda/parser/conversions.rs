@@ -36,7 +36,15 @@ impl Parser<'_> {
         if target == Scalar::BOOL {
             return self.truthy(value.into());
         }
-        if ![Scalar::I32, Scalar::U32, Scalar::F32].contains(&target) {
+        if ![
+            Scalar::I16,
+            Scalar::U16,
+            Scalar::I32,
+            Scalar::U32,
+            Scalar::F32,
+        ]
+        .contains(&target)
+        {
             return Err(ParseError {
                 message: String::from("unsupported scalar conversion"),
                 span: value.span,
@@ -96,7 +104,10 @@ impl Parser<'_> {
 
     pub(super) fn promote_integral(&mut self, value: ExpressionValue) -> Result<Value, ParseError> {
         let value = self.rvalue(value)?;
-        if self.require_scalar_type(&value.ty, value.span)? == Scalar::BOOL {
+        if matches!(
+            self.require_scalar_type(&value.ty, value.span)?,
+            Scalar::BOOL | Scalar::I16 | Scalar::U16
+        ) {
             self.convert_scalar(value.into(), Scalar::I32)
         } else {
             Ok(value)

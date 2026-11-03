@@ -702,12 +702,10 @@ impl Parser<'_> {
         if scalar == Scalar::BOOL {
             return Ok(value);
         }
-        let literal = match scalar.kind {
-            ScalarKind::Sint => Literal::I32(0),
-            ScalarKind::Uint => Literal::U32(0),
-            ScalarKind::Float => Literal::F32(0.0),
-            _ => return self.fail("condition requires a scalar value"),
-        };
+        let literal = Literal::zero(scalar).ok_or_else(|| ParseError {
+            message: String::from("condition requires a scalar value"),
+            span: value.span,
+        })?;
         let constant = value.constant.literal.and_then(|value| {
             constant_evaluation::binary(BinaryOperator::NotEqual, value, literal)
         });

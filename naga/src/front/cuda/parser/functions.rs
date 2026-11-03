@@ -344,13 +344,13 @@ pub(super) fn conversion_rank(
         source.inner_with(&module.types),
         target.inner_with(&module.types),
     ) {
-        (&TypeInner::Scalar(source), &TypeInner::Scalar(target)) => {
-            Some(if source == Scalar::BOOL && target == Scalar::I32 {
+        (&TypeInner::Scalar(source), &TypeInner::Scalar(target)) => Some(
+            if matches!(source, Scalar::BOOL | Scalar::I16 | Scalar::U16) && target == Scalar::I32 {
                 1
             } else {
                 2
-            })
-        }
+            },
+        ),
         _ => user_conversion.then_some(3),
     }
 }
@@ -512,7 +512,7 @@ impl<'a> Parser<'a> {
                     explicit_volatile = true;
                     result_span.get_or_insert(token.1);
                 }
-                Token::Word(specifier @ ("int" | "signed" | "unsigned")) => {
+                Token::Word(specifier @ ("int" | "short" | "signed" | "unsigned")) => {
                     if result.is_some() && integers.is_empty() {
                         return self.fail("incompatible or repeated return type specifier");
                     }
@@ -2141,7 +2141,15 @@ impl<'a> Parser<'a> {
         let &TypeInner::Scalar(source) = argument_type.inner_with(&self.module.types) else {
             return None;
         };
-        if ![Scalar::BOOL, Scalar::I32, Scalar::U32].contains(&source) {
+        if ![
+            Scalar::BOOL,
+            Scalar::I16,
+            Scalar::U16,
+            Scalar::I32,
+            Scalar::U32,
+        ]
+        .contains(&source)
+        {
             return None;
         }
         // An exact ordinary overload wins its tie with the arithmetic template.

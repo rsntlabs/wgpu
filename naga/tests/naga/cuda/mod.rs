@@ -43,6 +43,7 @@ mod hex_float_literals;
 mod immutable_pointers;
 mod inferred_arrays;
 mod inline;
+mod integer16;
 mod integer_intrinsics;
 mod integer_math;
 mod integer_operators;
