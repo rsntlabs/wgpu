@@ -118,6 +118,7 @@ fn cuda_uniform_branch_barriers_accept_nested_switches_fallthrough_and_uniform_e
 
 #[test]
 fn cuda_uniform_branch_barriers_reject_nonuniform_and_unproved_predicates() {
+    roundtrip("__global__ void kernel(const unsigned *input) { if (input[0]) __syncthreads(); }");
     for predicate in [
         "threadIdx.x",
         "blockIdx.x * blockDim.x + threadIdx.x",
@@ -142,7 +143,7 @@ fn cuda_uniform_branch_barriers_reject_nonuniform_and_unproved_predicates() {
         rejected(&kernel(body));
     }
     for source in [
-        "__global__ void kernel(const unsigned *input) { if (input[0]) __syncthreads(); }",
+        "__global__ void kernel(const unsigned *input) { if (input[threadIdx.x]) __syncthreads(); }",
         "__device__ unsigned opaque() { return 3u; } __global__ void kernel() { if (opaque()) __syncthreads(); }",
         "__device__ void change(unsigned &value) { value = threadIdx.x; } __global__ void kernel(unsigned count) { unsigned decision = count; change(decision); if (decision) __syncthreads(); }",
     ] {

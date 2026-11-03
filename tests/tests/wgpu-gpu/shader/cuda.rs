@@ -21,6 +21,7 @@ mod class_values;
 mod comma;
 mod conditionals;
 mod constant_expressions;
+mod constant_memory;
 mod control_flow;
 mod declarations;
 mod device_helper_barriers;
@@ -120,6 +121,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_COMMA,
         CUDA_CONDITIONALS,
         CUDA_CONSTANT_EXPRESSIONS,
+        CUDA_CONSTANT_MEMORY,
         CUDA_CONTROL_FLOW,
         CUDA_DECLARATIONS,
         CUDA_DEVICE_HELPER_BARRIERS,
@@ -496,6 +498,16 @@ static CUDA_COMMA: GpuTestConfiguration = configuration(comma::cases);
 static CUDA_CONDITIONALS: GpuTestConfiguration = configuration(conditionals::cases);
 #[apply(gpu_test!)]
 static CUDA_CONSTANT_EXPRESSIONS: GpuTestConfiguration = configuration(constant_expressions::cases);
+#[apply(gpu_test!)]
+static CUDA_CONSTANT_MEMORY: GpuTestConfiguration = configuration(constant_memory::cases)
+    .parameters(
+        TestParameters::default()
+            .downlevel_flags(DownlevelFlags::COMPUTE_SHADERS)
+            .limits(Limits {
+                max_storage_buffers_per_shader_stage: 5,
+                ..Limits::downlevel_defaults()
+            }),
+    );
 #[apply(gpu_test!)]
 static CUDA_CONTROL_FLOW: GpuTestConfiguration = configuration(control_flow::cases);
 #[apply(gpu_test!)]

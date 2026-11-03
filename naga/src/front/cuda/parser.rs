@@ -6,6 +6,7 @@ mod barriers;
 mod call_graph;
 mod conditionals;
 mod constant_evaluation;
+mod constant_memory;
 mod constants;
 mod context;
 mod conversions;
@@ -44,6 +45,7 @@ mod updates;
 mod volatile;
 
 use crate::proc::TypeResolution;
+use constant_memory::{ConstantMemory, ConstantMemoryDeclaration};
 use context::{FunctionContext, FunctionKind};
 use cooperative_groups::{Namespace, ThreadBlockValue};
 use dynamic_shared::{DynamicShared, DynamicSharedDeclaration};
@@ -91,6 +93,7 @@ enum Symbol {
     NullPointer(NullPointerValue),
     Pointer(Handle<PointerValue>),
     DynamicShared(DynamicSharedDeclaration),
+    ConstantMemory(ConstantMemoryDeclaration),
     Reference {
         binding: Handle<BoundReference>,
         ty: TypeResolution,
@@ -351,6 +354,8 @@ pub(super) struct Parser<'a> {
     workgroup_size: [u32; 3],
     dynamic_shared_memory_size: u32,
     dynamic_shared: DynamicShared<'a>,
+    constant_memory: ConstantMemory,
+    numeric_storage_types: Vec<bool>,
     volatile_globals: FastHashMap<Handle<GlobalVariable>, Span>,
     templates: templates::Templates<'a>,
 }
@@ -382,6 +387,8 @@ impl<'a> Parser<'a> {
             workgroup_size: options.workgroup_size,
             dynamic_shared_memory_size: options.dynamic_shared_memory_size,
             dynamic_shared: DynamicShared::default(),
+            constant_memory: ConstantMemory::default(),
+            numeric_storage_types: Vec::new(),
             volatile_globals: FastHashMap::default(),
             templates: templates::Templates::default(),
         }
@@ -391,6 +398,8 @@ impl<'a> Parser<'a> {
         while self.lexer.peek()?.0 != Token::End {
             if self.lexer.peek()?.0 == Token::Word("template") {
                 self.template_declaration()?;
+            } else if self.starts_constant_memory_declaration()? {
+                self.constant_memory_declaration()?;
             } else if self.starts_dynamic_shared_declaration()? {
                 self.dynamic_shared_declaration(true)?;
             } else if self.lexer.peek()?.0 == Token::Word("struct") {
@@ -411,6 +420,7 @@ impl<'a> Parser<'a> {
         self.finish_functions()?;
         self.upgrade_atomic_storage()?;
         self.upgrade_volatile_storage()?;
+        self.check_constant_memory_accesses()?;
         self.check_dynamic_shared_views()?;
         self.check_workgroup_barriers()?;
         self.promote_scalar_locals()?;
@@ -1010,6 +1020,7 @@ impl<'a> Parser<'a> {
                 | "extern"
                 | "__global__"
                 | "__device__"
+                | "__constant__"
                 | "__forceinline__"
                 | "__noinline__"
                 | "__syncthreads"
@@ -1142,6 +1153,9 @@ impl<'a> Parser<'a> {
                 }
                 Some(&GlobalDeclaration::DynamicShared(declaration)) => {
                     Some(Symbol::DynamicShared(declaration))
+                }
+                Some(&GlobalDeclaration::ConstantMemory(declaration)) => {
+                    Some(Symbol::ConstantMemory(declaration))
                 }
                 Some(&GlobalDeclaration::Constant {
                     handle,

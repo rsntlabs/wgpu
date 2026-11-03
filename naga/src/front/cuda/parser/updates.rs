@@ -169,6 +169,7 @@ impl Parser<'_> {
         reference_span: Span,
         span: Span,
     ) -> Result<Value, ParseError> {
+        self.check_writable_pointer(pointer, span)?;
         let previous_value = self.load_pointer(pointer, ty, reference_span)?;
         if qualifiers.is_volatile {
             self.record_volatile_load(previous_value.handle, reference_span)?;
