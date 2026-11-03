@@ -2778,6 +2778,7 @@ impl<I: Iterator<Item = u32>> Frontend<I> {
             }) => {
                 let low = self.next()?;
                 match width {
+                    2 => crate::Literal::U16(low as u16),
                     4 => crate::Literal::U32(low),
                     8 => {
                         inst.expect(5)?;
@@ -2793,6 +2794,7 @@ impl<I: Iterator<Item = u32>> Frontend<I> {
             }) => {
                 let low = self.next()?;
                 match width {
+                    2 => crate::Literal::I16(low as i16),
                     4 => crate::Literal::I32(low as i32),
                     8 => {
                         inst.expect(5)?;
