@@ -1,7 +1,7 @@
 using Sample = const float;
 using Bits = unsigned;
 
-__device__ Sample __saturatef(Sample value);
+__device__ float __saturatef(Sample value);
 
 __device__ Sample saturate_scalar(Sample value) {
     return __saturatef(value);

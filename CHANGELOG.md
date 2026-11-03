@@ -142,6 +142,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 
 #### Naga
 
+- Reject incompatible return qualifiers in CUDA builtin prototypes.
 - Support all ten CUDA compound assignment operator functions with right-before-left operand sequencing.
 - Support CUDA constant-memory declarations as host-updated read-only storage bindings.
 - Support named and anonymous CUDA struct definitions in typedef declarations.
