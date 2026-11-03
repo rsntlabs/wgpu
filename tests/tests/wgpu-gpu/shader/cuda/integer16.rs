@@ -3,7 +3,7 @@ use super::{module_case_with_options_and_capabilities, ShaderBuffer, ShaderTest}
 const SENTINEL: u32 = 0xdead_beef;
 const HALFWORD_SENTINEL: u16 = 0xa55a;
 
-fn compare_words(name: &str, actual: &[u32], expected: &[Vec<u32>]) -> bool {
+pub(super) fn compare_words(name: &str, actual: &[u32], expected: &[Vec<u32>]) -> bool {
     let [expected] = expected else {
         panic!("{name}: expected one reference buffer")
     };

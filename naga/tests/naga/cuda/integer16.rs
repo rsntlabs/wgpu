@@ -639,8 +639,8 @@ fn cuda_integer16_keeps_null_pointer_constants_and_atomic_type_boundaries() {
     for source in [
         "__global__ void kernel(short *output) { atomicAdd(output, short(1)); }",
         "__global__ void kernel(unsigned short *output) { atomicCAS(output, (unsigned short)0, (unsigned short)1); }",
-        "__global__ void kernel(short2 *output) {}",
-        "__global__ void kernel(ushort2 *output) {}",
+        "__global__ void kernel(short5 *output) {}",
+        "__global__ void kernel(ushort5 *output) {}",
         "__global__ void kernel(char *output) {}",
         "__global__ void kernel(long *output) {}",
         "__device__ short missing(short); __global__ void kernel(short *output) { output[0] = missing(short(1)); }",
