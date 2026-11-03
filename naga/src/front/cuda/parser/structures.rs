@@ -9,30 +9,53 @@ pub(super) struct Structure {
 
 impl<'a> Parser<'a> {
     pub(super) fn structure_declaration(&mut self, global: bool) -> Result<(), ParseError> {
+        self.structure_definition(global, false)?;
+        self.lexer.expect_span(Token::Separator(';'))?;
+        Ok(())
+    }
+
+    pub(super) fn structure_definition(
+        &mut self,
+        global: bool,
+        allow_anonymous: bool,
+    ) -> Result<QualifiedType, ParseError> {
         let start = self.lexer.expect_span(Token::Word("struct"))?;
-        let (name, name_span) = self.identifier()?;
-        self.check_name(name, name_span)?;
+        let tag = if allow_anonymous && self.lexer.peek()?.0 == Token::Paren('{') {
+            None
+        } else {
+            let (name, span) = self.identifier()?;
+            self.check_name(name, span)?;
+            if global && self.global_declarations.contains_key(name) {
+                return Err(ParseError {
+                    message: format!("duplicate structure definition `{name}`"),
+                    span,
+                });
+            }
+            Some((name, span))
+        };
         if self.lexer.peek()?.0 != Token::Paren('{') {
             return self.fail("incomplete and elaborated struct declarations are unsupported");
         }
-        if global && self.global_declarations.contains_key(name) {
-            return Err(ParseError {
-                message: format!("duplicate structure definition `{name}`"),
-                span: name_span,
-            });
-        }
         self.lexer.next()?;
         let initialization_start = self.function.push_scope();
-        self.function.symbol_table.add(name, Symbol::Member);
+        if let Some((name, _)) = tag {
+            self.function.symbol_table.add(name, Symbol::Member);
+        }
         let definition = self.structure_members();
         self.function.pop_scope(initialization_start);
         let (members, size, mut structure) = definition?;
+        let name_span = tag.map_or(start, |(_, span)| span);
+        let name = tag.map(|(name, _)| name);
+        for bytes in [name.map_or(0, str::len), name.map_or(0, str::len), 32] {
+            self.parameter_expansion_budget
+                .charge_bytes(bytes, name_span)?;
+        }
         self.parameter_expansion_budget
-            .charge_bytes(name.len(), name_span)?;
+            .charge_map_entry::<Type, Span>(1, name_span)?;
         self.parameter_expansion_budget
-            .charge_slice::<String>(1, name_span)?;
-        structure.source_name = Some(String::from(name));
-        self.lexer.expect_span(Token::Separator(';'))?;
+            .charge_map_entry::<Handle<Type>, Structure>(1, name_span)?;
+        self.parameter_expansion_budget.charge_nodes(1, name_span)?;
+        structure.source_name = name.map(String::from);
         let declaration_id = self.next_structure_id;
         self.next_structure_id = declaration_id.checked_add(1).ok_or_else(|| ParseError {
             message: String::from("too many structure declarations"),
@@ -41,7 +64,10 @@ impl<'a> Parser<'a> {
         // Equal names and layouts must still have distinct nominal identities.
         let handle = self.module.types.insert(
             Type {
-                name: Some(format!("{name}_cuda_record_{declaration_id}")),
+                name: Some(match name {
+                    Some(name) => format!("{name}_cuda_record_{declaration_id}"),
+                    None => format!("cuda_record_{declaration_id}"),
+                }),
                 inner: TypeInner::Struct {
                     members,
                     span: size,
@@ -50,15 +76,50 @@ impl<'a> Parser<'a> {
             self.lexer.span_from(start.to_range().unwrap().start),
         );
         self.structures.insert(handle, structure);
-        self.insert_type(
-            name,
-            QualifiedType {
-                ty: TypeSpecifier::Structure(handle),
-                qualifiers: Qualifiers::NONE,
-            },
-            name_span,
-            global,
-        )
+        let ty = QualifiedType {
+            ty: TypeSpecifier::Structure(handle),
+            qualifiers: Qualifiers::NONE,
+        };
+        if let Some((name, span)) = tag {
+            self.insert_type(name, ty.clone(), span, global)?;
+        }
+        Ok(ty)
+    }
+
+    pub(super) fn name_anonymous_structure(
+        &mut self,
+        handle: Handle<Type>,
+        name: &str,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        if self.structures[&handle].source_name.is_some() {
+            return Ok(());
+        }
+        let ty = &self.module.types[handle];
+        let previous_name_length = ty.name.as_ref().map_or(0, String::len);
+        for bytes in [
+            previous_name_length,
+            previous_name_length,
+            name.len(),
+            name.len(),
+            1,
+        ] {
+            self.parameter_expansion_budget.charge_bytes(bytes, span)?;
+        }
+        if let TypeInner::Struct { ref members, .. } = ty.inner {
+            self.parameter_expansion_budget
+                .charge_slice::<StructMember>(members.len(), span)?;
+            for member in members {
+                self.parameter_expansion_budget
+                    .charge_bytes(member.name.as_ref().map_or(0, String::len), span)?;
+                self.parameter_expansion_budget.charge_work(1, span)?;
+            }
+        }
+        let mut ty = ty.clone();
+        ty.name = Some(format!("{name}_{}", ty.name.as_deref().unwrap()));
+        self.module.types.replace(handle, ty);
+        self.structures.get_mut(&handle).unwrap().source_name = Some(String::from(name));
+        Ok(())
     }
 
     fn structure_members(&mut self) -> Result<(Vec<StructMember>, u32, Structure), ParseError> {
@@ -103,6 +164,8 @@ impl<'a> Parser<'a> {
                 if !matches!(name, "threadIdx" | "blockIdx" | "gridDim" | "blockDim") {
                     self.check_name(name, span)?;
                 }
+                self.parameter_expansion_budget
+                    .charge_map_entry::<&str, ()>(1, span)?;
                 if !names.insert(name) {
                     return Err(ParseError {
                         message: format!("duplicate structure member `{name}`"),
@@ -132,6 +195,11 @@ impl<'a> Parser<'a> {
                     })?;
                 let layout = self.layouter[ty];
                 offset = Self::structure_aligned_offset(offset, layout.alignment, span)?;
+                self.parameter_expansion_budget.charge_nodes(1, span)?;
+                self.parameter_expansion_budget
+                    .charge_slice::<StructMember>(1, span)?;
+                self.parameter_expansion_budget
+                    .charge_bytes(name.len(), span)?;
                 members.push(StructMember {
                     name: Some(String::from(name)),
                     ty,

@@ -94,6 +94,7 @@ mod token_pasting;
 mod trigonometry;
 mod type_aliases;
 mod type_templates;
+mod typedef_structures;
 mod uniform_branch_barriers;
 mod uniform_loop_barriers;
 mod uninitialized;

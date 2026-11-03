@@ -119,7 +119,14 @@ fn type_name(
 }
 
 pub(super) fn pointer_qualifiers(lexer: &mut Lexer<'_>) -> Result<Qualifiers, ParseError> {
-    let mut qualifiers = Qualifiers::NONE;
+    declaration_qualifiers(lexer, Qualifiers::NONE, true)
+}
+
+fn declaration_qualifiers(
+    lexer: &mut Lexer<'_>,
+    mut qualifiers: Qualifiers,
+    allow_restrict: bool,
+) -> Result<Qualifiers, ParseError> {
     loop {
         let token = lexer.peek()?;
         match token.0 {
@@ -141,7 +148,7 @@ pub(super) fn pointer_qualifiers(lexer: &mut Lexer<'_>) -> Result<Qualifiers, Pa
                 }
                 qualifiers.is_volatile = true;
             }
-            Token::Word("__restrict__" | "__restrict") => {}
+            Token::Word("__restrict__" | "__restrict") if allow_restrict => {}
             _ => return Ok(qualifiers),
         }
         lexer.next()?;
@@ -485,10 +492,24 @@ impl<'a> Parser<'a> {
             return self.namespace_alias_declaration(global);
         }
         if self.take_ident("typedef")? {
-            let ty = self.parse_type()?;
+            let ty = if self.starts_typedef_structure_definition()? {
+                let span = self.lexer.peek()?.1;
+                self.activate_parameter_expansion(span)?;
+                self.prepare_parameter_bindings(span)?;
+                let qualifiers = declaration_qualifiers(&mut self.lexer, Qualifiers::NONE, false)?;
+                let mut ty = self.structure_definition(global, true)?;
+                ty.qualifiers = declaration_qualifiers(&mut self.lexer, qualifiers, false)?;
+                ty
+            } else {
+                self.parse_type()?
+            };
             loop {
                 let declarator = self.alias_declarator(ty.clone())?;
                 let (name, span) = self.identifier()?;
+                self.check_name(name, span)?;
+                if let TypeSpecifier::Structure(handle) = declarator.ty {
+                    self.name_anonymous_structure(handle, name, span)?;
+                }
                 self.insert_type(name, declarator, span, global)?;
                 if self.lexer.next_if(Token::Separator(';'))? {
                     return Ok(());
@@ -504,6 +525,20 @@ impl<'a> Parser<'a> {
         let ty = self.alias_declarator(ty)?;
         self.lexer.expect_span(Token::Separator(';'))?;
         self.insert_type(name, ty, span, global)
+    }
+
+    fn starts_typedef_structure_definition(&mut self) -> Result<bool, ParseError> {
+        let mut lexer = self.lexer.clone();
+        while matches!(lexer.peek()?.0, Token::Word("const" | "volatile")) {
+            lexer.next()?;
+        }
+        if !lexer.next_if(Token::Word("struct"))? {
+            return Ok(false);
+        }
+        if matches!(lexer.peek()?.0, Token::Word(_)) {
+            lexer.next()?;
+        }
+        Ok(lexer.peek()?.0 == Token::Paren('{'))
     }
 
     pub(super) fn alias_declarator(

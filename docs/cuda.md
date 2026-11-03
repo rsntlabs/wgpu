@@ -983,6 +983,27 @@ bounds use the existing integral constant-expression rules. Aliases of a struct
 preserve its type; separate definitions remain different types even when their
 fields match. Local definitions can hide outer type names.
 
+Struct definitions can also appear in `typedef` declarations at file and block
+scope, with or without a tag:
+
+```cuda
+typedef struct {
+    unsigned low, high;
+} Pair, PairAlias;
+
+typedef struct PacketTag {
+    Pair pair;
+    unsigned samples[2];
+} Packet;
+```
+
+Aliases from one definition name the same record. A named definition retains
+its tag as the canonical type name, so `Packet` and `PacketTag` select the same
+template instance. An anonymous definition uses its first direct record alias,
+such as `Pair`, for template selectors. Pointer-only aliases do not supply a
+canonical record name for template arguments. These forms use the same field
+layout, initialization, and member restrictions as standalone definitions.
+
 Locals support same-type copies with equals or a single parenthesized expression,
 such as `Sample copied(source);`, assignments, and braced initialization,
 including partial initialization and brace elision for nested aggregates.

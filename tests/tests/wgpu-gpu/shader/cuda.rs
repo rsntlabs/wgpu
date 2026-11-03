@@ -93,6 +93,7 @@ mod token_pasting;
 mod trigonometry;
 mod type_aliases;
 mod type_templates;
+mod typedef_structures;
 mod uniform_branch_barriers;
 mod uniform_loop_barriers;
 mod uninitialized;
@@ -191,6 +192,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_TRIGONOMETRY,
         CUDA_TYPE_ALIASES,
         CUDA_TYPE_TEMPLATES,
+        CUDA_TYPEDEF_STRUCTURES,
         CUDA_UNINITIALIZED,
         CUDA_UNINITIALIZED_POINTERS,
         CUDA_UNIFORM_BRANCH_BARRIERS,
@@ -650,6 +652,8 @@ static CUDA_TRIGONOMETRY: GpuTestConfiguration = configuration(trigonometry::cas
 static CUDA_TYPE_ALIASES: GpuTestConfiguration = configuration(type_aliases::cases);
 #[apply(gpu_test!)]
 static CUDA_TYPE_TEMPLATES: GpuTestConfiguration = configuration(type_templates::cases);
+#[apply(gpu_test!)]
+static CUDA_TYPEDEF_STRUCTURES: GpuTestConfiguration = configuration(typedef_structures::cases);
 #[apply(gpu_test!)]
 static CUDA_UNINITIALIZED: GpuTestConfiguration = configuration(uninitialized::cases);
 #[apply(gpu_test!)]
