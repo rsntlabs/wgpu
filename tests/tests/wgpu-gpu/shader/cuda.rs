@@ -61,6 +61,7 @@ mod multiply24;
 mod null_pointers;
 mod nullptr;
 mod operator_addition;
+mod operator_compound_assignments;
 mod operator_functions;
 mod operator_null_constants;
 mod particles;
@@ -161,6 +162,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_NULLPTR,
         CUDA_NULLPTR_ASSIGNMENT_ORDER,
         CUDA_OPERATOR_ADDITION,
+        CUDA_OPERATOR_COMPOUND_ASSIGNMENTS,
         CUDA_OPERATOR_FUNCTIONS,
         CUDA_OPERATOR_NULL_CONSTANTS,
         CUDA_PARTICLES,
@@ -594,6 +596,9 @@ static CUDA_NULLPTR_ASSIGNMENT_ORDER: GpuTestConfiguration =
     configuration(nullptr::assignment_order_cases);
 #[apply(gpu_test!)]
 static CUDA_OPERATOR_ADDITION: GpuTestConfiguration = configuration(operator_addition::cases);
+#[apply(gpu_test!)]
+static CUDA_OPERATOR_COMPOUND_ASSIGNMENTS: GpuTestConfiguration =
+    configuration(operator_compound_assignments::cases);
 #[apply(gpu_test!)]
 static CUDA_OPERATOR_FUNCTIONS: GpuTestConfiguration = configuration(operator_functions::cases);
 #[apply(gpu_test!)]

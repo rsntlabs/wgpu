@@ -193,11 +193,19 @@ fn cuda_operator_functions_preserve_complete_operator_id_diagnostic_spans() {
 }
 
 #[test]
-fn cuda_operator_functions_leave_mutating_and_comparison_operators_unsupported() {
-    for symbol in [
-        "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=", "==", "!=", "<", "<=", ">",
-        ">=", ",", "=",
-    ] {
+fn cuda_operator_functions_preserve_remaining_operator_boundaries() {
+    for symbol in ["+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="] {
+        let source = format!("{BOX} __device__ Box operator{symbol}(Box left, Box right) {{ return left; }} __global__ void kernel() {{}}");
+        let (module, info) = validate(&source);
+        #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+        super::helpers::wgsl_roundtrip(
+            &module,
+            &info,
+            naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+        );
+        let _ = (module, info);
+    }
+    for symbol in ["==", "!=", "<", "<=", ">", ">=", ",", "="] {
         rejected(&format!("{BOX} __device__ Box operator{symbol}(Box left, Box right) {{ return left; }} __global__ void kernel() {{}}"));
     }
     for symbol in ["&&", "||"] {

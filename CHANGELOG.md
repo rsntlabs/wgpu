@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support all ten CUDA compound assignment operator functions with right-before-left operand sequencing.
 - Support CUDA constant-memory declarations as host-updated read-only storage bindings.
 - Support named and anonymous CUDA struct definitions in typedef declarations.
 - Support fixed CUDA shared storage in device helpers, preserving allocations across calls and separating template specializations.

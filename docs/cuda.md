@@ -53,6 +53,11 @@ compatibility helpers. Calls reuse each helper across the module, keeping the
 integer algorithms out of source functions while preserving their numerical
 behavior. Other operations can still produce temporary expressions.
 
+Ordinary floating-point arithmetic follows the target language's guarantees.
+WGSL permits either sign for zero, so reinterpreting an arithmetic result can
+expose a difference from CUDA. See the
+[WGSL floating-point rules](https://gpuweb.github.io/gpuweb/wgsl/#differences-from-ieee754).
+
 ## Function templates
 
 Device helpers accept `typename` and `class` type parameters using the frontend's
@@ -967,15 +972,16 @@ vector, or struct value, or `void`; void results can only
 appear where an ordinary void helper call is accepted. Calls remain runtime
 expressions and obey the existing helper recursion restrictions.
 
-The frontend evaluates overloaded operands and explicit-call arguments once,
-from left to right. This is the frontend's chosen order, not a general CUDA
-guarantee: C++ distinguishes
-[operator-notation sequencing](https://timsong-cpp.github.io/cppwp/n4861/over.match.oper#2)
-from [explicit function calls](https://timsong-cpp.github.io/cppwp/n4861/expr.call#8).
-Shift expressions evaluate the left operand before evaluating the right. A
+The unary and binary operators above evaluate their operands once, from left to
+right. Explicit function calls use the frontend's chosen left-to-right argument
+order. Shift expressions evaluate the left operand before evaluating the right. A
 by-value parameter captures the left value, while a reference parameter captures
 its address and observes subsequent changes to the object.
 Source expressions must still obey the C++ rules for unsequenced side effects.
+C++ specifies sequencing separately for
+[operator notation](https://timsong-cpp.github.io/cppwp/n4861/over.match.oper#2)
+and [explicit function calls](https://timsong-cpp.github.io/cppwp/n4861/expr.call#8).
+
 Source-defined binary `operator&&` and `operator||` also take two parameters,
 with at least one supported vector or struct parameter. Both operands are
 evaluated once, from left to right, before the helper call; the left value is
@@ -991,8 +997,19 @@ Overloaded unary `*` and `&` accept class values, including temporaries, and cal
 the declared helper. Unary `&` uses the builtin address operation when no source
 overload is viable; an ambiguous overload remains an error. An explicit
 `operator&(...)` call requires a viable source overload.
-Overloaded comparisons, assignments, and updates remain
-unsupported, as do member operators, reference results, and templates.
+
+Nonmember compound assignment operators `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `|=`,
+`^=`, `<<=`, and `>>=` take two parameters and use the same helper overload rules.
+Operator notation evaluates the right operand before the left operand. Value
+parameters capture copies at their evaluation point. Reference parameters capture
+an address and observe the live object through that address. The selected helper's
+parameter modes and body determine mutations, and its declared return type supplies
+the expression's result, including `void`. Temporary and const class values
+participate when the selected parameters accept them. These rules follow C++
+[assignment sequencing](https://timsong-cpp.github.io/cppwp/n4861/expr.ass#1).
+
+The frontend rejects overloaded comparisons, plain assignment `=`, increment and
+decrement operators, member operators, reference results, and operator templates.
 
 Standalone named struct definitions are accepted at file and block scope:
 

@@ -59,6 +59,7 @@ mod multiply24;
 mod null_pointers;
 mod nullptr;
 mod operator_addition;
+mod operator_assignments;
 mod operator_functions;
 mod operator_null_constants;
 mod overloads;
