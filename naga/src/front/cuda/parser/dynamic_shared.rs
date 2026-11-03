@@ -79,7 +79,8 @@ impl<'a> Parser<'a> {
                 match lexer.peek()?.0 {
                     Token::Word("extern") => return Ok(true),
                     Token::Word(
-                        "__shared__" | "const" | "volatile" | "int" | "signed" | "unsigned",
+                        "__shared__" | "const" | "volatile" | "int" | "short" | "signed"
+                        | "unsigned",
                     ) => {}
                     Token::Word(name) if self.type_name(name).is_some() => {}
                     _ => return Ok(false),
@@ -161,7 +162,7 @@ impl<'a> Parser<'a> {
     ) -> Result<DynamicSharedDeclaration, ParseError> {
         if !self.numeric_storage_type(element, span)? {
             return Err(shared_error(
-                "dynamic shared arrays require 32-bit numeric scalars, vectors, or POD records",
+                "dynamic shared arrays require numeric scalars, vectors, or POD records",
                 span,
             ));
         }

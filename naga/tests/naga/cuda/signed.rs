@@ -157,7 +157,7 @@ fn cuda_signed_rejects_conflicts_repeats_unsupported_widths_and_large_literals()
         "float signed value;",
         "signed bool value;",
         "signed char value;",
-        "signed short value;",
+        "signed short short value;",
         "signed long value;",
         "signed double value;",
         "signed value = 2147483648;",

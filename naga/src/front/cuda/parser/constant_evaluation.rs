@@ -107,13 +107,23 @@ fn float_binary(op: BinaryOperator, left: Literal, right: Literal) -> Option<Lit
 
 pub(super) fn convert(value: Literal, target: Scalar) -> Option<Literal> {
     if !supported_literal(value)
-        || ![Scalar::BOOL, Scalar::I32, Scalar::U32, Scalar::F32].contains(&target)
+        || ![
+            Scalar::BOOL,
+            Scalar::I16,
+            Scalar::U16,
+            Scalar::I32,
+            Scalar::U32,
+            Scalar::F32,
+        ]
+        .contains(&target)
     {
         return None;
     }
     if let Literal::F32(value) = value {
         let truncated = value.trunc();
         let in_range = match target {
+            Scalar::I16 => (-32_768.0..32_768.0).contains(&truncated),
+            Scalar::U16 => (0.0..65_536.0).contains(&truncated),
             Scalar::I32 => (-2_147_483_648.0..2_147_483_648.0).contains(&truncated),
             Scalar::U32 => (0.0..4_294_967_296.0).contains(&truncated),
             _ => true,
@@ -142,7 +152,12 @@ pub(super) fn convert(value: Literal, target: Scalar) -> Option<Literal> {
 
 const fn supported_literal(value: Literal) -> bool {
     match value {
-        Literal::Bool(_) | Literal::I32(_) | Literal::U32(_) | Literal::F32(_) => true,
+        Literal::Bool(_)
+        | Literal::I16(_)
+        | Literal::U16(_)
+        | Literal::I32(_)
+        | Literal::U32(_)
+        | Literal::F32(_) => true,
         _ => false,
     }
 }

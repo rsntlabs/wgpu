@@ -100,8 +100,9 @@ binding references; creating a scalar value removes its top-level qualification.
 These rules also apply to ordinary helpers. Repeated helper declarations must
 agree on result qualification.
 
-Device helpers accept explicit `int`, `unsigned int`, and `bool` template
-parameters, including aliases and top-level `const` or `volatile` qualification.
+Device helpers accept explicit `short`, `unsigned short`, `int`, `unsigned int`,
+and `bool` template parameters, including aliases and top-level `const` or
+`volatile` qualification.
 Template arguments must be scalar constant expressions that convert to the
 parameter type without narrowing. Parameters behave as immutable values and do
 not add shader arguments or buffers. Equal converted arguments reuse the same
@@ -223,9 +224,9 @@ Each source contains one or more `__global__ void` kernels, optionally preceded 
 `extern "C"`. Entry points preserve source order. Device helper declarations and
 definitions can surround the kernels and are shared across the module. Every
 kernel body is parsed and checked, including kernels a caller does not dispatch.
-Parameter types are `float`,
-`int`, or `unsigned int` (`unsigned` is also accepted), either by value or as
-flat pointers. Pointer parameters also accept `float2`, `float3`, `float4`,
+Parameter types are `float`, `short`, `unsigned short`, `int`, and `unsigned int`
+(`unsigned` is also accepted), either by value or as flat pointers. Pointer
+parameters also accept `float2`, `float3`, `float4`,
 `int2`, `int3`, `int4`, `uint2`, `uint3`, and `uint4`. Aliases and pointee
 `const` qualification preserve the underlying element type.
 Pointer parameters also accept completed named structs described below.
@@ -242,12 +243,25 @@ include `const signed int` and `signed constexpr int`; single-word functional
 casts can use `signed(value)`. These spellings preserve `int`'s literal ranges,
 arithmetic conversions, overload identity, and buffer layout.
 
+`short`, `short int`, and `signed short` name the signed 16-bit type. Adding
+`unsigned` selects the unsigned 16-bit type. The integer specifiers can appear in
+any valid order. Aliases, references, overloads, and template parameters preserve
+the distinct source types.
+
+Validate modules containing these types with `Capabilities::SHADER_INT16` and
+request `wgpu::Features::SHADER_I16` for native execution. Generated WGSL uses
+`enable wgpu_int16`. HLSL uses Shader Model 6.2 or later with
+`-enable-16bit-types`. GLSL uses `GL_EXT_shader_explicit_arithmetic_types_int16`.
+Brace conversions from integer to float require a constant expression whose value
+is exactly representable, including 16-bit sources.
+
 Pointer parameters become storage buffers with runtime arrays of the corresponding
 element type. A `const` pointee produces a read-only buffer; other buffers permit
 reads and writes. Element layouts are:
 
 | Element type | Size | Alignment | Array stride |
 | --- | --- | --- | --- |
+| `short` or `unsigned short` | 2 bytes | 2 bytes | 2 bytes |
 | 32-bit scalar | 4 bytes | 4 bytes | 4 bytes |
 | Two-component vector | 8 bytes | 8 bytes | 8 bytes |
 | Three-component vector | 12 bytes | 4 bytes | 12 bytes |
@@ -260,9 +274,9 @@ stride. Copies preserve field values; padding bytes are unspecified.
 
 Vector elements support whole-value copies and scalar field access, including
 assignments and updates to writable fields. Vector parameters require pointers.
-Scalar parameters use 16-byte uniform buffers containing the
-32-bit value at byte offset 0. Each invocation receives its own parameter value;
-assigning to a non-`const` parameter changes only that invocation's copy.
+Scalar parameters use 16-byte uniform buffers containing the two-byte or four-byte
+value at byte offset 0. Each invocation receives its own parameter value. Assigning
+to a non-`const` parameter changes only that invocation's copy.
 
 The frontend maps CUDA's built-in variables as follows:
 
@@ -844,7 +858,8 @@ and block- and system-scope variants remain unsupported.
 
 ## Constant expressions
 
-Scalar `constexpr` variables support `bool`, `int`, `unsigned int`, `float`,
+Scalar `constexpr` variables support `bool`, `short`, `unsigned short`, `int`,
+`unsigned int`, `float`,
 and their aliases with copy, braced, or single-expression parenthesized
 initialization. They are read-only and
 can appear in blocks, `for` initializers, and at file scope before, between,
@@ -1476,15 +1491,18 @@ separators; exponent digits are decimal and may also contain separators.
 Literals round directly to binary32 using round-to-nearest, ties-to-even,
 including subnormal and signed-zero results. Values that round to infinity
 are rejected. Unsuffixed and long floating literals remain unsupported.
-Arithmetic promotes booleans to `int`; a `float` operand makes the common
-type `float`, and mixed signed/unsigned integer operands use `unsigned int`.
+Arithmetic promotes `bool`, `short`, and `unsigned short` to `int`. A `float`
+operand selects `float`. An `unsigned int` operand selects `unsigned int` for
+integer arithmetic.
 Scalar assignments and ordinary `= expression` initializers convert to the
 destination type; brace initializers use the narrowing rules above. C-style casts,
 `static_cast`, and single-token functional casts such as `int(value)` are
 supported for these scalar types. Float-to-integer conversions truncate toward
-zero within the destination range; unsigned negation wraps modulo 2^32.
+zero within the destination range. Integer conversions to a 16-bit type retain
+the low 16 bits. Negation of an `unsigned int` wraps modulo 2^32.
 
-Empty scalar constructors `bool()`, `int()`, `unsigned()`, and `float()` produce
+Empty scalar constructors `bool()`, `short()`, `int()`, `unsigned()`, and `float()`
+produce
 `false` or a typed zero, including scalar aliases and template `Value()`
 expressions. These values support constant evaluation and array bounds. Scalar
 prvalues discard top-level `const` and `volatile` qualification. Constructed
@@ -1493,7 +1511,7 @@ declarations such as `int value();` retain their function interpretation;
 `int value((int()));` initializes an object.
 
 Remainder `%`, bitwise `~`, `&`, `|`, and `^`, and shifts `<<` and `>>` accept
-integer and boolean operands, with booleans promoted to `int`. Shift operands
+integer and boolean operands using the integral promotions above. Shift operands
 are promoted independently, and the result has the promoted left operand's type.
 For either shift operator, the left operand is evaluated before the right.
 Signed right shifts are arithmetic, matching C++20. Source operations with

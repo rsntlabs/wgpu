@@ -6,7 +6,9 @@ impl<'a> Parser<'a> {
         loop {
             match lexer.peek()?.0 {
                 Token::Word("constexpr") => return Ok(true),
-                Token::Word("const" | "volatile" | "int" | "unsigned" | "auto") => {}
+                Token::Word(
+                    "const" | "volatile" | "int" | "short" | "signed" | "unsigned" | "auto",
+                ) => {}
                 Token::Word(name) if self.type_name(name).is_some() => {}
                 _ => return Ok(false),
             }
@@ -196,6 +198,8 @@ impl<'a> Parser<'a> {
             return false;
         }
         let index = match index.literal {
+            Some(Literal::I16(index)) if index >= 0 => index as u32,
+            Some(Literal::U16(index)) => u32::from(index),
             Some(Literal::I32(index)) if index >= 0 => index as u32,
             Some(Literal::U32(index)) => index,
             _ => return false,

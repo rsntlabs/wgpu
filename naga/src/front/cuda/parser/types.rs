@@ -67,26 +67,29 @@ pub(super) struct FunctionOverloads {
 #[derive(Default)]
 pub(super) struct IntegerSpecifiers {
     seen_int: bool,
+    seen_short: bool,
     seen_signed: bool,
     seen_unsigned: bool,
 }
 
 impl IntegerSpecifiers {
     pub(super) const fn is_empty(&self) -> bool {
-        !self.seen_int && !self.seen_signed && !self.seen_unsigned
+        !self.seen_int && !self.seen_short && !self.seen_signed && !self.seen_unsigned
     }
 
     pub(super) fn consume(&mut self, specifier: &str) -> Option<Scalar> {
         match specifier {
             "int" if !self.seen_int => self.seen_int = true,
+            "short" if !self.seen_short => self.seen_short = true,
             "signed" if !self.seen_signed && !self.seen_unsigned => self.seen_signed = true,
             "unsigned" if !self.seen_unsigned && !self.seen_signed => self.seen_unsigned = true,
             _ => return None,
         }
-        Some(if self.seen_unsigned {
-            Scalar::U32
-        } else {
-            Scalar::I32
+        Some(match (self.seen_unsigned, self.seen_short) {
+            (false, false) => Scalar::I32,
+            (false, true) => Scalar::I16,
+            (true, false) => Scalar::U32,
+            (true, true) => Scalar::U16,
         })
     }
 }
@@ -100,6 +103,7 @@ fn type_name(
         "bool" => Scalar::BOOL,
         "float" => Scalar::F32,
         "int" | "signed" => Scalar::I32,
+        "short" => Scalar::I16,
         "unsigned" => Scalar::U32,
         _ => {
             return match symbols.lookup(name) {
@@ -268,7 +272,7 @@ fn declaration_type(
                 }
                 inferred = true;
             }
-            Token::Word(specifier @ ("int" | "signed" | "unsigned")) => {
+            Token::Word(specifier @ ("int" | "short" | "signed" | "unsigned")) => {
                 if inferred || (ty.is_some() && integers.is_empty()) {
                     return Err(invalid("incompatible or repeated type specifier"));
                 }
@@ -440,7 +444,10 @@ impl<'a> Parser<'a> {
             } else {
                 match source.inner {
                     TypeInner::Scalar(scalar) | TypeInner::Vector { scalar, .. } => {
-                        matches!(scalar, Scalar::I32 | Scalar::U32 | Scalar::F32)
+                        matches!(
+                            scalar,
+                            Scalar::I16 | Scalar::U16 | Scalar::I32 | Scalar::U32 | Scalar::F32
+                        )
                     }
                     TypeInner::Array {
                         base,

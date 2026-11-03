@@ -451,7 +451,9 @@ impl<'a> Parser<'a> {
             || (qualifiers.is_const
                 && matches!(
                     *ty.inner_with(&self.module.types),
-                    TypeInner::Scalar(Scalar::BOOL | Scalar::I32 | Scalar::U32)
+                    TypeInner::Scalar(
+                        Scalar::BOOL | Scalar::I16 | Scalar::U16 | Scalar::I32 | Scalar::U32
+                    )
                 )) {
             self.constant_local_initializer(local, value, body)?
         } else {

@@ -27,6 +27,8 @@ impl<'a> Parser<'a> {
                     let value = parser.rvalue(expression)?;
                     let literal = Self::required_constant(&value)?;
                     let integer = match literal {
+                        Literal::I16(value) => i32::from(value),
+                        Literal::U16(value) => i32::from(value),
                         Literal::I32(value) => value,
                         Literal::U32(value) => value as i32,
                         Literal::Bool(value) => i32::from(value),
