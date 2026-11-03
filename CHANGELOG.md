@@ -280,6 +280,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Infer CUDA local array bounds from nonempty initializer lists.
 - Support CUDA scalar `sqrtf` with correctly rounded results using integer arithmetic.
 - Support the CUDA `sqrt(float)` overload with shared square-root lowering and integral overload selection.
+- Support CUDA scalar `rsqrtf` across the finite input range, including subnormals and exceptional values.
 - Support CUDA scalar `floorf`, including negative subnormals and large integral values.
 - Support CUDA scalar `ceilf`, including subnormal inputs and signed zero results.
 - Support CUDA scalar `roundf`, including halfway cases rounded away from zero.

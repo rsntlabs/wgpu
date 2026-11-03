@@ -40,7 +40,7 @@ const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 5] = [
     ("roundf", FloatMathFunction::Round),
 ];
 
-const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 7] = [
+const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 8] = [
     (
         "__clz",
         MathFunction::CountLeadingZeros,
@@ -67,6 +67,12 @@ const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 7] = [
     ),
     ("sinf", MathFunction::Sin, Scalar::F32, Scalar::F32),
     ("cosf", MathFunction::Cos, Scalar::F32, Scalar::F32),
+    (
+        "rsqrtf",
+        MathFunction::InverseSqrt,
+        Scalar::F32,
+        Scalar::F32,
+    ),
     (
         "__saturatef",
         MathFunction::Saturate,
@@ -1272,32 +1278,7 @@ impl<'a> Parser<'a> {
         if candidate == FunctionCandidate::Sqrt {
             let argument =
                 self.convert_scalar(arguments.into_iter().next().unwrap().into(), Scalar::F32)?;
-            let bits = self.append(
-                Expression::As {
-                    expr: argument.handle,
-                    kind: ScalarKind::Uint,
-                    convert: None,
-                },
-                span,
-            )?;
-            let function = self.sqrtf_function(span)?;
-            let result = self.append_call_result(function, span)?;
-            self.push_statement(
-                Statement::Call {
-                    function,
-                    arguments: alloc::vec![bits],
-                    result: Some(result),
-                },
-                span,
-            );
-            let handle = self.append(
-                Expression::As {
-                    expr: result,
-                    kind: ScalarKind::Float,
-                    convert: None,
-                },
-                span,
-            )?;
+            let handle = self.call_sqrtf(argument.handle, span)?;
             return Ok(Value {
                 category: ValueCategory::Prvalue,
                 qualifiers: Qualifiers::NONE,
@@ -1320,6 +1301,11 @@ impl<'a> Parser<'a> {
                 MathFunction::Saturate => self.saturate(argument.handle, span)?,
                 MathFunction::Sin | MathFunction::Cos => {
                     self.trigonometry(argument.handle, function == MathFunction::Cos, span)?
+                }
+                MathFunction::InverseSqrt => {
+                    let root = self.call_sqrtf(argument.handle, span)?;
+                    let one = self.append(Expression::Literal(Literal::F32(1.0)), span)?;
+                    self.divide_f32(one, root, span)?
                 }
                 _ => self.append(
                     Expression::Math {

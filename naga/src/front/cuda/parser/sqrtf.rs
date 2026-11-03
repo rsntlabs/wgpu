@@ -1,6 +1,46 @@
 use super::*;
 
 impl Parser<'_> {
+    pub(super) fn call_sqrtf(
+        &mut self,
+        value: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let bits = self.append(
+            Expression::As {
+                expr: value,
+                kind: ScalarKind::Uint,
+                convert: None,
+            },
+            span,
+        )?;
+        let function = self.sqrtf_function(span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<Handle<Expression>>(1, span)?;
+        self.parameter_expansion_budget.charge_nodes(1, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<(Statement, Span)>(1, span)?;
+        let result = self.append_call_result(function, span)?;
+        self.push_statement(
+            Statement::Call {
+                function,
+                arguments: alloc::vec![bits],
+                result: Some(result),
+            },
+            span,
+        );
+        self.append(
+            Expression::As {
+                expr: result,
+                kind: ScalarKind::Float,
+                convert: None,
+            },
+            span,
+        )
+    }
+
     pub(super) fn sqrtf_function(&mut self, span: Span) -> Result<Handle<Function>, ParseError> {
         if let Some(function) = self.sqrtf_function {
             return Ok(function);
@@ -12,6 +52,10 @@ impl Parser<'_> {
         let result = self.build_sqrtf_function(span);
         let helper = core::mem::replace(&mut self.function, caller);
         result?;
+        self.parameter_expansion_budget
+            .inventory_function(&helper.ir, span, 1)?;
+        self.parameter_expansion_budget
+            .charge_slice::<(Function, Span)>(1, span)?;
         let function = self.module.functions.append(helper.ir, span);
         self.sqrtf_function = Some(function);
         Ok(function)

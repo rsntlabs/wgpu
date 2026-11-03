@@ -653,6 +653,18 @@ Calls execute at runtime and are not constant expressions, including calls with
 literal arguments. The double-precision `sqrt` and directed-rounding intrinsics
 remain unsupported.
 
+`rsqrtf(float)` returns the reciprocal square root and accepts scalar arguments
+that convert to `float`. Positive finite inputs use a correctly rounded square
+root followed by correctly rounded division of one by that root. This composition
+is within one representable single-precision step of the correctly rounded
+reciprocal square root, including subnormal inputs. Signed zeros produce the
+corresponding signed infinity, and positive infinity produces positive zero.
+Negative nonzero inputs and NaNs produce the canonical quiet NaN `0x7fc00000`.
+These special cases follow the
+[CUDA math reference](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__SINGLE.html).
+Calls share the existing square-root and division helpers and require a runtime
+context, including calls with literal arguments.
+
 `floorf(float)` returns the greatest integral value no greater than its argument,
 represented as `float`. Scalar arguments convert to `float` before rounding.
 For example, `floorf(-0.25f)` returns `-1.0f`; negative nonzero subnormal inputs
@@ -711,7 +723,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `sqrt`, `sqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, or `cosf` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, or `cosf` remain unsupported.
 
 ## Bit reinterpretation
 
