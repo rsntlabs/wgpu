@@ -85,6 +85,12 @@ pub(super) struct CapturedArgument {
 }
 
 #[derive(Clone, Copy)]
+pub(super) enum ArgumentEvaluationOrder {
+    LeftToRight,
+    RightToLeft,
+}
+
+#[derive(Clone, Copy)]
 pub(super) struct SourcePointerType {
     pub(super) pointee: Handle<Type>,
     pub(super) qualifiers: Qualifiers,
@@ -326,10 +332,27 @@ impl Parser<'_> {
         name_span: Span,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
+        self.call_with_captured_arguments_in_order(
+            name,
+            arguments,
+            name_span,
+            span,
+            ArgumentEvaluationOrder::LeftToRight,
+        )
+    }
+
+    pub(super) fn call_with_captured_arguments_in_order(
+        &mut self,
+        name: &str,
+        arguments: Vec<CapturedArgument>,
+        name_span: Span,
+        span: Span,
+        order: ArgumentEvaluationOrder,
+    ) -> Result<ExpressionResult, ParseError> {
         self.parameter_expansion_budget
             .charge_work(arguments.len(), span)?;
         let candidate = self.resolve_overload(name, &arguments, name_span)?;
-        self.lower_captured_call(candidate, arguments, span)
+        self.lower_captured_call_in_order(candidate, arguments, span, order)
     }
 
     pub(super) fn lower_captured_call(
@@ -338,12 +361,28 @@ impl Parser<'_> {
         arguments: Vec<CapturedArgument>,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
+        self.lower_captured_call_in_order(
+            candidate,
+            arguments,
+            span,
+            ArgumentEvaluationOrder::LeftToRight,
+        )
+    }
+
+    fn lower_captured_call_in_order(
+        &mut self,
+        candidate: functions::FunctionCandidate,
+        arguments: Vec<CapturedArgument>,
+        span: Span,
+        order: ArgumentEvaluationOrder,
+    ) -> Result<ExpressionResult, ParseError> {
         if matches!(
             candidate,
             functions::FunctionCandidate::Atomic { .. }
                 | functions::FunctionCandidate::AtomicCompareExchange(_)
                 | functions::FunctionCandidate::WrappingAtomic(_)
         ) {
+            debug_assert!(matches!(order, ArgumentEvaluationOrder::LeftToRight));
             return self.atomic_call(arguments, candidate, span);
         }
         let has_indirect_parameters = (0..arguments.len()).any(|index| {
@@ -354,7 +393,11 @@ impl Parser<'_> {
             self.parameter_expansion_budget
                 .charge_slice::<Value>(arguments.len(), span)?;
             let mut values = Vec::with_capacity(arguments.len());
-            for (logical_index, argument) in arguments.into_iter().enumerate() {
+            let mut arguments = arguments.into_iter().enumerate();
+            while let Some((logical_index, argument)) = match order {
+                ArgumentEvaluationOrder::LeftToRight => arguments.next(),
+                ArgumentEvaluationOrder::RightToLeft => arguments.next_back(),
+            } {
                 self.parameter_expansion_budget.charge_work(1, span)?;
                 self.append_block(argument.body);
                 let Some(target) = self.candidate_type(candidate, logical_index) else {
@@ -362,6 +405,11 @@ impl Parser<'_> {
                     continue;
                 };
                 values.push(self.convert_value(argument.value.require_value()?, &target)?);
+            }
+            if matches!(order, ArgumentEvaluationOrder::RightToLeft) {
+                self.parameter_expansion_budget
+                    .charge_work(values.len(), span)?;
+                values.reverse();
             }
             return self.lower_call(candidate, values, span);
         }
@@ -376,7 +424,11 @@ impl Parser<'_> {
         self.parameter_expansion_budget
             .charge_slice::<FunctionCall>(1, span)?;
         let mut bound_arguments = Vec::with_capacity(arguments.len());
-        for (logical_index, argument) in arguments.into_iter().enumerate() {
+        let mut arguments = arguments.into_iter().enumerate();
+        while let Some((logical_index, argument)) = match order {
+            ArgumentEvaluationOrder::LeftToRight => arguments.next(),
+            ArgumentEvaluationOrder::RightToLeft => arguments.next_back(),
+        } {
             self.parameter_expansion_budget.charge_work(1, span)?;
             self.append_block(argument.body);
             let Some(target) = self.candidate_type(candidate, logical_index) else {
@@ -426,6 +478,11 @@ impl Parser<'_> {
                 }
             };
             bound_arguments.push(argument);
+        }
+        if matches!(order, ArgumentEvaluationOrder::RightToLeft) {
+            self.parameter_expansion_budget
+                .charge_work(bound_arguments.len(), span)?;
+            bound_arguments.reverse();
         }
         let result_ty = self.module.functions[function]
             .result

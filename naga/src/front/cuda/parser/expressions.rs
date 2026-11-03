@@ -162,9 +162,7 @@ impl Parser<'_> {
                 _ => None,
             };
             if let Some(operator) = operator {
-                return self
-                    .assignment(left.require_value()?, operator)
-                    .map(ExpressionResult::Value);
+                return self.assignment(left.require_value()?, operator);
             }
         }
         Ok(left)

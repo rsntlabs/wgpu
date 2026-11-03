@@ -27,19 +27,66 @@ impl Parser<'_> {
         &mut self,
         left: ExpressionValue,
         operator: Option<BinaryOperator>,
-    ) -> Result<ExpressionValue, ParseError> {
+    ) -> Result<ExpressionResult, ParseError> {
+        let operator_span = self.lexer.next()?.1;
+        let (right, right_body) = self.capture_block(|parser| parser.expression(0))?;
+        if let Some(operator) = operator {
+            if self.is_source_class_value(&left) || self.is_source_class_value(&right) {
+                let name = operators::Operator::from_assignment(operator)
+                    .unwrap()
+                    .name();
+                let span = left.span().until(&right.span());
+                self.parameter_expansion_budget
+                    .charge_slice::<CapturedArgument>(2, span)?;
+                self.flush_emitter();
+                let left_body = core::mem::take(&mut self.function.ir.body);
+                return self.call_with_captured_arguments_in_order(
+                    name,
+                    alloc::vec![
+                        CapturedArgument {
+                            value: left.into(),
+                            body: left_body
+                        },
+                        CapturedArgument {
+                            value: right.into(),
+                            body: right_body
+                        },
+                    ],
+                    operator_span,
+                    span,
+                    parameter_calls::ArgumentEvaluationOrder::RightToLeft,
+                );
+            }
+        }
         if let ExpressionValue::NullPointer(value) = left {
-            return self.null_pointer_assignment(value, operator);
+            return self
+                .null_pointer_assignment(
+                    value,
+                    operator,
+                    CapturedArgument {
+                        value: right.into(),
+                        body: right_body,
+                    },
+                )
+                .map(Into::into);
         }
         if let ExpressionValue::Pointer(pointer) = left {
-            return self.pointer_assignment(*pointer, operator);
+            return self
+                .pointer_assignment(
+                    *pointer,
+                    operator,
+                    CapturedArgument {
+                        value: right.into(),
+                        body: right_body,
+                    },
+                )
+                .map(Into::into);
         }
         let mut left = self.mutable_reference(left)?;
         self.require_volatile_scalar(left.qualifiers, &left.ty, left.span)?;
         let volatile = left.qualifiers.is_volatile;
-        self.lexer.next()?;
         let (right, right_body) = self.capture_block(|parser| {
-            let right = parser.expression(0)?;
+            parser.append_block(right_body);
             if operator.is_none()
                 && *left.ty.inner_with(&parser.module.types) == TypeInner::Scalar(Scalar::BOOL)
             {
@@ -78,7 +125,8 @@ impl Parser<'_> {
             span,
             constant: ConstantValue::default(),
             ..left
-        }))
+        })
+        .into())
     }
 
     pub(super) fn update(

@@ -299,6 +299,7 @@ impl<'a> Parser<'a> {
         &mut self,
         mut left: NullPointerValue,
         operator: Option<BinaryOperator>,
+        right: CapturedArgument,
     ) -> Result<ExpressionValue, ParseError> {
         if left.qualifiers.is_volatile {
             return self.fail("volatile nullptr_t assignments are unsupported");
@@ -309,9 +310,9 @@ impl<'a> Parser<'a> {
         if operator.is_some() {
             return self.fail("nullptr_t does not support compound assignment");
         }
-        self.lexer.next()?;
         let (right, right_body) = self.capture_block(|parser| {
-            let right = parser.expression(0)?;
+            parser.append_block(right.body);
+            let right = right.value.require_value()?;
             parser.require_null_pointer_value(right)
         })?;
         self.prepend_block(right_body);

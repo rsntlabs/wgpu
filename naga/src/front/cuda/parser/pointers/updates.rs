@@ -159,6 +159,7 @@ impl Parser<'_> {
         &mut self,
         mut pointer: PointerValue,
         operator: Option<BinaryOperator>,
+        right: CapturedArgument,
     ) -> Result<ExpressionValue, ParseError> {
         if operator.is_some_and(|operator| {
             !matches!(operator, BinaryOperator::Add | BinaryOperator::Subtract)
@@ -169,10 +170,10 @@ impl Parser<'_> {
             });
         }
         let binding = self.mutable_pointer_binding(&pointer)?;
-        self.lexer.next()?;
         if operator.is_none() {
             let (right, body) = self.capture_block(|parser| {
-                let right = parser.expression(0)?;
+                parser.append_block(right.body);
+                let right = right.value.require_value()?;
                 let span = right.span();
                 parser.convert_pointer(right, &pointer.ty, pointer.qualifiers, span)
             })?;
@@ -191,7 +192,8 @@ impl Parser<'_> {
             return Ok(ExpressionValue::Pointer(self.boxed_pointer_value(pointer)?));
         }
         let (right, body) = self.capture_block(|parser| {
-            let right = parser.expression(0)?;
+            parser.append_block(right.body);
+            let right = right.value.require_value()?;
             let right = parser.integral_operand(right)?;
             parser.convert_value(right.into(), &scalar_resolution(Scalar::U32))
         })?;

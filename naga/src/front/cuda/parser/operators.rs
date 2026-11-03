@@ -16,6 +16,16 @@ pub(super) enum Operator {
     LogicalOr,
     BitwiseNot,
     LogicalNot,
+    AddAssignment,
+    SubtractAssignment,
+    MultiplyAssignment,
+    DivideAssignment,
+    ModuloAssignment,
+    AndAssignment,
+    InclusiveOrAssignment,
+    ExclusiveOrAssignment,
+    ShiftLeftAssignment,
+    ShiftRightAssignment,
 }
 
 impl Operator {
@@ -35,6 +45,16 @@ impl Operator {
             Self::LogicalOr => "operator||",
             Self::BitwiseNot => "operator~",
             Self::LogicalNot => "operator!",
+            Self::AddAssignment => "operator+=",
+            Self::SubtractAssignment => "operator-=",
+            Self::MultiplyAssignment => "operator*=",
+            Self::DivideAssignment => "operator/=",
+            Self::ModuloAssignment => "operator%=",
+            Self::AndAssignment => "operator&=",
+            Self::InclusiveOrAssignment => "operator|=",
+            Self::ExclusiveOrAssignment => "operator^=",
+            Self::ShiftLeftAssignment => "operator<<=",
+            Self::ShiftRightAssignment => "operator>>=",
         }
     }
 
@@ -54,6 +74,16 @@ impl Operator {
             Token::LogicalOperation('|') => Self::LogicalOr,
             Token::Operation('~') => Self::BitwiseNot,
             Token::Operation('!') => Self::LogicalNot,
+            Token::AssignmentOperation('+') => Self::AddAssignment,
+            Token::AssignmentOperation('-') => Self::SubtractAssignment,
+            Token::AssignmentOperation('*') => Self::MultiplyAssignment,
+            Token::AssignmentOperation('/') => Self::DivideAssignment,
+            Token::AssignmentOperation('%') => Self::ModuloAssignment,
+            Token::AssignmentOperation('&') => Self::AndAssignment,
+            Token::AssignmentOperation('|') => Self::InclusiveOrAssignment,
+            Token::AssignmentOperation('^') => Self::ExclusiveOrAssignment,
+            Token::AssignmentOperation('<') => Self::ShiftLeftAssignment,
+            Token::AssignmentOperation('>') => Self::ShiftRightAssignment,
             _ => return None,
         })
     }
@@ -72,6 +102,22 @@ impl Operator {
             BinaryOperator::ShiftRight => Self::ShiftRight,
             BinaryOperator::LogicalAnd => Self::LogicalAnd,
             BinaryOperator::LogicalOr => Self::LogicalOr,
+            _ => return None,
+        })
+    }
+
+    pub(super) const fn from_assignment(operator: BinaryOperator) -> Option<Self> {
+        Some(match operator {
+            BinaryOperator::Add => Self::AddAssignment,
+            BinaryOperator::Subtract => Self::SubtractAssignment,
+            BinaryOperator::Multiply => Self::MultiplyAssignment,
+            BinaryOperator::Divide => Self::DivideAssignment,
+            BinaryOperator::Modulo => Self::ModuloAssignment,
+            BinaryOperator::And => Self::AndAssignment,
+            BinaryOperator::InclusiveOr => Self::InclusiveOrAssignment,
+            BinaryOperator::ExclusiveOr => Self::ExclusiveOrAssignment,
+            BinaryOperator::ShiftLeft => Self::ShiftLeftAssignment,
+            BinaryOperator::ShiftRight => Self::ShiftRightAssignment,
             _ => return None,
         })
     }
