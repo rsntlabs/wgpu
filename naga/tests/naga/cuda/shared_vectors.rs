@@ -206,7 +206,7 @@ fn cuda_shared_vectors_reject_initializers_and_unsupported_declarations() {
     for source in [
         "__shared__ float3 value; __global__ void kernel() {}",
         "__global__ void kernel(__shared__ float3 *value) {}",
-        "__device__ float3 helper() { __shared__ float3 value; return value; }
+        "__device__ float3 helper() { __shared__ float3 value{}; return value; }
          __global__ void kernel() {}",
         "__device__ float3 helper(float3 *value) { return value[0]; }
          __global__ void kernel() { __shared__ float3 value; helper(value); }",
@@ -214,6 +214,7 @@ fn cuda_shared_vectors_reject_initializers_and_unsupported_declarations() {
     ] {
         rejected(source);
     }
+    validate("__device__ float3 helper() { __shared__ float3 value; return value; } __global__ void kernel() {}");
 }
 
 #[test]

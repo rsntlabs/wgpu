@@ -436,7 +436,8 @@ fn cuda_structures_shared_records_reuse_existing_storage_and_barrier_policy() {
             |(_, global)| global.space == naga::AddressSpace::WorkGroup && global.binding.is_none()
         ));
     rejected("struct Record { int value; }; __global__ void kernel(int *out) { __shared__ Record value; if (threadIdx.x == 0u) __syncthreads(); out[0] = value.value; }");
-    rejected("struct Record { int value; }; __device__ Record helper() { __shared__ Record value; return value; } __global__ void kernel() {}");
+    validate("struct Record { int value; }; __device__ Record helper() { __shared__ Record value; return value; } __global__ void kernel() {}");
+    rejected("struct Record { int value; }; __device__ Record helper() { __shared__ Record value{}; return value; } __global__ void kernel() {}");
 }
 
 #[test]

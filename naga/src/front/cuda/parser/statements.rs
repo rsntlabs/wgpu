@@ -484,10 +484,11 @@ impl<'a> Parser<'a> {
     }
 
     fn shared_declaration(&mut self) -> Result<(), ParseError> {
-        if self.function.kind == FunctionKind::Device {
-            return self.fail("shared storage is unsupported in device helpers");
-        }
         let type_span = self.lexer.peek()?.1;
+        if self.function.kind == FunctionKind::Device {
+            self.activate_parameter_expansion(type_span)?;
+            self.prepare_parameter_bindings(type_span)?;
+        }
         let QualifiedType {
             ty: specifier,
             qualifiers,
@@ -528,6 +529,11 @@ impl<'a> Parser<'a> {
             return self.fail("shared variables cannot have initializers");
         }
         self.lexer.expect_span(Token::Separator(';'))?;
+        self.parameter_expansion_budget.charge_nodes(1, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<(GlobalVariable, Span)>(1, span)?;
+        self.parameter_expansion_budget
+            .charge_bytes(name.len(), span)?;
         let global = self.module.global_variables.append(
             GlobalVariable {
                 name: Some(String::from(name)),

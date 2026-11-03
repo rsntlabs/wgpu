@@ -291,12 +291,13 @@ fn cuda_helper_builtin_errors_remain_checked_in_unused_and_discarded_source() {
 #[test]
 fn cuda_helper_builtin_support_preserves_barrier_restrictions() {
     for source in [
-        "__device__ unsigned lane() { __shared__ int value; return threadIdx.x; } __global__ void kernel() {}",
+        "__device__ unsigned lane() { __shared__ int value = 1; return threadIdx.x; } __global__ void kernel() {}",
         "__device__ unsigned lane() { return threadIdx.x; } __global__ void kernel() { if (lane()) return; __syncthreads(); }",
         "__device__ unsigned lane() { return threadIdx.x; } __global__ void kernel() { if (lane()) __syncthreads(); }",
     ] {
         rejected(source);
     }
+    validate("__device__ unsigned lane() { __shared__ int value; return threadIdx.x; } __global__ void kernel() {}");
     validate("__device__ unsigned lane() { if (threadIdx.x) return threadIdx.x; return 0u; } __global__ void kernel(unsigned *out) { unsigned index = lane(); __syncthreads(); out[index] = lane(); }");
 }
 

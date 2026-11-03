@@ -528,8 +528,7 @@ for backend scopes. These limits are checked before copying generated payload;
 they do not describe an exact allocator or process memory limit.
 
 Helpers have no resource bindings. Pointer and reference results,
-whole-array references and static shared declarations in helper bodies remain unsupported. Kernel prototypes
-remain unsupported.
+whole-array references, and kernel prototypes remain unsupported.
 Pointer members, general pointer comparisons and differences, casts that change
 the addressed type or remove pointee qualifiers, and general pointer declarators
 remain unsupported. Arrays selected from temporary struct values
@@ -1390,8 +1389,8 @@ applies to assignments and updates inside the right operand.
 
 Static `__shared__` declarations support `float`, `int`, and `unsigned int`
 scalars, the numeric vector and struct types above, and fixed arrays of
-those types inside the kernel. Their aliases are also accepted; const-qualified
-shared types remain unsupported. Vector elements use the sizes, alignments, and
+those types inside kernels and device helpers. Their aliases are also accepted;
+const-qualified shared types remain unsupported. Vector elements use the sizes, alignments, and
 array strides listed in the kernel interface, including packed three-component
 structures. Whole-value copies and scalar component updates use the same rules
 as local vectors. Array extents must
@@ -1401,6 +1400,15 @@ Shared variables become workgroup storage without resource bindings; names obey
 the surrounding block scope, and each workgroup has its own storage. Declarations
 cannot contain initializers, following NVIDIA's
 [shared memory constraints](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html).
+
+A helper's fixed shared declaration names the same workgroup allocation across
+repeated calls, including calls expanded for pointer or reference parameters.
+Different declarations and template specializations have separate allocations;
+nested declarations with the same name remain distinct. Calls do not initialize
+or clear this storage. Write values before reading them and synchronize accesses
+between invocations. For `__host__ __device__` helpers, these rules apply to the
+device implementation; the host implementation remains unchecked.
+
 Dynamic shared arrays use the launch byte count supplied through
 `Options::dynamic_shared_memory_size` or CLI option
 `--cuda-dynamic-shared-memory-size BYTES`. It defaults to zero and applies to

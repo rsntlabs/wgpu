@@ -282,7 +282,7 @@ fn cuda_void_helpers_preserve_function_lookup_and_arity_checks() {
 #[test]
 fn cuda_void_helpers_still_reject_resources_and_invalid_builtins() {
     for body in [
-        "__shared__ int value;",
+        "__shared__ int value = 1;",
         "unsigned value = threadIdx.w;",
         "unsigned value = blockIdx.w;",
         "unsigned value = blockDim.w;",
@@ -293,6 +293,7 @@ fn cuda_void_helpers_still_reject_resources_and_invalid_builtins() {
             "__device__ void consume() {{ {body} }} __global__ void kernel(int *output) {{ consume(); }}"
         ));
     }
+    validate("__device__ void consume() { __shared__ int value; } __global__ void kernel(int *output) { consume(); }");
     validate(
         "__device__ void consume() { __syncthreads(); } __global__ void kernel() { consume(); }",
     );
@@ -304,13 +305,14 @@ fn cuda_void_unreachable_source_remains_checked() {
         "return; consume(missing);",
         "return; consume(1, 2);",
         "return; int value = consume(1);",
-        "return; __shared__ int storage;",
+        "return; __shared__ int storage = 1;",
         "return; return 1;",
     ] {
         assert_rejected(&format!(
             "__device__ void consume(int value) {{}} __device__ void forward() {{ {body} }} __global__ void kernel() {{}}"
         ));
     }
+    validate("__device__ void consume(int value) {} __device__ void forward() { return; __shared__ int storage; } __global__ void kernel() {}");
     validate("__device__ void forward() { return; __syncthreads(); } __global__ void kernel() {}");
 }
 

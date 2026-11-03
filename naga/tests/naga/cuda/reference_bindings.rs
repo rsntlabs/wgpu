@@ -247,7 +247,8 @@ fn cuda_local_references_bind_workgroup_elements_under_existing_barrier_policy()
             ..Options::default()
         },
     );
-    rejected("__device__ int helper() { __shared__ int value; int &alias = value; return alias; } __global__ void kernel() {}");
+    validate("__device__ int helper() { __shared__ int value; int &alias = value; return alias; } __global__ void kernel() {}");
+    rejected("__device__ int helper() { __shared__ int value = 1; int &alias = value; return alias; } __global__ void kernel() {}");
     rejected("__global__ void kernel() { int value = 1; __shared__ int &alias = value; }");
 }
 

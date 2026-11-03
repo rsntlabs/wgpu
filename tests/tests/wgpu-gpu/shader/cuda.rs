@@ -24,6 +24,7 @@ mod constant_expressions;
 mod control_flow;
 mod declarations;
 mod device_helper_barriers;
+mod device_shared;
 mod dim3;
 mod direct_aggregate_initialization;
 mod direct_borrowed_initialization;
@@ -121,6 +122,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_CONTROL_FLOW,
         CUDA_DECLARATIONS,
         CUDA_DEVICE_HELPER_BARRIERS,
+        CUDA_DEVICE_SHARED,
         CUDA_DIM3,
         CUDA_DIRECT_AGGREGATE_INITIALIZATION,
         CUDA_DIRECT_BORROWED_INITIALIZATION,
@@ -499,6 +501,8 @@ static CUDA_DECLARATIONS: GpuTestConfiguration = configuration(declarations::cas
 #[apply(gpu_test!)]
 static CUDA_DEVICE_HELPER_BARRIERS: GpuTestConfiguration =
     configuration(device_helper_barriers::cases);
+#[apply(gpu_test!)]
+static CUDA_DEVICE_SHARED: GpuTestConfiguration = configuration(device_shared::cases);
 #[apply(gpu_test!)]
 static CUDA_DIM3: GpuTestConfiguration = configuration(dim3::cases);
 #[apply(gpu_test!)]
