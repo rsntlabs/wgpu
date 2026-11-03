@@ -269,6 +269,8 @@ impl Parser<'_> {
         span: Span,
         pending_value: Option<Value>,
     ) -> Result<(), ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
         self.function.expression_depth += 1;
         let result = if self.function.expression_depth > 64 {
             self.fail("CUDA initializer nesting limit exceeded")
@@ -680,6 +682,8 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
         if self.requires_default_constructor(ty) {
+            self.activate_parameter_expansion(span)?;
+            self.prepare_parameter_bindings(span)?;
             self.constructor_default_value(ty, &mut FastHashMap::default(), span)
         } else {
             self.append(Expression::ZeroValue(ty), span)
