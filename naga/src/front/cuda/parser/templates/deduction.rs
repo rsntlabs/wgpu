@@ -149,9 +149,10 @@ impl Parser<'_> {
         let ty = match *ty {
             TypeResolution::Handle(handle) => self.template_type_from_handle(handle, span)?,
             TypeResolution::Value(TypeInner::Scalar(scalar)) => TypeSpecifier::Scalar(scalar),
-            TypeResolution::Value(TypeInner::Vector { size, scalar }) => {
-                TypeSpecifier::Vector { size, scalar }
-            }
+            TypeResolution::Value(TypeInner::Vector { size, scalar }) => TypeSpecifier::Vector {
+                component_count: u8::from(size),
+                scalar,
+            },
             TypeResolution::Value(_) => {
                 return Err(ParseError {
                     message: String::from("unsupported source type in template argument deduction"),

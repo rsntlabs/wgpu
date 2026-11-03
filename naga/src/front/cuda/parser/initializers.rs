@@ -563,9 +563,14 @@ impl Parser<'_> {
         has_braces: bool,
         span: Span,
     ) -> Result<(), ParseError> {
-        let TypeSpecifier::Vector { size, scalar } = specifier else {
+        let TypeSpecifier::Vector {
+            component_count,
+            scalar,
+        } = specifier
+        else {
             return self.fail("expected a vector initializer");
         };
+        let component_count = u32::from(component_count);
         if has_braces && self.lexer.next_if(Token::Paren('}'))? {
             let value = self.append(Expression::ZeroValue(actual_ty), span)?;
             self.push_statement(Statement::Store { pointer, value }, span);
@@ -621,7 +626,7 @@ impl Parser<'_> {
                 value.span,
             );
             initialized_count += 1;
-            if initialized_count == size as u32 {
+            if initialized_count == component_count {
                 break;
             }
             if !self.lexer.next_if(Token::Separator(','))?
@@ -632,13 +637,13 @@ impl Parser<'_> {
         }
 
         if has_braces {
-            if initialized_count == size as u32 {
+            if initialized_count == component_count {
                 self.lexer.next_if(Token::Separator(','))?;
             }
             self.lexer.expect_span(Token::Paren('}'))?;
         }
         let scalar_ty = self.scalar_handle(scalar, span);
-        for index in initialized_count..size as u32 {
+        for index in initialized_count..component_count {
             let field = self.append(
                 Expression::AccessIndex {
                     base: pointer,

@@ -8,7 +8,7 @@ pub(super) enum TypeSpecifier {
     Dim3,
     Scalar(Scalar),
     Vector {
-        size: VectorSize,
+        component_count: u8,
         scalar: Scalar,
     },
     Structure(Handle<Type>),
@@ -18,22 +18,27 @@ pub(super) enum TypeSpecifier {
     },
 }
 
-pub(super) const VECTOR_TYPES: [(&str, &str, VectorSize, Scalar); 15] = [
-    ("float2", "make_float2", VectorSize::Bi, Scalar::F32),
-    ("float3", "make_float3", VectorSize::Tri, Scalar::F32),
-    ("float4", "make_float4", VectorSize::Quad, Scalar::F32),
-    ("int2", "make_int2", VectorSize::Bi, Scalar::I32),
-    ("int3", "make_int3", VectorSize::Tri, Scalar::I32),
-    ("int4", "make_int4", VectorSize::Quad, Scalar::I32),
-    ("uint2", "make_uint2", VectorSize::Bi, Scalar::U32),
-    ("uint3", "make_uint3", VectorSize::Tri, Scalar::U32),
-    ("uint4", "make_uint4", VectorSize::Quad, Scalar::U32),
-    ("short2", "make_short2", VectorSize::Bi, Scalar::I16),
-    ("short3", "make_short3", VectorSize::Tri, Scalar::I16),
-    ("short4", "make_short4", VectorSize::Quad, Scalar::I16),
-    ("ushort2", "make_ushort2", VectorSize::Bi, Scalar::U16),
-    ("ushort3", "make_ushort3", VectorSize::Tri, Scalar::U16),
-    ("ushort4", "make_ushort4", VectorSize::Quad, Scalar::U16),
+pub(super) const VECTOR_TYPES: [(&str, &str, u8, Scalar); 20] = [
+    ("float2", "make_float2", 2, Scalar::F32),
+    ("float3", "make_float3", 3, Scalar::F32),
+    ("float4", "make_float4", 4, Scalar::F32),
+    ("int2", "make_int2", 2, Scalar::I32),
+    ("int3", "make_int3", 3, Scalar::I32),
+    ("int4", "make_int4", 4, Scalar::I32),
+    ("uint2", "make_uint2", 2, Scalar::U32),
+    ("uint3", "make_uint3", 3, Scalar::U32),
+    ("uint4", "make_uint4", 4, Scalar::U32),
+    ("short2", "make_short2", 2, Scalar::I16),
+    ("short3", "make_short3", 3, Scalar::I16),
+    ("short4", "make_short4", 4, Scalar::I16),
+    ("ushort2", "make_ushort2", 2, Scalar::U16),
+    ("ushort3", "make_ushort3", 3, Scalar::U16),
+    ("ushort4", "make_ushort4", 4, Scalar::U16),
+    ("float1", "make_float1", 1, Scalar::F32),
+    ("int1", "make_int1", 1, Scalar::I32),
+    ("uint1", "make_uint1", 1, Scalar::U32),
+    ("short1", "make_short1", 1, Scalar::I16),
+    ("ushort1", "make_ushort1", 1, Scalar::U16),
 ];
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -330,7 +335,7 @@ impl<'a> Parser<'a> {
         ty: TypeSpecifier,
         span: Span,
     ) -> Result<TypeResolution, ParseError> {
-        let (size, scalar) = match ty {
+        let (component_count, scalar) = match ty {
             TypeSpecifier::TemplateParameter(_) => {
                 return Err(ParseError {
                     message: String::from("dependent type requires an instantiation"),
@@ -355,21 +360,31 @@ impl<'a> Parser<'a> {
             TypeSpecifier::Dim3 => return Ok(TypeResolution::Handle(self.dim3_type(span))),
             TypeSpecifier::Structure(handle) => return Ok(TypeResolution::Handle(handle)),
             TypeSpecifier::Pointer { pointee, .. } => return Ok(self.pointer_type(pointee, span)),
-            TypeSpecifier::Vector { size, scalar } => (size, scalar),
+            TypeSpecifier::Vector {
+                component_count,
+                scalar,
+            } => (component_count, scalar),
         };
-        if size != VectorSize::Tri {
+        let vector_size = match component_count {
+            2 => Some(VectorSize::Bi),
+            4 => Some(VectorSize::Quad),
+            1 | 3 => None,
+            _ => unreachable!(),
+        };
+        if let Some(size) = vector_size {
             return Ok(TypeResolution::Value(TypeInner::Vector { size, scalar }));
         }
         let base = self.scalar_handle(scalar, span);
         let scalar_width = u32::from(scalar.width);
         let name = VECTOR_TYPES
             .into_iter()
-            .find_map(|(name, _, candidate_size, candidate_scalar)| {
-                (size == candidate_size && scalar == candidate_scalar).then_some(name)
+            .find_map(|(name, _, candidate_count, candidate_scalar)| {
+                (component_count == candidate_count && scalar == candidate_scalar).then_some(name)
             })
             .unwrap();
         let members = ["x", "y", "z"]
             .into_iter()
+            .take(usize::from(component_count))
             .enumerate()
             .map(|(index, name)| StructMember {
                 name: Some(String::from(name)),
@@ -383,12 +398,12 @@ impl<'a> Parser<'a> {
                 name: Some(String::from(name)),
                 inner: TypeInner::Struct {
                     members,
-                    span: 3 * scalar_width,
+                    span: u32::from(component_count) * scalar_width,
                 },
             },
             span,
         );
-        if scalar == Scalar::U32 {
+        if component_count == 3 && scalar == Scalar::U32 {
             self.uint3_type = Some(handle);
         }
         Ok(TypeResolution::Handle(handle))

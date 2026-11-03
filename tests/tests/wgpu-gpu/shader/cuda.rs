@@ -90,6 +90,7 @@ mod scalar_braces;
 mod scalar_promotion;
 mod shared_vectors;
 mod signed;
+mod single_component_vectors;
 mod specifiers;
 mod sqrt;
 mod sqrtf;
@@ -197,6 +198,8 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_SCALAR_BRACES,
         CUDA_SCALAR_PROMOTION,
         CUDA_SHARED_VECTORS,
+        CUDA_SINGLE_COMPONENT_VECTORS,
+        CUDA_SINGLE_COMPONENT_INTEGER16_VECTORS,
         CUDA_SIGNED,
         CUDA_SPECIFIERS,
         CUDA_SQRT,
@@ -722,3 +725,13 @@ static CUDA_INTEGER16: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_INTEGER16_VECTORS: GpuTestConfiguration =
     configuration_with_features(integer16_vectors::cases, wgpu::Features::SHADER_I16);
+
+#[apply(gpu_test!)]
+static CUDA_SINGLE_COMPONENT_VECTORS: GpuTestConfiguration =
+    configuration(single_component_vectors::cases);
+
+#[apply(gpu_test!)]
+static CUDA_SINGLE_COMPONENT_INTEGER16_VECTORS: GpuTestConfiguration = configuration_with_features(
+    single_component_vectors::integer16_cases,
+    wgpu::Features::SHADER_I16,
+);

@@ -112,10 +112,12 @@ fn math_builtins(name: &str) -> impl Iterator<Item = MathBuiltin> + Clone {
         })
 }
 
-fn vector_constructor(name: &str) -> Option<(VectorSize, Scalar)> {
+fn vector_constructor(name: &str) -> Option<(u8, Scalar)> {
     VECTOR_TYPES
         .into_iter()
-        .find_map(|(_, constructor, size, scalar)| (name == constructor).then_some((size, scalar)))
+        .find_map(|(_, constructor, component_count, scalar)| {
+            (name == constructor).then_some((component_count, scalar))
+        })
 }
 
 pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclaration> {
@@ -195,12 +197,15 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         .chain(
             VECTOR_TYPES
                 .into_iter()
-                .flat_map(|(name, constructor, size, scalar)| {
+                .flat_map(|(name, constructor, component_count, scalar)| {
                     [
                         (
                             name,
                             GlobalDeclaration::Type(QualifiedType {
-                                ty: TypeSpecifier::Vector { size, scalar },
+                                ty: TypeSpecifier::Vector {
+                                    component_count,
+                                    scalar,
+                                },
                                 qualifiers: Qualifiers::NONE,
                             }),
                         ),
@@ -263,7 +268,7 @@ pub(super) enum FunctionCandidate {
     Sqrt,
     Fmodf,
     Constructor {
-        size: VectorSize,
+        component_count: u8,
         scalar: Scalar,
     },
 }
@@ -1010,9 +1015,13 @@ impl<'a> Parser<'a> {
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf => TypeSpecifier::Scalar(Scalar::F32),
-            FunctionCandidate::Constructor { size, scalar } => {
-                TypeSpecifier::Vector { size, scalar }
-            }
+            FunctionCandidate::Constructor {
+                component_count,
+                scalar,
+            } => TypeSpecifier::Vector {
+                component_count,
+                scalar,
+            },
         };
         let ty = self.lower_type(ty, span)?;
         Ok(Some(self.type_handle(&ty, span)))
@@ -1206,7 +1215,11 @@ impl<'a> Parser<'a> {
         arguments: Vec<Value>,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
-        if let FunctionCandidate::Constructor { size, scalar } = candidate {
+        if let FunctionCandidate::Constructor {
+            component_count,
+            scalar,
+        } = candidate
+        {
             let components = arguments
                 .into_iter()
                 .map(|value| {
@@ -1214,7 +1227,13 @@ impl<'a> Parser<'a> {
                         .map(|value| value.handle)
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            let ty = self.lower_type(TypeSpecifier::Vector { size, scalar }, span)?;
+            let ty = self.lower_type(
+                TypeSpecifier::Vector {
+                    component_count,
+                    scalar,
+                },
+                span,
+            )?;
             let handle_ty = self.type_handle(&ty, span);
             let handle = self.append(
                 Expression::Compose {
@@ -1740,7 +1759,10 @@ impl<'a> Parser<'a> {
             .chain(
                 vector_constructor(name)
                     .filter(move |_| builtin_visible)
-                    .map(|(size, scalar)| FunctionCandidate::Constructor { size, scalar }),
+                    .map(|(component_count, scalar)| FunctionCandidate::Constructor {
+                        component_count,
+                        scalar,
+                    }),
             )
     }
 
@@ -1762,7 +1784,9 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FloatMath(_)
             | FunctionCandidate::IntegralDouble { .. }
             | FunctionCandidate::Sqrt => 1,
-            FunctionCandidate::Constructor { size, .. } => size as usize,
+            FunctionCandidate::Constructor {
+                component_count, ..
+            } => usize::from(component_count),
         }
     }
 

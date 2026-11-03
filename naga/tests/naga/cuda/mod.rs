@@ -90,6 +90,7 @@ mod scalar_promotion;
 mod shared;
 mod shared_vectors;
 mod signed;
+mod single_component_vectors;
 mod specifiers;
 mod sqrt;
 mod sqrtf;

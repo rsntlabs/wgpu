@@ -142,6 +142,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 
 #### Naga
 
+- Support CUDA `float1`, `int1`, `uint1`, `short1`, and `ushort1` with matching constructors and native layouts.
 - Support CUDA `short2`, `short3`, `short4`, and their unsigned forms with matching constructors and native layouts.
 - Support CUDA `short` and `unsigned short` with native two-byte storage and C++ integral promotions.
 - Read 16-bit integer constants from SPIR-V.

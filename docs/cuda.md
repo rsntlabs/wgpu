@@ -226,9 +226,9 @@ definitions can surround the kernels and are shared across the module. Every
 kernel body is parsed and checked, including kernels a caller does not dispatch.
 Parameter types are `float`, `short`, `unsigned short`, `int`, and `unsigned int`
 (`unsigned` is also accepted), either by value or as flat pointers. Pointer
-parameters also accept `float2`, `float3`, `float4`, `int2`, `int3`, `int4`,
-`uint2`, `uint3`, `uint4`, `short2`, `short3`, `short4`, `ushort2`, `ushort3`,
-and `ushort4`. Aliases and pointee
+parameters also accept `float1`, `float2`, `float3`, `float4`, `int1`, `int2`,
+`int3`, `int4`, `uint1`, `uint2`, `uint3`, `uint4`, `short1`, `short2`, `short3`,
+`short4`, `ushort1`, `ushort2`, `ushort3`, and `ushort4`. Aliases and pointee
 `const` qualification preserve the underlying element type.
 Pointer parameters also accept completed named structs described below.
 Parameter number `i` uses group 0, binding `i` independently for each kernel,
@@ -264,6 +264,8 @@ reads and writes. Element layouts are:
 | --- | --- | --- | --- |
 | `short` or `unsigned short` | 2 bytes | 2 bytes | 2 bytes |
 | 32-bit scalar | 4 bytes | 4 bytes | 4 bytes |
+| One-component 16-bit vector | 2 bytes | 2 bytes | 2 bytes |
+| One-component 32-bit vector | 4 bytes | 4 bytes | 4 bytes |
 | Two-component 16-bit vector | 4 bytes | 4 bytes | 4 bytes |
 | Three-component 16-bit vector | 6 bytes | 2 bytes | 6 bytes |
 | Four-component 16-bit vector | 8 bytes | 8 bytes | 8 bytes |
@@ -964,12 +966,18 @@ declarations, pointer function results, and casts that change the addressed type
 or remove pointee qualifiers. Aliases cannot supply boolean kernel buffer
 parameters.
 
-Vector values support `float2`, `float3`, `float4`, `int2`, `int3`, `int4`,
-`uint2`, `uint3`, `uint4`, `short2`, `short3`, `short4`, `ushort2`, `ushort3`,
-and `ushort4`. These types can appear in local variables,
+Vector values support `float1`, `float2`, `float3`, `float4`, `int1`, `int2`,
+`int3`, `int4`, `uint1`, `uint2`, `uint3`, `uint4`, `short1`, `short2`, `short3`,
+`short4`, `ushort1`, `ushort2`, `ushort3`, and `ushort4`. These types can appear in local variables,
 fixed local arrays, kernel buffer elements, and helper parameters and results.
 Copies, assignments, and conditional arms require matching vector types. Const
 qualification prevents writes to individual fields as well as the complete value.
+
+One-component vectors have one `.x` field and retain their own type identity.
+`make_float1(value)` and its integer counterparts construct these aggregates.
+Brace initialization such as `int1{3}` uses the existing narrowing rules.
+Conversions from a scalar through parenthesized aggregate initialization remain
+unsupported, including `float1(value)` and `static_cast<float1>(value)`.
 
 The fields `.x`, `.y`, `.z`, and `.w` select one scalar component, up to the
 vector's width. Field access works on locals, array elements, helper results,
