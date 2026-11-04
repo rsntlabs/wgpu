@@ -240,6 +240,82 @@ mod tests {
         assert!(parser.module.global_variables.is_empty());
     }
 
+    fn array_initializer_checks_node_budget(source: &str, inferred: bool) {
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        parser.function = FunctionContext::new(FunctionKind::Kernel);
+        let span = parser.lexer.peek().unwrap().1;
+        let element_ty = parser.scalar_handle(Scalar::I32, span);
+        let count = core::num::NonZeroU32::new(4).unwrap();
+        let ty = if inferred {
+            element_ty
+        } else {
+            parser
+                .array_type(element_ty, ArraySize::Constant(count), span, span)
+                .unwrap()
+        };
+        let local = parser.function.ir.local_variables.append(
+            LocalVariable {
+                name: Some(String::from("values")),
+                ty,
+                init: None,
+            },
+            span,
+        );
+        let pointer = parser
+            .append(Expression::LocalVariable(local), span)
+            .unwrap();
+        if inferred {
+            parser.function.pending_array = Some(local);
+        }
+        parser.parameter_expansion_budget.activate();
+        let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+        parser
+            .parameter_expansion_budget
+            .charge_nodes(remaining, span)
+            .unwrap();
+        assert!(!parser.function.parameter_state_charged);
+        assert_eq!(parser.function.ir.expressions.len(), 1);
+        assert!(parser.function.ir.body.is_empty());
+
+        let result = if inferred {
+            parser
+                .inferred_array_initializer(pointer, TypeSpecifier::Scalar(Scalar::I32), element_ty)
+                .map(|_| ())
+        } else {
+            parser.aggregate_initializer(
+                pointer,
+                TypeSpecifier::Scalar(Scalar::I32),
+                ty,
+                Some(count),
+            )
+        };
+        let error = result.unwrap_err();
+        assert_eq!(error.message, limit_error(span).message);
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+        let range = error.span.to_range().unwrap();
+        assert!(!range.is_empty());
+        assert!(source.get(range).is_some());
+        assert_eq!(parser.function.ir.expressions.len(), 1);
+        assert_eq!(parser.function.expression_graph_depths.len(), 1);
+        assert_eq!(parser.function.ir.local_variables.len(), 1);
+        assert!(parser.function.ir.body.is_empty());
+        assert!(parser.function.parameters.is_empty());
+        assert!(parser.module.functions.is_empty());
+        assert!(parser.module.global_variables.is_empty());
+    }
+
+    #[test]
+    fn fixed_array_initialization_charges_nodes_without_parameter_state() {
+        for source in ["{1}", "{}"] {
+            array_initializer_checks_node_budget(source, false);
+        }
+    }
+
+    #[test]
+    fn inferred_array_initialization_charges_nodes_without_parameter_state() {
+        array_initializer_checks_node_budget("{1}", true);
+    }
+
     fn dynamic_shared_source(calls: usize) -> String {
         let mut source = String::from("__device__ void no_op() {} __global__ void kernel() {");
         for index in 0..64 {

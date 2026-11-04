@@ -142,6 +142,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 
 #### Naga
 
+- Enforce CUDA array initialization budgets for fixed and inferred local arrays.
 - Enforce CUDA aggregate construction limits during record initialization and default construction.
 - Support parenthesized CUDA vector and record initialization with member defaults, ordered evaluation, and nested member clauses.
 - Support CUDA `float1`, `int1`, `uint1`, `short1`, and `ushort1` with matching constructors and native layouts.

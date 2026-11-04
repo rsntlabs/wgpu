@@ -222,6 +222,10 @@ impl Parser<'_> {
     ) -> Result<(), ParseError> {
         self.lexer.next_if(Token::Operation('='))?;
         let span = self.lexer.expect_span(Token::Paren('{'))?;
+        if array_count.is_some() {
+            self.activate_parameter_expansion(span)?;
+            self.prepare_parameter_bindings(span)?;
+        }
         if self.lexer.next_if(Token::Paren('}'))? {
             if self.requires_default_constructor(actual_ty) {
                 return self.store_default_initializer(pointer, actual_ty, span);
@@ -302,6 +306,8 @@ impl Parser<'_> {
         has_braces: bool,
         span: Span,
     ) -> Result<u32, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
         self.function.expression_depth += 1;
         let result = if self.function.expression_depth > 64 {
             self.fail("CUDA initializer nesting limit exceeded")
