@@ -142,6 +142,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 
 #### Naga
 
+- Preserve required WGSL 16-bit enable declarations after compacting scalar expression types.
 - Convert wide integer shift counts when generating WGSL.
 - Support 16-bit and 64-bit integer bit searches in SPIR-V and preserve signed 32-bit count results after reimport.
 - Preserve vector boolean operations when reading SPIR-V.

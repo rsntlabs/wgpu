@@ -17,6 +17,7 @@ mod spirv_workgroup_layout;
 mod validation;
 mod volatile_loads;
 mod volatile_uniformity;
+mod wgsl_enable_declarations;
 mod wgsl_errors;
 mod wgsl_integer_shifts;
 mod wgsl_named_atomic_results;
