@@ -46,6 +46,7 @@ mod helper_builtins;
 mod helper_parameters;
 mod hex_float_literals;
 mod immutable_pointers;
+mod incomplete_array_aliases;
 mod inferred_arrays;
 mod inline;
 mod integer16;
@@ -162,6 +163,8 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_HELPER_PARAMETERS,
         CUDA_HEX_FLOAT_LITERALS,
         CUDA_IMMUTABLE_POINTERS,
+        CUDA_INCOMPLETE_ARRAY_ALIASES,
+        CUDA_INTEGER16_INCOMPLETE_ARRAY_ALIASES,
         CUDA_INFERRED_ARRAYS,
         CUDA_INLINE,
         CUDA_INTEGER16,
@@ -507,6 +510,14 @@ static CUDA_ARRAY_ALIASES: GpuTestConfiguration = configuration(array_aliases::c
 #[apply(gpu_test!)]
 static CUDA_INTEGER16_ARRAY_ALIASES: GpuTestConfiguration =
     configuration_with_features(array_aliases::integer16_cases, wgpu::Features::SHADER_I16);
+#[apply(gpu_test!)]
+static CUDA_INCOMPLETE_ARRAY_ALIASES: GpuTestConfiguration =
+    configuration(incomplete_array_aliases::cases);
+#[apply(gpu_test!)]
+static CUDA_INTEGER16_INCOMPLETE_ARRAY_ALIASES: GpuTestConfiguration = configuration_with_features(
+    incomplete_array_aliases::integer16_cases,
+    wgpu::Features::SHADER_I16,
+);
 #[apply(gpu_test!)]
 static CUDA_ARROW_MEMBERS: GpuTestConfiguration = configuration(arrow_members::cases);
 #[apply(gpu_test!)]
