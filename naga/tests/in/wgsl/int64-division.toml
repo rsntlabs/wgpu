@@ -1,0 +1,16 @@
+capabilities = "SHADER_INT64"
+targets = "SPIRV | HLSL | WGSL | METAL | GLSL"
+
+[glsl]
+version.Desktop = 450
+
+[hlsl]
+shader_model = "V6_0"
+fake_missing_bindings = true
+
+[msl]
+lang_version = [2, 3]
+fake_missing_bindings = true
+
+[spv]
+version = [1, 0]

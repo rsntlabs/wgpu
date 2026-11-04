@@ -1,5 +1,8 @@
 use super::*;
 
+pub(super) const DIV64_FUNCTION: &str = "naga_div64";
+pub(super) const MOD64_FUNCTION: &str = "naga_mod64";
+
 /// Writer responsible for all code generation.
 #[expect(missing_debug_implementations, reason = "would be way too verbose?")]
 pub struct Writer<'a, W> {
@@ -34,6 +37,11 @@ pub struct Writer<'a, W> {
     named_expressions: crate::NamedExpressions,
     /// Set of expressions that need to be baked to avoid unnecessary repetition in output
     need_bake_expressions: back::NeedBakeExpressions,
+    integer64_binary_helpers: crate::FastHashSet<(
+        crate::BinaryOperator,
+        Option<crate::VectorSize>,
+        crate::Scalar,
+    )>,
     /// Information about nesting of loops and switches.
     ///
     /// Used for forwarding continue statements in switches that have been
@@ -111,6 +119,7 @@ impl<'a, W: Write> Writer<'a, W> {
             block_id: IdGenerator::default(),
             named_expressions: Default::default(),
             need_bake_expressions: Default::default(),
+            integer64_binary_helpers: Default::default(),
             continue_ctx: back::continue_forward::ContinueCtx::default(),
             varying: Default::default(),
             clip_distance_count: 0,
@@ -130,6 +139,7 @@ impl<'a, W: Write> Writer<'a, W> {
     /// # Panics
     /// Might panic if the module is invalid
     pub fn write(&mut self) -> Result<ReflectionInfo, Error> {
+        self.integer64_binary_helpers.clear();
         if self.module.global_variables.iter().any(|(_, variable)| {
             variable.space == crate::AddressSpace::WorkGroup
                 && variable
@@ -1220,6 +1230,107 @@ impl<'a, W: Write> Writer<'a, W> {
         Ok(())
     }
 
+    fn write_integer64_binary_helpers(&mut self, ctx: &back::FunctionCtx) -> BackendResult {
+        for (_, expression) in ctx.expressions.iter() {
+            if let crate::Expression::Binary {
+                op: op @ (crate::BinaryOperator::Divide | crate::BinaryOperator::Modulo),
+                left,
+                ..
+            } = *expression
+            {
+                if let Some((vector_size, scalar @ (crate::Scalar::I64 | crate::Scalar::U64))) = ctx
+                    .resolve_type(left, &self.module.types)
+                    .vector_size_and_scalar()
+                {
+                    self.write_integer64_binary_helper(op, vector_size, scalar)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn write_integer64_binary_helper(
+        &mut self,
+        op: crate::BinaryOperator,
+        vector_size: Option<crate::VectorSize>,
+        scalar: crate::Scalar,
+    ) -> BackendResult {
+        if !self
+            .integer64_binary_helpers
+            .insert((op, vector_size, scalar))
+        {
+            return Ok(());
+        }
+        if vector_size.is_some() {
+            self.write_integer64_binary_helper(op, None, scalar)?;
+        }
+
+        let function_name = match op {
+            crate::BinaryOperator::Divide => DIV64_FUNCTION,
+            crate::BinaryOperator::Modulo => MOD64_FUNCTION,
+            _ => unreachable!(),
+        };
+        let inner = match vector_size {
+            Some(size) => TypeInner::Vector { size, scalar },
+            None => TypeInner::Scalar(scalar),
+        };
+        self.write_value_type(&inner)?;
+        write!(self.out, " {function_name}(")?;
+        self.write_value_type(&inner)?;
+        write!(self.out, " dividend, ")?;
+        self.write_value_type(&inner)?;
+        writeln!(self.out, " divisor) {{")?;
+
+        let level = back::Level(1);
+        if let Some(size) = vector_size {
+            write!(self.out, "{level}return ")?;
+            self.write_value_type(&inner)?;
+            write!(self.out, "(")?;
+            for index in 0..size as usize {
+                if index != 0 {
+                    write!(self.out, ", ")?;
+                }
+                let component = back::COMPONENTS[index];
+                write!(
+                    self.out,
+                    "{function_name}(dividend.{component}, divisor.{component})"
+                )?;
+            }
+            writeln!(self.out, ");")?;
+        } else {
+            let type_name = glsl_scalar(scalar)?.full;
+            if scalar.kind == crate::ScalarKind::Sint {
+                writeln!(
+                    self.out,
+                    "{level}{type_name} safe_divisor = ((divisor == 0l) || ((dividend == (-9223372036854775807l - 1l)) && (divisor == -1l))) ? 1l : divisor;"
+                )?;
+            } else {
+                writeln!(
+                    self.out,
+                    "{level}{type_name} safe_divisor = (divisor == 0ul) ? 1ul : divisor;"
+                )?;
+            }
+            match (op, scalar.kind) {
+                (crate::BinaryOperator::Divide, _) => {
+                    writeln!(self.out, "{level}return dividend / safe_divisor;")?;
+                }
+                (crate::BinaryOperator::Modulo, crate::ScalarKind::Sint) => {
+                    writeln!(
+                        self.out,
+                        "{level}return dividend - (dividend / safe_divisor) * safe_divisor;"
+                    )?;
+                }
+                (crate::BinaryOperator::Modulo, _) => {
+                    writeln!(self.out, "{level}return dividend % safe_divisor;")?;
+                }
+                _ => unreachable!(),
+            }
+        }
+        writeln!(self.out, "}}")?;
+        writeln!(self.out)?;
+        Ok(())
+    }
+
     /// Helper method used to write functions (both entry points and regular functions)
     ///
     /// # Notes
@@ -1238,6 +1349,7 @@ impl<'a, W: Write> Writer<'a, W> {
             named_expressions: &func.named_expressions,
         };
 
+        self.write_integer64_binary_helpers(&ctx)?;
         self.named_expressions.clear();
         self.update_expressions_to_bake(func, info);
 
@@ -2938,9 +3050,17 @@ impl<'a, W: Write> Writer<'a, W> {
                     })
                 );
                 if integer64 && matches!(op, Bo::Divide | Bo::Modulo) {
-                    return Err(Error::Custom(format!(
-                        "64-bit integer {op:?} is not supported"
-                    )));
+                    let function_name = if op == Bo::Divide {
+                        DIV64_FUNCTION
+                    } else {
+                        MOD64_FUNCTION
+                    };
+                    write!(self.out, "{function_name}(")?;
+                    self.write_expr(left, ctx)?;
+                    write!(self.out, ", ")?;
+                    self.write_expr(right, ctx)?;
+                    write!(self.out, ")")?;
+                    return Ok(());
                 }
                 if integer64 && matches!(op, Bo::ShiftLeft | Bo::ShiftRight) {
                     write!(self.out, "(")?;
@@ -3040,9 +3160,9 @@ impl<'a, W: Write> Writer<'a, W> {
 
                         write!(self.out, ")")?;
                     }
-                    // Signed/unsigned integer `%` with a negative operand is handled by
+                    // 16/32-bit integer `%` with a negative operand is handled by
                     // `BinaryOperation::ModuloInt` below. Remaining TODO: the degenerate
-                    // div-by-zero / `INT_MIN % -1` cases (this backend also leaves integer
+                    // div-by-zero / `INT_MIN % -1` cases (this backend also leaves 16/32-bit integer
                     // `/` unguarded), and float `% 0` (see
                     // https://github.com/gpuweb/gpuweb/issues/2798).
                     BinaryOperation::Modulo => {
@@ -3065,9 +3185,9 @@ impl<'a, W: Write> Writer<'a, W> {
                         // GLSL's `%` is undefined when either operand is negative.
                         // Integer division truncates toward zero (which is well
                         // defined), so reconstruct the remainder as `e1 - e2 * (e1 / e2)`.
-                        // This matches WGSL's truncated `%` for all operands; the
-                        // degenerate `x % 0` / `INT_MIN % -1` cases stay consistent
-                        // with this backend's unguarded integer `/`.
+                        // This matches WGSL's truncated `%` for 16/32-bit operands in
+                        // nondegenerate cases. The `x % 0` / `INT_MIN % -1` cases stay consistent
+                        // with this backend's unguarded 16/32-bit integer `/`.
                         write!(self.out, "(")?;
                         self.write_expr(left, ctx)?;
                         write!(self.out, " - ")?;

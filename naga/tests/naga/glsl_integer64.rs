@@ -774,11 +774,9 @@ fn glsl_resolved_double_types_require_desktop_double_support() {
 }
 
 #[test]
-fn glsl_integer64_unavailable_division_remainder_and_bit_builtins_report_errors() {
+fn glsl_integer64_unavailable_bit_builtins_report_errors() {
     for scalar in ["i64", "u64", "vec2<i64>", "vec2<u64>"] {
         for (expression, operation) in [
-            ("value / value", "Divide"),
-            ("value % value", "Modulo"),
             ("countLeadingZeros(value)", "CountLeadingZeros"),
             ("countTrailingZeros(value)", "CountTrailingZeros"),
             ("countOneBits(value)", "CountOneBits"),

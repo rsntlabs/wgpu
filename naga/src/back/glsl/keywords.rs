@@ -504,6 +504,8 @@ pub const RESERVED_KEYWORDS: &[&str] = &[
     super::MODF_FUNCTION,
     super::FREXP_FUNCTION,
     super::FIRST_INSTANCE_BINDING,
+    super::writer::DIV64_FUNCTION,
+    super::writer::MOD64_FUNCTION,
 ];
 
 /// The above set of reserved keywords, turned into a cached HashSet. This saves
