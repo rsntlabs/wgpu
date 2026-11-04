@@ -1288,6 +1288,27 @@ Const arrays require an initializer and their elements cannot be modified.
 Bare mutable arrays must be assigned before reading. These rules follow C++
 [array declarations](https://eel.is/c++draft/dcl.array) and
 [aggregate initialization](https://eel.is/c++draft/dcl.init.aggr).
+
+Parenthesized lists also initialize local arrays, as in
+`int values[4](1, 2);`. Each element is initialized before the next expression
+runs. Omitted elements use value initialization, including constructor defaults
+for `dim3` subobjects. Scalar clauses use ordinary conversions, so
+`int values[2](1.75f, 2.75f);` produces `1, 2`. Explicit inner braces use the
+existing list-initialization checks. These forms follow C++20
+[direct initialization](https://eel.is/c++draft/dcl.init#general-15.5).
+
+CUDA's recursive member initialization applies to vector, record, and nested
+array elements. `int2 values[](1, 2, 3);` infers two complete elements,
+`(1, 2)` and `(3, 0)`. Complete class values also initialize elements, as in
+`Pair values[](source, Pair(3, 4));`. Fresh constructor expressions initialize
+their array element directly. Copies capture the source value before later
+initializers run.
+
+Direct parenthesized lists require expressions and separators between clauses.
+`int values[2](int(seed));` follows function-declarator parsing and receives a
+diagnostic. Extra grouping makes the initializer an expression, as in
+`int values[2]((int(seed)));`. Equals initialization uses the braced forms.
+
 The outermost local array bound may be omitted when a nonempty initializer list
 determines the element count, following C++ [array declarations](https://timsong-cpp.github.io/cppwp/n4861/dcl.array#7).
 For example, `int values[]{1, 2, 3};` declares three elements.

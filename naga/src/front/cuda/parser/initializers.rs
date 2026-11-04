@@ -220,13 +220,13 @@ impl Parser<'_> {
         actual_ty: Handle<Type>,
         array_count: Option<NonZeroU32>,
     ) -> Result<(), ParseError> {
-        self.lexer.next_if(Token::Operation('='))?;
-        let span = self.lexer.expect_span(Token::Paren('{'))?;
+        let (initialization, span) = self.aggregate_initializer_opening(array_count.is_some())?;
+        let closing = initialization.closing().unwrap();
         if array_count.is_some() {
             self.activate_parameter_expansion(span)?;
             self.prepare_parameter_bindings(span)?;
         }
-        if self.lexer.next_if(Token::Paren('}'))? {
+        if self.lexer.next_if(Token::Paren(closing))? {
             if self.requires_default_constructor(actual_ty) {
                 return self.store_default_initializer(pointer, actual_ty, span);
             }
@@ -261,10 +261,10 @@ impl Parser<'_> {
             specifier,
             element_ty,
             Some(array_count),
-            true,
+            initialization,
             span,
         )?;
-        let end = self.lexer.expect_span(Token::Paren('}'))?;
+        let end = self.lexer.expect_span(Token::Paren(closing))?;
         if initialized_count < array_count.get() {
             self.zero_array_tail(
                 pointer,
@@ -283,18 +283,41 @@ impl Parser<'_> {
         specifier: TypeSpecifier,
         element_ty: Handle<Type>,
     ) -> Result<NonZeroU32, ParseError> {
-        self.lexer.next_if(Token::Operation('='))?;
-        let span = self.lexer.expect_span(Token::Paren('{'))?;
-        if self.lexer.peek()?.0 == Token::Paren('}') {
+        let (initialization, span) = self.aggregate_initializer_opening(true)?;
+        let closing = initialization.closing().unwrap();
+        if self.lexer.peek()?.0 == Token::Paren(closing) {
             return self.fail("cannot infer an array bound from an empty initializer list");
         }
-        let count =
-            self.array_initializer_clauses(pointer, specifier, element_ty, None, true, span)?;
-        let end = self.lexer.expect_span(Token::Paren('}'))?;
+        let count = self.array_initializer_clauses(
+            pointer,
+            specifier,
+            element_ty,
+            None,
+            initialization,
+            span,
+        )?;
+        let end = self.lexer.expect_span(Token::Paren(closing))?;
         NonZeroU32::new(count).ok_or_else(|| ParseError {
             message: String::from("array initializer requires at least one element"),
             span: span.until(&end),
         })
+    }
+
+    fn aggregate_initializer_opening(
+        &mut self,
+        allow_parenthesized: bool,
+    ) -> Result<(AggregateInitialization, Span), ParseError> {
+        let has_equals = self.lexer.next_if(Token::Operation('='))?;
+        if allow_parenthesized && !has_equals && self.lexer.peek()?.0 == Token::Paren('(') {
+            if declarations::parenthesized_function_declaration(self, self.lexer.clone())? {
+                return self.fail("local function declarations are unsupported");
+            }
+            let span = self.lexer.next()?.1;
+            Ok((AggregateInitialization::Parenthesized, span))
+        } else {
+            let span = self.lexer.expect_span(Token::Paren('{'))?;
+            Ok((AggregateInitialization::Braced, span))
+        }
     }
 
     fn array_initializer_clauses(
@@ -303,7 +326,7 @@ impl Parser<'_> {
         specifier: TypeSpecifier,
         element_ty: Handle<Type>,
         known_count: Option<NonZeroU32>,
-        has_braces: bool,
+        initialization: AggregateInitialization,
         span: Span,
     ) -> Result<u32, ParseError> {
         self.activate_parameter_expansion(span)?;
@@ -317,7 +340,7 @@ impl Parser<'_> {
                 specifier,
                 element_ty,
                 known_count,
-                has_braces,
+                initialization,
                 span,
             )
         };
@@ -331,7 +354,7 @@ impl Parser<'_> {
         specifier: TypeSpecifier,
         element_ty: Handle<Type>,
         known_count: Option<NonZeroU32>,
-        has_braces: bool,
+        initialization: AggregateInitialization,
         span: Span,
     ) -> Result<u32, ParseError> {
         let mut initialized_count = 0;
@@ -346,16 +369,23 @@ impl Parser<'_> {
                 },
                 span,
             )?;
-            self.array_initializer_clause(element, specifier, element_ty)?;
+            if initialization == AggregateInitialization::Parenthesized {
+                self.record_initializer_clause(element, element_ty, None, initialization)?;
+            } else {
+                self.array_initializer_clause(element, specifier, element_ty)?;
+            }
             initialized_count = initialized_count.checked_add(1).ok_or_else(|| ParseError {
                 message: String::from("too many array initializer clauses"),
                 span,
             })?;
-            if !has_braces && known_count.is_some_and(|count| initialized_count == count.get()) {
+            if initialization == AggregateInitialization::Elided
+                && known_count.is_some_and(|count| initialized_count == count.get())
+            {
                 break;
             }
             if !self.lexer.next_if(Token::Separator(','))?
-                || self.lexer.peek()?.0 == Token::Paren('}')
+                || (initialization != AggregateInitialization::Parenthesized
+                    && self.lexer.peek()?.0 == Token::Paren('}'))
             {
                 break;
             }
@@ -380,12 +410,17 @@ impl Parser<'_> {
             let initialized_count = if has_braces && self.lexer.next_if(Token::Paren('}'))? {
                 0
             } else {
+                let initialization = if has_braces {
+                    AggregateInitialization::Braced
+                } else {
+                    AggregateInitialization::Elided
+                };
                 let initialized_count = self.array_initializer_clauses(
                     pointer,
                     specifier,
                     base,
                     Some(count),
-                    has_braces,
+                    initialization,
                     opening,
                 )?;
                 if has_braces {
@@ -716,11 +751,12 @@ impl Parser<'_> {
                 Some(value) => value.into(),
                 None => self.expression(0)?,
             };
-            let value = self.rvalue(expression)?;
             let target = TypeResolution::Handle(ty);
             if !matches!(self.module.types[ty].inner, TypeInner::Scalar(_))
-                && !self.module.compare_types(&value.ty, &target)
-                && !self.dimension_conversion(&value.ty, &target)
+                && !self
+                    .module
+                    .compare_types(expression.shader_type()?, &target)
+                && !self.dimension_conversion(expression.shader_type()?, &target)
             {
                 let initialization = if initialization == AggregateInitialization::SingleExpression
                 {
@@ -728,10 +764,11 @@ impl Parser<'_> {
                 } else {
                     AggregateInitialization::ElidedParenthesized
                 };
-                let span = value.span;
+                let span = expression.span();
+                let value = self.rvalue(expression)?;
                 return self.initialize_aggregate(pointer, ty, initialization, span, Some(value));
             }
-            self.convert_value(value.into(), &target)?
+            self.convert_value(expression, &target)?
         } else if let TypeInner::Scalar(scalar) = self.module.types[ty].inner {
             match pending_value {
                 Some(value) => self.list_convert_scalar(value, scalar)?,

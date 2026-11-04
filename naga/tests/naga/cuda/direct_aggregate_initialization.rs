@@ -292,6 +292,7 @@ fn cuda_direct_aggregate_initializers_keep_bounds_and_other_aggregate_grammars()
         "Record copied(1, 2);",
         "float2 source{}; float2 copied({source});",
         "Record source{}; Record copied({source});",
+        "Record source{}; Record values[2](source);",
     ] {
         roundtrip(&format!(
             "struct Record {{ int first; int second; }};
@@ -299,7 +300,6 @@ fn cuda_direct_aggregate_initializers_keep_bounds_and_other_aggregate_grammars()
         ));
     }
     for declaration in [
-        "Record source{}; Record values[2](source);",
         "float2 source{}; float2(source);",
         "Record source{}; Record(source);",
         "float2 source{}; auto copied(float2(source));",
