@@ -142,6 +142,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 
 #### Naga
 
+- Evaluate 64-bit integer constant arithmetic and conversions in the shared evaluator.
 - Enforce CUDA array allocation and extent-parsing limits.
 - Support incomplete CUDA array aliases and per-object bound inference.
 - Support CUDA pointers to incomplete arrays, including completed-array conversions, helper parameters, and kernel buffers.

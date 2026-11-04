@@ -944,6 +944,8 @@ pub enum ConstantEvaluatorError {
     RemainderByZero,
     #[error("RHS of shift operation is greater than or equal to 32")]
     ShiftedMoreThan32Bits,
+    #[error("RHS of shift operation is greater than or equal to 64")]
+    ShiftedMoreThan64Bits,
     #[error(transparent)]
     Literal(#[from] crate::valid::LiteralError),
     #[error("Can't use pipeline-overridable constants in const-expressions")]
@@ -2515,12 +2517,14 @@ impl<'a> ConstantEvaluator<'a> {
                         Literal::U16(v) => v as i16,
                         Literal::I32(v) => v as i16,
                         Literal::U32(v) => v as i16,
+                        Literal::I64(value) => value as i16,
+                        Literal::U64(value) => value as i16,
                         Literal::F32(v) => v.clamp(i16::MIN as f32, i16::MAX as f32) as i16,
                         Literal::F16(v) => {
                             f16::to_f32(v).clamp(i16::MIN as f32, i16::MAX as f32) as i16
                         }
                         Literal::Bool(v) => v as i16,
-                        Literal::F64(_) | Literal::I64(_) | Literal::U64(_) => {
+                        Literal::F64(_) => {
                             return make_error();
                         }
                         Literal::AbstractInt(v) => v as i16,
@@ -2531,10 +2535,12 @@ impl<'a> ConstantEvaluator<'a> {
                         Literal::U16(v) => v,
                         Literal::I32(v) => v as u16,
                         Literal::U32(v) => v as u16,
+                        Literal::I64(value) => value as u16,
+                        Literal::U64(value) => value as u16,
                         Literal::F32(v) => v.clamp(u16::MIN as f32, u16::MAX as f32) as u16,
                         Literal::F16(v) => f16::to_u16(&v.max(f16::ZERO)).unwrap(),
                         Literal::Bool(v) => v as u16,
-                        Literal::F64(_) | Literal::I64(_) | Literal::U64(_) => {
+                        Literal::F64(_) => {
                             return make_error();
                         }
                         Literal::AbstractInt(v) => v as u16,
@@ -2545,10 +2551,12 @@ impl<'a> ConstantEvaluator<'a> {
                         Literal::U16(v) => v as i32,
                         Literal::I32(v) => v,
                         Literal::U32(v) => v as i32,
+                        Literal::I64(value) => value as i32,
+                        Literal::U64(value) => value as i32,
                         Literal::F32(v) => v.clamp(i32::min_float(), i32::max_float()) as i32,
                         Literal::F16(v) => f16::to_i32(&v).unwrap(), //Only None on NaN or Inf
                         Literal::Bool(v) => v as i32,
-                        Literal::F64(_) | Literal::I64(_) | Literal::U64(_) => {
+                        Literal::F64(_) => {
                             return make_error();
                         }
                         Literal::AbstractInt(v) => i32::try_from_abstract(v)?,
@@ -2559,11 +2567,13 @@ impl<'a> ConstantEvaluator<'a> {
                         Literal::U16(v) => v as u32,
                         Literal::I32(v) => v as u32,
                         Literal::U32(v) => v,
+                        Literal::I64(value) => value as u32,
+                        Literal::U64(value) => value as u32,
                         Literal::F32(v) => v.clamp(u32::min_float(), u32::max_float()) as u32,
                         // max(0) avoids None due to negative, therefore only None on NaN or Inf
                         Literal::F16(v) => f16::to_u32(&v.max(f16::ZERO)).unwrap(),
                         Literal::Bool(v) => v as u32,
-                        Literal::F64(_) | Literal::I64(_) | Literal::U64(_) => {
+                        Literal::F64(_) => {
                             return make_error();
                         }
                         Literal::AbstractInt(v) => u32::try_from_abstract(v)?,
@@ -2617,9 +2627,11 @@ impl<'a> ConstantEvaluator<'a> {
                         Literal::U16(v) => v as f32,
                         Literal::I32(v) => v as f32,
                         Literal::U32(v) => v as f32,
+                        Literal::I64(value) => value as f32,
+                        Literal::U64(value) => value as f32,
                         Literal::F32(v) => v,
                         Literal::Bool(v) => v as u32 as f32,
-                        Literal::F64(_) | Literal::I64(_) | Literal::U64(_) => {
+                        Literal::F64(_) => {
                             return make_error();
                         }
                         Literal::F16(v) => f16::to_f32(v),
@@ -2644,12 +2656,14 @@ impl<'a> ConstantEvaluator<'a> {
                         Literal::U16(v) => v != 0,
                         Literal::I32(v) => v != 0,
                         Literal::U32(v) => v != 0,
+                        Literal::I64(value) => value != 0,
+                        Literal::U64(value) => value != 0,
                         Literal::F32(v) => v != 0.0,
                         Literal::F16(v) => v != f16::zero(),
                         Literal::Bool(v) => v,
                         Literal::AbstractInt(v) => v != 0,
                         Literal::AbstractFloat(v) => v != 0.0,
-                        Literal::F64(_) | Literal::I64(_) | Literal::U64(_) => {
+                        Literal::F64(_) => {
                             return make_error();
                         }
                     }),
@@ -2866,7 +2880,7 @@ impl<'a> ConstantEvaluator<'a> {
         let right = self.eval_zero_value_and_splat(right, span)?;
 
         // Note: in most cases constant evaluation checks for overflow, but for
-        // i32/u32, it uses wrapping arithmetic. See
+        // concrete integers, it uses wrapping arithmetic. See
         // <https://gpuweb.github.io/gpuweb/wgsl/#integer-types>.
 
         let expr = match (&self.expressions[left], &self.expressions[right]) {
@@ -3020,6 +3034,73 @@ impl<'a> ConstantEvaluator<'a> {
                             BinaryOperator::ShiftRight => a
                                 .checked_shr(b)
                                 .ok_or(ConstantEvaluatorError::ShiftedMoreThan32Bits)?,
+                            _ => return Err(ConstantEvaluatorError::InvalidBinaryOpArgs),
+                        }),
+                        (Literal::I64(left), Literal::I64(right)) => Literal::I64(match op {
+                            BinaryOperator::Add => left.wrapping_add(right),
+                            BinaryOperator::Subtract => left.wrapping_sub(right),
+                            BinaryOperator::Multiply => left.wrapping_mul(right),
+                            BinaryOperator::Divide => left.checked_div(right).ok_or_else(|| {
+                                if right == 0 {
+                                    ConstantEvaluatorError::DivisionByZero
+                                } else {
+                                    ConstantEvaluatorError::Overflow("division".into())
+                                }
+                            })?,
+                            BinaryOperator::Modulo => left.checked_rem(right).ok_or_else(|| {
+                                if right == 0 {
+                                    ConstantEvaluatorError::RemainderByZero
+                                } else {
+                                    ConstantEvaluatorError::Overflow("remainder".into())
+                                }
+                            })?,
+                            BinaryOperator::And => left & right,
+                            BinaryOperator::ExclusiveOr => left ^ right,
+                            BinaryOperator::InclusiveOr => left | right,
+                            _ => return Err(ConstantEvaluatorError::InvalidBinaryOpArgs),
+                        }),
+                        (Literal::I64(value), Literal::U32(amount)) => Literal::I64(match op {
+                            BinaryOperator::ShiftLeft => {
+                                if (if value.is_negative() { !value } else { value })
+                                    .leading_zeros()
+                                    <= amount
+                                {
+                                    return Err(ConstantEvaluatorError::Overflow("<<".to_string()));
+                                }
+                                value
+                                    .checked_shl(amount)
+                                    .ok_or(ConstantEvaluatorError::ShiftedMoreThan64Bits)?
+                            }
+                            BinaryOperator::ShiftRight => value
+                                .checked_shr(amount)
+                                .ok_or(ConstantEvaluatorError::ShiftedMoreThan64Bits)?,
+                            _ => return Err(ConstantEvaluatorError::InvalidBinaryOpArgs),
+                        }),
+                        (Literal::U64(left), Literal::U64(right)) => Literal::U64(match op {
+                            BinaryOperator::Add => left.wrapping_add(right),
+                            BinaryOperator::Subtract => left.wrapping_sub(right),
+                            BinaryOperator::Multiply => left.wrapping_mul(right),
+                            BinaryOperator::Divide => left
+                                .checked_div(right)
+                                .ok_or(ConstantEvaluatorError::DivisionByZero)?,
+                            BinaryOperator::Modulo => left
+                                .checked_rem(right)
+                                .ok_or(ConstantEvaluatorError::RemainderByZero)?,
+                            BinaryOperator::And => left & right,
+                            BinaryOperator::ExclusiveOr => left ^ right,
+                            BinaryOperator::InclusiveOr => left | right,
+                            _ => return Err(ConstantEvaluatorError::InvalidBinaryOpArgs),
+                        }),
+                        (Literal::U64(value), Literal::U32(amount)) => Literal::U64(match op {
+                            BinaryOperator::ShiftLeft => value
+                                .checked_mul(
+                                    1u64.checked_shl(amount)
+                                        .ok_or(ConstantEvaluatorError::ShiftedMoreThan64Bits)?,
+                                )
+                                .ok_or(ConstantEvaluatorError::Overflow("<<".to_string()))?,
+                            BinaryOperator::ShiftRight => value
+                                .checked_shr(amount)
+                                .ok_or(ConstantEvaluatorError::ShiftedMoreThan64Bits)?,
                             _ => return Err(ConstantEvaluatorError::InvalidBinaryOpArgs),
                         }),
                         (Literal::F32(a), Literal::F32(b)) => Literal::F32(match op {
@@ -5333,6 +5414,712 @@ mod tests {
         };
         if !pass {
             panic!("unexpected evaluation result")
+        }
+    }
+
+    #[test]
+    fn binary_u64_preserves_values_above_u32_range() {
+        let mut types = UniqueArena::new();
+        let constants = Arena::new();
+        let overrides = Arena::new();
+        let mut global_expressions = Arena::new();
+        let left = global_expressions.append(
+            Expression::Literal(Literal::U64(0x1_0000_0000)),
+            Default::default(),
+        );
+        let right =
+            global_expressions.append(Expression::Literal(Literal::U64(7)), Default::default());
+        let expression_kind_tracker = &mut ExpressionKindTracker::from_arena(&global_expressions);
+        let mut solver = ConstantEvaluator {
+            behavior: Behavior::Wgsl(WgslRestrictions::Const(None)),
+            types: &mut types,
+            constants: &constants,
+            overrides: &overrides,
+            expressions: &mut global_expressions,
+            expression_kind_tracker,
+            layouter: &mut crate::proc::Layouter::default(),
+        };
+
+        let result = solver
+            .try_eval_and_append(
+                Expression::Binary {
+                    op: BinaryOperator::Add,
+                    left,
+                    right,
+                },
+                Default::default(),
+            )
+            .unwrap();
+
+        assert_eq!(
+            global_expressions[result],
+            Expression::Literal(Literal::U64(0x1_0000_0007))
+        );
+    }
+
+    #[test]
+    fn cast_u64_to_u32_preserves_low_bits() {
+        let mut types = UniqueArena::new();
+        let constants = Arena::new();
+        let overrides = Arena::new();
+        let mut global_expressions = Arena::new();
+        let value = global_expressions.append(
+            Expression::Literal(Literal::U64(0x1234_5678_89ab_cdef)),
+            Default::default(),
+        );
+        let expression_kind_tracker = &mut ExpressionKindTracker::from_arena(&global_expressions);
+        let mut solver = ConstantEvaluator {
+            behavior: Behavior::Wgsl(WgslRestrictions::Const(None)),
+            types: &mut types,
+            constants: &constants,
+            overrides: &overrides,
+            expressions: &mut global_expressions,
+            expression_kind_tracker,
+            layouter: &mut crate::proc::Layouter::default(),
+        };
+
+        let result = solver
+            .try_eval_and_append(
+                Expression::As {
+                    expr: value,
+                    kind: ScalarKind::Uint,
+                    convert: Some(4),
+                },
+                Default::default(),
+            )
+            .unwrap();
+
+        assert_eq!(
+            global_expressions[result],
+            Expression::Literal(Literal::U32(0x89ab_cdef))
+        );
+    }
+
+    #[test]
+    fn integer64_arithmetic_and_bitwise_preserve_width() {
+        use BinaryOperator as Op;
+        use Literal::{I64, U64};
+
+        let mut module = crate::Module::default();
+        let mut tracker = ExpressionKindTracker::new();
+        let mut layouter = crate::proc::Layouter::default();
+        let mut solver =
+            ConstantEvaluator::for_wgsl_module(&mut module, &mut tracker, &mut layouter, false);
+
+        for (left, op, right, expected) in [
+            (I64(0x1_0000_0000), Op::Add, I64(7), I64(0x1_0000_0007)),
+            (U64(0x1_0000_0000), Op::Add, U64(7), U64(0x1_0000_0007)),
+            (I64(0x1_0000_0007), Op::Subtract, I64(9), I64(0xffff_fffe)),
+            (U64(0x1_0000_0007), Op::Subtract, U64(9), U64(0xffff_fffe)),
+            (
+                I64(0x1_0000_0000),
+                Op::Multiply,
+                I64(-3),
+                I64(-0x3_0000_0000),
+            ),
+            (U64(0x1_0000_0000), Op::Multiply, U64(3), U64(0x3_0000_0000)),
+            (I64(i64::MAX), Op::Add, I64(1), I64(i64::MIN)),
+            (I64(i64::MIN), Op::Subtract, I64(1), I64(i64::MAX)),
+            (I64(i64::MIN), Op::Multiply, I64(-1), I64(i64::MIN)),
+            (U64(u64::MAX), Op::Add, U64(1), U64(0)),
+            (U64(0), Op::Subtract, U64(1), U64(u64::MAX)),
+            (U64(u64::MAX), Op::Multiply, U64(2), U64(u64::MAX - 1)),
+            (I64(-17), Op::Divide, I64(5), I64(-3)),
+            (I64(-17), Op::Modulo, I64(5), I64(-2)),
+            (I64(17), Op::Divide, I64(-5), I64(-3)),
+            (I64(17), Op::Modulo, I64(-5), I64(2)),
+            (I64(i64::MIN), Op::Divide, I64(1), I64(i64::MIN)),
+            (I64(i64::MIN), Op::Modulo, I64(1), I64(0)),
+            (U64(0x1_0000_0011), Op::Divide, U64(5), U64(858_993_462)),
+            (U64(0x1_0000_0011), Op::Modulo, U64(5), U64(3)),
+            (
+                I64(0x1_0000_0003),
+                Op::And,
+                I64(0x1_0000_0005),
+                I64(0x1_0000_0001),
+            ),
+            (
+                U64(0x1_0000_0003),
+                Op::And,
+                U64(0x1_0000_0005),
+                U64(0x1_0000_0001),
+            ),
+            (
+                I64(0x1_0000_0003),
+                Op::ExclusiveOr,
+                I64(0x1_0000_0005),
+                I64(6),
+            ),
+            (
+                U64(0x1_0000_0003),
+                Op::ExclusiveOr,
+                U64(0x1_0000_0005),
+                U64(6),
+            ),
+            (
+                I64(0x1_0000_0003),
+                Op::InclusiveOr,
+                I64(0x1_0000_0005),
+                I64(0x1_0000_0007),
+            ),
+            (
+                U64(0x1_0000_0003),
+                Op::InclusiveOr,
+                U64(0x1_0000_0005),
+                U64(0x1_0000_0007),
+            ),
+        ] {
+            let left = solver
+                .try_eval_and_append(Expression::Literal(left), Default::default())
+                .unwrap();
+            let right = solver
+                .try_eval_and_append(Expression::Literal(right), Default::default())
+                .unwrap();
+            let result = solver
+                .try_eval_and_append(Expression::Binary { op, left, right }, Default::default())
+                .unwrap();
+            assert_eq!(solver.expressions[result], Expression::Literal(expected));
+        }
+    }
+
+    #[test]
+    fn integer64_division_remainder_and_operand_errors() {
+        use super::ConstantEvaluatorError as Error;
+        use BinaryOperator as Op;
+        use Literal::{I32, I64, U32, U64};
+
+        let mut module = crate::Module::default();
+        let mut tracker = ExpressionKindTracker::new();
+        let mut layouter = crate::proc::Layouter::default();
+        let mut solver =
+            ConstantEvaluator::for_wgsl_module(&mut module, &mut tracker, &mut layouter, false);
+
+        for (left, op, right, expected) in [
+            (I64(7), Op::Divide, I64(0), Error::DivisionByZero),
+            (U64(7), Op::Divide, U64(0), Error::DivisionByZero),
+            (I64(7), Op::Modulo, I64(0), Error::RemainderByZero),
+            (U64(7), Op::Modulo, U64(0), Error::RemainderByZero),
+            (
+                I64(i64::MIN),
+                Op::Divide,
+                I64(-1),
+                Error::Overflow("division".into()),
+            ),
+            (
+                I64(i64::MIN),
+                Op::Modulo,
+                I64(-1),
+                Error::Overflow("remainder".into()),
+            ),
+            (I64(1), Op::Add, U64(1), Error::InvalidBinaryOpArgs),
+            (I64(1), Op::Equal, U64(1), Error::InvalidBinaryOpArgs),
+            (U64(1), Op::Less, I64(1), Error::InvalidBinaryOpArgs),
+            (I64(1), Op::Multiply, I32(1), Error::InvalidBinaryOpArgs),
+            (U64(1), Op::Add, U32(1), Error::InvalidBinaryOpArgs),
+            (I64(1), Op::LogicalAnd, I64(1), Error::InvalidBinaryOpArgs),
+            (U64(1), Op::LogicalOr, U64(1), Error::InvalidBinaryOpArgs),
+            (I64(1), Op::ShiftLeft, I64(1), Error::InvalidBinaryOpArgs),
+            (U64(1), Op::ShiftRight, U64(1), Error::InvalidBinaryOpArgs),
+        ] {
+            let left = solver
+                .try_eval_and_append(Expression::Literal(left), Default::default())
+                .unwrap();
+            let right = solver
+                .try_eval_and_append(Expression::Literal(right), Default::default())
+                .unwrap();
+            let error = solver
+                .try_eval_and_append(Expression::Binary { op, left, right }, Default::default())
+                .unwrap_err();
+            assert_eq!(error, expected);
+        }
+    }
+
+    #[test]
+    fn integer64_shifts_preserve_high_bits_and_sign() {
+        use BinaryOperator as Op;
+        use Literal::{I64, U32, U64};
+
+        let mut module = crate::Module::default();
+        let mut tracker = ExpressionKindTracker::new();
+        let mut layouter = crate::proc::Layouter::default();
+        let mut solver =
+            ConstantEvaluator::for_wgsl_module(&mut module, &mut tracker, &mut layouter, false);
+
+        for (left, op, right, expected) in [
+            (U64(1), Op::ShiftLeft, U32(0), U64(1)),
+            (U64(1), Op::ShiftLeft, U32(31), U64(0x8000_0000)),
+            (U64(1), Op::ShiftLeft, U32(32), U64(0x1_0000_0000)),
+            (U64(1), Op::ShiftLeft, U32(63), U64(0x8000_0000_0000_0000)),
+            (I64(1), Op::ShiftLeft, U32(0), I64(1)),
+            (I64(1), Op::ShiftLeft, U32(31), I64(0x8000_0000)),
+            (I64(1), Op::ShiftLeft, U32(32), I64(0x1_0000_0000)),
+            (I64(-1), Op::ShiftLeft, U32(63), I64(i64::MIN)),
+            (
+                U64(0x8000_0000_0000_0000),
+                Op::ShiftRight,
+                U32(0),
+                U64(0x8000_0000_0000_0000),
+            ),
+            (
+                U64(0x8000_0000_0000_0000),
+                Op::ShiftRight,
+                U32(31),
+                U64(0x1_0000_0000),
+            ),
+            (
+                U64(0x8000_0000_0000_0000),
+                Op::ShiftRight,
+                U32(32),
+                U64(0x8000_0000),
+            ),
+            (U64(0x8000_0000_0000_0000), Op::ShiftRight, U32(63), U64(1)),
+            (I64(i64::MIN), Op::ShiftRight, U32(0), I64(i64::MIN)),
+            (I64(i64::MIN), Op::ShiftRight, U32(31), I64(-0x1_0000_0000)),
+            (I64(i64::MIN), Op::ShiftRight, U32(32), I64(-0x8000_0000)),
+            (I64(i64::MIN), Op::ShiftRight, U32(63), I64(-1)),
+        ] {
+            let left = solver
+                .try_eval_and_append(Expression::Literal(left), Default::default())
+                .unwrap();
+            let right = solver
+                .try_eval_and_append(Expression::Literal(right), Default::default())
+                .unwrap();
+            let result = solver
+                .try_eval_and_append(Expression::Binary { op, left, right }, Default::default())
+                .unwrap();
+            assert_eq!(solver.expressions[result], Expression::Literal(expected));
+        }
+    }
+
+    #[test]
+    fn integer64_shifts_reject_invalid_amounts_and_lost_sign_bits() {
+        use super::ConstantEvaluatorError as Error;
+        use BinaryOperator as Op;
+        use Literal::{I64, U32, U64};
+
+        let mut module = crate::Module::default();
+        let mut tracker = ExpressionKindTracker::new();
+        let mut layouter = crate::proc::Layouter::default();
+        let mut solver =
+            ConstantEvaluator::for_wgsl_module(&mut module, &mut tracker, &mut layouter, false);
+
+        for (left, op, right, expected) in [
+            (U64(1), Op::ShiftLeft, U32(64), Error::ShiftedMoreThan64Bits),
+            (
+                U64(1),
+                Op::ShiftRight,
+                U32(64),
+                Error::ShiftedMoreThan64Bits,
+            ),
+            (
+                I64(1),
+                Op::ShiftRight,
+                U32(64),
+                Error::ShiftedMoreThan64Bits,
+            ),
+            (I64(1), Op::ShiftLeft, U32(64), Error::Overflow("<<".into())),
+            (
+                U64(1),
+                Op::ShiftLeft,
+                U32(u32::MAX),
+                Error::ShiftedMoreThan64Bits,
+            ),
+            (
+                I64(-1),
+                Op::ShiftRight,
+                U32(u32::MAX),
+                Error::ShiftedMoreThan64Bits,
+            ),
+            (
+                I64(-1),
+                Op::ShiftLeft,
+                U32(u32::MAX),
+                Error::Overflow("<<".into()),
+            ),
+            (
+                U64(u64::MAX),
+                Op::ShiftLeft,
+                U32(1),
+                Error::Overflow("<<".into()),
+            ),
+            (
+                I64(i64::MAX),
+                Op::ShiftLeft,
+                U32(1),
+                Error::Overflow("<<".into()),
+            ),
+            (
+                I64(i64::MIN),
+                Op::ShiftLeft,
+                U32(1),
+                Error::Overflow("<<".into()),
+            ),
+        ] {
+            let left = solver
+                .try_eval_and_append(Expression::Literal(left), Default::default())
+                .unwrap();
+            let right = solver
+                .try_eval_and_append(Expression::Literal(right), Default::default())
+                .unwrap();
+            let error = solver
+                .try_eval_and_append(Expression::Binary { op, left, right }, Default::default())
+                .unwrap_err();
+            assert_eq!(error, expected);
+        }
+    }
+
+    #[test]
+    fn integer64_comparisons_use_signed_and_unsigned_values() {
+        use BinaryOperator as Op;
+        use Literal::{Bool, I64, U64};
+
+        let mut module = crate::Module::default();
+        let mut tracker = ExpressionKindTracker::new();
+        let mut layouter = crate::proc::Layouter::default();
+        let mut solver =
+            ConstantEvaluator::for_wgsl_module(&mut module, &mut tracker, &mut layouter, false);
+
+        for (left, op, right, expected) in [
+            (I64(i64::MIN), Op::Equal, I64(i64::MIN), Bool(true)),
+            (I64(-1), Op::NotEqual, I64(1), Bool(true)),
+            (I64(-1), Op::Less, I64(1), Bool(true)),
+            (I64(i64::MAX), Op::LessEqual, I64(i64::MAX), Bool(true)),
+            (I64(i64::MIN), Op::Greater, I64(0), Bool(false)),
+            (I64(0), Op::GreaterEqual, I64(-1), Bool(true)),
+            (U64(u64::MAX), Op::Equal, U64(u64::MAX), Bool(true)),
+            (U64(u64::MAX), Op::NotEqual, U64(0), Bool(true)),
+            (U64(0x8000_0000_0000_0000), Op::Less, U64(0), Bool(false)),
+            (U64(u64::MAX), Op::LessEqual, U64(u64::MAX), Bool(true)),
+            (
+                U64(u64::MAX),
+                Op::Greater,
+                U64(0x7fff_ffff_ffff_ffff),
+                Bool(true),
+            ),
+            (U64(0), Op::GreaterEqual, U64(1), Bool(false)),
+        ] {
+            let left = solver
+                .try_eval_and_append(Expression::Literal(left), Default::default())
+                .unwrap();
+            let right = solver
+                .try_eval_and_append(Expression::Literal(right), Default::default())
+                .unwrap();
+            let result = solver
+                .try_eval_and_append(Expression::Binary { op, left, right }, Default::default())
+                .unwrap();
+            assert_eq!(solver.expressions[result], Expression::Literal(expected));
+        }
+    }
+
+    #[test]
+    fn integer64_casts_preserve_integer_bits_and_numeric_values() {
+        use crate::Scalar;
+        use Literal::{Bool, F32, I16, I32, I64, U16, U32, U64};
+
+        let mut module = crate::Module::default();
+        let mut tracker = ExpressionKindTracker::new();
+        let mut layouter = crate::proc::Layouter::default();
+        let mut solver =
+            ConstantEvaluator::for_wgsl_module(&mut module, &mut tracker, &mut layouter, false);
+
+        for (value, target, expected) in [
+            (I64(-1), Scalar::I16, I16(-1)),
+            (I64(-1), Scalar::U16, U16(u16::MAX)),
+            (I64(-1), Scalar::I32, I32(-1)),
+            (I64(-1), Scalar::U32, U32(u32::MAX)),
+            (U64(0x1_0000_8001), Scalar::I16, I16(-32767)),
+            (U64(0x1_0000_8001), Scalar::U16, U16(32769)),
+            (U64(0x1_0000_8001), Scalar::I32, I32(32769)),
+            (U64(0x1_0000_8001), Scalar::U32, U32(32769)),
+            (U64(u64::MAX), Scalar::I16, I16(-1)),
+            (U64(u64::MAX), Scalar::I32, I32(-1)),
+            (I64(0x8000_0000), Scalar::I32, I32(i32::MIN)),
+            (I64(i64::MIN), Scalar::U32, U32(0)),
+            (I64(-1), Scalar::U64, U64(u64::MAX)),
+            (U64(u64::MAX), Scalar::I64, I64(-1)),
+            (I16(-1), Scalar::I64, I64(-1)),
+            (I16(-1), Scalar::U64, U64(u64::MAX)),
+            (U16(u16::MAX), Scalar::I64, I64(65535)),
+            (I32(i32::MIN), Scalar::I64, I64(-2147483648)),
+            (I32(-1), Scalar::U64, U64(u64::MAX)),
+            (U32(u32::MAX), Scalar::I64, I64(4294967295)),
+            (U32(u32::MAX), Scalar::U64, U64(4294967295)),
+            (Bool(true), Scalar::I64, I64(1)),
+            (Bool(false), Scalar::U64, U64(0)),
+            (I64(0), Scalar::BOOL, Bool(false)),
+            (U64(0), Scalar::BOOL, Bool(false)),
+            (I64(i64::MIN), Scalar::BOOL, Bool(true)),
+            (U64(0x1_0000_0000), Scalar::BOOL, Bool(true)),
+            (I64(-1), Scalar::F32, F32(-1.0)),
+            (U64(0x1_0000_0000), Scalar::F32, F32(4294967296.0)),
+            (I64(16777217), Scalar::F32, F32(16777216.0)),
+            (U64(16777219), Scalar::F32, F32(16777220.0)),
+            (I64(i64::MAX), Scalar::F32, F32(9223372036854775808.0)),
+            (U64(u64::MAX), Scalar::F32, F32(18446744073709551616.0)),
+        ] {
+            let value = solver
+                .try_eval_and_append(Expression::Literal(value), Default::default())
+                .unwrap();
+            let result = solver
+                .try_eval_and_append(
+                    Expression::As {
+                        expr: value,
+                        kind: target.kind,
+                        convert: Some(target.width),
+                    },
+                    Default::default(),
+                )
+                .unwrap();
+            assert_eq!(solver.expressions[result], Expression::Literal(expected));
+        }
+    }
+
+    #[test]
+    fn integer64_vectors_fold_zeroes_splats_comparisons_and_casts() {
+        use crate::Scalar;
+        use Literal::{Bool, F32, I16, I32, I64, U16, U32, U64};
+
+        let mut module = crate::Module::default();
+        let mut tracker = ExpressionKindTracker::new();
+        let mut layouter = crate::proc::Layouter::default();
+        let mut solver =
+            ConstantEvaluator::for_wgsl_module(&mut module, &mut tracker, &mut layouter, false);
+
+        for (scalar, first, expected_comparison, expected_float) in [
+            (Scalar::I64, I64(-1), Bool(true), F32(-1.0)),
+            (
+                Scalar::U64,
+                U64(u64::MAX),
+                Bool(false),
+                F32(18446744073709551616.0),
+            ),
+        ] {
+            let vector_type = solver.types.insert(
+                Type {
+                    name: None,
+                    inner: TypeInner::Vector {
+                        size: VectorSize::Bi,
+                        scalar,
+                    },
+                },
+                Default::default(),
+            );
+            let seven = if scalar == Scalar::I64 {
+                I64(7)
+            } else {
+                U64(7)
+            };
+            let high = if scalar == Scalar::I64 {
+                I64(0x1_0000_0000)
+            } else {
+                U64(0x1_0000_0000)
+            };
+            let first = solver
+                .try_eval_and_append(Expression::Literal(first), Default::default())
+                .unwrap();
+            let high = solver
+                .try_eval_and_append(Expression::Literal(high), Default::default())
+                .unwrap();
+            let seven = solver
+                .try_eval_and_append(Expression::Literal(seven), Default::default())
+                .unwrap();
+            let vector = solver
+                .try_eval_and_append(
+                    Expression::Compose {
+                        ty: vector_type,
+                        components: vec![first, high],
+                    },
+                    Default::default(),
+                )
+                .unwrap();
+            let splat = solver
+                .try_eval_and_append(
+                    Expression::Splat {
+                        size: VectorSize::Bi,
+                        value: seven,
+                    },
+                    Default::default(),
+                )
+                .unwrap();
+            let zero = solver
+                .try_eval_and_append(Expression::ZeroValue(vector_type), Default::default())
+                .unwrap();
+            let sum = solver
+                .try_eval_and_append(
+                    Expression::Binary {
+                        op: BinaryOperator::Add,
+                        left: zero,
+                        right: splat,
+                    },
+                    Default::default(),
+                )
+                .unwrap();
+            let Expression::Compose { ty, ref components } = solver.expressions[sum] else {
+                panic!("expected a folded vector");
+            };
+            assert_eq!(ty, vector_type);
+            assert_eq!(components.len(), 2);
+            for &component in components {
+                assert_eq!(solver.expressions[component], solver.expressions[seven]);
+            }
+
+            let comparison = solver
+                .try_eval_and_append(
+                    Expression::Binary {
+                        op: BinaryOperator::Less,
+                        left: vector,
+                        right: splat,
+                    },
+                    Default::default(),
+                )
+                .unwrap();
+            let Expression::Compose { ty, ref components } = solver.expressions[comparison] else {
+                panic!("expected a folded comparison vector");
+            };
+            assert_eq!(
+                solver.types[ty].inner,
+                TypeInner::Vector {
+                    size: VectorSize::Bi,
+                    scalar: Scalar::BOOL
+                }
+            );
+            assert_eq!(
+                solver.expressions[components[0]],
+                Expression::Literal(expected_comparison)
+            );
+            assert_eq!(
+                solver.expressions[components[1]],
+                Expression::Literal(Bool(false))
+            );
+
+            for (target, expected) in [
+                (Scalar::I16, [I16(-1), I16(0)]),
+                (Scalar::U16, [U16(u16::MAX), U16(0)]),
+                (Scalar::I32, [I32(-1), I32(0)]),
+                (Scalar::U32, [U32(u32::MAX), U32(0)]),
+                (Scalar::F32, [expected_float, F32(4294967296.0)]),
+                (Scalar::BOOL, [Bool(true), Bool(true)]),
+            ] {
+                let result = solver
+                    .try_eval_and_append(
+                        Expression::As {
+                            expr: vector,
+                            kind: target.kind,
+                            convert: Some(target.width),
+                        },
+                        Default::default(),
+                    )
+                    .unwrap();
+                let Expression::Compose { ty, ref components } = solver.expressions[result] else {
+                    panic!("expected a folded vector conversion");
+                };
+                assert_eq!(
+                    solver.types[ty].inner,
+                    TypeInner::Vector {
+                        size: VectorSize::Bi,
+                        scalar: target
+                    }
+                );
+                assert_eq!(components.len(), expected.len());
+                for (&component, expected) in components.iter().zip(expected) {
+                    assert_eq!(solver.expressions[component], Expression::Literal(expected));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn integer64_unary_operations_preserve_lower_width_rules() {
+        use super::ConstantEvaluatorError as Error;
+        use BinaryOperator as Op;
+        use Literal::{AbstractInt, I16, I32, I64, U16, U32, U64};
+
+        let mut module = crate::Module::default();
+        let mut tracker = ExpressionKindTracker::new();
+        let mut layouter = crate::proc::Layouter::default();
+        let mut solver =
+            ConstantEvaluator::for_wgsl_module(&mut module, &mut tracker, &mut layouter, false);
+
+        for (op, value, expected) in [
+            (UnaryOperator::Negate, I64(i64::MIN), I64(i64::MIN)),
+            (UnaryOperator::Negate, I64(-7), I64(7)),
+            (
+                UnaryOperator::BitwiseNot,
+                I64(0x1_0000_0000),
+                I64(-0x1_0000_0001),
+            ),
+            (
+                UnaryOperator::BitwiseNot,
+                U64(0x1_0000_0000),
+                U64(0xffff_fffe_ffff_ffff),
+            ),
+        ] {
+            let expr = solver
+                .try_eval_and_append(Expression::Literal(value), Default::default())
+                .unwrap();
+            let result = solver
+                .try_eval_and_append(Expression::Unary { op, expr }, Default::default())
+                .unwrap();
+            assert_eq!(solver.expressions[result], Expression::Literal(expected));
+        }
+        let unsigned = solver
+            .try_eval_and_append(Expression::Literal(U64(1)), Default::default())
+            .unwrap();
+        assert_eq!(
+            solver
+                .try_eval_and_append(
+                    Expression::Unary {
+                        op: UnaryOperator::Negate,
+                        expr: unsigned
+                    },
+                    Default::default(),
+                )
+                .unwrap_err(),
+            Error::InvalidUnaryOpArg,
+        );
+
+        for (left, op, right, expected) in [
+            (I16(i16::MAX), Op::Add, I16(1), I16(i16::MIN)),
+            (U16(0), Op::Subtract, U16(1), U16(u16::MAX)),
+            (I32(i32::MAX), Op::Add, I32(1), I32(i32::MIN)),
+            (U32(u32::MAX), Op::Multiply, U32(2), U32(u32::MAX - 1)),
+        ] {
+            let left = solver
+                .try_eval_and_append(Expression::Literal(left), Default::default())
+                .unwrap();
+            let right = solver
+                .try_eval_and_append(Expression::Literal(right), Default::default())
+                .unwrap();
+            let result = solver
+                .try_eval_and_append(Expression::Binary { op, left, right }, Default::default())
+                .unwrap();
+            assert_eq!(solver.expressions[result], Expression::Literal(expected));
+        }
+        for (left, op, right, expected) in [
+            (
+                AbstractInt(i64::MAX),
+                Op::Add,
+                AbstractInt(1),
+                Error::Overflow("addition".into()),
+            ),
+            (
+                I32(1),
+                Op::ShiftRight,
+                U32(32),
+                Error::ShiftedMoreThan32Bits,
+            ),
+            (U32(1), Op::ShiftLeft, U32(32), Error::ShiftedMoreThan32Bits),
+        ] {
+            let left = solver
+                .try_eval_and_append(Expression::Literal(left), Default::default())
+                .unwrap();
+            let right = solver
+                .try_eval_and_append(Expression::Literal(right), Default::default())
+                .unwrap();
+            let error = solver
+                .try_eval_and_append(Expression::Binary { op, left, right }, Default::default())
+                .unwrap_err();
+            assert_eq!(error, expected);
         }
     }
 }

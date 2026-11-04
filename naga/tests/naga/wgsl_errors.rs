@@ -6156,8 +6156,6 @@ fn bitwise_shift_errors() {
 
     // (CTS has more 32-bit test cases)
 
-    // Const evaluation of `i64` and `u64` is not implemented, https://github.com/gfx-rs/wgpu/issues/8972
-
     // 64-bit runtime by const < bitwidth
     check_success("fn foo() { var x: u64; var n = x << 63; }");
     check_success("fn foo() { var x: i64; var n = x << 63; }");
@@ -6343,4 +6341,118 @@ fn ray_query_let() {
         ",
         "Ray query with initialize",
     );
+}
+
+#[test]
+fn integer64_constants_fold_through_wgsl_entry_points() {
+    use naga::{Expression, Literal};
+
+    let source = "
+        const wide_sum: u64 = 0x100000000lu + 7lu;
+        const signed_quotient: i64 = -17li / 5li;
+        const unsigned_remainder: u64 = 0x100000011lu % 5lu;
+        const low_bits: u32 = u32(0x1234567889abcdeflu);
+        const sign_bits: u32 = u32(-1li);
+        const high_bit: u64 = 1lu << 63u;
+        const signed_shift: i64 = -1li << 63u;
+        const folded_vector = vec2<u64>(0x100000000lu, 7lu) + vec2<u64>(1lu, 2lu);
+        @group(0) @binding(0) var<storage, read_write> output: array<u64>;
+        @compute @workgroup_size(1) fn main() {
+            output[0] = wide_sum;
+            output[1] = u64(low_bits);
+            output[2] = high_bit;
+            output[3] = folded_vector.x;
+        }
+    ";
+    let module = naga::front::wgsl::parse_str(source)
+        .unwrap_or_else(|error| panic!("{}", error.emit_to_string(source)));
+    for (name, expected) in [
+        ("wide_sum", Literal::U64(0x1_0000_0007)),
+        ("signed_quotient", Literal::I64(-3)),
+        ("unsigned_remainder", Literal::U64(3)),
+        ("low_bits", Literal::U32(0x89ab_cdef)),
+        ("sign_bits", Literal::U32(u32::MAX)),
+        ("high_bit", Literal::U64(0x8000_0000_0000_0000)),
+        ("signed_shift", Literal::I64(i64::MIN)),
+    ] {
+        let (_, constant) = module
+            .constants
+            .iter()
+            .find(|(_, constant)| constant.name.as_deref() == Some(name))
+            .unwrap();
+        assert_eq!(
+            module.global_expressions[constant.init],
+            Expression::Literal(expected)
+        );
+    }
+    let (_, vector) = module
+        .constants
+        .iter()
+        .find(|(_, constant)| constant.name.as_deref() == Some("folded_vector"))
+        .unwrap();
+    let Expression::Compose { ty, ref components } = module.global_expressions[vector.init] else {
+        panic!("expected a folded constant vector");
+    };
+    assert_eq!(
+        module.types[ty].inner,
+        naga::TypeInner::Vector {
+            size: naga::VectorSize::Bi,
+            scalar: naga::Scalar::U64,
+        }
+    );
+    assert_eq!(components.len(), 2);
+    for (&component, expected) in components.iter().zip([0x1_0000_0001, 9]) {
+        assert_eq!(
+            module.global_expressions[component],
+            Expression::Literal(Literal::U64(expected))
+        );
+    }
+    let info = valid::Validator::new(valid::ValidationFlags::all(), Capabilities::SHADER_INT64)
+        .validate(&module)
+        .unwrap();
+    assert!(
+        valid::Validator::new(valid::ValidationFlags::all(), Capabilities::empty())
+            .validate(&module)
+            .is_err()
+    );
+
+    #[cfg(feature = "wgsl-out")]
+    for flags in [
+        naga::back::wgsl::WriterFlags::empty(),
+        naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+    ] {
+        let output = naga::back::wgsl::write_string(&module, &info, flags).unwrap();
+        let reparsed = naga::front::wgsl::parse_str(&output)
+            .unwrap_or_else(|error| panic!("{}\n{output}", error.emit_to_string(&output)));
+        valid::Validator::new(valid::ValidationFlags::all(), Capabilities::SHADER_INT64)
+            .validate(&reparsed)
+            .unwrap();
+    }
+    #[cfg(not(feature = "wgsl-out"))]
+    let _ = info;
+}
+
+#[test]
+fn integer64_constant_errors_reach_wgsl_diagnostics() {
+    for source in [
+        "const value: u64 = 1lu << 64u;",
+        "const value: u64 = 1lu >> 64u;",
+        "const value: i64 = 1li >> 64u;",
+    ] {
+        check_error_matches(
+            source,
+            "RHS of shift operation is greater than or equal to 64",
+        );
+    }
+    for source in [
+        "const value: i64 = 1li << 64u;",
+        "const value: i64 = 1li << 63u;",
+        "const value: u64 = 0xfffffffffffffffflu << 1u;",
+        "const value: i64 = (-9223372036854775807li - 1li) / -1li;",
+        "const value: i64 = (-9223372036854775807li - 1li) % -1li;",
+    ] {
+        check_error_matches(source, "overflowed");
+    }
+    check_error_matches("const value: i64 = 7li / 0li;", "Division by zero");
+    check_error_matches("const value: u64 = 7lu % 0lu;", "Remainder by zero");
 }
