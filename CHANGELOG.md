@@ -142,6 +142,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 
 #### Naga
 
+- Preserve vector boolean operations when reading SPIR-V.
 - Emit GLSL 64-bit integer scalars and vectors with the required extensions and width-preserving conversions.
 - Evaluate 64-bit integer constant arithmetic and conversions in the shared evaluator.
 - Enforce CUDA array allocation and extent-parsing limits.

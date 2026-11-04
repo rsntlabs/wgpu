@@ -1030,7 +1030,7 @@ impl<I: Iterator<Item = u32>> Frontend<I> {
         block: &mut crate::Block,
         block_id: spirv::Word,
         body_idx: usize,
-        op: crate::BinaryOperator,
+        mut op: crate::BinaryOperator,
     ) -> Result<(), Error> {
         let start = self.data_offset;
         let result_type_id = self.next()?;
@@ -1042,6 +1042,31 @@ impl<I: Iterator<Item = u32>> Frontend<I> {
         let left = self.get_expr_handle(p1_id, p1_lexp, ctx, emitter, block, body_idx);
         let p2_lexp = self.lookup_expression.lookup(p2_id)?;
         let right = self.get_expr_handle(p2_id, p2_lexp, ctx, emitter, block, body_idx);
+
+        if matches!(
+            op,
+            crate::BinaryOperator::LogicalAnd | crate::BinaryOperator::LogicalOr
+        ) {
+            let result_type = self.lookup_type.lookup(result_type_id)?.handle;
+            let left_type = self.lookup_type.lookup(p1_lexp.type_id)?.handle;
+            let right_type = self.lookup_type.lookup(p2_lexp.type_id)?.handle;
+            let result_inner = &ctx.module.types[result_type].inner;
+            if matches!(
+                result_inner,
+                crate::TypeInner::Vector {
+                    scalar: crate::Scalar::BOOL,
+                    ..
+                }
+            ) && *result_inner == ctx.module.types[left_type].inner
+                && *result_inner == ctx.module.types[right_type].inner
+            {
+                op = match op {
+                    crate::BinaryOperator::LogicalAnd => crate::BinaryOperator::And,
+                    crate::BinaryOperator::LogicalOr => crate::BinaryOperator::InclusiveOr,
+                    _ => unreachable!(),
+                };
+            }
+        }
 
         let expr = crate::Expression::Binary { op, left, right };
         self.lookup_expression.insert(

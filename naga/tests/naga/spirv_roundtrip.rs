@@ -302,3 +302,362 @@ fn integer_width_conversions_preserve_source_signedness_in_spirv() {
         }
     }
 }
+
+#[test]
+fn boolean_scalar_and_vector_operations_preserve_eager_operands_in_spirv() {
+    fn root_calls(
+        body: &naga::Block,
+        targets: &[naga::Handle<naga::Function>],
+        output: &mut Vec<naga::Handle<naga::Function>>,
+    ) {
+        for statement in body {
+            match *statement {
+                naga::Statement::Block(ref body) => root_calls(body, targets, output),
+                naga::Statement::Call { function, .. } if targets.contains(&function) => {
+                    output.push(function)
+                }
+                _ => {}
+            }
+        }
+    }
+
+    for components in [1, 2, 3, 4] {
+        let numeric_type = if components == 1 {
+            String::from("u32")
+        } else {
+            format!("vec{components}<u32>")
+        };
+        let boolean_type = if components == 1 {
+            String::from("bool")
+        } else {
+            format!("vec{components}<bool>")
+        };
+        let source = format!(
+            "
+            @group(0) @binding(0) var<storage> input: array<{numeric_type}>;
+            @group(0) @binding(1) var<storage, read_write> output: array<{numeric_type}>;
+            fn observe_left(value: {numeric_type}) -> {boolean_type} {{
+                output[2] += {numeric_type}(1u);
+                return value != {numeric_type}(0u);
+            }}
+            fn observe_right(value: {numeric_type}) -> {boolean_type} {{
+                output[3] += {numeric_type}(1u);
+                return value != {numeric_type}(0u);
+            }}
+            @compute @workgroup_size(1) fn main() {{
+                let left_value = observe_left(input[0]);
+                let right_value = observe_right(input[1]);
+                let conjunction = left_value & right_value;
+                let disjunction = left_value | right_value;
+                output[0] = select({numeric_type}(0u), {numeric_type}(1u), conjunction);
+                output[1] = select({numeric_type}(0u), {numeric_type}(1u), disjunction);
+            }}"
+        );
+        let module = naga::front::wgsl::parse_str(&source)
+            .unwrap_or_else(|error| panic!("{}", error.emit_to_string(&source)));
+        let mut validator = naga::valid::Validator::new(
+            naga::valid::ValidationFlags::all(),
+            naga::valid::Capabilities::empty(),
+        );
+        let info = validator.validate(&module).unwrap();
+        let options = naga::back::spv::Options {
+            flags: naga::back::spv::Options::default().flags | naga::back::spv::WriterFlags::DEBUG,
+            ..Default::default()
+        };
+        let pipeline = naga::back::spv::PipelineOptions {
+            entry_point: String::from("main"),
+            shader_stage: naga::ShaderStage::Compute,
+        };
+        let words = naga::back::spv::write_vec(&module, &info, &options, Some(&pipeline)).unwrap();
+        super::helpers::validate_spirv(&words);
+        let parsed = naga::front::spv::parse_u8_slice(
+            &words_to_bytes(&words),
+            &naga::front::spv::Options {
+                adjust_coordinate_space: false,
+                strict_capabilities: true,
+                block_ctx_dump_prefix: None,
+            },
+        )
+        .unwrap();
+        let parsed_info = validator.validate(&parsed).unwrap();
+        let targets: Vec<_> = ["observe_left", "observe_right"]
+            .into_iter()
+            .map(|name| {
+                parsed
+                    .functions
+                    .iter()
+                    .find_map(|(handle, function)| {
+                        (function.name.as_deref() == Some(name)).then_some(handle)
+                    })
+                    .unwrap()
+            })
+            .collect();
+        let functions = parsed
+            .functions
+            .iter()
+            .map(|(handle, function)| (function, &parsed_info[handle]))
+            .chain(
+                parsed
+                    .entry_points
+                    .iter()
+                    .enumerate()
+                    .map(|(index, entry)| (&entry.function, parsed_info.get_entry_point(index))),
+            );
+        let mut matching_functions = 0;
+        for (function, info) in functions {
+            let mut calls = Vec::new();
+            root_calls(&function.body, &targets, &mut calls);
+            if calls != targets {
+                continue;
+            }
+            matching_functions += 1;
+            let expected_type = if components == 1 {
+                naga::TypeInner::Scalar(naga::Scalar::BOOL)
+            } else {
+                let size = match components {
+                    2 => naga::VectorSize::Bi,
+                    3 => naga::VectorSize::Tri,
+                    4 => naga::VectorSize::Quad,
+                    _ => unreachable!(),
+                };
+                naga::TypeInner::Vector {
+                    size,
+                    scalar: naga::Scalar::BOOL,
+                }
+            };
+            let expected_operators = if components == 1 {
+                [
+                    naga::BinaryOperator::LogicalAnd,
+                    naga::BinaryOperator::LogicalOr,
+                ]
+            } else {
+                [naga::BinaryOperator::And, naga::BinaryOperator::InclusiveOr]
+            };
+            for expected in expected_operators {
+                assert!(
+                    function.expressions.iter().any(|(handle, expression)| {
+                        matches!(*expression, naga::Expression::Binary { op, .. } if op == expected)
+                            && *info[handle].ty.inner_with(&parsed.types) == expected_type
+                    }),
+                    "missing {components}-component {expected:?}"
+                );
+            }
+        }
+        assert_eq!(
+            matching_functions, 1,
+            "operands must both be captured once before the eager boolean operations"
+        );
+        let rewritten =
+            naga::back::spv::write_vec(&parsed, &parsed_info, &options, Some(&pipeline)).unwrap();
+        super::helpers::validate_spirv(&rewritten);
+    }
+}
+
+#[cfg(feature = "wgsl-out")]
+#[test]
+fn vector_integer_division_and_remainder_roundtrip_through_spirv_and_wgsl() {
+    for scalar in ["i32", "i64"] {
+        for components in [2, 3, 4] {
+            let value_type = format!("vec{components}<{scalar}>");
+            let minimum = if scalar == "i64" {
+                "(-9223372036854775807li - 1li)"
+            } else {
+                "(-2147483647i - 1i)"
+            };
+            let source = format!(
+                "
+                @group(0) @binding(0) var<storage> input: array<{value_type}>;
+                @group(0) @binding(1) var<storage, read_write> output: array<{value_type}>;
+                @compute @workgroup_size(1) fn main() {{
+                    let numerator = input[0];
+                    let denominator = input[1];
+                    output[0] = numerator / denominator;
+                    output[1] = numerator % denominator;
+                    output[2] = {value_type}({minimum}) / (denominator & {value_type}(0));
+                    output[3] = {value_type}({minimum}) % (denominator | {value_type}(-1));
+                }}"
+            );
+            let capabilities = if scalar == "i64" {
+                naga::valid::Capabilities::SHADER_INT64
+            } else {
+                naga::valid::Capabilities::empty()
+            };
+            let module = naga::front::wgsl::parse_str(&source)
+                .unwrap_or_else(|error| panic!("{}", error.emit_to_string(&source)));
+            let mut validator =
+                naga::valid::Validator::new(naga::valid::ValidationFlags::all(), capabilities);
+            let info = validator.validate(&module).unwrap();
+            let pipeline = naga::back::spv::PipelineOptions {
+                entry_point: String::from("main"),
+                shader_stage: naga::ShaderStage::Compute,
+            };
+            let options = naga::back::spv::Options::default();
+            let words =
+                naga::back::spv::write_vec(&module, &info, &options, Some(&pipeline)).unwrap();
+            super::helpers::validate_spirv(&words);
+            let parsed = naga::front::spv::parse_u8_slice(
+                &words_to_bytes(&words),
+                &naga::front::spv::Options {
+                    adjust_coordinate_space: false,
+                    strict_capabilities: true,
+                    block_ctx_dump_prefix: None,
+                },
+            )
+            .unwrap();
+            let parsed_info = validator.validate(&parsed).unwrap();
+            let wgsl = naga::back::wgsl::write_string(
+                &parsed,
+                &parsed_info,
+                naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+            )
+            .unwrap();
+            let reparsed = naga::front::wgsl::parse_str(&wgsl)
+                .unwrap_or_else(|error| panic!("{}\n{wgsl}", error.emit_to_string(&wgsl)));
+            let reparsed_info = validator.validate(&reparsed).unwrap();
+            let pipeline = naga::back::spv::PipelineOptions {
+                entry_point: reparsed.entry_points[0].name.clone(),
+                shader_stage: naga::ShaderStage::Compute,
+            };
+            let rewritten =
+                naga::back::spv::write_vec(&reparsed, &reparsed_info, &options, Some(&pipeline))
+                    .unwrap();
+            super::helpers::validate_spirv(&rewritten);
+        }
+    }
+}
+
+#[test]
+fn spirv_logical_vectors_reject_mismatched_operand_and_result_types() {
+    use rspirv::{binary::Assemble, dr::Operand};
+    use spirv::Op;
+
+    let source = "
+        @group(0) @binding(0) var<storage> input: array<vec3<u32>>;
+        @group(0) @binding(1) var<storage, read_write> output: array<vec3<u32>>;
+        @compute @workgroup_size(1) fn main() {
+            let left = input[0].xy != vec2<u32>(17u, 23u);
+            let right = input[1].xy != vec2<u32>(29u, 31u);
+            let both = left & right;
+            let either = left | right;
+            let triple = input[0] != vec3<u32>(0u);
+            output[0] = select(vec3<u32>(0u), vec3<u32>(1u), triple);
+            output[1].x = select(0u, 1u, both.x);
+            output[1].y = select(0u, 1u, either.y);
+        }";
+    let module = naga::front::wgsl::parse_str(source).unwrap();
+    let mut validator = naga::valid::Validator::new(
+        naga::valid::ValidationFlags::all(),
+        naga::valid::Capabilities::empty(),
+    );
+    let info = validator.validate(&module).unwrap();
+    let options = naga::back::spv::Options::default();
+    let pipeline = naga::back::spv::PipelineOptions {
+        entry_point: String::from("main"),
+        shader_stage: naga::ShaderStage::Compute,
+    };
+    let words = naga::back::spv::write_vec(&module, &info, &options, Some(&pipeline)).unwrap();
+    super::helpers::validate_spirv(&words);
+    let instructions = rspirv::dr::load_words(&words).unwrap();
+    let boolean = instructions
+        .types_global_values
+        .iter()
+        .find(|instruction| instruction.class.opcode == Op::TypeBool)
+        .unwrap()
+        .result_id
+        .unwrap();
+    let unsigned = instructions
+        .types_global_values
+        .iter()
+        .find(|instruction| {
+            instruction.class.opcode == Op::TypeInt
+                && instruction.operands == [Operand::LiteralBit32(32), Operand::LiteralBit32(0)]
+        })
+        .unwrap()
+        .result_id
+        .unwrap();
+    let vector_type = |component, size| {
+        instructions
+            .types_global_values
+            .iter()
+            .find(|instruction| {
+                instruction.class.opcode == Op::TypeVector
+                    && instruction.operands
+                        == [Operand::IdRef(component), Operand::LiteralBit32(size)]
+            })
+            .unwrap()
+            .result_id
+            .unwrap()
+    };
+    let boolean_pair = vector_type(boolean, 2);
+    let boolean_triple = vector_type(boolean, 3);
+    let unsigned_pair = vector_type(unsigned, 2);
+    let integer_value = instructions
+        .types_global_values
+        .iter()
+        .find(|instruction| {
+            instruction.result_type == Some(unsigned_pair)
+                && matches!(
+                    instruction.class.opcode,
+                    Op::ConstantComposite | Op::ConstantNull
+                )
+        })
+        .unwrap()
+        .result_id
+        .unwrap();
+
+    for operation in [Op::LogicalAnd, Op::LogicalOr] {
+        let mut location = None;
+        for (function_index, function) in instructions.functions.iter().enumerate() {
+            for (block_index, block) in function.blocks.iter().enumerate() {
+                if let Some(instruction_index) = block.instructions.iter().position(|instruction| {
+                    instruction.class.opcode == operation
+                        && instruction.result_type == Some(boolean_pair)
+                }) {
+                    location = Some((function_index, block_index, instruction_index));
+                }
+            }
+        }
+        let (function_index, block_index, instruction_index) = location.unwrap();
+        let mut valid_unused = instructions.clone();
+        let unused_result = valid_unused.header.as_ref().unwrap().bound;
+        valid_unused.header.as_mut().unwrap().bound += 1;
+        let block = &mut valid_unused.functions[function_index].blocks[block_index];
+        let mut duplicate = block.instructions[instruction_index].clone();
+        duplicate.result_id = Some(unused_result);
+        block.instructions.insert(instruction_index + 1, duplicate);
+        super::helpers::validate_spirv(&valid_unused.assemble());
+
+        for mismatch in [
+            "integer_operands",
+            "integer_result",
+            "different_boolean_size",
+        ] {
+            let mut malformed = valid_unused.clone();
+            let instruction = &mut malformed.functions[function_index].blocks[block_index]
+                .instructions[instruction_index + 1];
+            match mismatch {
+                "integer_operands" => {
+                    instruction.operands =
+                        vec![Operand::IdRef(integer_value), Operand::IdRef(integer_value)]
+                }
+                "integer_result" => instruction.result_type = Some(unsigned_pair),
+                "different_boolean_size" => instruction.result_type = Some(boolean_triple),
+                _ => unreachable!(),
+            }
+            let result = naga::front::spv::parse_u8_slice(
+                &words_to_bytes(&malformed.assemble()),
+                &naga::front::spv::Options {
+                    adjust_coordinate_space: false,
+                    strict_capabilities: true,
+                    block_ctx_dump_prefix: None,
+                },
+            );
+            if let Ok(parsed) = result {
+                assert!(
+                    validator.validate(&parsed).is_err(),
+                    "accepted {operation:?} with {mismatch}"
+                );
+            }
+        }
+    }
+}
