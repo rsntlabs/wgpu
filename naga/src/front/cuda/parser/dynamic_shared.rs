@@ -137,8 +137,14 @@ impl<'a> Parser<'a> {
         loop {
             let (name, name_span) = self.identifier()?;
             self.check_name(name, name_span)?;
-            self.lexer.expect_span(Token::Paren('['))?;
-            let array = self.array_declaration(base, true, name_span)?;
+            let array = self
+                .array_declarator(base, true, name_span)?
+                .ok_or_else(|| {
+                    shared_error(
+                        "dynamic shared arrays require an incomplete outer dimension",
+                        name_span,
+                    )
+                })?;
             if array.count.is_some() {
                 return Err(shared_error(
                     "dynamic shared arrays require an incomplete outer dimension",

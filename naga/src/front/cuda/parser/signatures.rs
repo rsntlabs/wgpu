@@ -25,6 +25,12 @@ impl Parser<'_> {
             (pointer_qualifiers, is_reference)
         };
         if let TypeSpecifier::Array(array) = ty.ty {
+            if pointer_qualifiers.is_some() && self.is_incomplete_array(array) {
+                return Err(ParseError {
+                    message: String::from("pointers to incomplete arrays are unsupported"),
+                    span: declarator_span,
+                });
+            }
             if is_reference && pointer_qualifiers.is_none() {
                 return Err(ParseError {
                     message: String::from("whole-array reference parameters are unsupported"),

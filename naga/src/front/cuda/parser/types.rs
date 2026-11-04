@@ -428,6 +428,12 @@ impl<'a> Parser<'a> {
         layout_span: Span,
         span: Span,
     ) -> Result<Handle<Type>, ParseError> {
+        if self.is_incomplete_array(base) {
+            return Err(ParseError {
+                message: String::from("array elements require a complete type"),
+                span: layout_span,
+            });
+        }
         self.parameter_expansion_budget.charge_nodes(1, span)?;
         self.parameter_expansion_budget
             .charge_slice::<(Type, Span)>(1, span)?;
@@ -449,6 +455,16 @@ impl<'a> Parser<'a> {
             });
         }
         Ok(self.module.types.insert(Type { name: None, inner }, span))
+    }
+
+    pub(super) fn is_incomplete_array(&self, ty: Handle<Type>) -> bool {
+        matches!(
+            self.module.types[ty].inner,
+            TypeInner::Array {
+                size: ArraySize::Dynamic,
+                ..
+            }
+        )
     }
 
     pub(super) fn array_shape(
@@ -658,6 +674,12 @@ impl<'a> Parser<'a> {
         let Some(pointer_qualifiers) = pointer_declarator(&mut self.lexer, ty.ty)? else {
             return Ok(ty);
         };
+        if matches!(ty.ty, TypeSpecifier::Array(array) if self.is_incomplete_array(array)) {
+            return Err(ParseError {
+                message: String::from("pointers to incomplete arrays are unsupported"),
+                span,
+            });
+        }
         let resolution = self.lower_type(ty.ty, span)?;
         let pointee = self.type_handle(&resolution, span);
         Ok(QualifiedType {
@@ -688,9 +710,13 @@ impl<'a> Parser<'a> {
         self.lexer.next()?;
         let resolution = self.lower_type(ty.ty, span)?;
         let base = self.type_handle(&resolution, span);
-        let array = self.array_declaration(base, false, span)?;
+        let array = self.array_declaration(base, true, span)?;
+        let array_ty = match array.count {
+            Some(_) => array.ty,
+            None => self.array_type(array.element_ty, ArraySize::Dynamic, span, span)?,
+        };
         Ok(QualifiedType {
-            ty: TypeSpecifier::Array(array.ty),
+            ty: TypeSpecifier::Array(array_ty),
             qualifiers: ty.qualifiers,
         })
     }
