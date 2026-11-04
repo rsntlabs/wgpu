@@ -798,7 +798,7 @@ impl<'a> Parser<'a> {
         let mut is_discardable = self.pointer_constant(base).is_discardable;
         loop {
             self.lexer.expect_span(Token::Paren('['))?;
-            let index = if dynamic {
+            let mut index = if dynamic {
                 self.dynamic_shared_index()?
             } else {
                 let index = self.expression(0)?;
@@ -817,6 +817,9 @@ impl<'a> Parser<'a> {
             } else {
                 Self::constant_array_address(is_discardable, count, index.constant)
             };
+            if scalar.width == 8 {
+                index = self.convert_scalar(index.into(), Scalar::U32)?;
+            }
             base = self.append(
                 Expression::Access {
                     base,
@@ -1009,7 +1012,10 @@ impl<'a> Parser<'a> {
             category: ValueCategory::Prvalue,
             qualifiers: Qualifiers::NONE,
             constant: ConstantValue {
-                is_null_pointer_constant: matches!(literal, Literal::I32(0) | Literal::U32(0)),
+                is_null_pointer_constant: matches!(
+                    literal,
+                    Literal::I32(0) | Literal::U32(0) | Literal::I64(0) | Literal::U64(0)
+                ),
                 ..literal.into()
             },
             handle,

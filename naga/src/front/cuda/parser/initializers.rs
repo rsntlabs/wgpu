@@ -865,25 +865,27 @@ impl Parser<'_> {
         let source = self.require_scalar_type(&value.ty, value.span)?;
         let integer_range = |scalar| match scalar {
             Scalar::BOOL => Some((0, 1)),
-            Scalar::I16 => Some((i64::from(i16::MIN), i64::from(i16::MAX))),
-            Scalar::U16 => Some((0, i64::from(u16::MAX))),
-            Scalar::I32 => Some((i64::from(i32::MIN), i64::from(i32::MAX))),
-            Scalar::U32 => Some((0, i64::from(u32::MAX))),
+            Scalar::I16 => Some((i128::from(i16::MIN), i128::from(i16::MAX))),
+            Scalar::U16 => Some((0, i128::from(u16::MAX))),
+            Scalar::I32 => Some((i128::from(i32::MIN), i128::from(i32::MAX))),
+            Scalar::U32 => Some((0, i128::from(u32::MAX))),
+            Scalar::I64 => Some((i128::from(i64::MIN), i128::from(i64::MAX))),
+            Scalar::U64 => Some((0, i128::from(u64::MAX))),
             _ => None,
         };
         let integer = match value.constant.literal {
-            Some(Literal::Bool(boolean)) => Some(i64::from(boolean)),
-            Some(Literal::I16(integer)) => Some(i64::from(integer)),
-            Some(Literal::U16(integer)) => Some(i64::from(integer)),
-            Some(Literal::I32(integer)) => Some(i64::from(integer)),
-            Some(Literal::U32(integer)) => Some(i64::from(integer)),
+            Some(Literal::Bool(boolean)) => Some(i128::from(boolean)),
+            Some(Literal::I16(integer)) => Some(i128::from(integer)),
+            Some(Literal::U16(integer)) => Some(i128::from(integer)),
+            Some(Literal::I32(integer)) => Some(i128::from(integer)),
+            Some(Literal::U32(integer)) => Some(i128::from(integer)),
+            Some(Literal::I64(integer)) => Some(i128::from(integer)),
+            Some(Literal::U64(integer)) => Some(i128::from(integer)),
             _ => None,
         };
         let is_representable = source == target
             || match target {
-                Scalar::F32 => {
-                    integer.is_some_and(|integer| f64::from(integer as f32) == integer as f64)
-                }
+                Scalar::F32 => integer.is_some_and(|integer| (integer as f32) as i128 == integer),
                 _ => integer_range(source)
                     .zip(integer_range(target))
                     .is_some_and(|((source_min, source_max), (target_min, target_max))| {

@@ -37,10 +37,23 @@ pub(super) fn parse(input: &str) -> Option<Literal> {
 }
 
 pub(super) fn parse_integer(input: &str) -> Option<Literal> {
-    let (body, unsigned) = match input.strip_suffix(['u', 'U']) {
+    let (mut body, mut unsigned) = match input.strip_suffix(['u', 'U']) {
         Some(body) => (body, true),
         None => (input, false),
     };
+    let long_long = matches!(
+        body.get(body.len().saturating_sub(2)..),
+        Some("ll" | "LL" | "lL" | "Ll")
+    );
+    if long_long {
+        body = &body[..body.len() - 2];
+        if !unsigned {
+            if let Some(digits) = body.strip_suffix(['u', 'U']) {
+                body = digits;
+                unsigned = true;
+            }
+        }
+    }
     let (digits, radix) = match body.get(..2) {
         Some("0x" | "0X") => (&body[2..], 16),
         Some("0b" | "0B") => (&body[2..], 2),
@@ -58,6 +71,14 @@ pub(super) fn parse_integer(input: &str) -> Option<Literal> {
     } else {
         Cow::Borrowed(digits)
     };
+    if long_long {
+        let value = u64::from_str_radix(&digits, radix).ok()?;
+        return if unsigned || value > i64::MAX as u64 {
+            Some(Literal::U64(value))
+        } else {
+            i64::try_from(value).ok().map(Literal::I64)
+        };
+    }
     let value = u32::from_str_radix(&digits, radix).ok()?;
     if unsigned || (radix != 10 && value > i32::MAX as u32) {
         Some(Literal::U32(value))

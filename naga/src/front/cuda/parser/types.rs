@@ -80,29 +80,43 @@ pub(super) struct FunctionOverloads {
 pub(super) struct IntegerSpecifiers {
     seen_int: bool,
     seen_short: bool,
+    long_count: u8,
     seen_signed: bool,
     seen_unsigned: bool,
 }
 
 impl IntegerSpecifiers {
     pub(super) const fn is_empty(&self) -> bool {
-        !self.seen_int && !self.seen_short && !self.seen_signed && !self.seen_unsigned
+        !self.seen_int
+            && !self.seen_short
+            && self.long_count == 0
+            && !self.seen_signed
+            && !self.seen_unsigned
+    }
+
+    pub(super) const fn is_supported(&self) -> bool {
+        self.long_count != 1
     }
 
     pub(super) fn consume(&mut self, specifier: &str) -> Option<Scalar> {
         match specifier {
             "int" if !self.seen_int => self.seen_int = true,
-            "short" if !self.seen_short => self.seen_short = true,
+            "short" if !self.seen_short && self.long_count == 0 => self.seen_short = true,
+            "long" if !self.seen_short && self.long_count < 2 => self.long_count += 1,
             "signed" if !self.seen_signed && !self.seen_unsigned => self.seen_signed = true,
             "unsigned" if !self.seen_unsigned && !self.seen_signed => self.seen_unsigned = true,
             _ => return None,
         }
-        Some(match (self.seen_unsigned, self.seen_short) {
-            (false, false) => Scalar::I32,
-            (false, true) => Scalar::I16,
-            (true, false) => Scalar::U32,
-            (true, true) => Scalar::U16,
-        })
+        Some(
+            match (self.seen_unsigned, self.seen_short, self.long_count) {
+                (false, _, 1 | 2) => Scalar::I64,
+                (true, _, 1 | 2) => Scalar::U64,
+                (false, false, _) => Scalar::I32,
+                (false, true, _) => Scalar::I16,
+                (true, false, _) => Scalar::U32,
+                (true, true, _) => Scalar::U16,
+            },
+        )
     }
 }
 
@@ -284,7 +298,7 @@ fn declaration_type(
                 }
                 inferred = true;
             }
-            Token::Word(specifier @ ("int" | "short" | "signed" | "unsigned")) => {
+            Token::Word(specifier @ ("int" | "short" | "long" | "signed" | "unsigned")) => {
                 if inferred || (ty.is_some() && integers.is_empty()) {
                     return Err(invalid("incompatible or repeated type specifier"));
                 }
@@ -305,6 +319,12 @@ fn declaration_type(
             _ => break,
         }
         lexer.next()?;
+    }
+    if !integers.is_supported() {
+        return Err(ParseError {
+            message: String::from("long scalar types are unsupported; use long long"),
+            span: lexer.peek()?.1,
+        });
     }
     if inferred {
         return Ok((
@@ -513,7 +533,13 @@ impl<'a> Parser<'a> {
                     TypeInner::Scalar(scalar) | TypeInner::Vector { scalar, .. } => {
                         matches!(
                             scalar,
-                            Scalar::I16 | Scalar::U16 | Scalar::I32 | Scalar::U32 | Scalar::F32
+                            Scalar::I16
+                                | Scalar::U16
+                                | Scalar::I32
+                                | Scalar::U32
+                                | Scalar::I64
+                                | Scalar::U64
+                                | Scalar::F32
                         )
                     }
                     TypeInner::Array {
@@ -597,7 +623,7 @@ impl<'a> Parser<'a> {
             ));
         }
         Ok(match self.lexer.peek()?.0 {
-            Token::Word("const" | "volatile" | "constexpr" | "decltype") => true,
+            Token::Word("const" | "volatile" | "constexpr" | "decltype" | "long") => true,
             Token::Word(name) => self.type_name(name).is_some(),
             _ => false,
         })

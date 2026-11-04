@@ -487,6 +487,14 @@ impl<'a> Analysis<'a> {
                 }
                 Expression::Literal(Literal::I32(value)) if value >= 0 => value as u32,
                 Expression::Literal(Literal::U32(value)) => value,
+                Expression::Literal(Literal::I64(value)) => match u32::try_from(value) {
+                    Ok(value) => value,
+                    Err(_) => return Ok(None),
+                },
+                Expression::Literal(Literal::U64(value)) => match u32::try_from(value) {
+                    Ok(value) => value,
+                    Err(_) => return Ok(None),
+                },
                 _ => return Ok(None),
             };
             return Ok((!has_signed_cast || value <= i32::MAX as u32).then_some(value));

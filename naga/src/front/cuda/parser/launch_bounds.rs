@@ -27,11 +27,13 @@ impl<'a> Parser<'a> {
                     let value = parser.rvalue(expression)?;
                     let literal = Self::required_constant(&value)?;
                     let integer = match literal {
-                        Literal::I16(value) => i32::from(value),
-                        Literal::U16(value) => i32::from(value),
-                        Literal::I32(value) => value,
-                        Literal::U32(value) => value as i32,
-                        Literal::Bool(value) => i32::from(value),
+                        Literal::I16(value) => Some(i32::from(value)),
+                        Literal::U16(value) => Some(i32::from(value)),
+                        Literal::I32(value) => Some(value),
+                        Literal::U32(value) => Some(value as i32),
+                        Literal::I64(value) => i32::try_from(value).ok(),
+                        Literal::U64(value) => u32::try_from(value).ok().map(|value| value as i32),
+                        Literal::Bool(value) => Some(i32::from(value)),
                         _ => {
                             return Err(ParseError {
                                 message: String::from(
@@ -40,7 +42,13 @@ impl<'a> Parser<'a> {
                                 span: value.span,
                             })
                         }
-                    };
+                    }
+                    .ok_or_else(|| ParseError {
+                        message: String::from(
+                            "launch bounds require values in the supported 32-bit integer range",
+                        ),
+                        span: value.span,
+                    })?;
                     parser.lexer.expect_span(Token::End)?;
                     Ok((integer > 0).then_some(integer as u32))
                 });

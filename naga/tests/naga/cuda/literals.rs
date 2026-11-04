@@ -172,9 +172,26 @@ fn cuda_integer_literals_reject_malformed_digit_separators() {
 
 #[test]
 fn cuda_integer_literals_reject_unsupported_and_repeated_suffixes() {
+    for text in ["1LL", "1ll", "1ULL", "1llU", "1lL"] {
+        let source =
+            format!("/* 漢 */ __global__ void kernel() {{ unsigned int value = {text}; }}");
+        let capabilities = naga::valid::Capabilities::SHADER_INT64;
+        let (module, info) = super::helpers::validate_with_options_and_capabilities(
+            &source,
+            &Options::default(),
+            capabilities,
+        );
+        #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+        super::helpers::wgsl_roundtrip_with_capabilities(
+            &module,
+            &info,
+            naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+            capabilities,
+        );
+        let _ = (module, info);
+    }
     for text in [
-        "1L", "1l", "1LL", "1ll", "1uL", "1LU", "1ULL", "1llU", "1z", "1UZ", "1uu", "1uU", "1lul",
-        "1lL", "0xffffuu", "1i", "1_kg",
+        "1L", "1l", "1uL", "1LU", "1z", "1UZ", "1uu", "1uU", "1lul", "0xffffuu", "1i", "1_kg",
     ] {
         rejected_token(text);
     }

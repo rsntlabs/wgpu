@@ -805,6 +805,8 @@ impl<'a> Parser<'a> {
             let delta = match offset.constant.literal {
                 Some(Literal::I32(value)) => Some(i64::from(value)),
                 Some(Literal::U32(value)) => Some(i64::from(value)),
+                Some(Literal::I64(value)) => Some(value),
+                Some(Literal::U64(value)) => i64::try_from(value).ok(),
                 _ => None,
             };
             let position = address.offset.zip(delta).and_then(|(position, delta)| {
