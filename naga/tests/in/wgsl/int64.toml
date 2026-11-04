@@ -1,5 +1,5 @@
 capabilities = "SHADER_INT64"
-targets = "SPIRV | HLSL | WGSL | METAL"
+targets = "SPIRV | HLSL | WGSL | METAL | GLSL"
 
 [msl]
 fake_missing_bindings = true
@@ -17,3 +17,6 @@ zero_initialize_workgroup_memory = true
 
 [spv]
 version = [1, 0]
+
+[glsl]
+version.Desktop = 450
