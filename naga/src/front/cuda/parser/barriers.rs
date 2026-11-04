@@ -1,3 +1,4 @@
+use super::float_helpers::FloatMathFunction;
 use super::*;
 
 mod helpers;
@@ -45,6 +46,7 @@ impl Parser<'_> {
             let mut proof = UniformControlFlow::new(
                 &self.module,
                 function,
+                self.float_math_functions[FloatMathFunction::AbsoluteValue.index()],
                 &mut self.parameter_expansion_budget,
                 error.span,
             )?;
@@ -69,6 +71,7 @@ struct UniformControlFlow<'a> {
     span: Span,
     locals: Vec<bool>,
     values: Vec<bool>,
+    absolute_value_function: Option<Handle<Function>>,
     loops: Vec<LoopUniformity<'a>>,
     changed: bool,
     calls: Option<CallUniformity<'a>>,
@@ -78,6 +81,7 @@ impl<'a> UniformControlFlow<'a> {
     fn new(
         module: &'a Module,
         function: &'a Function,
+        absolute_value_function: Option<Handle<Function>>,
         budget: &'a mut parameter_expansion::ExpansionBudget,
         span: Span,
     ) -> Result<Self, ParseError> {
@@ -91,7 +95,13 @@ impl<'a> UniformControlFlow<'a> {
             .collect();
         budget.charge_slice::<bool>(function.expressions.len(), span)?;
         budget.charge_work(function.expressions.len(), span)?;
-        let values = alloc::vec![false; function.expressions.len()];
+        let values = function
+            .expressions
+            .iter()
+            .map(|(_, expression)| {
+                matches!(*expression, Expression::CallResult(callee) if Some(callee) == absolute_value_function)
+            })
+            .collect();
         let mut proof = Self {
             module,
             function,
@@ -99,6 +109,7 @@ impl<'a> UniformControlFlow<'a> {
             span,
             locals,
             values,
+            absolute_value_function,
             loops: Vec::new(),
             changed: false,
             calls: None,
@@ -244,6 +255,11 @@ impl<'a> UniformControlFlow<'a> {
                         uniform &= self.read(argument);
                     }
                     uniform
+                }
+                Expression::CallResult(function)
+                    if Some(function) == self.absolute_value_function =>
+                {
+                    self.value(handle)
                 }
                 Expression::CallResult(_) | Expression::AtomicResult { .. } => false,
                 _ => return Err(barrier_error(self.span)),
@@ -409,10 +425,24 @@ impl<'a> UniformControlFlow<'a> {
                         }
                     }
                 }
-                Statement::Call { ref arguments, .. } => {
+                Statement::Call {
+                    function,
+                    ref arguments,
+                    result,
+                } => {
                     self.budget.charge_work(arguments.len(), self.span)?;
+                    let mut arguments_uniform = true;
                     for &argument in arguments {
-                        self.read(argument);
+                        arguments_uniform &= self.read(argument);
+                    }
+                    if let Some(result) = result {
+                        if Some(function) == self.absolute_value_function
+                            && !arguments_uniform
+                            && self.values[result.index()]
+                        {
+                            self.values[result.index()] = false;
+                            self.changed = true;
+                        }
                     }
                 }
                 Statement::Atomic {

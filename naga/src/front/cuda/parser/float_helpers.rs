@@ -10,7 +10,7 @@ pub(super) enum FloatMathFunction {
 }
 
 impl FloatMathFunction {
-    const fn index(self) -> usize {
+    pub(super) const fn index(self) -> usize {
         match self {
             Self::Floor => 0,
             Self::Ceil => 1,
@@ -36,6 +36,25 @@ impl Parser<'_> {
         operation: FloatMathFunction,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
+        let result = self.call_float_math_bits(value, operation, span)?;
+        self.append(
+            Expression::As {
+                expr: result,
+                kind: ScalarKind::Float,
+                convert: None,
+            },
+            span,
+        )
+    }
+
+    pub(super) fn call_float_math_bits(
+        &mut self,
+        value: Handle<Expression>,
+        operation: FloatMathFunction,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
         let input_bits = self.append(
             Expression::As {
                 expr: value,
@@ -45,6 +64,11 @@ impl Parser<'_> {
             span,
         )?;
         let function = self.cached_float_math_function(operation, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<Handle<Expression>>(1, span)?;
+        self.parameter_expansion_budget.charge_nodes(1, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<(Statement, Span)>(1, span)?;
         let result = self.append_call_result(function, span)?;
         self.push_statement(
             Statement::Call {
@@ -54,14 +78,7 @@ impl Parser<'_> {
             },
             span,
         );
-        self.append(
-            Expression::As {
-                expr: result,
-                kind: ScalarKind::Float,
-                convert: None,
-            },
-            span,
-        )
+        Ok(result)
     }
 
     fn cached_float_math_function(
@@ -79,6 +96,10 @@ impl Parser<'_> {
         let result = self.build_float_math_function(operation, span);
         let helper = core::mem::replace(&mut self.function, caller);
         result?;
+        self.parameter_expansion_budget
+            .inventory_function(&helper.ir, span, 1)?;
+        self.parameter_expansion_budget
+            .charge_slice::<(Function, Span)>(1, span)?;
         let function = self.module.functions.append(helper.ir, span);
         self.float_math_functions[operation.index()] = Some(function);
         Ok(function)

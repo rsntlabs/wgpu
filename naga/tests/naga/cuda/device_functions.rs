@@ -55,9 +55,9 @@ fn cuda_device_scalar_signatures_preserve_the_kernel_resource_abi() {
             out[0] = mix(input[0], integer(3.5f), natural(count), truth(-1.0f));
         }",
     );
-    assert_eq!(module.functions.len(), 4);
     assert_eq!(module.entry_points.len(), 1);
     let (_, mix) = function(&module, "mix");
+    assert_eq!(mix.arguments.len(), 4);
     for (argument, scalar) in mix.arguments.iter().zip([
         naga::Scalar::F32,
         naga::Scalar::I32,
@@ -69,6 +69,19 @@ fn cuda_device_scalar_signatures_preserve_the_kernel_resource_abi() {
             naga::TypeInner::Scalar(scalar)
         );
         assert_eq!(argument.binding, None);
+    }
+    for (name, scalar) in [
+        ("integer", naga::Scalar::F32),
+        ("natural", naga::Scalar::I32),
+        ("truth", naga::Scalar::F32),
+    ] {
+        let function = function(&module, name).1;
+        assert_eq!(function.arguments.len(), 1);
+        assert_eq!(
+            module.types[function.arguments[0].ty].inner,
+            naga::TypeInner::Scalar(scalar)
+        );
+        assert_eq!(function.arguments[0].binding, None);
     }
     for (name, scalar) in [
         ("mix", naga::Scalar::F32),

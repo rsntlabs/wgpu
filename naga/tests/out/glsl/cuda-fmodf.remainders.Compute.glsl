@@ -91,6 +91,11 @@ float fmodf_1(float first, float second, float third) {
     return ((first + second) + third);
 }
 
+uint _naga_fabsf(uint input_bits) {
+    uint _e2 = (input_bits & 2147483647u);
+    return ((_e2 > 2139095040u) ? 2143289344u : _e2);
+}
+
 void main() {
     uint local = 0u;
     uint local_1 = 0u;
@@ -275,115 +280,118 @@ void main() {
         float _e472 = value;
         value = (_e472 + float(1));
         uint _e479 = _naga_fmodf(floatBitsToUint(_e472), floatBitsToUint(2.0));
-        local_20 = (uintBitsToFloat(_e479) != 0.0);
+        uint _e482 = _naga_fabsf(floatBitsToUint(uintBitsToFloat(_e479)));
+        local_20 = (_e482 != 0u);
     }
-    bool _e483 = local_20;
-    _group_0_binding_0_cs[uint(40)] = uint(_e483);
+    bool _e485 = local_20;
+    _group_0_binding_0_cs[uint(40)] = uint(_e485);
     local_21 = true;
     if (true) {
     } else {
-        float _e490 = value;
-        value = (_e490 + float(1));
-        uint _e497 = _naga_fmodf(floatBitsToUint(_e490), floatBitsToUint(2.0));
-        local_21 = (uintBitsToFloat(_e497) != 0.0);
+        float _e492 = value;
+        value = (_e492 + float(1));
+        uint _e499 = _naga_fmodf(floatBitsToUint(_e492), floatBitsToUint(2.0));
+        uint _e502 = _naga_fabsf(floatBitsToUint(uintBitsToFloat(_e499)));
+        local_21 = (_e502 != 0u);
     }
-    bool _e501 = local_21;
-    _group_0_binding_0_cs[uint(41)] = uint(_e501);
-    float _e506 = value;
-    _group_0_binding_0_cs[uint(42)] = floatBitsToUint(_e506);
-    float _e511 = value;
-    value = (_e511 + float(1));
-    uint _e518 = _naga_fmodf(floatBitsToUint(_e511), floatBitsToUint(2.0));
-    float _e519 = value;
-    value = (_e519 + float(1));
-    uint _e526 = _naga_fmodf(floatBitsToUint(_e519), floatBitsToUint(3.0));
-    _group_0_binding_0_cs[uint(43)] = floatBitsToUint(uintBitsToFloat(_e526));
-    float _e532 = value;
-    _group_0_binding_0_cs[uint(44)] = floatBitsToUint(_e532);
-    float _e537 = value;
-    value = (_e537 + float(1));
-    uint _e544 = _naga_fmodf(floatBitsToUint(_e537), floatBitsToUint(3.0));
-    local_22 = uintBitsToFloat(_e544);
-    float _e547 = local_22;
-    _group_0_binding_0_cs[uint(45)] = floatBitsToUint(_e547);
-    float _e552 = value;
-    _group_0_binding_0_cs[uint(46)] = floatBitsToUint(_e552);
+    bool _e505 = local_21;
+    _group_0_binding_0_cs[uint(41)] = uint(_e505);
+    float _e510 = value;
+    _group_0_binding_0_cs[uint(42)] = floatBitsToUint(_e510);
+    float _e515 = value;
+    value = (_e515 + float(1));
+    uint _e522 = _naga_fmodf(floatBitsToUint(_e515), floatBitsToUint(2.0));
+    float _e523 = value;
+    value = (_e523 + float(1));
+    uint _e530 = _naga_fmodf(floatBitsToUint(_e523), floatBitsToUint(3.0));
+    _group_0_binding_0_cs[uint(43)] = floatBitsToUint(uintBitsToFloat(_e530));
+    float _e536 = value;
+    _group_0_binding_0_cs[uint(44)] = floatBitsToUint(_e536);
+    float _e541 = value;
+    value = (_e541 + float(1));
+    uint _e548 = _naga_fmodf(floatBitsToUint(_e541), floatBitsToUint(3.0));
+    local_22 = uintBitsToFloat(_e548);
+    float _e551 = local_22;
+    _group_0_binding_0_cs[uint(45)] = floatBitsToUint(_e551);
+    float _e556 = value;
+    _group_0_binding_0_cs[uint(46)] = floatBitsToUint(_e556);
     {
         iteration = 0;
         bool loop_init = true;
         while(true) {
             if (!loop_init) {
-                int _e582 = iteration;
-                iteration = (_e582 + 1);
+                int _e586 = iteration;
+                iteration = (_e586 + 1);
             }
             loop_init = false;
-            int _e559 = iteration;
-            if ((_e559 < 2)) {
+            int _e563 = iteration;
+            if ((_e563 < 2)) {
             } else {
                 break;
             }
-            int _e562 = iteration;
-            if ((_e562 == 0)) {
+            int _e566 = iteration;
+            if ((_e566 == 0)) {
                 continue;
             }
-            float _e565 = value;
-            value = (_e565 + float(1));
-            uint _e572 = _naga_fmodf(floatBitsToUint(_e565), floatBitsToUint(2.0));
+            float _e569 = value;
+            value = (_e569 + float(1));
+            uint _e576 = _naga_fmodf(floatBitsToUint(_e569), floatBitsToUint(2.0));
             local_23 = uint(47);
-            uint _e578 = local_23;
-            local_31 = _e578;
-            uint _e580 = local_31;
-            _group_0_binding_0_cs[_e580] = floatBitsToUint(uintBitsToFloat(_e572));
+            uint _e582 = local_23;
+            local_31 = _e582;
+            uint _e584 = local_31;
+            _group_0_binding_0_cs[_e584] = floatBitsToUint(uintBitsToFloat(_e576));
         }
     }
-    float _e585 = value;
-    _group_0_binding_0_cs[uint(48)] = floatBitsToUint(_e585);
+    float _e589 = value;
+    _group_0_binding_0_cs[uint(48)] = floatBitsToUint(_e589);
     local_24 = true;
     if (true) {
-        float _e592 = value;
-        value = (_e592 + float(1));
-        uint _e599 = _naga_fmodf(floatBitsToUint(_e592), floatBitsToUint(2.0));
-        local_24 = (uintBitsToFloat(_e599) != 0.0);
+        float _e596 = value;
+        value = (_e596 + float(1));
+        uint _e603 = _naga_fmodf(floatBitsToUint(_e596), floatBitsToUint(2.0));
+        uint _e606 = _naga_fabsf(floatBitsToUint(uintBitsToFloat(_e603)));
+        local_24 = (_e606 != 0u);
     }
-    bool _e603 = local_24;
-    _group_0_binding_0_cs[uint(49)] = uint(_e603);
-    float _e608 = value;
-    _group_0_binding_0_cs[uint(50)] = floatBitsToUint(_e608);
-    float _e617 = sample_remainder(float(4294967295u), float(3u));
-    _group_0_binding_0_cs[uint(51)] = floatBitsToUint(_e617);
-    float _e629 = sample_remainder(float((-(2147483647) - 1)), float(3));
-    _group_0_binding_0_cs[uint(52)] = floatBitsToUint(_e629);
-    uint _e638 = _naga_fmodf(floatBitsToUint(0.5), floatBitsToUint(0.25));
-    _group_0_binding_0_cs[uint(53)] = floatBitsToUint(uintBitsToFloat(_e638));
-    uint _e649 = _naga_fmodf(floatBitsToUint(-(0.5)), floatBitsToUint(0.25));
-    _group_0_binding_0_cs[uint(54)] = floatBitsToUint(uintBitsToFloat(_e649));
+    bool _e609 = local_24;
+    _group_0_binding_0_cs[uint(49)] = uint(_e609);
+    float _e614 = value;
+    _group_0_binding_0_cs[uint(50)] = floatBitsToUint(_e614);
+    float _e623 = sample_remainder(float(4294967295u), float(3u));
+    _group_0_binding_0_cs[uint(51)] = floatBitsToUint(_e623);
+    float _e635 = sample_remainder(float((-(2147483647) - 1)), float(3));
+    _group_0_binding_0_cs[uint(52)] = floatBitsToUint(_e635);
+    uint _e644 = _naga_fmodf(floatBitsToUint(0.5), floatBitsToUint(0.25));
+    _group_0_binding_0_cs[uint(53)] = floatBitsToUint(uintBitsToFloat(_e644));
+    uint _e655 = _naga_fmodf(floatBitsToUint(-(0.5)), floatBitsToUint(0.25));
+    _group_0_binding_0_cs[uint(54)] = floatBitsToUint(uintBitsToFloat(_e655));
     local_25 = 2147483647u;
-    uint _e657 = local_25;
-    uint _e662 = _naga_fmodf(floatBitsToUint(uintBitsToFloat(_e657)), floatBitsToUint(1.0));
-    _group_0_binding_0_cs[uint(55)] = floatBitsToUint(uintBitsToFloat(_e662));
-    float _e670 = sample_remainder(3.25, 2.0);
-    _group_0_binding_0_cs[uint(56)] = floatBitsToUint(_e670);
-    uint _e679 = _naga_fmodf(floatBitsToUint(5.5), floatBitsToUint(2.0));
-    uint _e684 = _naga_fmodf(floatBitsToUint(1.5), floatBitsToUint(uintBitsToFloat(_e679)));
-    _group_0_binding_0_cs[uint(57)] = floatBitsToUint(uintBitsToFloat(_e684));
-    uint _e694 = _naga_fmodf(floatBitsToUint(8.5), floatBitsToUint(3.0));
-    uint _e699 = _naga_fmodf(floatBitsToUint(uintBitsToFloat(_e694)), floatBitsToUint(2.0));
-    _group_0_binding_0_cs[uint(58)] = floatBitsToUint(uintBitsToFloat(_e699));
+    uint _e663 = local_25;
+    uint _e668 = _naga_fmodf(floatBitsToUint(uintBitsToFloat(_e663)), floatBitsToUint(1.0));
+    _group_0_binding_0_cs[uint(55)] = floatBitsToUint(uintBitsToFloat(_e668));
+    float _e676 = sample_remainder(3.25, 2.0);
+    _group_0_binding_0_cs[uint(56)] = floatBitsToUint(_e676);
+    uint _e685 = _naga_fmodf(floatBitsToUint(5.5), floatBitsToUint(2.0));
+    uint _e690 = _naga_fmodf(floatBitsToUint(1.5), floatBitsToUint(uintBitsToFloat(_e685)));
+    _group_0_binding_0_cs[uint(57)] = floatBitsToUint(uintBitsToFloat(_e690));
+    uint _e700 = _naga_fmodf(floatBitsToUint(8.5), floatBitsToUint(3.0));
+    uint _e705 = _naga_fmodf(floatBitsToUint(uintBitsToFloat(_e700)), floatBitsToUint(2.0));
+    _group_0_binding_0_cs[uint(58)] = floatBitsToUint(uintBitsToFloat(_e705));
     local_26 = 2139095040u;
-    uint _e709 = local_26;
-    uint _e713 = _naga_fmodf(floatBitsToUint(-(0.0)), floatBitsToUint(uintBitsToFloat(_e709)));
-    _group_0_binding_0_cs[uint(59)] = floatBitsToUint(uintBitsToFloat(_e713));
+    uint _e715 = local_26;
+    uint _e719 = _naga_fmodf(floatBitsToUint(-(0.0)), floatBitsToUint(uintBitsToFloat(_e715)));
+    _group_0_binding_0_cs[uint(59)] = floatBitsToUint(uintBitsToFloat(_e719));
     local_27 = 1u;
-    uint _e721 = local_27;
+    uint _e727 = local_27;
     local_28 = 4286578688u;
-    uint _e725 = local_28;
-    uint _e729 = _naga_fmodf(floatBitsToUint(uintBitsToFloat(_e721)), floatBitsToUint(uintBitsToFloat(_e725)));
-    _group_0_binding_0_cs[uint(60)] = floatBitsToUint(uintBitsToFloat(_e729));
+    uint _e731 = local_28;
+    uint _e735 = _naga_fmodf(floatBitsToUint(uintBitsToFloat(_e727)), floatBitsToUint(uintBitsToFloat(_e731)));
+    _group_0_binding_0_cs[uint(60)] = floatBitsToUint(uintBitsToFloat(_e735));
     local_29 = 8388609u;
-    uint _e737 = local_29;
+    uint _e743 = local_29;
     local_30 = 8388607u;
-    uint _e741 = local_30;
-    uint _e745 = _naga_fmodf(floatBitsToUint(uintBitsToFloat(_e737)), floatBitsToUint(uintBitsToFloat(_e741)));
-    _group_0_binding_0_cs[uint(61)] = floatBitsToUint(uintBitsToFloat(_e745));
+    uint _e747 = local_30;
+    uint _e751 = _naga_fmodf(floatBitsToUint(uintBitsToFloat(_e743)), floatBitsToUint(uintBitsToFloat(_e747)));
+    _group_0_binding_0_cs[uint(61)] = floatBitsToUint(uintBitsToFloat(_e751));
 }
 

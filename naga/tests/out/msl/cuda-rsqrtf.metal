@@ -233,6 +233,13 @@ float pair(
 ) {
     return (first_1 * 10.0) + second_1;
 }
+
+uint _naga_fabsf(
+    uint input_bits_1
+) {
+    uint _e2 = input_bits_1 & 2147483647u;
+    return (_e2 > 2139095040u) ? 2143289344u : _e2;
+}
 int naga_neg(int val) {
     return as_type<int>(-as_type<uint>(val));
 }
@@ -398,50 +405,52 @@ kernel void inverse_roots(
         value = _e415 + static_cast<float>(1);
         uint _e420 = _naga_sqrtf(as_type<uint>(_e415));
         uint _e425 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e420)));
-        local_11 = as_type<float>(_e425) != 0.0;
+        uint _e428 = _naga_fabsf(as_type<uint>(as_type<float>(_e425)));
+        local_11 = _e428 != 0u;
     }
-    bool _e429 = local_11;
-    out[static_cast<uint>(35)] = static_cast<uint>(_e429);
+    bool _e431 = local_11;
+    out[static_cast<uint>(35)] = static_cast<uint>(_e431);
     local_12 = true;
     if (true) {
     } else {
-        float _e436 = value;
-        value = _e436 + static_cast<float>(1);
-        uint _e441 = _naga_sqrtf(as_type<uint>(_e436));
-        uint _e446 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e441)));
-        local_12 = as_type<float>(_e446) != 0.0;
+        float _e438 = value;
+        value = _e438 + static_cast<float>(1);
+        uint _e443 = _naga_sqrtf(as_type<uint>(_e438));
+        uint _e448 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e443)));
+        uint _e451 = _naga_fabsf(as_type<uint>(as_type<float>(_e448)));
+        local_12 = _e451 != 0u;
     }
-    bool _e450 = local_12;
-    out[static_cast<uint>(36)] = static_cast<uint>(_e450);
-    float _e455 = value;
-    out[static_cast<uint>(37)] = as_type<uint>(_e455);
+    bool _e454 = local_12;
+    out[static_cast<uint>(36)] = static_cast<uint>(_e454);
+    float _e459 = value;
+    out[static_cast<uint>(37)] = as_type<uint>(_e459);
     left = 4.0;
     right = 9.0;
-    float _e464 = left;
-    left = _e464 + static_cast<float>(1);
-    uint _e469 = _naga_sqrtf(as_type<uint>(_e464));
-    uint _e474 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e469)));
-    float _e476 = right;
-    right = _e476 + static_cast<float>(1);
-    uint _e481 = _naga_sqrtf(as_type<uint>(_e476));
-    uint _e486 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e481)));
-    float _e488 = pair(as_type<float>(_e474), as_type<float>(_e486));
-    out[static_cast<uint>(38)] = as_type<uint>(_e488);
-    float _e493 = left;
-    out[static_cast<uint>(39)] = as_type<uint>(_e493);
-    float _e498 = right;
-    out[static_cast<uint>(40)] = as_type<uint>(_e498);
-    float _e503 = value;
-    value = _e503 + static_cast<float>(1);
-    uint _e508 = _naga_sqrtf(as_type<uint>(_e503));
-    uint _e513 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e508)));
-    float _e514 = value;
-    value = _e514 + static_cast<float>(1);
-    uint _e519 = _naga_sqrtf(as_type<uint>(_e514));
-    uint _e524 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e519)));
-    out[static_cast<uint>(41)] = as_type<uint>(as_type<float>(_e524));
-    float _e530 = value;
-    out[static_cast<uint>(42)] = as_type<uint>(_e530);
+    float _e468 = left;
+    left = _e468 + static_cast<float>(1);
+    uint _e473 = _naga_sqrtf(as_type<uint>(_e468));
+    uint _e478 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e473)));
+    float _e480 = right;
+    right = _e480 + static_cast<float>(1);
+    uint _e485 = _naga_sqrtf(as_type<uint>(_e480));
+    uint _e490 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e485)));
+    float _e492 = pair(as_type<float>(_e478), as_type<float>(_e490));
+    out[static_cast<uint>(38)] = as_type<uint>(_e492);
+    float _e497 = left;
+    out[static_cast<uint>(39)] = as_type<uint>(_e497);
+    float _e502 = right;
+    out[static_cast<uint>(40)] = as_type<uint>(_e502);
+    float _e507 = value;
+    value = _e507 + static_cast<float>(1);
+    uint _e512 = _naga_sqrtf(as_type<uint>(_e507));
+    uint _e517 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e512)));
+    float _e518 = value;
+    value = _e518 + static_cast<float>(1);
+    uint _e523 = _naga_sqrtf(as_type<uint>(_e518));
+    uint _e528 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e523)));
+    out[static_cast<uint>(41)] = as_type<uint>(as_type<float>(_e528));
+    float _e534 = value;
+    out[static_cast<uint>(42)] = as_type<uint>(_e534);
     {
         iteration = 0;
         uint2 loop_bound_2 = uint2(4294967295u);
@@ -450,51 +459,52 @@ kernel void inverse_roots(
             if (metal::all(loop_bound_2 == uint2(0u))) { break; }
             loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
             if (!loop_init_2) {
-                int _e563 = iteration;
-                iteration = as_type<int>(as_type<uint>(_e563) + as_type<uint>(1));
+                int _e567 = iteration;
+                iteration = as_type<int>(as_type<uint>(_e567) + as_type<uint>(1));
             }
             loop_init_2 = false;
-            int _e537 = iteration;
-            if (_e537 < 2) {
+            int _e541 = iteration;
+            if (_e541 < 2) {
             } else {
                 break;
             }
-            int _e540 = iteration;
-            if (_e540 == 0) {
+            int _e544 = iteration;
+            if (_e544 == 0) {
                 continue;
             }
-            float _e543 = value;
-            value = _e543 + static_cast<float>(1);
-            uint _e548 = _naga_sqrtf(as_type<uint>(_e543));
-            uint _e553 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e548)));
+            float _e547 = value;
+            value = _e547 + static_cast<float>(1);
+            uint _e552 = _naga_sqrtf(as_type<uint>(_e547));
+            uint _e557 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e552)));
             local_13 = static_cast<uint>(43);
-            uint _e559 = local_13;
-            local_16 = _e559;
-            uint _e561 = local_16;
-            out[_e561] = as_type<uint>(as_type<float>(_e553));
+            uint _e563 = local_13;
+            local_16 = _e563;
+            uint _e565 = local_16;
+            out[_e565] = as_type<uint>(as_type<float>(_e557));
         }
     }
-    float _e566 = value;
-    out[static_cast<uint>(44)] = as_type<uint>(_e566);
-    float _e571 = value;
-    value = _e571 + static_cast<float>(1);
-    uint _e576 = _naga_sqrtf(as_type<uint>(_e571));
-    uint _e581 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e576)));
-    local_14 = as_type<float>(_e581);
-    float _e584 = local_14;
-    out[static_cast<uint>(45)] = as_type<uint>(_e584);
-    float _e589 = value;
-    out[static_cast<uint>(46)] = as_type<uint>(_e589);
+    float _e570 = value;
+    out[static_cast<uint>(44)] = as_type<uint>(_e570);
+    float _e575 = value;
+    value = _e575 + static_cast<float>(1);
+    uint _e580 = _naga_sqrtf(as_type<uint>(_e575));
+    uint _e585 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e580)));
+    local_14 = as_type<float>(_e585);
+    float _e588 = local_14;
+    out[static_cast<uint>(45)] = as_type<uint>(_e588);
+    float _e593 = value;
+    out[static_cast<uint>(46)] = as_type<uint>(_e593);
     local_15 = true;
     if (true) {
-        float _e596 = value;
-        value = _e596 + static_cast<float>(1);
-        uint _e601 = _naga_sqrtf(as_type<uint>(_e596));
-        uint _e606 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e601)));
-        local_15 = as_type<float>(_e606) != 0.0;
+        float _e600 = value;
+        value = _e600 + static_cast<float>(1);
+        uint _e605 = _naga_sqrtf(as_type<uint>(_e600));
+        uint _e610 = _naga_divide_f32_(as_type<uint>(1.0), as_type<uint>(as_type<float>(_e605)));
+        uint _e613 = _naga_fabsf(as_type<uint>(as_type<float>(_e610)));
+        local_15 = _e613 != 0u;
     }
-    bool _e610 = local_15;
-    out[static_cast<uint>(47)] = static_cast<uint>(_e610);
-    float _e615 = value;
-    out[static_cast<uint>(48)] = as_type<uint>(_e615);
+    bool _e616 = local_15;
+    out[static_cast<uint>(47)] = static_cast<uint>(_e616);
+    float _e621 = value;
+    out[static_cast<uint>(48)] = as_type<uint>(_e621);
 }

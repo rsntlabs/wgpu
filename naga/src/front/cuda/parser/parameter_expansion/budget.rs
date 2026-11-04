@@ -316,6 +316,59 @@ mod tests {
         array_initializer_checks_node_budget("{1}", true);
     }
 
+    #[test]
+    fn cached_float_math_checks_node_budget_without_parameter_state() {
+        use super::super::super::float_helpers::FloatMathFunction;
+
+        for (operation, return_bits) in [
+            (FloatMathFunction::Floor, false),
+            (FloatMathFunction::Ceil, false),
+            (FloatMathFunction::AbsoluteValue, false),
+            (FloatMathFunction::Round, false),
+            (FloatMathFunction::AbsoluteValue, true),
+        ] {
+            let source = "1.5f";
+            let span = Span::new(0, source.len() as u32);
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            parser.function = FunctionContext::new(FunctionKind::Kernel);
+            parser.function.ir.name = Some(String::from("caller"));
+            let input = parser.number(source, span).unwrap().handle;
+            let original_type_count = parser.module.types.len();
+            parser.parameter_expansion_budget.activate();
+            let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+            parser
+                .parameter_expansion_budget
+                .charge_nodes(remaining, span)
+                .unwrap();
+            assert!(!parser.function.parameter_state_charged);
+            assert_eq!(parser.float_math_functions, [None; 4]);
+            assert_eq!(parser.function.ir.expressions.len(), 1);
+            assert!(parser.function.ir.body.is_empty());
+
+            let error = if return_bits {
+                parser.call_float_math_bits(input, operation, span)
+            } else {
+                parser.call_float_math(input, operation, span)
+            }
+            .unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert_eq!(error.span, span);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_eq!(parser.float_math_functions, [None; 4]);
+            assert!(parser.function.kind == FunctionKind::Kernel);
+            assert_eq!(parser.function.ir.name.as_deref(), Some("caller"));
+            assert_eq!(parser.function.ir.expressions.len(), 1);
+            assert_eq!(parser.function.expression_graph_depths.len(), 1);
+            assert!(parser.function.ir.body.is_empty());
+            assert!(parser.function.ir.local_variables.is_empty());
+            assert!(parser.function.ir.arguments.is_empty());
+            assert!(parser.function.parameters.is_empty());
+            assert_eq!(parser.module.types.len(), original_type_count);
+            assert!(parser.module.functions.is_empty());
+            assert!(parser.module.global_variables.is_empty());
+        }
+    }
+
     fn dynamic_shared_source(calls: usize) -> String {
         let mut source = String::from("__device__ void no_op() {} __global__ void kernel() {");
         for index in 0..64 {

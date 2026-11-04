@@ -86,6 +86,11 @@ fn fmodf_1(first: f32, second: f32, third: f32) -> f32 {
     return ((first + second) + third);
 }
 
+fn gen__naga_fabsf(input_bits: u32) -> u32 {
+    let _e2 = (input_bits & 2147483647u);
+    return select(_e2, 2143289344u, (_e2 > 2139095040u));
+}
+
 @compute @workgroup_size(1, 1, 1)
 fn remainders() {
     var local: u32;
@@ -272,112 +277,115 @@ fn remainders() {
         let _e472 = value;
         value = (_e472 + f32(1i));
         let _e479 = gen__naga_fmodf(bitcast<u32>(_e472), bitcast<u32>(2f));
-        local_20 = (bitcast<f32>(_e479) != 0f);
+        let _e482 = gen__naga_fabsf(bitcast<u32>(bitcast<f32>(_e479)));
+        local_20 = (_e482 != 0u);
     }
-    let _e483 = local_20;
-    output[u32(40i)] = u32(_e483);
+    let _e485 = local_20;
+    output[u32(40i)] = u32(_e485);
     local_21 = true;
     if true {
     } else {
-        let _e490 = value;
-        value = (_e490 + f32(1i));
-        let _e497 = gen__naga_fmodf(bitcast<u32>(_e490), bitcast<u32>(2f));
-        local_21 = (bitcast<f32>(_e497) != 0f);
+        let _e492 = value;
+        value = (_e492 + f32(1i));
+        let _e499 = gen__naga_fmodf(bitcast<u32>(_e492), bitcast<u32>(2f));
+        let _e502 = gen__naga_fabsf(bitcast<u32>(bitcast<f32>(_e499)));
+        local_21 = (_e502 != 0u);
     }
-    let _e501 = local_21;
-    output[u32(41i)] = u32(_e501);
-    let _e506 = value;
-    output[u32(42i)] = bitcast<u32>(_e506);
-    let _e511 = value;
-    value = (_e511 + f32(1i));
-    let _e518 = gen__naga_fmodf(bitcast<u32>(_e511), bitcast<u32>(2f));
-    let _e519 = value;
-    value = (_e519 + f32(1i));
-    let _e526 = gen__naga_fmodf(bitcast<u32>(_e519), bitcast<u32>(3f));
-    output[u32(43i)] = bitcast<u32>(bitcast<f32>(_e526));
-    let _e532 = value;
-    output[u32(44i)] = bitcast<u32>(_e532);
-    let _e537 = value;
-    value = (_e537 + f32(1i));
-    let _e544 = gen__naga_fmodf(bitcast<u32>(_e537), bitcast<u32>(3f));
-    local_22 = bitcast<f32>(_e544);
-    let _e547 = local_22;
-    output[u32(45i)] = bitcast<u32>(_e547);
-    let _e552 = value;
-    output[u32(46i)] = bitcast<u32>(_e552);
+    let _e505 = local_21;
+    output[u32(41i)] = u32(_e505);
+    let _e510 = value;
+    output[u32(42i)] = bitcast<u32>(_e510);
+    let _e515 = value;
+    value = (_e515 + f32(1i));
+    let _e522 = gen__naga_fmodf(bitcast<u32>(_e515), bitcast<u32>(2f));
+    let _e523 = value;
+    value = (_e523 + f32(1i));
+    let _e530 = gen__naga_fmodf(bitcast<u32>(_e523), bitcast<u32>(3f));
+    output[u32(43i)] = bitcast<u32>(bitcast<f32>(_e530));
+    let _e536 = value;
+    output[u32(44i)] = bitcast<u32>(_e536);
+    let _e541 = value;
+    value = (_e541 + f32(1i));
+    let _e548 = gen__naga_fmodf(bitcast<u32>(_e541), bitcast<u32>(3f));
+    local_22 = bitcast<f32>(_e548);
+    let _e551 = local_22;
+    output[u32(45i)] = bitcast<u32>(_e551);
+    let _e556 = value;
+    output[u32(46i)] = bitcast<u32>(_e556);
     {
         iteration = 0i;
         loop {
-            let _e559 = iteration;
-            if (_e559 < 2i) {
+            let _e563 = iteration;
+            if (_e563 < 2i) {
             } else {
                 break;
             }
-            let _e562 = iteration;
-            if (_e562 == 0i) {
+            let _e566 = iteration;
+            if (_e566 == 0i) {
                 continue;
             }
-            let _e565 = value;
-            value = (_e565 + f32(1i));
-            let _e572 = gen__naga_fmodf(bitcast<u32>(_e565), bitcast<u32>(2f));
+            let _e569 = value;
+            value = (_e569 + f32(1i));
+            let _e576 = gen__naga_fmodf(bitcast<u32>(_e569), bitcast<u32>(2f));
             local_23 = u32(47i);
-            let _e578 = local_23;
-            local_31 = _e578;
-            let _e580 = local_31;
-            output[_e580] = bitcast<u32>(bitcast<f32>(_e572));
+            let _e582 = local_23;
+            local_31 = _e582;
+            let _e584 = local_31;
+            output[_e584] = bitcast<u32>(bitcast<f32>(_e576));
             continuing {
-                let _e582 = iteration;
-                iteration = (_e582 + 1i);
+                let _e586 = iteration;
+                iteration = (_e586 + 1i);
             }
         }
     }
-    let _e585 = value;
-    output[u32(48i)] = bitcast<u32>(_e585);
+    let _e589 = value;
+    output[u32(48i)] = bitcast<u32>(_e589);
     local_24 = true;
     if true {
-        let _e592 = value;
-        value = (_e592 + f32(1i));
-        let _e599 = gen__naga_fmodf(bitcast<u32>(_e592), bitcast<u32>(2f));
-        local_24 = (bitcast<f32>(_e599) != 0f);
+        let _e596 = value;
+        value = (_e596 + f32(1i));
+        let _e603 = gen__naga_fmodf(bitcast<u32>(_e596), bitcast<u32>(2f));
+        let _e606 = gen__naga_fabsf(bitcast<u32>(bitcast<f32>(_e603)));
+        local_24 = (_e606 != 0u);
     }
-    let _e603 = local_24;
-    output[u32(49i)] = u32(_e603);
-    let _e608 = value;
-    output[u32(50i)] = bitcast<u32>(_e608);
-    let _e617 = sample_remainder(f32(4294967295u), f32(3u));
-    output[u32(51i)] = bitcast<u32>(_e617);
-    let _e629 = sample_remainder(f32((-(2147483647i) - 1i)), f32(3i));
-    output[u32(52i)] = bitcast<u32>(_e629);
-    let _e638 = gen__naga_fmodf(bitcast<u32>(0.5f), bitcast<u32>(0.25f));
-    output[u32(53i)] = bitcast<u32>(bitcast<f32>(_e638));
-    let _e649 = gen__naga_fmodf(bitcast<u32>(-(0.5f)), bitcast<u32>(0.25f));
-    output[u32(54i)] = bitcast<u32>(bitcast<f32>(_e649));
+    let _e609 = local_24;
+    output[u32(49i)] = u32(_e609);
+    let _e614 = value;
+    output[u32(50i)] = bitcast<u32>(_e614);
+    let _e623 = sample_remainder(f32(4294967295u), f32(3u));
+    output[u32(51i)] = bitcast<u32>(_e623);
+    let _e635 = sample_remainder(f32((-(2147483647i) - 1i)), f32(3i));
+    output[u32(52i)] = bitcast<u32>(_e635);
+    let _e644 = gen__naga_fmodf(bitcast<u32>(0.5f), bitcast<u32>(0.25f));
+    output[u32(53i)] = bitcast<u32>(bitcast<f32>(_e644));
+    let _e655 = gen__naga_fmodf(bitcast<u32>(-(0.5f)), bitcast<u32>(0.25f));
+    output[u32(54i)] = bitcast<u32>(bitcast<f32>(_e655));
     local_25 = 2147483647u;
-    let _e657 = local_25;
-    let _e662 = gen__naga_fmodf(bitcast<u32>(bitcast<f32>(_e657)), bitcast<u32>(1f));
-    output[u32(55i)] = bitcast<u32>(bitcast<f32>(_e662));
-    let _e670 = sample_remainder(3.25f, 2f);
-    output[u32(56i)] = bitcast<u32>(_e670);
-    let _e679 = gen__naga_fmodf(bitcast<u32>(5.5f), bitcast<u32>(2f));
-    let _e684 = gen__naga_fmodf(bitcast<u32>(1.5f), bitcast<u32>(bitcast<f32>(_e679)));
-    output[u32(57i)] = bitcast<u32>(bitcast<f32>(_e684));
-    let _e694 = gen__naga_fmodf(bitcast<u32>(8.5f), bitcast<u32>(3f));
-    let _e699 = gen__naga_fmodf(bitcast<u32>(bitcast<f32>(_e694)), bitcast<u32>(2f));
-    output[u32(58i)] = bitcast<u32>(bitcast<f32>(_e699));
+    let _e663 = local_25;
+    let _e668 = gen__naga_fmodf(bitcast<u32>(bitcast<f32>(_e663)), bitcast<u32>(1f));
+    output[u32(55i)] = bitcast<u32>(bitcast<f32>(_e668));
+    let _e676 = sample_remainder(3.25f, 2f);
+    output[u32(56i)] = bitcast<u32>(_e676);
+    let _e685 = gen__naga_fmodf(bitcast<u32>(5.5f), bitcast<u32>(2f));
+    let _e690 = gen__naga_fmodf(bitcast<u32>(1.5f), bitcast<u32>(bitcast<f32>(_e685)));
+    output[u32(57i)] = bitcast<u32>(bitcast<f32>(_e690));
+    let _e700 = gen__naga_fmodf(bitcast<u32>(8.5f), bitcast<u32>(3f));
+    let _e705 = gen__naga_fmodf(bitcast<u32>(bitcast<f32>(_e700)), bitcast<u32>(2f));
+    output[u32(58i)] = bitcast<u32>(bitcast<f32>(_e705));
     local_26 = 2139095040u;
-    let _e709 = local_26;
-    let _e713 = gen__naga_fmodf(bitcast<u32>(-(0f)), bitcast<u32>(bitcast<f32>(_e709)));
-    output[u32(59i)] = bitcast<u32>(bitcast<f32>(_e713));
+    let _e715 = local_26;
+    let _e719 = gen__naga_fmodf(bitcast<u32>(-(0f)), bitcast<u32>(bitcast<f32>(_e715)));
+    output[u32(59i)] = bitcast<u32>(bitcast<f32>(_e719));
     local_27 = 1u;
-    let _e721 = local_27;
+    let _e727 = local_27;
     local_28 = 4286578688u;
-    let _e725 = local_28;
-    let _e729 = gen__naga_fmodf(bitcast<u32>(bitcast<f32>(_e721)), bitcast<u32>(bitcast<f32>(_e725)));
-    output[u32(60i)] = bitcast<u32>(bitcast<f32>(_e729));
+    let _e731 = local_28;
+    let _e735 = gen__naga_fmodf(bitcast<u32>(bitcast<f32>(_e727)), bitcast<u32>(bitcast<f32>(_e731)));
+    output[u32(60i)] = bitcast<u32>(bitcast<f32>(_e735));
     local_29 = 8388609u;
-    let _e737 = local_29;
+    let _e743 = local_29;
     local_30 = 8388607u;
-    let _e741 = local_30;
-    let _e745 = gen__naga_fmodf(bitcast<u32>(bitcast<f32>(_e737)), bitcast<u32>(bitcast<f32>(_e741)));
-    output[u32(61i)] = bitcast<u32>(bitcast<f32>(_e745));
+    let _e747 = local_30;
+    let _e751 = gen__naga_fmodf(bitcast<u32>(bitcast<f32>(_e743)), bitcast<u32>(bitcast<f32>(_e747)));
+    output[u32(61i)] = bitcast<u32>(bitcast<f32>(_e751));
 }

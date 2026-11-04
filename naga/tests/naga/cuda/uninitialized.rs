@@ -82,7 +82,28 @@ fn cuda_bare_locals_work_in_scalar_and_void_helpers() {
         __host__ __device__ void consume(int value) { float copy; copy = value; if (copy) return; }
         __global__ void kernel(int *out) { int value; value = increment(3); consume(value); out[0] = value; }",
     );
-    assert_eq!(module.functions.len(), 2);
+    for (name, result) in [("increment", Some(naga::Scalar::I32)), ("consume", None)] {
+        let function = module
+            .functions
+            .iter()
+            .find_map(|(_, function)| (function.name.as_deref() == Some(name)).then_some(function))
+            .unwrap();
+        assert_eq!(function.arguments.len(), 1);
+        assert_eq!(
+            module.types[function.arguments[0].ty].inner,
+            naga::TypeInner::Scalar(naga::Scalar::I32)
+        );
+        if let Some(scalar) = result {
+            let result = function.result.as_ref().unwrap();
+            assert_eq!(
+                module.types[result.ty].inner,
+                naga::TypeInner::Scalar(scalar)
+            );
+            assert_eq!(result.binding, None);
+        } else {
+            assert!(function.result.is_none());
+        }
+    }
     assert!(module.functions.iter().all(|(_, function)| function
         .arguments
         .iter()

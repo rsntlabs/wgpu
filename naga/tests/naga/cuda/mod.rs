@@ -33,6 +33,7 @@ mod empty_scalar_construction;
 mod fabs;
 mod float_math;
 mod float_separators;
+mod float_truthiness;
 mod floorf;
 mod fmodf;
 mod function_macros;

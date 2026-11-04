@@ -215,6 +215,12 @@ float pair(float first_1, float second_1)
     return ((first_1 * 10.0) + second_1);
 }
 
+uint _naga_fabsf(uint input_bits_1)
+{
+    uint _e2 = (input_bits_1 & 2147483647u);
+    return ((_e2 > 2139095040u) ? 2143289344u : _e2);
+}
+
 int naga_neg(int val) {
     return asint(-asuint(val));
 }
@@ -379,50 +385,52 @@ void inverse_roots()
         value = (_e415 + float(int(1)));
         const uint _e420 = _naga_sqrtf(asuint(_e415));
         const uint _e425 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e420)));
-        local_11 = (asfloat(_e425) != 0.0);
+        const uint _e428 = _naga_fabsf(asuint(asfloat(_e425)));
+        local_11 = (_e428 != 0u);
     }
-    bool _e429 = local_11;
-    out_.Store(uint(int(35))*4, asuint(uint(_e429)));
+    bool _e431 = local_11;
+    out_.Store(uint(int(35))*4, asuint(uint(_e431)));
     local_12 = true;
     if (true) {
     } else {
-        float _e436 = value;
-        value = (_e436 + float(int(1)));
-        const uint _e441 = _naga_sqrtf(asuint(_e436));
-        const uint _e446 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e441)));
-        local_12 = (asfloat(_e446) != 0.0);
+        float _e438 = value;
+        value = (_e438 + float(int(1)));
+        const uint _e443 = _naga_sqrtf(asuint(_e438));
+        const uint _e448 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e443)));
+        const uint _e451 = _naga_fabsf(asuint(asfloat(_e448)));
+        local_12 = (_e451 != 0u);
     }
-    bool _e450 = local_12;
-    out_.Store(uint(int(36))*4, asuint(uint(_e450)));
-    float _e455 = value;
-    out_.Store(uint(int(37))*4, asuint(asuint(_e455)));
+    bool _e454 = local_12;
+    out_.Store(uint(int(36))*4, asuint(uint(_e454)));
+    float _e459 = value;
+    out_.Store(uint(int(37))*4, asuint(asuint(_e459)));
     left = 4.0;
     right = 9.0;
-    float _e464 = left;
-    left = (_e464 + float(int(1)));
-    const uint _e469 = _naga_sqrtf(asuint(_e464));
-    const uint _e474 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e469)));
-    float _e476 = right;
-    right = (_e476 + float(int(1)));
-    const uint _e481 = _naga_sqrtf(asuint(_e476));
-    const uint _e486 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e481)));
-    const float _e488 = pair(asfloat(_e474), asfloat(_e486));
-    out_.Store(uint(int(38))*4, asuint(asuint(_e488)));
-    float _e493 = left;
-    out_.Store(uint(int(39))*4, asuint(asuint(_e493)));
-    float _e498 = right;
-    out_.Store(uint(int(40))*4, asuint(asuint(_e498)));
-    float _e503 = value;
-    value = (_e503 + float(int(1)));
-    const uint _e508 = _naga_sqrtf(asuint(_e503));
-    const uint _e513 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e508)));
-    float _e514 = value;
-    value = (_e514 + float(int(1)));
-    const uint _e519 = _naga_sqrtf(asuint(_e514));
-    const uint _e524 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e519)));
-    out_.Store(uint(int(41))*4, asuint(asuint(asfloat(_e524))));
-    float _e530 = value;
-    out_.Store(uint(int(42))*4, asuint(asuint(_e530)));
+    float _e468 = left;
+    left = (_e468 + float(int(1)));
+    const uint _e473 = _naga_sqrtf(asuint(_e468));
+    const uint _e478 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e473)));
+    float _e480 = right;
+    right = (_e480 + float(int(1)));
+    const uint _e485 = _naga_sqrtf(asuint(_e480));
+    const uint _e490 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e485)));
+    const float _e492 = pair(asfloat(_e478), asfloat(_e490));
+    out_.Store(uint(int(38))*4, asuint(asuint(_e492)));
+    float _e497 = left;
+    out_.Store(uint(int(39))*4, asuint(asuint(_e497)));
+    float _e502 = right;
+    out_.Store(uint(int(40))*4, asuint(asuint(_e502)));
+    float _e507 = value;
+    value = (_e507 + float(int(1)));
+    const uint _e512 = _naga_sqrtf(asuint(_e507));
+    const uint _e517 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e512)));
+    float _e518 = value;
+    value = (_e518 + float(int(1)));
+    const uint _e523 = _naga_sqrtf(asuint(_e518));
+    const uint _e528 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e523)));
+    out_.Store(uint(int(41))*4, asuint(asuint(asfloat(_e528))));
+    float _e534 = value;
+    out_.Store(uint(int(42))*4, asuint(asuint(_e534)));
     {
         iteration = int(0);
         uint2 loop_bound_2 = uint2(4294967295u, 4294967295u);
@@ -431,51 +439,52 @@ void inverse_roots()
             if (all(loop_bound_2 == uint2(0u, 0u))) { break; }
             loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
             if (!loop_init_2) {
-                int _e563 = iteration;
-                iteration = asint(asuint(_e563) + asuint(int(1)));
+                int _e567 = iteration;
+                iteration = asint(asuint(_e567) + asuint(int(1)));
             }
             loop_init_2 = false;
-            int _e537 = iteration;
-            if ((_e537 < int(2))) {
+            int _e541 = iteration;
+            if ((_e541 < int(2))) {
             } else {
                 break;
             }
-            int _e540 = iteration;
-            if ((_e540 == int(0))) {
+            int _e544 = iteration;
+            if ((_e544 == int(0))) {
                 continue;
             }
-            float _e543 = value;
-            value = (_e543 + float(int(1)));
-            const uint _e548 = _naga_sqrtf(asuint(_e543));
-            const uint _e553 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e548)));
+            float _e547 = value;
+            value = (_e547 + float(int(1)));
+            const uint _e552 = _naga_sqrtf(asuint(_e547));
+            const uint _e557 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e552)));
             local_13 = uint(int(43));
-            uint _e559 = local_13;
-            local_16 = _e559;
-            uint _e561 = local_16;
-            out_.Store(_e561*4, asuint(asuint(asfloat(_e553))));
+            uint _e563 = local_13;
+            local_16 = _e563;
+            uint _e565 = local_16;
+            out_.Store(_e565*4, asuint(asuint(asfloat(_e557))));
         }
     }
-    float _e566 = value;
-    out_.Store(uint(int(44))*4, asuint(asuint(_e566)));
-    float _e571 = value;
-    value = (_e571 + float(int(1)));
-    const uint _e576 = _naga_sqrtf(asuint(_e571));
-    const uint _e581 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e576)));
-    local_14 = asfloat(_e581);
-    float _e584 = local_14;
-    out_.Store(uint(int(45))*4, asuint(asuint(_e584)));
-    float _e589 = value;
-    out_.Store(uint(int(46))*4, asuint(asuint(_e589)));
+    float _e570 = value;
+    out_.Store(uint(int(44))*4, asuint(asuint(_e570)));
+    float _e575 = value;
+    value = (_e575 + float(int(1)));
+    const uint _e580 = _naga_sqrtf(asuint(_e575));
+    const uint _e585 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e580)));
+    local_14 = asfloat(_e585);
+    float _e588 = local_14;
+    out_.Store(uint(int(45))*4, asuint(asuint(_e588)));
+    float _e593 = value;
+    out_.Store(uint(int(46))*4, asuint(asuint(_e593)));
     local_15 = true;
     if (true) {
-        float _e596 = value;
-        value = (_e596 + float(int(1)));
-        const uint _e601 = _naga_sqrtf(asuint(_e596));
-        const uint _e606 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e601)));
-        local_15 = (asfloat(_e606) != 0.0);
+        float _e600 = value;
+        value = (_e600 + float(int(1)));
+        const uint _e605 = _naga_sqrtf(asuint(_e600));
+        const uint _e610 = _naga_divide_f32_(asuint(1.0), asuint(asfloat(_e605)));
+        const uint _e613 = _naga_fabsf(asuint(asfloat(_e610)));
+        local_15 = (_e613 != 0u);
     }
-    bool _e610 = local_15;
-    out_.Store(uint(int(47))*4, asuint(uint(_e610)));
-    float _e615 = value;
-    out_.Store(uint(int(48))*4, asuint(asuint(_e615)));
+    bool _e616 = local_15;
+    out_.Store(uint(int(47))*4, asuint(uint(_e616)));
+    float _e621 = value;
+    out_.Store(uint(int(48))*4, asuint(asuint(_e621)));
 }

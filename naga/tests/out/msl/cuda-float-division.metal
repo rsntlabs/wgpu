@@ -193,6 +193,13 @@ float operator_u002f_3(
     float _e7 = right_10.value;
     return _e6 + _e7;
 }
+
+uint _naga_fabsf(
+    uint input_bits
+) {
+    uint _e2 = input_bits & 2147483647u;
+    return (_e2 > 2139095040u) ? 2143289344u : _e2;
+}
 int naga_neg(int val) {
     return as_type<int>(-as_type<uint>(val));
 }
@@ -425,37 +432,39 @@ kernel void divisions(
         float _e416 = selected_denominator;
         selected_denominator = _e416 + static_cast<float>(1);
         float _e420 = quotient_1(_e412, _e416);
-        local_2 = _e420 != 0.0;
+        uint _e422 = _naga_fabsf(as_type<uint>(_e420));
+        local_2 = _e422 != 0u;
     }
-    bool _e423 = local_2;
-    output[static_cast<uint>(43)] = static_cast<uint>(_e423);
-    float _e428 = selected_numerator;
-    output[static_cast<uint>(44)] = as_type<uint>(_e428);
+    bool _e425 = local_2;
+    output[static_cast<uint>(43)] = static_cast<uint>(_e425);
+    float _e430 = selected_numerator;
+    output[static_cast<uint>(44)] = as_type<uint>(_e430);
     local_3 = true;
     if (true) {
     } else {
-        float _e435 = selected_numerator;
-        selected_numerator = _e435 + static_cast<float>(1);
-        float _e439 = selected_denominator;
-        selected_denominator = _e439 + static_cast<float>(1);
-        float _e443 = quotient_1(_e435, _e439);
-        local_3 = _e443 != 0.0;
+        float _e437 = selected_numerator;
+        selected_numerator = _e437 + static_cast<float>(1);
+        float _e441 = selected_denominator;
+        selected_denominator = _e441 + static_cast<float>(1);
+        float _e445 = quotient_1(_e437, _e441);
+        uint _e447 = _naga_fabsf(as_type<uint>(_e445));
+        local_3 = _e447 != 0u;
     }
-    bool _e446 = local_3;
-    output[static_cast<uint>(45)] = static_cast<uint>(_e446);
-    float _e451 = selected_denominator;
-    output[static_cast<uint>(46)] = as_type<uint>(_e451);
+    bool _e450 = local_3;
+    output[static_cast<uint>(45)] = static_cast<uint>(_e450);
+    float _e455 = selected_denominator;
+    output[static_cast<uint>(46)] = as_type<uint>(_e455);
     scale = 6.0;
-    float _e458 = scale;
-    uint _e462 = _naga_divide_f32_(as_type<uint>(_e458), as_type<uint>(2.0));
-    scale = as_type<float>(_e462);
-    float _e464 = scale;
-    uint _e468 = _naga_divide_f32_(as_type<uint>(_e464), as_type<uint>(3.0));
-    scale = as_type<float>(_e468);
-    float _e470 = scale;
-    output[static_cast<uint>(47)] = as_type<uint>(_e470);
-    float _e475 = scale;
-    output[static_cast<uint>(48)] = as_type<uint>(_e475);
+    float _e462 = scale;
+    uint _e466 = _naga_divide_f32_(as_type<uint>(_e462), as_type<uint>(2.0));
+    scale = as_type<float>(_e466);
+    float _e468 = scale;
+    uint _e472 = _naga_divide_f32_(as_type<uint>(_e468), as_type<uint>(3.0));
+    scale = as_type<float>(_e472);
+    float _e474 = scale;
+    output[static_cast<uint>(47)] = as_type<uint>(_e474);
+    float _e479 = scale;
+    output[static_cast<uint>(48)] = as_type<uint>(_e479);
     scale = 8.0;
     {
         iteration = 0;
@@ -465,62 +474,62 @@ kernel void divisions(
             if (metal::all(loop_bound_1 == uint2(0u))) { break; }
             loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
             if (!loop_init_1) {
-                int _e495 = iteration;
-                iteration = as_type<int>(as_type<uint>(_e495) + as_type<uint>(1));
+                int _e499 = iteration;
+                iteration = as_type<int>(as_type<uint>(_e499) + as_type<uint>(1));
             }
             loop_init_1 = false;
-            int _e483 = iteration;
-            if (_e483 < 2) {
+            int _e487 = iteration;
+            if (_e487 < 2) {
             } else {
                 break;
             }
-            int _e486 = iteration;
-            if (_e486 == 0) {
+            int _e490 = iteration;
+            if (_e490 == 0) {
                 continue;
             }
-            float _e489 = scale;
-            uint _e493 = _naga_divide_f32_(as_type<uint>(_e489), as_type<uint>(2.0));
-            scale = as_type<float>(_e493);
+            float _e493 = scale;
+            uint _e497 = _naga_divide_f32_(as_type<uint>(_e493), as_type<uint>(2.0));
+            scale = as_type<float>(_e497);
         }
     }
-    float _e498 = scale;
-    output[static_cast<uint>(49)] = as_type<uint>(_e498);
+    float _e502 = scale;
+    output[static_cast<uint>(49)] = as_type<uint>(_e502);
     left = 2.0;
     right = 3.0;
-    float _e505 = left;
-    left = _e505 + static_cast<float>(1);
-    float _e509 = right;
-    right = _e509 + static_cast<float>(1);
-    uint _e515 = _naga_divide_f32_(as_type<uint>(_e505), as_type<uint>(_e509));
-    local_4 = as_type<float>(_e515);
-    float _e518 = local_4;
-    output[static_cast<uint>(50)] = as_type<uint>(_e518);
-    float _e523 = left;
-    output[static_cast<uint>(51)] = as_type<uint>(_e523);
-    float _e528 = right;
-    output[static_cast<uint>(52)] = as_type<uint>(_e528);
-    uint _e535 = _naga_divide_f32_(as_type<uint>(numerator_1), as_type<uint>(denominator_1));
-    uint _e540 = _naga_divide_f32_(as_type<uint>(as_type<float>(_e535)), as_type<uint>(3.0));
-    output[static_cast<uint>(53)] = as_type<uint>(as_type<float>(_e540));
-    uint _e549 = _naga_divide_f32_(as_type<uint>(24.0), as_type<uint>(denominator_1));
-    uint _e554 = _naga_divide_f32_(as_type<uint>(as_type<float>(_e549)), as_type<uint>(2.0));
-    output[static_cast<uint>(54)] = as_type<uint>(as_type<float>(_e554));
-    uint _e563 = _naga_divide_f32_(as_type<uint>(denominator_1), as_type<uint>(2.0));
-    uint _e568 = _naga_divide_f32_(as_type<uint>(24.0), as_type<uint>(as_type<float>(_e563)));
-    output[static_cast<uint>(55)] = as_type<uint>(as_type<float>(_e568));
-    uint _e578 = _naga_divide_f32_(as_type<uint>(numerator_1), as_type<uint>(static_cast<float>(true)));
-    output[static_cast<uint>(56)] = as_type<uint>(as_type<float>(_e578));
-    uint _e588 = _naga_divide_f32_(as_type<uint>(static_cast<float>(4294967295u)), as_type<uint>(denominator_1));
-    output[static_cast<uint>(57)] = as_type<uint>(as_type<float>(_e588));
-    uint _e597 = input[static_cast<uint>(2)];
-    uint _e601 = _naga_divide_f32_(as_type<uint>(numerator_1), as_type<uint>(as_type<float>(_e597)));
-    output[static_cast<uint>(58)] = as_type<uint>(as_type<float>(_e601));
-    uint _e610 = input[static_cast<uint>(2)];
-    uint _e615 = input[static_cast<uint>(2)];
-    uint _e619 = _naga_divide_f32_(as_type<uint>(as_type<float>(_e610)), as_type<uint>(as_type<float>(_e615)));
-    output[static_cast<uint>(59)] = as_type<uint>(as_type<float>(_e619));
-    uint _e628 = input[static_cast<uint>(3)];
-    uint _e633 = input[static_cast<uint>(3)];
-    uint _e637 = _naga_divide_f32_(as_type<uint>(as_type<float>(_e628)), as_type<uint>(as_type<float>(_e633)));
-    output[static_cast<uint>(60)] = as_type<uint>(as_type<float>(_e637));
+    float _e509 = left;
+    left = _e509 + static_cast<float>(1);
+    float _e513 = right;
+    right = _e513 + static_cast<float>(1);
+    uint _e519 = _naga_divide_f32_(as_type<uint>(_e509), as_type<uint>(_e513));
+    local_4 = as_type<float>(_e519);
+    float _e522 = local_4;
+    output[static_cast<uint>(50)] = as_type<uint>(_e522);
+    float _e527 = left;
+    output[static_cast<uint>(51)] = as_type<uint>(_e527);
+    float _e532 = right;
+    output[static_cast<uint>(52)] = as_type<uint>(_e532);
+    uint _e539 = _naga_divide_f32_(as_type<uint>(numerator_1), as_type<uint>(denominator_1));
+    uint _e544 = _naga_divide_f32_(as_type<uint>(as_type<float>(_e539)), as_type<uint>(3.0));
+    output[static_cast<uint>(53)] = as_type<uint>(as_type<float>(_e544));
+    uint _e553 = _naga_divide_f32_(as_type<uint>(24.0), as_type<uint>(denominator_1));
+    uint _e558 = _naga_divide_f32_(as_type<uint>(as_type<float>(_e553)), as_type<uint>(2.0));
+    output[static_cast<uint>(54)] = as_type<uint>(as_type<float>(_e558));
+    uint _e567 = _naga_divide_f32_(as_type<uint>(denominator_1), as_type<uint>(2.0));
+    uint _e572 = _naga_divide_f32_(as_type<uint>(24.0), as_type<uint>(as_type<float>(_e567)));
+    output[static_cast<uint>(55)] = as_type<uint>(as_type<float>(_e572));
+    uint _e582 = _naga_divide_f32_(as_type<uint>(numerator_1), as_type<uint>(static_cast<float>(true)));
+    output[static_cast<uint>(56)] = as_type<uint>(as_type<float>(_e582));
+    uint _e592 = _naga_divide_f32_(as_type<uint>(static_cast<float>(4294967295u)), as_type<uint>(denominator_1));
+    output[static_cast<uint>(57)] = as_type<uint>(as_type<float>(_e592));
+    uint _e601 = input[static_cast<uint>(2)];
+    uint _e605 = _naga_divide_f32_(as_type<uint>(numerator_1), as_type<uint>(as_type<float>(_e601)));
+    output[static_cast<uint>(58)] = as_type<uint>(as_type<float>(_e605));
+    uint _e614 = input[static_cast<uint>(2)];
+    uint _e619 = input[static_cast<uint>(2)];
+    uint _e623 = _naga_divide_f32_(as_type<uint>(as_type<float>(_e614)), as_type<uint>(as_type<float>(_e619)));
+    output[static_cast<uint>(59)] = as_type<uint>(as_type<float>(_e623));
+    uint _e632 = input[static_cast<uint>(3)];
+    uint _e637 = input[static_cast<uint>(3)];
+    uint _e641 = _naga_divide_f32_(as_type<uint>(as_type<float>(_e632)), as_type<uint>(as_type<float>(_e637)));
+    output[static_cast<uint>(60)] = as_type<uint>(as_type<float>(_e641));
 }
