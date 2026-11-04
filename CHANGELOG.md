@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Convert wide integer shift counts when generating WGSL.
 - Preserve vector boolean operations when reading SPIR-V.
 - Emit guarded GLSL 64-bit integer division and remainder for scalar and vector operands.
 - Emit GLSL 64-bit integer scalars and vectors with the required extensions and width-preserving conversions.
