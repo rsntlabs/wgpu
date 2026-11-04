@@ -352,19 +352,26 @@ impl<'a> Parser<'a> {
             self.check_name(name, span)?;
             let declared_ty = self.lower_type(specifier, span)?;
             let base = self.type_handle(&declared_ty, span);
-            let is_array = self.lexer.next_if(Token::Paren('['))?;
+            let array = self.array_declarator(base, true, span)?;
+            let is_array = array.is_some();
             if is_constexpr && is_array {
                 return self.fail("constexpr arrays are unsupported");
             }
-            let array = if is_array {
-                Some(self.array_declaration(base, true, span)?)
-            } else {
-                None
-            };
             let ty = array.as_ref().map_or(base, |array| array.ty);
             let array_count = array.as_ref().and_then(|array| array.count);
             let has_initializer = !matches!(self.lexer.peek()?.0, Token::Separator(',' | ';'));
             let requires_default_constructor = self.requires_default_constructor(ty);
+            if matches!(specifier, TypeSpecifier::Array(_)) {
+                self.activate_parameter_expansion(span)?;
+                self.prepare_parameter_bindings(span)?;
+                self.parameter_expansion_budget.charge_nodes(1, span)?;
+                self.parameter_expansion_budget
+                    .charge_slice::<(LocalVariable, Span)>(1, span)?;
+                self.parameter_expansion_budget
+                    .charge_bytes(name.len(), span)?;
+                self.parameter_expansion_budget
+                    .charge_map_entry::<&str, Symbol>(1, span)?;
+            }
             let (local, pointer) = self.allocate_local(name, ty, span)?;
             let symbol = if is_array {
                 Symbol::Array {
@@ -507,13 +514,26 @@ impl<'a> Parser<'a> {
             qualifiers,
         } = self.parse_type()?;
         let is_const = qualifiers.is_const;
+        if matches!(specifier, TypeSpecifier::Array(_)) {
+            self.activate_parameter_expansion(type_span)?;
+            self.prepare_parameter_bindings(type_span)?;
+            self.parameter_expansion_budget
+                .charge_map_entry::<&str, Symbol>(1, type_span)?;
+        }
         if matches!(specifier, TypeSpecifier::Pointer { .. }) {
             return Err(ParseError {
                 message: String::from("shared pointer variables are unsupported"),
                 span: type_span,
             });
         }
-        if matches!(specifier, TypeSpecifier::Scalar(Scalar::BOOL)) || is_const {
+        let declared_ty = self.lower_type(specifier, type_span)?;
+        let base = self.type_handle(&declared_ty, type_span);
+        let (element, _) = self.array_shape(base, type_span)?;
+        if matches!(
+            self.module.types[element].inner,
+            TypeInner::Scalar(Scalar::BOOL)
+        ) || is_const
+        {
             return Err(ParseError {
                 message: String::from(
                     "shared storage requires a non-const numeric scalar or vector type",
@@ -523,20 +543,14 @@ impl<'a> Parser<'a> {
         }
         let (name, span) = self.identifier()?;
         self.check_name(name, span)?;
-        let declared_ty = self.lower_type(specifier, span)?;
-        let base = self.type_handle(&declared_ty, span);
         if self.requires_default_constructor(base) {
             return Err(ParseError {
                 message: String::from("shared variables cannot require a constructor"),
                 span: type_span,
             });
         }
-        let is_array = self.lexer.next_if(Token::Paren('['))?;
-        let array = if is_array {
-            Some(self.array_declaration(base, false, span)?)
-        } else {
-            None
-        };
+        let array = self.array_declarator(base, false, span)?;
+        let is_array = array.is_some();
         let ty = array.as_ref().map_or(base, |array| array.ty);
         if self.lexer.peek()?.0 == Token::Operation('=') {
             return self.fail("shared variables cannot have initializers");
@@ -575,6 +589,29 @@ impl<'a> Parser<'a> {
         self.insert_symbol(name, symbol, span)
     }
 
+    pub(super) fn array_declarator(
+        &mut self,
+        base: Handle<Type>,
+        allow_inferred: bool,
+        span: Span,
+    ) -> Result<Option<ArrayDeclaration>, ParseError> {
+        if self.lexer.next_if(Token::Paren('['))? {
+            return self.array_declaration(base, allow_inferred, span).map(Some);
+        }
+        Ok(match self.module.types[base].inner {
+            TypeInner::Array {
+                base: element_ty,
+                size: ArraySize::Constant(count),
+                ..
+            } => Some(ArrayDeclaration {
+                ty: base,
+                element_ty,
+                count: Some(count),
+            }),
+            _ => None,
+        })
+    }
+
     pub(super) fn array_declaration(
         &mut self,
         base: Handle<Type>,
@@ -583,9 +620,10 @@ impl<'a> Parser<'a> {
     ) -> Result<ArrayDeclaration, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
+        let (_, base_rank) = self.array_shape(base, span)?;
         let mut dimensions = Vec::new();
         loop {
-            if dimensions.len() == 64 {
+            if dimensions.len() + base_rank == 64 {
                 return self.fail("CUDA array rank limit exceeded");
             }
             let extent = if self.lexer.peek()?.0 == Token::Paren(']') {
@@ -598,6 +636,9 @@ impl<'a> Parser<'a> {
                 self.lexer.expect_span(Token::Paren(']'))?;
                 (Some(count), extent_span)
             };
+            self.parameter_expansion_budget
+                .charge_slice::<(Option<NonZeroU32>, Span)>(1, span)?;
+            self.parameter_expansion_budget.charge_work(1, span)?;
             dimensions.push(extent);
             if !self.lexer.next_if(Token::Paren('['))? {
                 break;

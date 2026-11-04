@@ -360,8 +360,6 @@ fn cuda_aliases_reject_unsupported_types_declarators_and_malformed_source() {
         "typedef void Nothing;",
         "using Nothing = void;",
         "typedef double Wide;",
-        "typedef int Array[4];",
-        "using Array = int[4];",
         "typedef int &Reference;",
         "typedef int Function(int);",
         "template<typename T> using Element = T;",
@@ -372,6 +370,16 @@ fn cuda_aliases_reject_unsupported_types_declarators_and_malformed_source() {
         "using Element = ;",
     ] {
         rejected(&format!("{declaration} __global__ void kernel() {{}}"));
+    }
+    for declaration in ["typedef int Array[4];", "using Array = int[4];"] {
+        let (module, info) = validate(&format!("{declaration} __global__ void kernel() {{}}"));
+        #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+        super::helpers::wgsl_roundtrip(
+            &module,
+            &info,
+            naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+        );
+        let _ = (module, info);
     }
 }
 

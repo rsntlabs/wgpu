@@ -562,6 +562,9 @@ impl<'a> Parser<'a> {
         let Some(result) = result else {
             return self.fail("expected a supported function return type");
         };
+        if matches!(result, ReturnType::Value(TypeSpecifier::Array(_))) {
+            return self.fail("array return types are unsupported");
+        }
         if (explicit_volatile || volatile_result)
             && !matches!(
                 result,

@@ -228,7 +228,6 @@ fn cuda_pointer_aliases_reject_hidden_unsupported_forms_and_malformed_source() {
         "using Nothing = void *; __global__ void kernel() {}",
         "using Function = int (*)(int); __global__ void kernel() {}",
         "typedef int (*Function)(int); __global__ void kernel() {}",
-        "using Array = int[2]; __global__ void kernel() {}",
         "using Pointer = Pointer; __global__ void kernel() {}",
         "using Pointer = Missing *; __global__ void kernel() {}",
         "typedef int *; __global__ void kernel() {}",
@@ -239,6 +238,7 @@ fn cuda_pointer_aliases_reject_hidden_unsupported_forms_and_malformed_source() {
         rejected(source);
     }
     for source in [
+        "using Array = int[2]; __global__ void kernel() {}",
         "using Pointer = int *; __global__ void kernel(int *output) { Pointer value = (Pointer)output; }",
         "using Pointer = int *; __global__ void kernel(int *output) { Pointer value = static_cast<Pointer>(output); }",
         "using Pointer = int *; __global__ void kernel(int *output) { Pointer(output + 1); }",

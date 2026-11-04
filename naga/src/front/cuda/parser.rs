@@ -550,6 +550,16 @@ impl<'a> Parser<'a> {
         } else {
             ParameterMode::Value
         };
+        if !is_pointer && matches!(specifier, TypeSpecifier::Array(_)) {
+            let name = if self.lexer.peek()?.0 == Token::Paren('[') {
+                None
+            } else {
+                let (name, span) = self.identifier()?;
+                self.check_name(name, span)?;
+                Some(name)
+            };
+            return self.array_parameter(name, type_span, &ty, qualifiers, mode, parameter_index);
+        }
         if self.function.kind == FunctionKind::Kernel
             && !is_pointer
             && !matches!(specifier, TypeSpecifier::Scalar(_))
@@ -566,7 +576,7 @@ impl<'a> Parser<'a> {
             });
         }
         if self.function.kind == FunctionKind::Device && self.lexer.peek()?.0 == Token::Paren('[') {
-            return self.array_parameter(None, type_span, &ty, qualifiers, mode);
+            return self.array_parameter(None, type_span, &ty, qualifiers, mode, parameter_index);
         }
         if self.function.kind == FunctionKind::Device
             && matches!(
@@ -586,7 +596,14 @@ impl<'a> Parser<'a> {
         }
         if self.function.kind == FunctionKind::Device {
             if self.lexer.peek()?.0 == Token::Paren('[') {
-                return self.array_parameter(Some(name), span, &ty, qualifiers, mode);
+                return self.array_parameter(
+                    Some(name),
+                    span,
+                    &ty,
+                    qualifiers,
+                    mode,
+                    parameter_index,
+                );
             }
             if mode == ParameterMode::Value {
                 self.note_volatile_parameter_object(qualifiers, type_span)?;
@@ -597,8 +614,39 @@ impl<'a> Parser<'a> {
             self.note_volatile_parameter_object(qualifiers, type_span)?;
             return self.value_parameter(parameter_index, name, span, &ty, is_const);
         }
-        let base = self.type_handle(&ty, span);
+        self.kernel_pointer_parameter(
+            parameter_index,
+            (name, span),
+            type_span,
+            &ty,
+            qualifiers,
+            pointer_const,
+        )
+    }
+
+    fn kernel_pointer_parameter(
+        &mut self,
+        parameter_index: u32,
+        identifier: (&'a str, Span),
+        type_span: Span,
+        ty: &TypeResolution,
+        qualifiers: Qualifiers,
+        pointer_const: bool,
+    ) -> Result<(), ParseError> {
+        let (name, span) = identifier;
+        let base = self.type_handle(ty, span);
+        let (element, _) = self.array_shape(base, span)?;
+        if matches!(
+            self.module.types[element].inner,
+            TypeInner::Scalar(Scalar::BOOL)
+        ) {
+            return Err(ParseError {
+                message: String::from("boolean kernel storage parameters are unsupported"),
+                span,
+            });
+        }
         let array_ty = self.array_type(base, ArraySize::Dynamic, type_span, span)?;
+        let is_const = qualifiers.is_const;
         let access = if is_const {
             StorageAccess::LOAD
         } else {

@@ -65,6 +65,12 @@ impl<'a> Parser<'a> {
         specifier: TypeSpecifier,
         qualifiers: Qualifiers,
     ) -> Result<(), ParseError> {
+        if matches!(specifier, TypeSpecifier::Array(_)) {
+            return Err(ParseError {
+                message: String::from("whole-array reference declarations are unsupported"),
+                span,
+            });
+        }
         self.insert_symbol(name, Symbol::PendingReference, span)?;
         let ty = self.lower_type(specifier, span)?;
         let has_equals = self.lexer.next_if(Token::Operation('='))?;
