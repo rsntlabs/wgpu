@@ -17,6 +17,7 @@ mod validation;
 mod volatile_loads;
 mod volatile_uniformity;
 mod wgsl_errors;
+mod wgsl_integer_shifts;
 mod wgsl_named_atomic_results;
 mod wgsl_named_call_results;
 mod wgsl_predeclared_result_types;

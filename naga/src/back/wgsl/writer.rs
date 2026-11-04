@@ -1582,10 +1582,36 @@ impl<W: Write> Writer<W> {
                 write!(self.out, "{name}")?;
             }
             Expression::Binary { op, left, right } => {
+                let shift_count_type = if matches!(
+                    op,
+                    crate::BinaryOperator::ShiftLeft | crate::BinaryOperator::ShiftRight
+                ) {
+                    match *func_ctx.resolve_type(right, &module.types) {
+                        TypeInner::Scalar(scalar) if scalar.width != 4 => Some(
+                            proc::TypeResolution::Value(TypeInner::Scalar(crate::Scalar::U32)),
+                        ),
+                        TypeInner::Vector { size, scalar } if scalar.width != 4 => {
+                            Some(proc::TypeResolution::Value(TypeInner::Vector {
+                                size,
+                                scalar: crate::Scalar::U32,
+                            }))
+                        }
+                        _ => None,
+                    }
+                } else {
+                    None
+                };
                 write!(self.out, "(")?;
                 self.write_expr(module, left, func_ctx)?;
                 write!(self.out, " {} ", back::binary_operation_str(op))?;
+                if let Some(ref count_type) = shift_count_type {
+                    self.write_type_resolution(module, count_type)?;
+                    write!(self.out, "(")?;
+                }
                 self.write_expr(module, right, func_ctx)?;
+                if shift_count_type.is_some() {
+                    write!(self.out, ")")?;
+                }
                 write!(self.out, ")")?;
             }
             Expression::Access { base, index } => {
