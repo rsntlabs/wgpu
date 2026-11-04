@@ -71,6 +71,7 @@ mod operator_null_constants;
 mod overloads;
 mod parameters;
 mod parenthesized_aggregates;
+mod parenthesized_arrays;
 mod pointer_aliases;
 mod pointer_assignments;
 mod pointer_names;

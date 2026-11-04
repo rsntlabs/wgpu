@@ -71,6 +71,7 @@ mod operator_compound_assignments;
 mod operator_functions;
 mod operator_null_constants;
 mod parenthesized_aggregates;
+mod parenthesized_arrays;
 mod particles;
 mod pointer_aliases;
 mod pointer_assignments;
@@ -185,6 +186,8 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_OPERATOR_NULL_CONSTANTS,
         CUDA_PARENTHESIZED_AGGREGATES,
         CUDA_PARENTHESIZED_INTEGER16_AGGREGATES,
+        CUDA_PARENTHESIZED_ARRAYS,
+        CUDA_PARENTHESIZED_INTEGER16_ARRAYS,
         CUDA_PARTICLES,
         CUDA_POINTER_ALIASES,
         CUDA_POINTER_ASSIGNMENTS,
@@ -750,5 +753,14 @@ static CUDA_PARENTHESIZED_AGGREGATES: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_PARENTHESIZED_INTEGER16_AGGREGATES: GpuTestConfiguration = configuration_with_features(
     parenthesized_aggregates::integer16_cases,
+    wgpu::Features::SHADER_I16,
+);
+
+#[apply(gpu_test!)]
+static CUDA_PARENTHESIZED_ARRAYS: GpuTestConfiguration = configuration(parenthesized_arrays::cases);
+
+#[apply(gpu_test!)]
+static CUDA_PARENTHESIZED_INTEGER16_ARRAYS: GpuTestConfiguration = configuration_with_features(
+    parenthesized_arrays::integer16_cases,
     wgpu::Features::SHADER_I16,
 );

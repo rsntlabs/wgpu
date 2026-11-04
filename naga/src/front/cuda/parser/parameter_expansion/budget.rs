@@ -306,14 +306,16 @@ mod tests {
 
     #[test]
     fn fixed_array_initialization_charges_nodes_without_parameter_state() {
-        for source in ["{1}", "{}"] {
+        for source in ["{1}", "{}", "(1)"] {
             array_initializer_checks_node_budget(source, false);
         }
     }
 
     #[test]
     fn inferred_array_initialization_charges_nodes_without_parameter_state() {
-        array_initializer_checks_node_budget("{1}", true);
+        for source in ["{1}", "(1)"] {
+            array_initializer_checks_node_budget(source, true);
+        }
     }
 
     #[test]
