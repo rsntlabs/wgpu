@@ -126,7 +126,7 @@ pub(super) fn reorder_functions(
     order: &[Handle<Function>],
     budget: &mut ExpansionBudget,
     span: Span,
-) -> Result<(), ParseError> {
+) -> Result<Vec<Option<Handle<Function>>>, ParseError> {
     budget.charge_slice::<Option<Handle<Function>>>(module.functions.len(), span)?;
     budget.charge_slice::<Option<(Function, Span)>>(module.functions.len(), span)?;
     budget.charge_slice::<(Function, Span)>(order.len(), span)?;
@@ -148,7 +148,7 @@ pub(super) fn reorder_functions(
     for entry in &mut module.entry_points {
         remap_calls(&mut entry.function, &handles, budget, span)?;
     }
-    Ok(())
+    Ok(handles)
 }
 
 impl Parser<'_> {
@@ -284,12 +284,19 @@ impl Parser<'_> {
         let span = order.first().map_or(Span::default(), |&function| {
             self.module.functions.get_span(function)
         });
-        reorder_functions(
+        let handles = reorder_functions(
             &mut self.module,
             &order,
             &mut self.parameter_expansion_budget,
             span,
         )?;
+        self.parameter_expansion_budget
+            .charge_work(self.float_math_functions.len(), span)?;
+        for function in &mut self.float_math_functions {
+            if let Some(previous) = *function {
+                *function = handles[previous.index()];
+            }
+        }
         Ok(())
     }
 }

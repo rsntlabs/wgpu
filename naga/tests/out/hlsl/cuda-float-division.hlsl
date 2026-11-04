@@ -175,6 +175,12 @@ float operator_u002f_3(Ratio_cuda_record_0_ left_6, Ratio_cuda_record_0_ right_9
     return (_e6 + _e7);
 }
 
+uint _naga_fabsf(uint input_bits)
+{
+    uint _e2 = (input_bits & 2147483647u);
+    return ((_e2 > 2139095040u) ? 2143289344u : _e2);
+}
+
 int naga_neg(int val) {
     return asint(-asuint(val));
 }
@@ -413,37 +419,39 @@ void divisions()
         float _e416 = selected_denominator;
         selected_denominator = (_e416 + float(int(1)));
         const float _e420 = quotient_1(_e412, _e416);
-        local_2 = (_e420 != 0.0);
+        const uint _e422 = _naga_fabsf(asuint(_e420));
+        local_2 = (_e422 != 0u);
     }
-    bool _e423 = local_2;
-    output.Store(uint(int(43))*4, asuint(uint(_e423)));
-    float _e428 = selected_numerator;
-    output.Store(uint(int(44))*4, asuint(asuint(_e428)));
+    bool _e425 = local_2;
+    output.Store(uint(int(43))*4, asuint(uint(_e425)));
+    float _e430 = selected_numerator;
+    output.Store(uint(int(44))*4, asuint(asuint(_e430)));
     local_3 = true;
     if (true) {
     } else {
-        float _e435 = selected_numerator;
-        selected_numerator = (_e435 + float(int(1)));
-        float _e439 = selected_denominator;
-        selected_denominator = (_e439 + float(int(1)));
-        const float _e443 = quotient_1(_e435, _e439);
-        local_3 = (_e443 != 0.0);
+        float _e437 = selected_numerator;
+        selected_numerator = (_e437 + float(int(1)));
+        float _e441 = selected_denominator;
+        selected_denominator = (_e441 + float(int(1)));
+        const float _e445 = quotient_1(_e437, _e441);
+        const uint _e447 = _naga_fabsf(asuint(_e445));
+        local_3 = (_e447 != 0u);
     }
-    bool _e446 = local_3;
-    output.Store(uint(int(45))*4, asuint(uint(_e446)));
-    float _e451 = selected_denominator;
-    output.Store(uint(int(46))*4, asuint(asuint(_e451)));
+    bool _e450 = local_3;
+    output.Store(uint(int(45))*4, asuint(uint(_e450)));
+    float _e455 = selected_denominator;
+    output.Store(uint(int(46))*4, asuint(asuint(_e455)));
     scale = 6.0;
-    float _e458 = scale;
-    const uint _e462 = _naga_divide_f32_(asuint(_e458), asuint(2.0));
-    scale = asfloat(_e462);
-    float _e464 = scale;
-    const uint _e468 = _naga_divide_f32_(asuint(_e464), asuint(3.0));
-    scale = asfloat(_e468);
-    float _e470 = scale;
-    output.Store(uint(int(47))*4, asuint(asuint(_e470)));
-    float _e475 = scale;
-    output.Store(uint(int(48))*4, asuint(asuint(_e475)));
+    float _e462 = scale;
+    const uint _e466 = _naga_divide_f32_(asuint(_e462), asuint(2.0));
+    scale = asfloat(_e466);
+    float _e468 = scale;
+    const uint _e472 = _naga_divide_f32_(asuint(_e468), asuint(3.0));
+    scale = asfloat(_e472);
+    float _e474 = scale;
+    output.Store(uint(int(47))*4, asuint(asuint(_e474)));
+    float _e479 = scale;
+    output.Store(uint(int(48))*4, asuint(asuint(_e479)));
     scale = 8.0;
     {
         iteration = int(0);
@@ -453,62 +461,62 @@ void divisions()
             if (all(loop_bound_1 == uint2(0u, 0u))) { break; }
             loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
             if (!loop_init_1) {
-                int _e495 = iteration;
-                iteration = asint(asuint(_e495) + asuint(int(1)));
+                int _e499 = iteration;
+                iteration = asint(asuint(_e499) + asuint(int(1)));
             }
             loop_init_1 = false;
-            int _e483 = iteration;
-            if ((_e483 < int(2))) {
+            int _e487 = iteration;
+            if ((_e487 < int(2))) {
             } else {
                 break;
             }
-            int _e486 = iteration;
-            if ((_e486 == int(0))) {
+            int _e490 = iteration;
+            if ((_e490 == int(0))) {
                 continue;
             }
-            float _e489 = scale;
-            const uint _e493 = _naga_divide_f32_(asuint(_e489), asuint(2.0));
-            scale = asfloat(_e493);
+            float _e493 = scale;
+            const uint _e497 = _naga_divide_f32_(asuint(_e493), asuint(2.0));
+            scale = asfloat(_e497);
         }
     }
-    float _e498 = scale;
-    output.Store(uint(int(49))*4, asuint(asuint(_e498)));
+    float _e502 = scale;
+    output.Store(uint(int(49))*4, asuint(asuint(_e502)));
     left = 2.0;
     right = 3.0;
-    float _e505 = left;
-    left = (_e505 + float(int(1)));
-    float _e509 = right;
-    right = (_e509 + float(int(1)));
-    const uint _e515 = _naga_divide_f32_(asuint(_e505), asuint(_e509));
-    local_4 = asfloat(_e515);
-    float _e518 = local_4;
-    output.Store(uint(int(50))*4, asuint(asuint(_e518)));
-    float _e523 = left;
-    output.Store(uint(int(51))*4, asuint(asuint(_e523)));
-    float _e528 = right;
-    output.Store(uint(int(52))*4, asuint(asuint(_e528)));
-    const uint _e535 = _naga_divide_f32_(asuint(numerator_1), asuint(denominator_1));
-    const uint _e540 = _naga_divide_f32_(asuint(asfloat(_e535)), asuint(3.0));
-    output.Store(uint(int(53))*4, asuint(asuint(asfloat(_e540))));
-    const uint _e549 = _naga_divide_f32_(asuint(24.0), asuint(denominator_1));
-    const uint _e554 = _naga_divide_f32_(asuint(asfloat(_e549)), asuint(2.0));
-    output.Store(uint(int(54))*4, asuint(asuint(asfloat(_e554))));
-    const uint _e563 = _naga_divide_f32_(asuint(denominator_1), asuint(2.0));
-    const uint _e568 = _naga_divide_f32_(asuint(24.0), asuint(asfloat(_e563)));
-    output.Store(uint(int(55))*4, asuint(asuint(asfloat(_e568))));
-    const uint _e578 = _naga_divide_f32_(asuint(numerator_1), asuint(float(true)));
-    output.Store(uint(int(56))*4, asuint(asuint(asfloat(_e578))));
-    const uint _e588 = _naga_divide_f32_(asuint(float(4294967295u)), asuint(denominator_1));
-    output.Store(uint(int(57))*4, asuint(asuint(asfloat(_e588))));
-    uint _e597 = asuint(input.Load(uint(int(2))*4));
-    const uint _e601 = _naga_divide_f32_(asuint(numerator_1), asuint(asfloat(_e597)));
-    output.Store(uint(int(58))*4, asuint(asuint(asfloat(_e601))));
-    uint _e610 = asuint(input.Load(uint(int(2))*4));
-    uint _e615 = asuint(input.Load(uint(int(2))*4));
-    const uint _e619 = _naga_divide_f32_(asuint(asfloat(_e610)), asuint(asfloat(_e615)));
-    output.Store(uint(int(59))*4, asuint(asuint(asfloat(_e619))));
-    uint _e628 = asuint(input.Load(uint(int(3))*4));
-    uint _e633 = asuint(input.Load(uint(int(3))*4));
-    const uint _e637 = _naga_divide_f32_(asuint(asfloat(_e628)), asuint(asfloat(_e633)));
-    output.Store(uint(int(60))*4, asuint(asuint(asfloat(_e637))));
+    float _e509 = left;
+    left = (_e509 + float(int(1)));
+    float _e513 = right;
+    right = (_e513 + float(int(1)));
+    const uint _e519 = _naga_divide_f32_(asuint(_e509), asuint(_e513));
+    local_4 = asfloat(_e519);
+    float _e522 = local_4;
+    output.Store(uint(int(50))*4, asuint(asuint(_e522)));
+    float _e527 = left;
+    output.Store(uint(int(51))*4, asuint(asuint(_e527)));
+    float _e532 = right;
+    output.Store(uint(int(52))*4, asuint(asuint(_e532)));
+    const uint _e539 = _naga_divide_f32_(asuint(numerator_1), asuint(denominator_1));
+    const uint _e544 = _naga_divide_f32_(asuint(asfloat(_e539)), asuint(3.0));
+    output.Store(uint(int(53))*4, asuint(asuint(asfloat(_e544))));
+    const uint _e553 = _naga_divide_f32_(asuint(24.0), asuint(denominator_1));
+    const uint _e558 = _naga_divide_f32_(asuint(asfloat(_e553)), asuint(2.0));
+    output.Store(uint(int(54))*4, asuint(asuint(asfloat(_e558))));
+    const uint _e567 = _naga_divide_f32_(asuint(denominator_1), asuint(2.0));
+    const uint _e572 = _naga_divide_f32_(asuint(24.0), asuint(asfloat(_e567)));
+    output.Store(uint(int(55))*4, asuint(asuint(asfloat(_e572))));
+    const uint _e582 = _naga_divide_f32_(asuint(numerator_1), asuint(float(true)));
+    output.Store(uint(int(56))*4, asuint(asuint(asfloat(_e582))));
+    const uint _e592 = _naga_divide_f32_(asuint(float(4294967295u)), asuint(denominator_1));
+    output.Store(uint(int(57))*4, asuint(asuint(asfloat(_e592))));
+    uint _e601 = asuint(input.Load(uint(int(2))*4));
+    const uint _e605 = _naga_divide_f32_(asuint(numerator_1), asuint(asfloat(_e601)));
+    output.Store(uint(int(58))*4, asuint(asuint(asfloat(_e605))));
+    uint _e614 = asuint(input.Load(uint(int(2))*4));
+    uint _e619 = asuint(input.Load(uint(int(2))*4));
+    const uint _e623 = _naga_divide_f32_(asuint(asfloat(_e614)), asuint(asfloat(_e619)));
+    output.Store(uint(int(59))*4, asuint(asuint(asfloat(_e623))));
+    uint _e632 = asuint(input.Load(uint(int(3))*4));
+    uint _e637 = asuint(input.Load(uint(int(3))*4));
+    const uint _e641 = _naga_divide_f32_(asuint(asfloat(_e632)), asuint(asfloat(_e637)));
+    output.Store(uint(int(60))*4, asuint(asuint(asfloat(_e641))));
 }

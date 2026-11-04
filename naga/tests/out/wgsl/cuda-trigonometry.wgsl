@@ -427,6 +427,11 @@ fn pair(first_1: f32, second_1: f32) -> f32 {
     return ((first_1 * 10f) + second_1);
 }
 
+fn gen__naga_fabsf(input_bits_1: u32) -> u32 {
+    let _e2 = (input_bits_1 & 2147483647u);
+    return select(_e2, 2143289344u, (_e2 > 2139095040u));
+}
+
 @compute @workgroup_size(1, 1, 1)
 fn trigonometry() {
     var value: f32;
@@ -499,91 +504,93 @@ fn trigonometry() {
         let _e163 = counter;
         counter = (_e163 + 1i);
         let _e169 = gen__naga_trigonometry(bitcast<u32>(f32(_e163)), 0u);
-        local = (bitcast<f32>(_e169) != 0f);
+        let _e172 = gen__naga_fabsf(bitcast<u32>(bitcast<f32>(_e169)));
+        local = (_e172 != 0u);
     }
-    let _e173 = local;
-    out[u32(18i)] = u32(_e173);
+    let _e175 = local;
+    out[u32(18i)] = u32(_e175);
     local_1 = true;
     if true {
     } else {
-        let _e180 = counter;
-        counter = (_e180 + 1i);
-        let _e186 = gen__naga_trigonometry(bitcast<u32>(f32(_e180)), 1u);
-        local_1 = (bitcast<f32>(_e186) != 0f);
+        let _e182 = counter;
+        counter = (_e182 + 1i);
+        let _e188 = gen__naga_trigonometry(bitcast<u32>(f32(_e182)), 1u);
+        let _e191 = gen__naga_fabsf(bitcast<u32>(bitcast<f32>(_e188)));
+        local_1 = (_e191 != 0u);
     }
-    let _e190 = local_1;
-    out[u32(19i)] = u32(_e190);
-    let _e195 = choose;
-    if _e195 {
-        let _e196 = counter;
-        counter = (_e196 + 1i);
-        let _e199 = counter;
-        let _e203 = gen__naga_trigonometry(bitcast<u32>(f32(_e199)), 0u);
-        local_2 = bitcast<f32>(_e203);
+    let _e194 = local_1;
+    out[u32(19i)] = u32(_e194);
+    let _e199 = choose;
+    if _e199 {
+        let _e200 = counter;
+        counter = (_e200 + 1i);
+        let _e203 = counter;
+        let _e207 = gen__naga_trigonometry(bitcast<u32>(f32(_e203)), 0u);
+        local_2 = bitcast<f32>(_e207);
     } else {
-        let _e206 = counter;
-        let _e210 = gen__naga_trigonometry(bitcast<u32>(f32(_e206)), 1u);
-        local_2 = bitcast<f32>(_e210);
+        let _e210 = counter;
+        let _e214 = gen__naga_trigonometry(bitcast<u32>(f32(_e210)), 1u);
+        local_2 = bitcast<f32>(_e214);
     }
-    let _e214 = local_2;
-    out[u32(20i)] = u32(_e214);
-    let _e219 = counter;
-    out[u32(21i)] = u32(_e219);
-    let _e229 = gen__naga_trigonometry(bitcast<u32>(0f), 0u);
-    values[0] = bitcast<f32>(_e229);
-    let _e235 = gen__naga_trigonometry(bitcast<u32>(0f), 1u);
-    values[1] = bitcast<f32>(_e235);
-    let _e241 = values[0i];
-    let _e242 = values[1i];
-    out[u32(22i)] = bitcast<u32>((_e241 + _e242));
+    let _e218 = local_2;
+    out[u32(20i)] = u32(_e218);
+    let _e223 = counter;
+    out[u32(21i)] = u32(_e223);
+    let _e233 = gen__naga_trigonometry(bitcast<u32>(0f), 0u);
+    values[0] = bitcast<f32>(_e233);
+    let _e239 = gen__naga_trigonometry(bitcast<u32>(0f), 1u);
+    values[1] = bitcast<f32>(_e239);
+    let _e245 = values[0i];
+    let _e246 = values[1i];
+    out[u32(22i)] = bitcast<u32>((_e245 + _e246));
     Count = 2i;
     scratch = array<f32, 2>();
-    let _e254 = scratch[1i];
-    out[u32(23i)] = bitcast<u32>(_e254);
+    let _e258 = scratch[1i];
+    out[u32(23i)] = bitcast<u32>(_e258);
     repeated = 0i;
     {
         index = 0i;
         loop {
-            let _e263 = index;
-            if (_e263 < 3i) {
+            let _e267 = index;
+            if (_e267 < 3i) {
             } else {
                 break;
             }
-            let _e266 = index;
-            if (_e266 == 0i) {
+            let _e270 = index;
+            if (_e270 == 0i) {
                 continue;
             }
-            let _e272 = gen__naga_trigonometry(bitcast<u32>(0f), 1u);
-            let _e275 = repeated;
-            repeated = (_e275 + i32(bitcast<f32>(_e272)));
+            let _e276 = gen__naga_trigonometry(bitcast<u32>(0f), 1u);
+            let _e279 = repeated;
+            repeated = (_e279 + i32(bitcast<f32>(_e276)));
             continuing {
-                let _e277 = index;
-                index = (_e277 + 1i);
+                let _e281 = index;
+                index = (_e281 + 1i);
             }
         }
     }
-    let _e280 = repeated;
-    out[u32(24i)] = u32(_e280);
+    let _e284 = repeated;
+    out[u32(24i)] = u32(_e284);
     value = 0f;
-    let _e286 = value;
-    value = (_e286 + f32(1i));
-    let _e292 = gen__naga_trigonometry(bitcast<u32>(_e286), 0u);
-    let _e293 = value;
-    value = (_e293 - f32(1i));
+    let _e290 = value;
+    value = (_e290 + f32(1i));
+    let _e296 = gen__naga_trigonometry(bitcast<u32>(_e290), 0u);
     let _e297 = value;
-    let _e300 = gen__naga_trigonometry(bitcast<u32>(_e297), 1u);
-    out[u32(25i)] = bitcast<u32>(bitcast<f32>(_e300));
-    let _e306 = value;
-    out[u32(26i)] = bitcast<u32>(_e306);
+    value = (_e297 - f32(1i));
+    let _e301 = value;
+    let _e304 = gen__naga_trigonometry(bitcast<u32>(_e301), 1u);
+    out[u32(25i)] = bitcast<u32>(bitcast<f32>(_e304));
+    let _e310 = value;
+    out[u32(26i)] = bitcast<u32>(_e310);
     if true {
-        let _e315 = gen__naga_trigonometry(bitcast<u32>(0f), 1u);
-        local_3 = bitcast<f32>(_e315);
+        let _e319 = gen__naga_trigonometry(bitcast<u32>(0f), 1u);
+        local_3 = bitcast<f32>(_e319);
     } else {
-        let _e321 = gen__naga_trigonometry(bitcast<u32>(99f), 0u);
-        local_3 = bitcast<f32>(_e321);
+        let _e325 = gen__naga_trigonometry(bitcast<u32>(99f), 0u);
+        local_3 = bitcast<f32>(_e325);
     }
-    let _e325 = local_3;
-    out[u32(27i)] = u32(_e325);
-    let _e332 = cosine_value(f32(false));
-    out[u32(28i)] = bitcast<u32>(_e332);
+    let _e329 = local_3;
+    out[u32(27i)] = u32(_e329);
+    let _e336 = cosine_value(f32(false));
+    out[u32(28i)] = bitcast<u32>(_e336);
 }

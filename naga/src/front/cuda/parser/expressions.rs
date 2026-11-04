@@ -1,3 +1,4 @@
+use super::float_helpers::FloatMathFunction;
 use super::*;
 
 const UNARY_PRECEDENCE: u8 = 11;
@@ -731,11 +732,21 @@ impl Parser<'_> {
         let handle = if let Some(literal) = constant.filter(|_| value.constant.is_nonfinite()) {
             self.materialize_literal(literal, value.span)?
         } else {
-            let zero = self.append(Expression::Literal(literal), value.span)?;
+            let (comparison_value, zero_literal) = if scalar == Scalar::F32 {
+                let magnitude = self.call_float_math_bits(
+                    value.handle,
+                    FloatMathFunction::AbsoluteValue,
+                    value.span,
+                )?;
+                (magnitude, Literal::U32(0))
+            } else {
+                (value.handle, literal)
+            };
+            let zero = self.append(Expression::Literal(zero_literal), value.span)?;
             self.append(
                 Expression::Binary {
                     op: BinaryOperator::NotEqual,
-                    left: value.handle,
+                    left: comparison_value,
                     right: zero,
                 },
                 value.span,

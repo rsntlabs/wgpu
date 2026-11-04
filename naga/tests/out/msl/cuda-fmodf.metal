@@ -108,6 +108,13 @@ float fmodf_1(
 ) {
     return (first + second) + third;
 }
+
+uint _naga_fabsf(
+    uint input_bits
+) {
+    uint _e2 = input_bits & 2147483647u;
+    return (_e2 > 2139095040u) ? 2143289344u : _e2;
+}
 int naga_neg(int val) {
     return as_type<int>(-as_type<uint>(val));
 }
@@ -300,39 +307,41 @@ kernel void remainders(
         float _e472 = value;
         value = _e472 + static_cast<float>(1);
         uint _e479 = _naga_fmodf(as_type<uint>(_e472), as_type<uint>(2.0));
-        local_20 = as_type<float>(_e479) != 0.0;
+        uint _e482 = _naga_fabsf(as_type<uint>(as_type<float>(_e479)));
+        local_20 = _e482 != 0u;
     }
-    bool _e483 = local_20;
-    output[static_cast<uint>(40)] = static_cast<uint>(_e483);
+    bool _e485 = local_20;
+    output[static_cast<uint>(40)] = static_cast<uint>(_e485);
     local_21 = true;
     if (true) {
     } else {
-        float _e490 = value;
-        value = _e490 + static_cast<float>(1);
-        uint _e497 = _naga_fmodf(as_type<uint>(_e490), as_type<uint>(2.0));
-        local_21 = as_type<float>(_e497) != 0.0;
+        float _e492 = value;
+        value = _e492 + static_cast<float>(1);
+        uint _e499 = _naga_fmodf(as_type<uint>(_e492), as_type<uint>(2.0));
+        uint _e502 = _naga_fabsf(as_type<uint>(as_type<float>(_e499)));
+        local_21 = _e502 != 0u;
     }
-    bool _e501 = local_21;
-    output[static_cast<uint>(41)] = static_cast<uint>(_e501);
-    float _e506 = value;
-    output[static_cast<uint>(42)] = as_type<uint>(_e506);
-    float _e511 = value;
-    value = _e511 + static_cast<float>(1);
-    uint _e518 = _naga_fmodf(as_type<uint>(_e511), as_type<uint>(2.0));
-    float _e519 = value;
-    value = _e519 + static_cast<float>(1);
-    uint _e526 = _naga_fmodf(as_type<uint>(_e519), as_type<uint>(3.0));
-    output[static_cast<uint>(43)] = as_type<uint>(as_type<float>(_e526));
-    float _e532 = value;
-    output[static_cast<uint>(44)] = as_type<uint>(_e532);
-    float _e537 = value;
-    value = _e537 + static_cast<float>(1);
-    uint _e544 = _naga_fmodf(as_type<uint>(_e537), as_type<uint>(3.0));
-    local_22 = as_type<float>(_e544);
-    float _e547 = local_22;
-    output[static_cast<uint>(45)] = as_type<uint>(_e547);
-    float _e552 = value;
-    output[static_cast<uint>(46)] = as_type<uint>(_e552);
+    bool _e505 = local_21;
+    output[static_cast<uint>(41)] = static_cast<uint>(_e505);
+    float _e510 = value;
+    output[static_cast<uint>(42)] = as_type<uint>(_e510);
+    float _e515 = value;
+    value = _e515 + static_cast<float>(1);
+    uint _e522 = _naga_fmodf(as_type<uint>(_e515), as_type<uint>(2.0));
+    float _e523 = value;
+    value = _e523 + static_cast<float>(1);
+    uint _e530 = _naga_fmodf(as_type<uint>(_e523), as_type<uint>(3.0));
+    output[static_cast<uint>(43)] = as_type<uint>(as_type<float>(_e530));
+    float _e536 = value;
+    output[static_cast<uint>(44)] = as_type<uint>(_e536);
+    float _e541 = value;
+    value = _e541 + static_cast<float>(1);
+    uint _e548 = _naga_fmodf(as_type<uint>(_e541), as_type<uint>(3.0));
+    local_22 = as_type<float>(_e548);
+    float _e551 = local_22;
+    output[static_cast<uint>(45)] = as_type<uint>(_e551);
+    float _e556 = value;
+    output[static_cast<uint>(46)] = as_type<uint>(_e556);
     {
         iteration = 0;
         uint2 loop_bound_1 = uint2(4294967295u);
@@ -341,76 +350,77 @@ kernel void remainders(
             if (metal::all(loop_bound_1 == uint2(0u))) { break; }
             loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
             if (!loop_init) {
-                int _e582 = iteration;
-                iteration = as_type<int>(as_type<uint>(_e582) + as_type<uint>(1));
+                int _e586 = iteration;
+                iteration = as_type<int>(as_type<uint>(_e586) + as_type<uint>(1));
             }
             loop_init = false;
-            int _e559 = iteration;
-            if (_e559 < 2) {
+            int _e563 = iteration;
+            if (_e563 < 2) {
             } else {
                 break;
             }
-            int _e562 = iteration;
-            if (_e562 == 0) {
+            int _e566 = iteration;
+            if (_e566 == 0) {
                 continue;
             }
-            float _e565 = value;
-            value = _e565 + static_cast<float>(1);
-            uint _e572 = _naga_fmodf(as_type<uint>(_e565), as_type<uint>(2.0));
+            float _e569 = value;
+            value = _e569 + static_cast<float>(1);
+            uint _e576 = _naga_fmodf(as_type<uint>(_e569), as_type<uint>(2.0));
             local_23 = static_cast<uint>(47);
-            uint _e578 = local_23;
-            local_31 = _e578;
-            uint _e580 = local_31;
-            output[_e580] = as_type<uint>(as_type<float>(_e572));
+            uint _e582 = local_23;
+            local_31 = _e582;
+            uint _e584 = local_31;
+            output[_e584] = as_type<uint>(as_type<float>(_e576));
         }
     }
-    float _e585 = value;
-    output[static_cast<uint>(48)] = as_type<uint>(_e585);
+    float _e589 = value;
+    output[static_cast<uint>(48)] = as_type<uint>(_e589);
     local_24 = true;
     if (true) {
-        float _e592 = value;
-        value = _e592 + static_cast<float>(1);
-        uint _e599 = _naga_fmodf(as_type<uint>(_e592), as_type<uint>(2.0));
-        local_24 = as_type<float>(_e599) != 0.0;
+        float _e596 = value;
+        value = _e596 + static_cast<float>(1);
+        uint _e603 = _naga_fmodf(as_type<uint>(_e596), as_type<uint>(2.0));
+        uint _e606 = _naga_fabsf(as_type<uint>(as_type<float>(_e603)));
+        local_24 = _e606 != 0u;
     }
-    bool _e603 = local_24;
-    output[static_cast<uint>(49)] = static_cast<uint>(_e603);
-    float _e608 = value;
-    output[static_cast<uint>(50)] = as_type<uint>(_e608);
-    float _e617 = sample_remainder(static_cast<float>(4294967295u), static_cast<float>(3u));
-    output[static_cast<uint>(51)] = as_type<uint>(_e617);
-    float _e629 = sample_remainder(static_cast<float>(as_type<int>(as_type<uint>(naga_neg(2147483647)) - as_type<uint>(1))), static_cast<float>(3));
-    output[static_cast<uint>(52)] = as_type<uint>(_e629);
-    uint _e638 = _naga_fmodf(as_type<uint>(0.5), as_type<uint>(0.25));
-    output[static_cast<uint>(53)] = as_type<uint>(as_type<float>(_e638));
-    uint _e649 = _naga_fmodf(as_type<uint>(-(0.5)), as_type<uint>(0.25));
-    output[static_cast<uint>(54)] = as_type<uint>(as_type<float>(_e649));
+    bool _e609 = local_24;
+    output[static_cast<uint>(49)] = static_cast<uint>(_e609);
+    float _e614 = value;
+    output[static_cast<uint>(50)] = as_type<uint>(_e614);
+    float _e623 = sample_remainder(static_cast<float>(4294967295u), static_cast<float>(3u));
+    output[static_cast<uint>(51)] = as_type<uint>(_e623);
+    float _e635 = sample_remainder(static_cast<float>(as_type<int>(as_type<uint>(naga_neg(2147483647)) - as_type<uint>(1))), static_cast<float>(3));
+    output[static_cast<uint>(52)] = as_type<uint>(_e635);
+    uint _e644 = _naga_fmodf(as_type<uint>(0.5), as_type<uint>(0.25));
+    output[static_cast<uint>(53)] = as_type<uint>(as_type<float>(_e644));
+    uint _e655 = _naga_fmodf(as_type<uint>(-(0.5)), as_type<uint>(0.25));
+    output[static_cast<uint>(54)] = as_type<uint>(as_type<float>(_e655));
     local_25 = 2147483647u;
-    uint _e657 = local_25;
-    uint _e662 = _naga_fmodf(as_type<uint>(as_type<float>(_e657)), as_type<uint>(1.0));
-    output[static_cast<uint>(55)] = as_type<uint>(as_type<float>(_e662));
-    float _e670 = sample_remainder(3.25, 2.0);
-    output[static_cast<uint>(56)] = as_type<uint>(_e670);
-    uint _e679 = _naga_fmodf(as_type<uint>(5.5), as_type<uint>(2.0));
-    uint _e684 = _naga_fmodf(as_type<uint>(1.5), as_type<uint>(as_type<float>(_e679)));
-    output[static_cast<uint>(57)] = as_type<uint>(as_type<float>(_e684));
-    uint _e694 = _naga_fmodf(as_type<uint>(8.5), as_type<uint>(3.0));
-    uint _e699 = _naga_fmodf(as_type<uint>(as_type<float>(_e694)), as_type<uint>(2.0));
-    output[static_cast<uint>(58)] = as_type<uint>(as_type<float>(_e699));
+    uint _e663 = local_25;
+    uint _e668 = _naga_fmodf(as_type<uint>(as_type<float>(_e663)), as_type<uint>(1.0));
+    output[static_cast<uint>(55)] = as_type<uint>(as_type<float>(_e668));
+    float _e676 = sample_remainder(3.25, 2.0);
+    output[static_cast<uint>(56)] = as_type<uint>(_e676);
+    uint _e685 = _naga_fmodf(as_type<uint>(5.5), as_type<uint>(2.0));
+    uint _e690 = _naga_fmodf(as_type<uint>(1.5), as_type<uint>(as_type<float>(_e685)));
+    output[static_cast<uint>(57)] = as_type<uint>(as_type<float>(_e690));
+    uint _e700 = _naga_fmodf(as_type<uint>(8.5), as_type<uint>(3.0));
+    uint _e705 = _naga_fmodf(as_type<uint>(as_type<float>(_e700)), as_type<uint>(2.0));
+    output[static_cast<uint>(58)] = as_type<uint>(as_type<float>(_e705));
     local_26 = 2139095040u;
-    uint _e709 = local_26;
-    uint _e713 = _naga_fmodf(as_type<uint>(-(0.0)), as_type<uint>(as_type<float>(_e709)));
-    output[static_cast<uint>(59)] = as_type<uint>(as_type<float>(_e713));
+    uint _e715 = local_26;
+    uint _e719 = _naga_fmodf(as_type<uint>(-(0.0)), as_type<uint>(as_type<float>(_e715)));
+    output[static_cast<uint>(59)] = as_type<uint>(as_type<float>(_e719));
     local_27 = 1u;
-    uint _e721 = local_27;
+    uint _e727 = local_27;
     local_28 = 4286578688u;
-    uint _e725 = local_28;
-    uint _e729 = _naga_fmodf(as_type<uint>(as_type<float>(_e721)), as_type<uint>(as_type<float>(_e725)));
-    output[static_cast<uint>(60)] = as_type<uint>(as_type<float>(_e729));
+    uint _e731 = local_28;
+    uint _e735 = _naga_fmodf(as_type<uint>(as_type<float>(_e727)), as_type<uint>(as_type<float>(_e731)));
+    output[static_cast<uint>(60)] = as_type<uint>(as_type<float>(_e735));
     local_29 = 8388609u;
-    uint _e737 = local_29;
+    uint _e743 = local_29;
     local_30 = 8388607u;
-    uint _e741 = local_30;
-    uint _e745 = _naga_fmodf(as_type<uint>(as_type<float>(_e737)), as_type<uint>(as_type<float>(_e741)));
-    output[static_cast<uint>(61)] = as_type<uint>(as_type<float>(_e745));
+    uint _e747 = local_30;
+    uint _e751 = _naga_fmodf(as_type<uint>(as_type<float>(_e743)), as_type<uint>(as_type<float>(_e747)));
+    output[static_cast<uint>(61)] = as_type<uint>(as_type<float>(_e751));
 }
