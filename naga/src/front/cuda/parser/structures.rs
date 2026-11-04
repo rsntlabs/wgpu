@@ -151,6 +151,12 @@ impl<'a> Parser<'a> {
             }
             let resolution = self.lower_type(specifier, type_span)?;
             let base = self.type_handle(&resolution, type_span);
+            if self.is_incomplete_array(base) {
+                return Err(ParseError {
+                    message: String::from("structure members require complete array types"),
+                    span: type_span,
+                });
+            }
             let (element, _) = self.array_shape(base, type_span)?;
             if is_const
                 || matches!(

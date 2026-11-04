@@ -562,6 +562,75 @@ mod tests {
     }
 
     #[test]
+    fn incomplete_dynamic_shared_aliases_check_bytes_before_storage_inventory() {
+        let source = "extern __shared__ Values values;";
+        for (kind, global) in [
+            (FunctionKind::Kernel, false),
+            (FunctionKind::Device, false),
+            (FunctionKind::Kernel, true),
+        ] {
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            parser.function = FunctionContext::new(kind);
+            let span = parser.lexer.peek().unwrap().1;
+            let element = parser.scalar_handle(Scalar::I32, span);
+            let values = parser
+                .array_type(element, ArraySize::Dynamic, span, span)
+                .unwrap();
+            let alias = QualifiedType {
+                ty: TypeSpecifier::Array(values),
+                qualifiers: Qualifiers::NONE,
+            };
+            assert!(parser
+                .global_declarations
+                .insert("Values", GlobalDeclaration::Type(alias.clone()))
+                .is_none());
+            let type_count = parser.module.types.len();
+            let declaration_count = parser.global_declarations.len();
+            assert_eq!(type_count, 2);
+            assert!(parser.numeric_storage_types.is_empty());
+            parser.parameter_expansion_budget.activate();
+            let inventory_bytes = type_count * size_of::<bool>();
+            let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes - inventory_bytes;
+            parser
+                .parameter_expansion_budget
+                .charge_bytes(remaining, span)
+                .unwrap();
+            assert!(!parser.function.parameter_state_charged);
+
+            let error = parser.dynamic_shared_declaration(global).unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            let range = error.span.to_range().unwrap();
+            assert!(!range.is_empty());
+            assert!(source.get(range).is_some());
+            assert!(!parser.function.parameter_state_charged);
+            assert!(parser.numeric_storage_types.is_empty());
+            assert_eq!(parser.module.types.len(), type_count);
+            assert_eq!(parser.global_declarations.len(), declaration_count);
+            assert_eq!(parser.type_name("Values"), Some(alias));
+            assert!(!parser.global_declarations.contains_key("values"));
+            assert!(!parser.has_dynamic_shared_declaration("values"));
+            assert!(parser.function.symbol_table.lookup("values").is_none());
+            assert!(parser.function.ir.expressions.is_empty());
+            assert!(parser.function.expression_graph_depths.is_empty());
+            assert!(parser.function.ir.named_expressions.is_empty());
+            assert!(parser.function.ir.local_variables.is_empty());
+            assert!(parser.function.ir.arguments.is_empty());
+            assert!(parser.function.ir.body.is_empty());
+            assert!(parser.function.parameters.is_empty());
+            assert!(parser.module.global_variables.is_empty());
+            assert!(parser.module.functions.is_empty());
+            assert_eq!(parser.dim3_type, None);
+            assert_eq!(parser.uint3_type, None);
+            assert_eq!(parser.float_math_functions, [None; 4]);
+            assert_eq!(parser.sqrtf_function, None);
+            assert_eq!(parser.division_function, None);
+            assert_eq!(parser.fmodf_function, None);
+            assert_eq!(parser.trigonometry_function, None);
+        }
+    }
+
+    #[test]
     fn cached_float_math_checks_node_budget_without_parameter_state() {
         use super::super::super::float_helpers::FloatMathFunction;
 

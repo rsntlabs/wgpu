@@ -620,12 +620,15 @@ fn cuda_fixed_array_aliases_check_complete_constant_extents_rank_size_and_capabi
     for source in [
         "__global__ void kernel(int count) { using Row = int[count]; }",
         "__global__ void kernel() { int counter = 0; using Row = int[(counter++, 3)]; }",
-        "using Incomplete = int[]; __global__ void kernel() {}",
         "using Row = int[2][]; __global__ void kernel() {}",
         "__device__ void unused() { using Row = int[0]; } __global__ void kernel() {}",
     ] {
         rejected(source);
     }
+    roundtrip(
+        "using Incomplete = int[]; __global__ void kernel() {}",
+        naga::valid::Capabilities::empty(),
+    );
     let too_large = naga::valid::MAX_TYPE_SIZE / 4 + 1;
     let error = rejected(&format!(
         "using Row = int[{too_large}u]; __global__ void kernel() {{}}"

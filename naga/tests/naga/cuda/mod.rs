@@ -43,6 +43,7 @@ mod helper_parameters;
 mod helpers;
 mod hex_float_literals;
 mod immutable_pointers;
+mod incomplete_array_aliases;
 mod inferred_arrays;
 mod inline;
 mod integer16;

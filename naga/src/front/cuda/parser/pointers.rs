@@ -139,6 +139,9 @@ impl<'a> Parser<'a> {
         pointee_qualifiers: Qualifiers,
         pointer_const: bool,
     ) -> Result<(Span, bool), ParseError> {
+        if matches!(specifier, TypeSpecifier::Array(array) if self.is_incomplete_array(array)) {
+            return self.fail("pointers to incomplete arrays are unsupported");
+        }
         if matches!(
             self.lexer.peek()?.0,
             Token::Operation('*' | '&') | Token::LogicalOperation('&') | Token::Paren('(')
@@ -307,6 +310,18 @@ impl<'a> Parser<'a> {
     ) -> Result<(), ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
+        if matches!(
+            *ty.inner_with(&self.module.types),
+            TypeInner::Array {
+                size: ArraySize::Dynamic,
+                ..
+            }
+        ) {
+            return Err(ParseError {
+                message: String::from("array elements require a complete type"),
+                span,
+            });
+        }
         if mode != ParameterMode::Value {
             return Err(ParseError {
                 message: String::from("array reference parameters are unsupported"),

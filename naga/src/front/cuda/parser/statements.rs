@@ -360,6 +360,12 @@ impl<'a> Parser<'a> {
             let ty = array.as_ref().map_or(base, |array| array.ty);
             let array_count = array.as_ref().and_then(|array| array.count);
             let has_initializer = !matches!(self.lexer.peek()?.0, Token::Separator(',' | ';'));
+            if is_array && array_count.is_none() && !has_initializer {
+                return Err(ParseError {
+                    message: String::from("incomplete arrays require an initializer"),
+                    span: self.lexer.peek()?.1,
+                });
+            }
             let requires_default_constructor = self.requires_default_constructor(ty);
             if matches!(specifier, TypeSpecifier::Array(_)) {
                 self.activate_parameter_expansion(span)?;
@@ -608,6 +614,25 @@ impl<'a> Parser<'a> {
                 element_ty,
                 count: Some(count),
             }),
+            TypeInner::Array {
+                base: element_ty,
+                size: ArraySize::Dynamic,
+                ..
+            } => {
+                if !allow_inferred {
+                    return Err(ParseError {
+                        message: String::from("this declaration requires a complete array bound"),
+                        span,
+                    });
+                }
+                self.activate_parameter_expansion(span)?;
+                self.prepare_parameter_bindings(span)?;
+                Some(ArrayDeclaration {
+                    ty: element_ty,
+                    element_ty,
+                    count: None,
+                })
+            }
             _ => None,
         })
     }
@@ -620,6 +645,12 @@ impl<'a> Parser<'a> {
     ) -> Result<ArrayDeclaration, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
+        if self.is_incomplete_array(base) {
+            return Err(ParseError {
+                message: String::from("array elements require a complete type"),
+                span,
+            });
+        }
         let (_, base_rank) = self.array_shape(base, span)?;
         let mut dimensions = Vec::new();
         loop {

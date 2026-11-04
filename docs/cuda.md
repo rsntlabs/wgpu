@@ -936,7 +936,7 @@ blocks and `for` initializers. Local values can hide outer type names, and local
 aliases can hide outer values or functions. A `using` alias in a `for` initializer
 uses C++23 syntax. Function and void aliases remain unsupported.
 
-Fixed-size array aliases support both declaration forms and compose through
+Array aliases support both declaration forms and compose through
 earlier aliases.
 
 ```cuda
@@ -951,8 +951,17 @@ declarations, record members, and the supported shared and constant storage
 forms. Additional written dimensions surround the aliased array, so
 `Row values[2];` has two rows of three integers. Existing initialization and
 constructor defaults apply to the complete array. All aliased extents must be
-positive integral constant expressions. The 64-dimension limit includes inherited
-and written dimensions.
+positive integral constant expressions when specified. The 64-dimension limit
+includes inherited and written dimensions.
+
+An alias can leave its outermost bound unknown, as in `using Values = int[];`
+or `using Rows = Row[];`. Each local object infers its own bound from a nonempty
+brace, copy-list or parenthesized initializer. For example, `Values first{1};`
+and `Values second(2, 3);` have lengths one and two. The alias retains its unknown
+bound after both declarations. Inner dimensions require complete element types.
+Record members, static shared storage and constant memory require known bounds.
+Dynamic shared declarations accept an incomplete alias directly, as in
+`extern __shared__ Values values;`.
 
 Array parameters adjust their outermost dimension to a pointer. A `Row` parameter
 becomes `int *`, and a `Matrix` parameter becomes `Row *`. A written outer bound,
@@ -960,8 +969,10 @@ as in `Row values[2]`, also produces `Row *`. These forms work in kernel and dev
 helper parameters, including prototypes. Const array qualification follows the
 elements, preserving read-only storage bindings. Pointers to aliased rows retain
 their row stride through indexing, arithmetic and helper calls.
+Incomplete aliases use the same adjustment, so a `Values` parameter becomes
+`int *` and a `Rows` parameter becomes `Row *`.
 
-Typed array temporaries, whole-array references, incomplete array aliases and
+Typed array temporaries, whole-array references, pointers to incomplete arrays and
 explicit array template type arguments require further frontend support.
 
 Pointer aliases use the existing scalar, vector, and completed struct pointee

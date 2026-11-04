@@ -150,6 +150,9 @@ impl<'a> Parser<'a> {
         }
         let resolution = self.lower_type(qualified.ty, span)?;
         let base = self.type_handle(&resolution, span);
+        if self.is_incomplete_array(base) {
+            return self.fail("constant memory requires a complete array bound");
+        }
         if !self.numeric_storage_type(base, span)? || self.requires_default_constructor(base) {
             return self.fail("constant memory requires numeric values or POD records");
         }
