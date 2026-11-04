@@ -31,6 +31,10 @@ pub(in crate::back::glsl) const fn glsl_scalar(
                 prefix: "i",
                 full: "int",
             },
+            8 => ScalarString {
+                prefix: "i64",
+                full: "int64_t",
+            },
             _ => return Err(Error::UnsupportedScalar(scalar)),
         },
         Sk::Uint => match scalar.width {
@@ -41,6 +45,10 @@ pub(in crate::back::glsl) const fn glsl_scalar(
             4 => ScalarString {
                 prefix: "u",
                 full: "uint",
+            },
+            8 => ScalarString {
+                prefix: "u64",
+                full: "uint64_t",
             },
             _ => return Err(Error::UnsupportedScalar(scalar)),
         },

@@ -60,6 +60,7 @@ bitflags::bitflags! {
         /// Primitive index builtin
         const PRIMITIVE_INDEX = 1 << 27;
         const INT16_TYPE = 1 << 28;
+        const INT64_TYPE = 1 << 29;
     }
 }
 
@@ -122,6 +123,10 @@ impl FeaturesManager {
         check_feature!(BUFFER_STORAGE, 400, 310);
         check_feature!(DOUBLE_TYPE, 150);
         check_feature!(INT16_TYPE, 140, 310);
+        check_feature!(INT64_TYPE, 140, 310);
+        if version.is_webgl() && self.0.contains(Features::INT64_TYPE) {
+            missing |= Features::INT64_TYPE;
+        }
         check_feature!(CUBE_TEXTURES_ARRAY, 130, 310);
         check_feature!(MULTISAMPLED_TEXTURES, 150, 300);
         check_feature!(MULTISAMPLED_TEXTURE_ARRAYS, 150, 310);
@@ -186,6 +191,17 @@ impl FeaturesManager {
                 out,
                 "#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require"
             )?;
+        }
+
+        if self.0.contains(Features::INT64_TYPE) {
+            if !options.version.is_es() && options.version >= Version::Desktop(400) {
+                writeln!(out, "#extension GL_ARB_gpu_shader_int64 : require")?;
+            } else {
+                writeln!(
+                    out,
+                    "#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require"
+                )?;
+            }
         }
 
         if self.0.contains(Features::CUBE_TEXTURES_ARRAY) {
@@ -374,6 +390,11 @@ impl<W> Writer<'_, W> {
                 TypeInner::Scalar(scalar)
                 | TypeInner::Vector { scalar, .. }
                 | TypeInner::Matrix { scalar, .. } => self.scalar_required_features(scalar),
+                TypeInner::Atomic(Scalar { width: 8, .. }) => {
+                    return Err(Error::Custom(
+                        "64-bit integer atomics are not supported".into(),
+                    ));
+                }
                 TypeInner::Array { base, size, .. } => {
                     if let TypeInner::Array { .. } = self.module.types[base].inner {
                         self.features.request(Features::ARRAY_OF_ARRAYS)
@@ -435,6 +456,11 @@ impl<W> Writer<'_, W> {
                             }
                         }
                         ImageClass::Storage { format, .. } => {
+                            if format == StorageFormat::R64Uint {
+                                return Err(Error::Custom(
+                                    "64-bit storage images are not supported".into(),
+                                ));
+                            }
                             // Storage images require `image_load_store`; the extension write
                             // (and the `NV_image_formats` write nested under it) is otherwise
                             // never emitted on targets that need it.
@@ -463,7 +489,6 @@ impl<W> Writer<'_, W> {
                                 | StorageFormat::Rgb10a2Uint
                                 | StorageFormat::Rgb10a2Unorm
                                 | StorageFormat::Rg11b10Ufloat
-                                | StorageFormat::R64Uint
                                 | StorageFormat::Rg32Uint
                                 | StorageFormat::Rg32Sint
                                 | StorageFormat::Rg32Float => {
@@ -500,6 +525,20 @@ impl<W> Writer<'_, W> {
             }
         }
 
+        for (handle, _) in self.module.global_expressions.iter() {
+            match self.info[handle].inner_with(&self.module.types).scalar() {
+                Some(Scalar {
+                    kind: ScalarKind::Sint | ScalarKind::Uint,
+                    width: 8,
+                }) => self.features.request(Features::INT64_TYPE),
+                Some(Scalar {
+                    kind: ScalarKind::Float,
+                    width: 8,
+                }) => self.features.request(Features::DOUBLE_TYPE),
+                _ => {}
+            }
+        }
+
         // We will need to pass some of the members to a closure, so we need
         // to separate them otherwise the borrow checker will complain, this
         // shouldn't be needed in rust 2021
@@ -525,14 +564,20 @@ impl<W> Writer<'_, W> {
             )))
         {
             for (handle, expr) in expressions.iter() {
-                if matches!(
-                    info[handle].ty.inner_with(&module.types).scalar(),
+                match info[handle].ty.inner_with(&module.types).scalar() {
                     Some(Scalar {
                         kind: ScalarKind::Sint | ScalarKind::Uint,
                         width: 2,
-                    })
-                ) {
-                    features.request(Features::INT16_TYPE);
+                    }) => features.request(Features::INT16_TYPE),
+                    Some(Scalar {
+                        kind: ScalarKind::Sint | ScalarKind::Uint,
+                        width: 8,
+                    }) => features.request(Features::INT64_TYPE),
+                    Some(Scalar {
+                        kind: ScalarKind::Float,
+                        width: 8,
+                    }) => features.request(Features::DOUBLE_TYPE),
+                    _ => {}
                 }
                 match *expr {
                 // Check for queries that need aditonal features
@@ -644,6 +689,8 @@ impl<W> Writer<'_, W> {
             self.features.request(Features::DOUBLE_TYPE);
         } else if matches!(scalar.kind, ScalarKind::Sint | ScalarKind::Uint) && scalar.width == 2 {
             self.features.request(Features::INT16_TYPE);
+        } else if matches!(scalar.kind, ScalarKind::Sint | ScalarKind::Uint) && scalar.width == 8 {
+            self.features.request(Features::INT64_TYPE);
         }
     }
 

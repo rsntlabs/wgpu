@@ -493,9 +493,7 @@ pub fn supported_capabilities() -> valid::Capabilities {
         | Caps::DUAL_SOURCE_BLENDING
         | Caps::CUBE_ARRAY_TEXTURES
         | Caps::SHADER_INT64
-        | Caps::SHADER_INT64_ATOMIC_ALL_OPS
         | Caps::TEXTURE_ATOMIC
-        | Caps::TEXTURE_INT64_ATOMIC
         | Caps::SUBGROUP
         | Caps::SUBGROUP_BARRIER
         | Caps::SHADER_FLOAT16

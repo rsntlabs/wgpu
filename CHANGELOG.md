@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Emit GLSL 64-bit integer scalars and vectors with the required extensions and width-preserving conversions.
 - Evaluate 64-bit integer constant arithmetic and conversions in the shared evaluator.
 - Enforce CUDA array allocation and extent-parsing limits.
 - Support incomplete CUDA array aliases and per-object bound inference.

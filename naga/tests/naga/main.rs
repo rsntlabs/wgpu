@@ -2,6 +2,7 @@
 mod cuda;
 mod example_wgsl;
 mod glsl_integer16;
+mod glsl_integer64;
 mod helpers;
 mod hlsl_integer16;
 mod msl_integer16;

@@ -1759,6 +1759,15 @@ impl<'a, W: Write> Writer<'a, W> {
                 selector,
                 ref cases,
             } => {
+                if ctx
+                    .resolve_type(selector, &self.module.types)
+                    .scalar_width()
+                    == Some(8)
+                {
+                    return Err(Error::Custom(
+                        "64-bit integer switch selectors are not supported".into(),
+                    ));
+                }
                 let l2 = level.next();
                 // Some GLSL consumers may not handle switches with a single
                 // body correctly: See wgpu#4514. Write such switch statements
@@ -2177,6 +2186,20 @@ impl<'a, W: Write> Writer<'a, W> {
                 self.write_image_atomic(ctx, image, coordinate, array_index, fun, value)?
             }
             Statement::RayQuery { .. } => unreachable!(),
+            Statement::SubgroupCollectiveOperation { argument, .. }
+            | Statement::SubgroupGather { argument, .. }
+                if matches!(
+                    ctx.resolve_type(argument, &self.module.types).scalar(),
+                    Some(crate::Scalar {
+                        kind: crate::ScalarKind::Sint | crate::ScalarKind::Uint,
+                        width: 8,
+                    })
+                ) =>
+            {
+                return Err(Error::Custom(
+                    "64-bit integer subgroup operations are not supported".into(),
+                ));
+            }
             Statement::SubgroupBallot { result, predicate } => {
                 write!(self.out, "{level}")?;
                 let res_name = Baked(result).to_string();
@@ -2416,12 +2439,11 @@ impl<'a, W: Write> Writer<'a, W> {
                     crate::Literal::U32(value) => write!(self.out, "{value}u")?,
                     crate::Literal::I32(value) => write!(self.out, "{value}")?,
                     crate::Literal::Bool(value) => write!(self.out, "{value}")?,
-                    crate::Literal::I64(_) => {
-                        return Err(Error::Custom("GLSL has no 64-bit integer type".into()));
+                    crate::Literal::I64(i64::MIN) => {
+                        write!(self.out, "(-9223372036854775807l - 1l)")?;
                     }
-                    crate::Literal::U64(_) => {
-                        return Err(Error::Custom("GLSL has no 64-bit integer type".into()));
-                    }
+                    crate::Literal::I64(value) => write!(self.out, "{value}l")?,
+                    crate::Literal::U64(value) => write!(self.out, "{value}ul")?,
                     crate::Literal::AbstractInt(_) | crate::Literal::AbstractFloat(_) => {
                         return Err(Error::Custom(
                             "Abstract types should not appear in IR presented to backends".into(),
@@ -2505,6 +2527,11 @@ impl<'a, W: Write> Writer<'a, W> {
             Expression::Override(_) => return Err(Error::Override),
             // `Access` is applied to arrays, vectors and matrices and is written as indexing
             Expression::Access { base, index } => {
+                if ctx.resolve_type(index, &self.module.types).scalar_width() == Some(8) {
+                    return Err(Error::Custom(
+                        "64-bit integer access indices are not supported".into(),
+                    ));
+                }
                 self.write_expr(base, ctx)?;
                 write!(self.out, "[")?;
                 self.write_expr(index, ctx)?;
@@ -2616,6 +2643,13 @@ impl<'a, W: Write> Writer<'a, W> {
                 depth_ref,
                 clamp_to_edge: _,
             } => {
+                if array_index.is_some_and(|index| {
+                    ctx.resolve_type(index, &self.module.types).scalar_width() == Some(8)
+                }) {
+                    return Err(Error::Custom(
+                        "64-bit integer image sample array indices are not supported".into(),
+                    ));
+                }
                 let (dim, class, arrayed) = match *ctx.resolve_type(image, &self.module.types) {
                     TypeInner::Image {
                         dim,
@@ -2922,6 +2956,27 @@ impl<'a, W: Write> Writer<'a, W> {
                 let left_inner = ctx.resolve_type(left, &self.module.types);
                 let right_inner = ctx.resolve_type(right, &self.module.types);
 
+                let integer64 = matches!(
+                    left_inner.scalar(),
+                    Some(crate::Scalar {
+                        kind: Sk::Sint | Sk::Uint,
+                        width: 8,
+                    })
+                );
+                if integer64 && matches!(op, Bo::Divide | Bo::Modulo) {
+                    return Err(Error::Custom(format!(
+                        "64-bit integer {op:?} is not supported"
+                    )));
+                }
+                if integer64 && matches!(op, Bo::ShiftLeft | Bo::ShiftRight) {
+                    write!(self.out, "(")?;
+                    self.write_expr(left, ctx)?;
+                    write!(self.out, " {} (", back::binary_operation_str(op))?;
+                    self.write_expr(right, ctx)?;
+                    write!(self.out, " & 63u))")?;
+                    return Ok(());
+                }
+
                 let function = match (left_inner, right_inner) {
                     (&Ti::Vector { scalar, .. }, &Ti::Vector { .. }) => match op {
                         Bo::Less
@@ -3174,6 +3229,25 @@ impl<'a, W: Write> Writer<'a, W> {
                 arg3,
             } => {
                 use crate::MathFunction as Mf;
+
+                if let Some(crate::Scalar {
+                    kind: kind @ (crate::ScalarKind::Sint | crate::ScalarKind::Uint),
+                    width: 8,
+                }) = ctx.resolve_type(arg, &self.module.types).scalar()
+                {
+                    if !matches!(
+                        fun,
+                        Mf::Abs | Mf::Sign | Mf::Min | Mf::Max | Mf::Clamp | Mf::Dot
+                    ) {
+                        return Err(Error::Custom(format!(
+                            "64-bit integer {fun:?} is not supported"
+                        )));
+                    }
+                    if fun == Mf::Abs && kind == crate::ScalarKind::Uint {
+                        self.write_expr(arg, ctx)?;
+                        return Ok(());
+                    }
+                }
 
                 let fun_name = match fun {
                     // comparison
@@ -3843,7 +3917,25 @@ impl<'a, W: Write> Writer<'a, W> {
                 }
 
                 write!(self.out, "(")?;
-                self.write_expr(expr, ctx)?;
+                let clamp_float = target.width == 8
+                    && matches!(target.kind, crate::ScalarKind::Sint | crate::ScalarKind::Uint)
+                    && inner.scalar_kind() == Some(crate::ScalarKind::Float);
+                if clamp_float {
+                    let source_scalar = inner.scalar().unwrap();
+                    if source_scalar == crate::Scalar::F16 {
+                        return Err(Error::UnsupportedScalar(source_scalar));
+                    }
+                    let (min, max) = proc::min_max_float_representable_by(source_scalar, target);
+                    write!(self.out, "clamp(")?;
+                    self.write_expr(expr, ctx)?;
+                    match (min, max) {
+                        (crate::Literal::F32(min), crate::Literal::F32(max)) => write!(self.out, ", {min:?}, {max:?})")?,
+                        (crate::Literal::F64(min), crate::Literal::F64(max)) => write!(self.out, ", {min:?}LF, {max:?}LF)")?,
+                        _ => unreachable!(),
+                    }
+                } else {
+                    self.write_expr(expr, ctx)?;
+                }
                 write!(self.out, ")")?
             }
             // `Bitcast` is a call to one of the glsl provided bitcast functions,
@@ -3871,6 +3963,10 @@ impl<'a, W: Write> Writer<'a, W> {
                 }
 
                 match (src.kind, dst.kind) {
+                    (Sk::Float, Sk::Sint) if src.width == 8 => write!(self.out, "doubleBitsToInt64")?,
+                    (Sk::Float, Sk::Uint) if src.width == 8 => write!(self.out, "doubleBitsToUint64")?,
+                    (Sk::Sint, Sk::Float) if src.width == 8 => write!(self.out, "int64BitsToDouble")?,
+                    (Sk::Uint, Sk::Float) if src.width == 8 => write!(self.out, "uint64BitsToDouble")?,
                     (Sk::Float, Sk::Sint) if src.width == 4 => write!(self.out, "floatBitsToInt")?,
                     (Sk::Float, Sk::Uint) if src.width == 4 => write!(self.out, "floatBitsToUint")?,
                     (Sk::Sint, Sk::Float) if src.width == 4 => write!(self.out, "intBitsToFloat")?,
@@ -4063,6 +4159,14 @@ impl<'a, W: Write> Writer<'a, W> {
     ) -> Result<(), Error> {
         use crate::ImageDimension as IDim;
 
+        if array_index.is_some_and(|index| {
+            ctx.resolve_type(index, &self.module.types).scalar_width() == Some(8)
+        }) {
+            return Err(Error::Custom(
+                "64-bit integer image store array indices are not supported".into(),
+            ));
+        }
+
         // NOTE: openGL requires that `imageStore`s have no effects when the texel is invalid
         // so we don't need to generate bounds checks (OpenGL 4.2 Core §3.9.20)
 
@@ -4111,6 +4215,14 @@ impl<'a, W: Write> Writer<'a, W> {
         value: Handle<crate::Expression>,
     ) -> Result<(), Error> {
         use crate::ImageDimension as IDim;
+
+        if array_index.is_some_and(|index| {
+            ctx.resolve_type(index, &self.module.types).scalar_width() == Some(8)
+        }) {
+            return Err(Error::Custom(
+                "64-bit integer image atomic array indices are not supported".into(),
+            ));
+        }
 
         // NOTE: openGL requires that `imageAtomic`s have no effects when the texel is invalid
         // so we don't need to generate bounds checks (OpenGL 4.2 Core §3.9.20)
@@ -4163,6 +4275,14 @@ impl<'a, W: Write> Writer<'a, W> {
         level: Option<Handle<crate::Expression>>,
     ) -> Result<(), Error> {
         use crate::ImageDimension as IDim;
+
+        if level.is_some_and(|level| {
+            ctx.resolve_type(level, &self.module.types).scalar_width() == Some(8)
+        }) {
+            return Err(Error::Custom(
+                "64-bit integer image load levels are not supported".into(),
+            ));
+        }
 
         // `ImageLoad` is a bit complicated.
         // There are two functions one for sampled
@@ -4457,7 +4577,7 @@ impl<'a, W: Write> Writer<'a, W> {
         let inner = &self.module.types[ty].inner;
         match *inner {
             TypeInner::Scalar(scalar) | TypeInner::Atomic(scalar)
-                if scalar.width == 2
+                if matches!(scalar.width, 2 | 8)
                     && matches!(
                         scalar.kind,
                         crate::ScalarKind::Sint | crate::ScalarKind::Uint

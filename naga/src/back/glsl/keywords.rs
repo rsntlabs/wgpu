@@ -63,6 +63,14 @@ pub const RESERVED_KEYWORDS: &[&str] = &[
     "bvec3",
     "bvec4",
     "uint",
+    "int64_t",
+    "uint64_t",
+    "i64vec2",
+    "i64vec3",
+    "i64vec4",
+    "u64vec2",
+    "u64vec3",
+    "u64vec4",
     "uvec2",
     "uvec3",
     "uvec4",
@@ -488,6 +496,10 @@ pub const RESERVED_KEYWORDS: &[&str] = &[
     // entry point name (should not be shadowed)
     //
     "main",
+    "doubleBitsToInt64",
+    "doubleBitsToUint64",
+    "int64BitsToDouble",
+    "uint64BitsToDouble",
     // Naga utilities:
     super::MODF_FUNCTION,
     super::FREXP_FUNCTION,
