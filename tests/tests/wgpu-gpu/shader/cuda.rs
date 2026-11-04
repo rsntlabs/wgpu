@@ -110,6 +110,7 @@ mod thread_block_parameters;
 mod token_pasting;
 mod trigonometry;
 mod type_aliases;
+mod type_queries;
 mod type_templates;
 mod typedef_structures;
 mod uniform_branch_barriers;
@@ -235,6 +236,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_TOKEN_PASTING,
         CUDA_TRIGONOMETRY,
         CUDA_TYPE_ALIASES,
+        CUDA_TYPE_QUERIES,
         CUDA_TYPE_TEMPLATES,
         CUDA_TYPEDEF_STRUCTURES,
         CUDA_UNINITIALIZED,
@@ -787,6 +789,10 @@ static CUDA_LONG_TYPES: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_LONG_TYPES_STORAGE: GpuTestConfiguration =
     configuration_with_features(long_types::storage_cases, wgpu::Features::SHADER_INT64);
+
+#[apply(gpu_test!)]
+static CUDA_TYPE_QUERIES: GpuTestConfiguration =
+    configuration_with_features(type_queries::cases, wgpu::Features::SHADER_INT64);
 
 #[apply(gpu_test!)]
 static CUDA_SINGLE_COMPONENT_VECTORS: GpuTestConfiguration =

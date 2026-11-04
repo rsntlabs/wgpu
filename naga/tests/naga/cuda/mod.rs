@@ -111,6 +111,7 @@ mod thread_block_parameters;
 mod token_pasting;
 mod trigonometry;
 mod type_aliases;
+mod type_queries;
 mod type_templates;
 mod typedef_structures;
 mod uniform_branch_barriers;

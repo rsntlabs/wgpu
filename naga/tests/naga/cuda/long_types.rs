@@ -714,6 +714,12 @@ fn cuda_long_types_preserve_capability_null_and_unsupported_feature_boundaries()
         ));
     }
     for source in [
+        "__global__ void kernel() { sizeof(long); }",
+        "__global__ void kernel() { alignof(size_t); }",
+    ] {
+        roundtrip(source);
+    }
+    for source in [
         "__global__ void kernel() { long *pointer=long(0); }",
         "__global__ void kernel() { constexpr long Zero=0L; long *pointer=Zero; }",
         "__global__ void kernel() { long long long value; }",
@@ -721,8 +727,6 @@ fn cuda_long_types_preserve_capability_null_and_unsupported_feature_boundaries()
         "__global__ void kernel() { short long value; }",
         "__global__ void kernel(long2 *output) {}",
         "__global__ void kernel(ulonglong4 *output) {}",
-        "__global__ void kernel() { sizeof(long); }",
-        "__global__ void kernel() { alignof(size_t); }",
         "__global__ void kernel(long *output) { atomicAdd(output,1L); }",
         "__device__ long missing(long); __global__ void kernel(long *output) { output[0]=missing(1L); }",
     ] {

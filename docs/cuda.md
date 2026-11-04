@@ -292,6 +292,25 @@ needed. The struct's alignment is its greatest field alignment, and its size
 rounds up to that alignment. Arrays of structs use that rounded size as their
 stride. Copies preserve field values; padding bytes are unspecified.
 
+`sizeof(type)` and `alignof(type)` produce integral constant expressions of
+the built-in `size_t` type, preserving `unsigned long` overload and template
+identity. Both operators require a parenthesized type-id. Operands can use
+qualified scalar, vector, `dim3`, completed struct, and array types, including
+aliases and dependent template types. Queries use the CUDA layouts above,
+including packed three-component vectors and struct padding. References use
+the referred type's layout. Pointer types, including `void*`, and
+`decltype(nullptr)` have size and alignment eight in the LP64 data model.
+These rules follow the C++ definitions of
+[`sizeof`](https://eel.is/c++draft/expr.sizeof) and
+[`alignof`](https://eel.is/c++draft/expr.alignof).
+
+Abstract array suffixes follow the existing array extent, rank, and type-size
+limits. `sizeof` requires a complete type. `alignof` accepts an unknown-bound
+array whose element type is complete and returns its element alignment.
+Query constants can supply global and local initializers, array bounds,
+template arguments, and launch bounds. Template instantiation resolves
+dependent operands such as `sizeof(Value)`.
+
 Vector elements support whole-value copies and scalar field access, including
 assignments and updates to writable fields. Vector parameters require pointers.
 Scalar parameters use 16-byte uniform buffers containing the two-, four-, or eight-byte

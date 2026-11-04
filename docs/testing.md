@@ -95,6 +95,7 @@ they should be easy to copy into a standalone project.
 The CLI integration tests live in `naga-cli/tests/cuda.rs`,
 `naga-cli/tests/cuda_integer64.rs`,
 `naga-cli/tests/cuda_long_types.rs`,
+`naga-cli/tests/cuda_type_queries.rs`,
 `naga-cli/tests/cuda_integral_templates.rs`,
 `naga-cli/tests/cuda_type_templates.rs`, and `naga-cli/tests/entry_points.rs`.
 Run them with `cargo nextest run -p naga-cli`.
