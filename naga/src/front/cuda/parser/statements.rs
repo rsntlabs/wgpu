@@ -286,7 +286,7 @@ impl<'a> Parser<'a> {
         if matches!(specifier, TypeSpecifier::NullPointer) {
             return self.null_pointer_declaration(qualifiers, is_constexpr);
         }
-        if is_constexpr && !matches!(specifier, TypeSpecifier::Scalar(_)) {
+        if is_constexpr && specifier.source_scalar().is_none() {
             return self.fail("constexpr requires a scalar variable");
         }
         if matches!(specifier, TypeSpecifier::ThreadBlock) {
@@ -448,18 +448,9 @@ impl<'a> Parser<'a> {
                 self.parenthesized_aggregate_initializer(pointer, ty, opening, None)?;
                 None
             } else if is_const
-                && matches!(
-                    specifier,
-                    TypeSpecifier::Scalar(
-                        Scalar::BOOL
-                            | Scalar::I16
-                            | Scalar::U16
-                            | Scalar::I32
-                            | Scalar::U32
-                            | Scalar::I64
-                            | Scalar::U64
-                    )
-                )
+                && specifier
+                    .source_scalar()
+                    .is_some_and(|scalar| scalar.scalar().kind != ScalarKind::Float)
             {
                 let (value, body) =
                     self.capture_block(|parser| parser.value_initializer(&declared_ty))?;

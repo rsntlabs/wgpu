@@ -235,6 +235,46 @@ fn cuda_shared_extent_errors_retain_source_spans() {
 
 #[test]
 fn cuda_shared_storage_rejects_unsupported_declarations_and_uses() {
+    let source = "__global__ void bad() { __shared__ int values[1UL]; }";
+    let capabilities = naga::valid::Capabilities::SHADER_INT64;
+    let (module, info) = super::helpers::validate_with_options_and_capabilities(
+        source,
+        &Options::default(),
+        capabilities,
+    );
+    let shared: Vec<_> = module
+        .global_variables
+        .iter()
+        .filter(|(_, variable)| variable.space == naga::AddressSpace::WorkGroup)
+        .collect();
+    assert_eq!(shared.len(), 1);
+    let (_, variable) = shared[0];
+    let naga::TypeInner::Array {
+        base,
+        size: naga::ArraySize::Constant(size),
+        stride,
+    } = module.types[variable.ty].inner
+    else {
+        panic!("expected a fixed shared array");
+    };
+    assert_eq!(size.get(), 1);
+    assert_eq!(stride, 4);
+    assert_eq!(
+        module.types[base].inner,
+        naga::TypeInner::Scalar(naga::Scalar::I32)
+    );
+    assert_eq!(
+        module.types[variable.ty].inner.try_size(module.to_ctx()),
+        Some(4)
+    );
+    #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+    super::helpers::wgsl_roundtrip_with_capabilities(
+        &module,
+        &info,
+        naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+        capabilities,
+    );
+    let _ = (module, info);
     for declaration in [
         "__shared__ bool value;",
         "__shared__ double value;",
@@ -249,7 +289,6 @@ fn cuda_shared_storage_rejects_unsupported_declarations_and_uses() {
         "__shared__ int values[+];",
         "__shared__ int values[1 +];",
         "__shared__ int values[0x];",
-        "__shared__ int values[1UL];",
         "__shared__ int first, second;",
         "__shared__ __shared__ int value;",
         "__shared__ int value; value[0] = 1;",

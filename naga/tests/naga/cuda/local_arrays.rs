@@ -335,6 +335,21 @@ fn cuda_local_arrays_keep_name_collisions_and_hiding_rules() {
 
 #[test]
 fn cuda_local_array_extents_share_integer_literal_grammar() {
+    let source = "/* 漢 */ __global__ void kernel(int size) { int values[1UL]; }";
+    let capabilities = naga::valid::Capabilities::SHADER_INT64;
+    let (module, info) = super::helpers::validate_with_options_and_capabilities(
+        source,
+        &Options::default(),
+        capabilities,
+    );
+    #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+    super::helpers::wgsl_roundtrip_with_capabilities(
+        &module,
+        &info,
+        naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+        capabilities,
+    );
+    let _ = (module, info);
     for extent in ["2", "2u", "02", "0x2", "0b10", "0'2U"] {
         let (module, _) = validate(&format!(
             "__global__ void kernel() {{ int values[{extent}]; }}"
@@ -362,7 +377,6 @@ fn cuda_local_array_extents_share_integer_literal_grammar() {
         "08",
         "0x",
         "4294967296u",
-        "1UL",
     ] {
         rejected(&format!(
             "/* 漢 */ __global__ void kernel(int size) {{ int values[{extent}]; }}"

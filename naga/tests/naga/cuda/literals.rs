@@ -146,10 +146,53 @@ fn cuda_integer_literal_range_depends_on_the_token_type() {
         "4'294'967'296U",
         "0x1'0000'0000u",
     ] {
-        rejected_token(text);
+        let source =
+            format!("/* 漢 */ __global__ void kernel() {{ unsigned int value = {text}; }}");
+        let capabilities = naga::valid::Capabilities::SHADER_INT64;
+        let (module, info) = super::helpers::validate_with_options_and_capabilities(
+            &source,
+            &Options::default(),
+            capabilities,
+        );
+        #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+        super::helpers::wgsl_roundtrip_with_capabilities(
+            &module,
+            &info,
+            naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+            capabilities,
+        );
+        let _ = (module, info);
     }
-    let (source, error) = rejected("-2147483648");
-    assert_eq!(&source[error.span.to_range().unwrap()], "2147483648");
+    let source = "/* 漢 */ __global__ void kernel() { unsigned int value = -2147483648; }";
+    let capabilities = naga::valid::Capabilities::SHADER_INT64;
+    let (module, info) = super::helpers::validate_with_options_and_capabilities(
+        source,
+        &Options::default(),
+        capabilities,
+    );
+    let function = &module.entry_points[0].function;
+    let literal = function
+        .expressions
+        .iter()
+        .find_map(|(handle, expression)| {
+            matches!(
+                expression,
+                naga::Expression::Literal(naga::Literal::I64(2_147_483_648))
+            )
+            .then_some(handle)
+        })
+        .unwrap();
+    assert_eq!(
+        &source[function.expressions.get_span(literal).to_range().unwrap()],
+        "2147483648"
+    );
+    #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+    super::helpers::wgsl_roundtrip_with_capabilities(
+        &module,
+        &info,
+        naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+        capabilities,
+    );
 }
 
 #[test]
@@ -172,7 +215,9 @@ fn cuda_integer_literals_reject_malformed_digit_separators() {
 
 #[test]
 fn cuda_integer_literals_reject_unsupported_and_repeated_suffixes() {
-    for text in ["1LL", "1ll", "1ULL", "1llU", "1lL"] {
+    for text in [
+        "1LL", "1ll", "1ULL", "1llU", "1lL", "1L", "1l", "1uL", "1LU",
+    ] {
         let source =
             format!("/* 漢 */ __global__ void kernel() {{ unsigned int value = {text}; }}");
         let capabilities = naga::valid::Capabilities::SHADER_INT64;
@@ -190,9 +235,7 @@ fn cuda_integer_literals_reject_unsupported_and_repeated_suffixes() {
         );
         let _ = (module, info);
     }
-    for text in [
-        "1L", "1l", "1uL", "1LU", "1z", "1UZ", "1uu", "1uU", "1lul", "0xffffuu", "1i", "1_kg",
-    ] {
+    for text in ["1z", "1UZ", "1uu", "1uU", "1lul", "0xffffuu", "1i", "1_kg"] {
         rejected_token(text);
     }
 }
@@ -263,6 +306,21 @@ fn cuda_shared_array_extents_use_integer_literal_values() {
 
 #[test]
 fn cuda_shared_integer_extents_reject_zero_overflow_and_invalid_tokens() {
+    let source = "/* 漢 */ __global__ void kernel() { __shared__ int values[1UL]; }";
+    let capabilities = naga::valid::Capabilities::SHADER_INT64;
+    let (module, info) = super::helpers::validate_with_options_and_capabilities(
+        source,
+        &Options::default(),
+        capabilities,
+    );
+    #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+    super::helpers::wgsl_roundtrip_with_capabilities(
+        &module,
+        &info,
+        naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+        capabilities,
+    );
+    let _ = (module, info);
     for extent in [
         "00",
         "0x0",
@@ -273,7 +331,6 @@ fn cuda_shared_integer_extents_reject_zero_overflow_and_invalid_tokens() {
         "0x100000000",
         "08",
         "0b2",
-        "1UL",
         "1.0f",
     ] {
         let source =

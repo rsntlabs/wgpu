@@ -379,6 +379,7 @@ impl Parser<'_> {
                 && !matches!(
                     target.ty,
                     TypeSpecifier::Scalar(_)
+                        | TypeSpecifier::Long { .. }
                         | TypeSpecifier::Pointer { .. }
                         | TypeSpecifier::Array(_)
                 )
@@ -556,7 +557,7 @@ impl Parser<'_> {
             ),
             Symbol::Constant {
                 handle,
-                scalar,
+                ty,
                 literal,
             } => {
                 return Ok(ExpressionResult::Value(ExpressionValue::Reference(
@@ -564,7 +565,7 @@ impl Parser<'_> {
                         discard_read: true,
                         reference: Reference::Constant(handle),
                         qualifiers: Qualifiers::CONST,
-                        ty: scalar_resolution(scalar),
+                        ty,
                         span,
                         constant: ConstantValue {
                             literal,
@@ -636,19 +637,19 @@ impl Parser<'_> {
             }
             return self.class_value_constructor(target, span).map(Into::into);
         }
-        if let TypeSpecifier::Scalar(scalar) = target {
+        if let Some(scalar) = target.source_scalar() {
             if self.lexer.peek()?.0 == Token::Paren('{') {
-                let mut value = self.scalar_list_initializer(scalar, true)?;
+                let mut value = self.source_scalar_list_initializer(scalar, true)?;
                 value.span = span.until(&value.span);
                 return Ok(value.into());
             }
         }
         self.lexer.expect_span(Token::Paren('('))?;
-        if let TypeSpecifier::Scalar(scalar) = target {
+        if let Some(scalar) = target.source_scalar() {
             if self.lexer.peek()?.0 == Token::Paren(')') {
                 let end = self.lexer.next()?.1;
                 return self
-                    .zero_scalar_value(scalar, span.until(&end))
+                    .zero_source_scalar_value(scalar, span.until(&end))
                     .map(Into::into);
             }
         }
@@ -690,8 +691,7 @@ impl Parser<'_> {
         } else {
             let expression = self.expression(0)?;
             let value = self.rvalue(expression)?;
-            if self.module.compare_types(&value.ty, &ty)
-                || self.dimension_conversion(&value.ty, &ty)
+            if self.source_types_equal(&value.ty, &ty) || self.dimension_conversion(&value.ty, &ty)
             {
                 let end = self.lexer.expect_span(Token::Paren(')'))?;
                 let mut value = self.cast_value(value.into(), &ty)?;

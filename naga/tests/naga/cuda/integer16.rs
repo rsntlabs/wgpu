@@ -628,6 +628,21 @@ fn cuda_integer16_requires_the_native_integer16_validation_capability() {
 
 #[test]
 fn cuda_integer16_keeps_null_pointer_constants_and_atomic_type_boundaries() {
+    let source = "__global__ void kernel(long *output) {}";
+    let capabilities = naga::valid::Capabilities::SHADER_INT64;
+    let (module, info) = super::helpers::validate_with_options_and_capabilities(
+        source,
+        &Options::default(),
+        capabilities,
+    );
+    #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+    super::helpers::wgsl_roundtrip_with_capabilities(
+        &module,
+        &info,
+        naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+        capabilities,
+    );
+    let _ = (module, info);
     roundtrip("#define NULL 0
         __global__ void kernel(short *output) {
             short *first = 0; short *second = 0u; short *third = nullptr; short *fourth = NULL;
@@ -642,7 +657,6 @@ fn cuda_integer16_keeps_null_pointer_constants_and_atomic_type_boundaries() {
         "__global__ void kernel(short5 *output) {}",
         "__global__ void kernel(ushort5 *output) {}",
         "__global__ void kernel(char *output) {}",
-        "__global__ void kernel(long *output) {}",
         "__device__ short missing(short); __global__ void kernel(short *output) { output[0] = missing(short(1)); }",
         "__device__ short recurse(short value) { return recurse(value); } __global__ void kernel(short *output) { output[0] = recurse(short(1)); }",
     ] {

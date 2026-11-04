@@ -445,7 +445,7 @@ impl Parser<'_> {
                 ParameterMode::Reference { qualifiers } => {
                     let reference = match value {
                         ExpressionValue::Reference(reference)
-                            if self.module.compare_types(&reference.ty, &target) =>
+                            if self.source_types_equal(&reference.ty, &target) =>
                         {
                             reference
                         }

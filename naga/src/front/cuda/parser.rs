@@ -46,6 +46,7 @@ mod types;
 mod updates;
 mod volatile;
 
+use super::number::SourceScalar;
 use crate::proc::TypeResolution;
 use constant_memory::{ConstantMemory, ConstantMemoryDeclaration};
 use context::{FunctionContext, FunctionKind};
@@ -114,11 +115,11 @@ enum Symbol {
     },
     Constant {
         handle: Option<Handle<crate::Constant>>,
-        scalar: Scalar,
+        ty: TypeResolution,
         literal: Option<Literal>,
     },
     TemplateParameter {
-        scalar: Scalar,
+        scalar: SourceScalar,
         literal: Option<Literal>,
     },
     TemplateTypeParameter {
@@ -357,6 +358,7 @@ pub(super) struct Parser<'a> {
     structures: FastHashMap<Handle<Type>, structures::Structure>,
     dim3_type: Option<Handle<Type>>,
     uint3_type: Option<Handle<Type>>,
+    long_types: [Option<Handle<Type>>; 2],
     next_structure_id: u32,
     helper_builtin_globals: [Option<Handle<GlobalVariable>>; 3],
     workgroup_size: [u32; 3],
@@ -392,6 +394,7 @@ impl<'a> Parser<'a> {
             structures: FastHashMap::default(),
             dim3_type: None,
             uint3_type: None,
+            long_types: [None; 2],
             next_structure_id: 0,
             helper_builtin_globals: [None; 3],
             workgroup_size: options.workgroup_size,
@@ -562,7 +565,7 @@ impl<'a> Parser<'a> {
         }
         if self.function.kind == FunctionKind::Kernel
             && !is_pointer
-            && !matches!(specifier, TypeSpecifier::Scalar(_))
+            && specifier.source_scalar().is_none()
         {
             return Err(ParseError {
                 message: String::from(
@@ -1006,7 +1009,9 @@ impl<'a> Parser<'a> {
             message: String::from("unsupported or out-of-range numeric literal"),
             span,
         };
-        let literal = number::parse(text).ok_or_else(invalid)?;
+        let number = number::parse(text).ok_or_else(invalid)?;
+        let literal = number.literal;
+        let ty = self.source_scalar_resolution(number.scalar, span)?;
         let handle = self.append(Expression::Literal(literal), span)?;
         Ok(Value {
             category: ValueCategory::Prvalue,
@@ -1019,7 +1024,7 @@ impl<'a> Parser<'a> {
                 ..literal.into()
             },
             handle,
-            ty: scalar_resolution(literal.scalar()),
+            ty,
             span,
         })
     }
@@ -1233,11 +1238,11 @@ impl<'a> Parser<'a> {
                 }
                 Some(&GlobalDeclaration::Constant {
                     handle,
-                    scalar,
+                    ref ty,
                     literal,
                 }) => Some(Symbol::Constant {
                     handle,
-                    scalar,
+                    ty: ty.clone(),
                     literal,
                 }),
                 _ => None,

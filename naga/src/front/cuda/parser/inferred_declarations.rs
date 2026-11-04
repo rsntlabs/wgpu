@@ -134,9 +134,9 @@ impl<'a> Parser<'a> {
                 }
                 return self.fail("constexpr requires a scalar variable");
             };
-            let scalar = self.require_scalar_type(&value.ty, value.span)?;
+            self.require_scalar_type(&value.ty, value.span)?;
             let literal = Self::required_constant(&value)?;
-            self.bind_global_constant(name, scalar, literal, span)?;
+            self.bind_global_constant(name, value.ty, literal, span)?;
             if !self.lexer.next_if(Token::Separator(','))? {
                 self.lexer.expect_span(Token::Separator(';'))?;
                 return Ok(());
@@ -404,7 +404,7 @@ impl<'a> Parser<'a> {
                 ) => {
                     previous_qualifiers == qualifiers
                         && previous_pointee == pointee_qualifiers
-                        && self.module.compare_types(previous, ty)
+                        && self.source_types_equal(previous, ty)
                 }
                 _ => false,
             };

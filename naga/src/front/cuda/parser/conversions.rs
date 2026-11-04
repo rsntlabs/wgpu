@@ -11,14 +11,14 @@ impl Parser<'_> {
         {
             return self.truthy(value);
         }
-        if self.module.compare_types(value.shader_type()?, target) {
+        if self.source_types_equal(value.shader_type()?, target) {
             return self.rvalue(value);
         }
         if self.dimension_conversion(value.shader_type()?, target) {
             return self.convert_dimension(value, target);
         }
-        let scalar = self.require_scalar_type(target, value.span())?;
-        self.convert_scalar(value, scalar)
+        let scalar = self.require_source_scalar_type(target, value.span())?;
+        self.convert_source_scalar(value, scalar)
     }
 
     pub(super) fn convert_scalar(
@@ -26,14 +26,25 @@ impl Parser<'_> {
         value: ExpressionValue,
         target: Scalar,
     ) -> Result<Value, ParseError> {
-        if target == Scalar::BOOL && self.is_pointer_operand(&value) {
+        self.convert_source_scalar(value, SourceScalar::Scalar(target))
+    }
+
+    pub(super) fn convert_source_scalar(
+        &mut self,
+        value: ExpressionValue,
+        target: SourceScalar,
+    ) -> Result<Value, ParseError> {
+        let scalar = target.scalar();
+        if scalar == Scalar::BOOL && self.is_pointer_operand(&value) {
             return self.truthy(value);
         }
-        let value = self.rvalue(value)?;
-        if self.require_scalar_type(&value.ty, value.span)? == target {
+        let mut value = self.rvalue(value)?;
+        let ty = self.source_scalar_resolution(target, value.span)?;
+        if self.require_scalar_type(&value.ty, value.span)? == scalar {
+            value.ty = ty;
             return Ok(value);
         }
-        if target == Scalar::BOOL {
+        if scalar == Scalar::BOOL {
             return self.truthy(value.into());
         }
         if ![
@@ -45,7 +56,7 @@ impl Parser<'_> {
             Scalar::U64,
             Scalar::F32,
         ]
-        .contains(&target)
+        .contains(&scalar)
         {
             return Err(ParseError {
                 message: String::from("unsupported scalar conversion"),
@@ -55,15 +66,15 @@ impl Parser<'_> {
         let constant = value
             .constant
             .literal
-            .and_then(|literal| constant_evaluation::convert(literal, target));
+            .and_then(|literal| constant_evaluation::convert(literal, scalar));
         let handle = if let Some(literal) = constant.filter(|_| value.constant.is_nonfinite()) {
             self.materialize_literal(literal, value.span)?
         } else {
             self.append(
                 Expression::As {
                     expr: value.handle,
-                    kind: target.kind,
-                    convert: Some(target.width),
+                    kind: scalar.kind,
+                    convert: Some(scalar.width),
                 },
                 value.span,
             )?
@@ -72,7 +83,7 @@ impl Parser<'_> {
             category: ValueCategory::Prvalue,
             qualifiers: Qualifiers::NONE,
             handle,
-            ty: scalar_resolution(target),
+            ty,
             span: value.span,
             constant: ConstantValue::evaluated(constant),
         })
@@ -84,27 +95,57 @@ impl Parser<'_> {
         right: ExpressionValue,
     ) -> Result<(Value, Value), ParseError> {
         let common = Self::arithmetic_scalar(
-            self.require_scalar_type(left.shader_type()?, left.span())?,
-            self.require_scalar_type(right.shader_type()?, right.span())?,
+            self.require_source_scalar_type(left.shader_type()?, left.span())?,
+            self.require_source_scalar_type(right.shader_type()?, right.span())?,
         );
         Ok((
-            self.convert_scalar(left, common)?,
-            self.convert_scalar(right, common)?,
+            self.convert_source_scalar(left, common)?,
+            self.convert_source_scalar(right, common)?,
         ))
     }
 
-    pub(super) fn arithmetic_scalar(left: Scalar, right: Scalar) -> Scalar {
-        let scalars = [left, right];
-        if scalars.contains(&Scalar::F32) {
-            Scalar::F32
-        } else if scalars.contains(&Scalar::U64) {
-            Scalar::U64
-        } else if scalars.contains(&Scalar::I64) {
-            Scalar::I64
-        } else if scalars.contains(&Scalar::U32) {
-            Scalar::U32
+    pub(super) fn arithmetic_scalar(left: SourceScalar, right: SourceScalar) -> SourceScalar {
+        if left.scalar() == Scalar::F32 || right.scalar() == Scalar::F32 {
+            return SourceScalar::Scalar(Scalar::F32);
+        }
+        let promote = |scalar: SourceScalar| {
+            if matches!(scalar.scalar(), Scalar::BOOL | Scalar::I16 | Scalar::U16) {
+                SourceScalar::Scalar(Scalar::I32)
+            } else {
+                scalar
+            }
+        };
+        let left = promote(left);
+        let right = promote(right);
+        let rank = |scalar| match scalar {
+            SourceScalar::Long(_) => 4,
+            SourceScalar::Scalar(Scalar::I64 | Scalar::U64) => 5,
+            SourceScalar::Scalar(_) => 3,
+        };
+        if left.scalar().kind == right.scalar().kind {
+            return if rank(left) >= rank(right) {
+                left
+            } else {
+                right
+            };
+        }
+        let (signed, unsigned) = if left.scalar().kind == ScalarKind::Sint {
+            (left, right)
         } else {
-            Scalar::I32
+            (right, left)
+        };
+        if rank(unsigned) >= rank(signed) {
+            unsigned
+        } else if signed.scalar().width > unsigned.scalar().width {
+            signed
+        } else {
+            match signed {
+                SourceScalar::Long(_) => SourceScalar::Long(ScalarKind::Uint),
+                SourceScalar::Scalar(scalar) => SourceScalar::Scalar(Scalar {
+                    kind: ScalarKind::Uint,
+                    width: scalar.width,
+                }),
+            }
         }
     }
 
@@ -231,7 +272,11 @@ impl Parser<'_> {
             category: ValueCategory::Prvalue,
             qualifiers: Qualifiers::NONE,
             handle,
-            ty: scalar_resolution(scalar),
+            ty: if scalar == Scalar::BOOL {
+                scalar_resolution(scalar)
+            } else {
+                left.ty
+            },
             span,
             constant: ConstantValue::evaluated(constant),
         })
@@ -245,6 +290,7 @@ impl Parser<'_> {
             target.ty,
             TypeSpecifier::NullPointer
                 | TypeSpecifier::Scalar(_)
+                | TypeSpecifier::Long { .. }
                 | TypeSpecifier::Vector { .. }
                 | TypeSpecifier::Structure(_)
                 | TypeSpecifier::Dim3
@@ -306,7 +352,7 @@ impl Parser<'_> {
         if self.is_source_class(target) {
             let value = self.rvalue(value)?;
             self.require_volatile_scalar(value.qualifiers, &value.ty, value.span)?;
-            let mut value = if self.module.compare_types(&value.ty, target)
+            let mut value = if self.source_types_equal(&value.ty, target)
                 || self.dimension_conversion(&value.ty, target)
             {
                 self.convert_value(value.into(), target)?

@@ -64,6 +64,7 @@ mod local_arrays;
 mod local_declarators;
 mod local_pointers;
 mod logical_operators;
+mod long_types;
 mod multidimensional_arrays;
 mod multiple_kernels;
 mod multiply24;
@@ -182,6 +183,8 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_LIST_INITIALIZATION,
         CUDA_LITERALS,
         CUDA_LOGICAL_OPERATORS,
+        CUDA_LONG_TYPES,
+        CUDA_LONG_TYPES_STORAGE,
         CUDA_LOCAL_ARRAYS,
         CUDA_LOCAL_DECLARATORS,
         CUDA_LOCAL_POINTERS,
@@ -776,6 +779,14 @@ static CUDA_INTEGER64: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_INTEGER64_STORAGE: GpuTestConfiguration =
     configuration_with_features(integer64::storage_cases, wgpu::Features::SHADER_INT64);
+
+#[apply(gpu_test!)]
+static CUDA_LONG_TYPES: GpuTestConfiguration =
+    configuration_with_features(long_types::cases, wgpu::Features::SHADER_INT64);
+
+#[apply(gpu_test!)]
+static CUDA_LONG_TYPES_STORAGE: GpuTestConfiguration =
+    configuration_with_features(long_types::storage_cases, wgpu::Features::SHADER_INT64);
 
 #[apply(gpu_test!)]
 static CUDA_SINGLE_COMPONENT_VECTORS: GpuTestConfiguration =

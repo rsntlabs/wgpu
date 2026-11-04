@@ -888,9 +888,16 @@ fn cuda_integer64_capabilities_null_literals_and_unsupported_boundaries_remain_e
         rejected(&format!("using Wide = long long; constexpr Wide Zero = 0LL; __global__ void kernel() {{ Wide *pointer = {value}; }}"));
     }
     for source in [
-        "__global__ void kernel(long *output) {}", "__global__ void kernel(unsigned long *output) {}",
-        "__global__ void kernel() { auto value = 1L; }", "__global__ void kernel() { auto value = 1UL; }",
-        "__global__ void kernel() { auto value = 2147483648; }", "__global__ void kernel() { auto value = 4294967296u; }",
+        "__global__ void kernel(long *output) {}",
+        "__global__ void kernel(unsigned long *output) {}",
+        "__global__ void kernel() { auto value = 1L; }",
+        "__global__ void kernel() { auto value = 1UL; }",
+        "__global__ void kernel() { auto value = 2147483648; }",
+        "__global__ void kernel() { auto value = 4294967296u; }",
+    ] {
+        roundtrip(source);
+    }
+    for source in [
         "__global__ void kernel(longlong2 *output) {}", "__global__ void kernel(ulonglong2 *output) {}",
         "__global__ void kernel(long long *output) { atomicAdd(output, 1LL); }",
         "__global__ void kernel(unsigned long long *output) { atomicCAS(output, 0ULL, 1ULL); }",

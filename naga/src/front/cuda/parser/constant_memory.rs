@@ -122,7 +122,7 @@ impl<'a> Parser<'a> {
                         constant_memory_error("incompatible or repeated type specifier", span)
                     })?;
                     ty = Some(QualifiedType {
-                        ty: TypeSpecifier::Scalar(scalar),
+                        ty: TypeSpecifier::from_scalar(scalar),
                         qualifiers: Qualifiers::NONE,
                     });
                 }
@@ -135,9 +135,6 @@ impl<'a> Parser<'a> {
                 _ => break,
             }
             self.lexer.next()?;
-        }
-        if !integers.is_supported() {
-            return self.fail("long constant memory types are unsupported; use long long");
         }
         let inherits_constant = has_extern
             && matches!(self.lexer.peek()?.0, Token::Word(name) if matches!(self.global_declarations.get(name), Some(GlobalDeclaration::ConstantMemory(_))));

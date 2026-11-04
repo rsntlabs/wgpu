@@ -461,6 +461,22 @@ fn cuda_preprocessing_keeps_raw_number_types_values_and_float_bits() {
 
 #[test]
 fn cuda_preprocessing_preserves_invalid_numbers_until_active_language_conversion() {
+    validate(&kernel("#define BAD 1L", "out[0] = 7u;"));
+    let source = kernel("#define BAD 1L", "out[0] = BAD;");
+    let capabilities = naga::valid::Capabilities::SHADER_INT64;
+    let (module, info) = super::helpers::validate_with_options_and_capabilities(
+        &source,
+        &Options::default(),
+        capabilities,
+    );
+    #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+    super::helpers::wgsl_roundtrip_with_capabilities(
+        &module,
+        &info,
+        naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+        capabilities,
+    );
+    let _ = (module, info);
     for spelling in [
         "09u",
         "0b102u",
@@ -469,7 +485,6 @@ fn cuda_preprocessing_preserves_invalid_numbers_until_active_language_conversion
         "1'2'foo",
         "0x1.fp+3f32",
         "1.0",
-        "1L",
     ] {
         validate(&kernel(&format!("#define BAD {spelling}"), "out[0] = 7u;"));
         let source = kernel(&format!("#define BAD {spelling}"), "out[0] = BAD;");

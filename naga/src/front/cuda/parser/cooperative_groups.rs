@@ -112,6 +112,12 @@ fn qualified_name(
         };
         item = match item {
             QualifiedItem::Namespace(Namespace::Standard) => match name {
+                "size_t" if !namespace_only => QualifiedItem::Type(QualifiedType {
+                    ty: TypeSpecifier::Long {
+                        kind: ScalarKind::Uint,
+                    },
+                    qualifiers: Qualifiers::NONE,
+                }),
                 "nullptr_t" if !namespace_only => QualifiedItem::Type(QualifiedType {
                     ty: TypeSpecifier::NullPointer,
                     qualifiers: Qualifiers::NONE,
@@ -284,7 +290,9 @@ impl<'a> Parser<'a> {
                 if ty.qualifiers.is_volatile
                     && !matches!(
                         ty.ty,
-                        TypeSpecifier::Scalar(_) | TypeSpecifier::Pointer { .. }
+                        TypeSpecifier::Scalar(_)
+                            | TypeSpecifier::Long { .. }
+                            | TypeSpecifier::Pointer { .. }
                     )
                 {
                     return self.fail("volatile class value construction is unsupported");

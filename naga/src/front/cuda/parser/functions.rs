@@ -14,16 +14,98 @@ const MATH_BUILTINS: [(&str, MathFunction); 4] = [
     ("fmaxf", MathFunction::Max),
 ];
 
-const MATH_SIGNATURES: [([Scalar; 2], Scalar); 9] = [
-    ([Scalar::I32, Scalar::I32], Scalar::I32),
-    ([Scalar::U32, Scalar::U32], Scalar::U32),
-    ([Scalar::I32, Scalar::U32], Scalar::U32),
-    ([Scalar::U32, Scalar::I32], Scalar::U32),
-    ([Scalar::I64, Scalar::I64], Scalar::I64),
-    ([Scalar::U64, Scalar::U64], Scalar::U64),
-    ([Scalar::I64, Scalar::U64], Scalar::U64),
-    ([Scalar::U64, Scalar::I64], Scalar::U64),
-    ([Scalar::F32, Scalar::F32], Scalar::F32),
+const MATH_SIGNATURES: [([SourceScalar; 2], SourceScalar); 13] = [
+    (
+        [
+            SourceScalar::Scalar(Scalar::I32),
+            SourceScalar::Scalar(Scalar::I32),
+        ],
+        SourceScalar::Scalar(Scalar::I32),
+    ),
+    (
+        [
+            SourceScalar::Scalar(Scalar::U32),
+            SourceScalar::Scalar(Scalar::U32),
+        ],
+        SourceScalar::Scalar(Scalar::U32),
+    ),
+    (
+        [
+            SourceScalar::Scalar(Scalar::I32),
+            SourceScalar::Scalar(Scalar::U32),
+        ],
+        SourceScalar::Scalar(Scalar::U32),
+    ),
+    (
+        [
+            SourceScalar::Scalar(Scalar::U32),
+            SourceScalar::Scalar(Scalar::I32),
+        ],
+        SourceScalar::Scalar(Scalar::U32),
+    ),
+    (
+        [
+            SourceScalar::Long(ScalarKind::Sint),
+            SourceScalar::Long(ScalarKind::Sint),
+        ],
+        SourceScalar::Long(ScalarKind::Sint),
+    ),
+    (
+        [
+            SourceScalar::Long(ScalarKind::Uint),
+            SourceScalar::Long(ScalarKind::Uint),
+        ],
+        SourceScalar::Long(ScalarKind::Uint),
+    ),
+    (
+        [
+            SourceScalar::Long(ScalarKind::Sint),
+            SourceScalar::Long(ScalarKind::Uint),
+        ],
+        SourceScalar::Long(ScalarKind::Uint),
+    ),
+    (
+        [
+            SourceScalar::Long(ScalarKind::Uint),
+            SourceScalar::Long(ScalarKind::Sint),
+        ],
+        SourceScalar::Long(ScalarKind::Uint),
+    ),
+    (
+        [
+            SourceScalar::Scalar(Scalar::I64),
+            SourceScalar::Scalar(Scalar::I64),
+        ],
+        SourceScalar::Scalar(Scalar::I64),
+    ),
+    (
+        [
+            SourceScalar::Scalar(Scalar::U64),
+            SourceScalar::Scalar(Scalar::U64),
+        ],
+        SourceScalar::Scalar(Scalar::U64),
+    ),
+    (
+        [
+            SourceScalar::Scalar(Scalar::I64),
+            SourceScalar::Scalar(Scalar::U64),
+        ],
+        SourceScalar::Scalar(Scalar::U64),
+    ),
+    (
+        [
+            SourceScalar::Scalar(Scalar::U64),
+            SourceScalar::Scalar(Scalar::I64),
+        ],
+        SourceScalar::Scalar(Scalar::U64),
+    ),
+    (
+        [
+            SourceScalar::Scalar(Scalar::F32),
+            SourceScalar::Scalar(Scalar::F32),
+        ],
+        SourceScalar::Scalar(Scalar::F32),
+    ),
 ];
 
 const MULTIPLY24_BUILTINS: [(&str, Scalar); 2] =
@@ -91,8 +173,8 @@ const INTEGRAL_DOUBLE_BUILTINS: [&str; 2] = ["fabs", "sqrt"];
 #[derive(Clone, Copy, PartialEq)]
 pub(super) struct MathBuiltin {
     function: MathFunction,
-    parameters: [Scalar; 2],
-    result: Scalar,
+    parameters: [SourceScalar; 2],
+    result: SourceScalar,
 }
 
 fn math_builtins(name: &str) -> impl Iterator<Item = MathBuiltin> + Clone {
@@ -100,7 +182,7 @@ fn math_builtins(name: &str) -> impl Iterator<Item = MathBuiltin> + Clone {
         .into_iter()
         .find_map(|(candidate, function)| (candidate == name).then_some(function));
     let signatures = if matches!(name, "fminf" | "fmaxf") {
-        &MATH_SIGNATURES[8..]
+        &MATH_SIGNATURES[12..]
     } else {
         &MATH_SIGNATURES[..]
     };
@@ -195,6 +277,15 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             "dim3",
             GlobalDeclaration::Type(QualifiedType {
                 ty: TypeSpecifier::Dim3,
+                qualifiers: Qualifiers::NONE,
+            }),
+        )))
+        .chain(core::iter::once((
+            "size_t",
+            GlobalDeclaration::Type(QualifiedType {
+                ty: TypeSpecifier::Long {
+                    kind: ScalarKind::Uint,
+                },
                 qualifiers: Qualifiers::NONE,
             }),
         )))
@@ -340,31 +431,34 @@ pub(super) fn select_ranked_candidate<C: Copy + PartialEq>(
     }
 }
 
-pub(super) fn conversion_rank(
-    source: &TypeResolution,
-    target: &TypeResolution,
-    module: &Module,
-    user_conversion: bool,
-) -> Option<u8> {
-    if module.compare_types(source, target) {
-        return Some(0);
-    }
-    match (
-        source.inner_with(&module.types),
-        target.inner_with(&module.types),
-    ) {
-        (&TypeInner::Scalar(source), &TypeInner::Scalar(target)) => Some(
-            if matches!(source, Scalar::BOOL | Scalar::I16 | Scalar::U16) && target == Scalar::I32 {
-                1
-            } else {
-                2
-            },
-        ),
-        _ => user_conversion.then_some(3),
-    }
-}
-
 impl<'a> Parser<'a> {
+    fn scalar_conversion_rank(source: SourceScalar, target: SourceScalar) -> u8 {
+        if source == target {
+            0
+        } else if matches!(source.scalar(), Scalar::BOOL | Scalar::I16 | Scalar::U16)
+            && target == SourceScalar::Scalar(Scalar::I32)
+        {
+            1
+        } else {
+            2
+        }
+    }
+
+    fn conversion_rank(
+        &self,
+        source: &TypeResolution,
+        target: &TypeResolution,
+        user_conversion: bool,
+    ) -> Option<u8> {
+        if self.source_types_equal(source, target) {
+            return Some(0);
+        }
+        match (self.source_scalar(source), self.source_scalar(target)) {
+            (Some(source), Some(target)) => Some(Self::scalar_conversion_rank(source, target)),
+            _ => user_conversion.then_some(3),
+        }
+    }
+
     pub(super) fn parameters(&mut self) -> Result<(), ParseError> {
         self.lexer.expect_span(Token::Paren('('))?;
         if !self.lexer.next_if(Token::Paren(')'))? {
@@ -528,7 +622,7 @@ impl<'a> Parser<'a> {
                     let Some(scalar) = integers.consume(specifier) else {
                         return self.fail("incompatible or repeated return type specifier");
                     };
-                    result = Some(ReturnType::Value(TypeSpecifier::Scalar(scalar)));
+                    result = Some(ReturnType::Value(TypeSpecifier::from_scalar(scalar)));
                     result_span.get_or_insert(token.1);
                 }
                 Token::Word("void" | "float" | "bool") => {
@@ -563,9 +657,6 @@ impl<'a> Parser<'a> {
                 span,
             });
         }
-        if !integers.is_supported() {
-            return self.fail("long scalar return types are unsupported; use long long");
-        }
         let Some(result) = result else {
             return self.fail("expected a supported function return type");
         };
@@ -578,6 +669,7 @@ impl<'a> Parser<'a> {
                 ReturnType::Void
                     | ReturnType::Value(
                         TypeSpecifier::Scalar(_)
+                            | TypeSpecifier::Long { .. }
                             | TypeSpecifier::TemplateParameter(_)
                             | TypeSpecifier::NullPointer
                     )
@@ -794,15 +886,17 @@ impl<'a> Parser<'a> {
                 && self.function.parameters.len() == self.candidate_arity(candidate)
                 && (0..self.candidate_arity(candidate)).all(|index| {
                     self.function.parameters[index].mode() == self.candidate_mode(candidate, index)
-                        && match (
-                            self.candidate_type(FunctionCandidate::Current, index),
-                            self.candidate_type(candidate, index),
-                        ) {
-                            (Some(source), Some(target)) => {
-                                self.module.compare_types(&source, &target)
-                            }
-                            _ => false,
-                        }
+                        && self
+                            .candidate_type(FunctionCandidate::Current, index)
+                            .is_some_and(|source| {
+                                if let FunctionCandidate::Builtin(builtin) = candidate {
+                                    self.source_scalar(&source) == Some(builtin.parameters[index])
+                                } else {
+                                    self.candidate_type(candidate, index).is_some_and(|target| {
+                                        self.source_types_equal(&source, &target)
+                                    })
+                                }
+                            })
                 })
         });
         if let Some(candidate) = intrinsic {
@@ -1014,7 +1108,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Current => {
                 return Ok(self.function.ir.result.as_ref().map(|result| result.ty))
             }
-            FunctionCandidate::Builtin(builtin) => TypeSpecifier::Scalar(builtin.result),
+            FunctionCandidate::Builtin(builtin) => TypeSpecifier::from_scalar(builtin.result),
             FunctionCandidate::Multiply24(result)
             | FunctionCandidate::Atomic { scalar: result, .. }
             | FunctionCandidate::AtomicCompareExchange(result)
@@ -1477,9 +1571,11 @@ impl<'a> Parser<'a> {
         }
         if let FunctionCandidate::Builtin(builtin) = candidate {
             let mut arguments = arguments.into_iter();
-            let left = self.convert_scalar(arguments.next().unwrap().into(), builtin.result)?;
-            let right = self.convert_scalar(arguments.next().unwrap().into(), builtin.result)?;
-            let handle = if builtin.result == Scalar::F32 {
+            let left =
+                self.convert_source_scalar(arguments.next().unwrap().into(), builtin.result)?;
+            let right =
+                self.convert_source_scalar(arguments.next().unwrap().into(), builtin.result)?;
+            let handle = if builtin.result.scalar() == Scalar::F32 {
                 self.float_minmax(builtin.function, left.handle, right.handle, span)?
             } else {
                 self.append(
@@ -1498,7 +1594,7 @@ impl<'a> Parser<'a> {
                 qualifiers: Qualifiers::NONE,
                 constant: ConstantValue::default(),
                 handle,
-                ty: scalar_resolution(builtin.result),
+                ty: self.source_scalar_resolution(builtin.result, span)?,
                 span,
             }
             .into());
@@ -1849,7 +1945,9 @@ impl<'a> Parser<'a> {
             }
             FunctionCandidate::Current => &self.function.ir.arguments[logical_index],
             FunctionCandidate::Builtin(builtin) => {
-                return Some(scalar_resolution(builtin.parameters[logical_index]))
+                return Some(scalar_resolution(
+                    builtin.parameters[logical_index].scalar(),
+                ))
             }
             FunctionCandidate::Bitcast { source, .. }
             | FunctionCandidate::Unary { source, .. }
@@ -1926,6 +2024,13 @@ impl<'a> Parser<'a> {
             self.candidate_source_parameter(candidate, logical_index)
         {
             return self.null_pointer_argument_conversion(mode, argument);
+        }
+        if let FunctionCandidate::Builtin(builtin) = candidate {
+            let source = self.source_scalar(argument.ty()?)?;
+            return Some(Self::scalar_conversion_rank(
+                source,
+                builtin.parameters[logical_index],
+            ));
         }
         let target = self.candidate_type(candidate, logical_index);
         if target.is_none() {
@@ -2016,10 +2121,7 @@ impl<'a> Parser<'a> {
             return Some(2);
         }
         let source = argument.pointer_type(&self.module)?;
-        if self
-            .module
-            .compare_types(&TypeResolution::Handle(source.pointee), pointee)
-        {
+        if self.source_types_equal(&TypeResolution::Handle(source.pointee), pointee) {
             return qualifiers.qualification_rank(source.qualifiers);
         }
         let target = match *pointee {
@@ -2044,12 +2146,7 @@ impl<'a> Parser<'a> {
         {
             2
         } else {
-            conversion_rank(
-                source,
-                target,
-                &self.module,
-                self.dimension_conversion(source, target),
-            )?
+            self.conversion_rank(source, target, self.dimension_conversion(source, target))?
         };
         match mode {
             ParameterMode::Value => Some(rank),
@@ -2229,7 +2326,7 @@ impl<'a> Parser<'a> {
             ) && self.candidate_arity(candidate) == 1
                 && self
                     .candidate_type(candidate, 0)
-                    .is_some_and(|target| self.module.compare_types(&target, argument_type))
+                    .is_some_and(|target| self.source_types_equal(&target, argument_type))
                 && self
                     .candidate_conversion(candidate, 0, &arguments[0])
                     .is_some()
