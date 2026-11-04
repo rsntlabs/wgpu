@@ -581,6 +581,8 @@ impl<'a> Parser<'a> {
         allow_inferred: bool,
         span: Span,
     ) -> Result<ArrayDeclaration, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
         let mut dimensions = Vec::new();
         loop {
             if dimensions.len() == 64 {

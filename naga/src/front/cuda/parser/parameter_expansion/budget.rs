@@ -319,6 +319,106 @@ mod tests {
     }
 
     #[test]
+    fn array_type_checks_budget_before_allocation() {
+        for exhaust_bytes in [false, true] {
+            let source = "int";
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            let span = parser.lexer.peek().unwrap().1;
+            let element = parser.scalar_handle(Scalar::I32, span);
+            let type_count = parser.module.types.len();
+            let count = core::num::NonZeroU32::new(4).unwrap();
+            parser.parameter_expansion_budget.activate();
+            if exhaust_bytes {
+                let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                parser
+                    .parameter_expansion_budget
+                    .charge_bytes(remaining, span)
+                    .unwrap();
+            } else {
+                let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                parser
+                    .parameter_expansion_budget
+                    .charge_nodes(remaining, span)
+                    .unwrap();
+            }
+            assert!(!parser.function.parameter_state_charged);
+
+            let error = parser
+                .array_type(element, ArraySize::Constant(count), span, span)
+                .unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert_eq!(error.span, span);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_eq!(parser.module.types.len(), type_count);
+            assert!(parser.function.ir.expressions.is_empty());
+            assert!(parser.function.expression_graph_depths.is_empty());
+            assert!(parser.function.ir.local_variables.is_empty());
+            assert!(parser.function.ir.body.is_empty());
+            assert!(parser.module.global_variables.is_empty());
+            assert!(parser.module.functions.is_empty());
+        }
+    }
+
+    #[test]
+    fn array_declarators_check_budget_before_extent_expressions() {
+        for kind in [FunctionKind::Kernel, FunctionKind::Device] {
+            for (source, parameter) in [("1]", false), ("[1]", true)] {
+                for exhaust_bytes in [false, true] {
+                    let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                    parser.function = FunctionContext::new(kind);
+                    let span = parser.lexer.peek().unwrap().1;
+                    let element = parser.scalar_handle(Scalar::I32, span);
+                    let type_count = parser.module.types.len();
+                    parser.parameter_expansion_budget.activate();
+                    if exhaust_bytes {
+                        let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                        parser
+                            .parameter_expansion_budget
+                            .charge_bytes(remaining, span)
+                            .unwrap();
+                    } else {
+                        let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                        parser
+                            .parameter_expansion_budget
+                            .charge_nodes(remaining, span)
+                            .unwrap();
+                    }
+                    assert!(!parser.function.parameter_state_charged);
+
+                    let result = if parameter {
+                        parser.array_parameter(
+                            Some("values"),
+                            span,
+                            &TypeResolution::Handle(element),
+                            Qualifiers::NONE,
+                            ParameterMode::Value,
+                        )
+                    } else {
+                        parser.array_declaration(element, false, span).map(|_| ())
+                    };
+                    let error = result.unwrap_err();
+                    assert_eq!(error.message, limit_error(span).message);
+                    assert!(parser.parameter_expansion_budget.is_exhausted());
+                    let range = error.span.to_range().unwrap();
+                    assert!(!range.is_empty());
+                    assert!(source.get(range).is_some());
+                    assert_eq!(parser.module.types.len(), type_count);
+                    assert!(parser.function.ir.expressions.is_empty());
+                    assert!(parser.function.expression_graph_depths.is_empty());
+                    assert!(parser.function.ir.named_expressions.is_empty());
+                    assert!(parser.function.ir.local_variables.is_empty());
+                    assert!(parser.function.ir.arguments.is_empty());
+                    assert!(parser.function.ir.body.is_empty());
+                    assert!(parser.function.parameters.is_empty());
+                    assert!(parser.function.symbol_table.lookup("values").is_none());
+                    assert!(parser.module.global_variables.is_empty());
+                    assert!(parser.module.functions.is_empty());
+                }
+            }
+        }
+    }
+
+    #[test]
     fn cached_float_math_checks_node_budget_without_parameter_state() {
         use super::super::super::float_helpers::FloatMathFunction;
 
