@@ -231,13 +231,30 @@ fn cuda_signed_indices_and_unsigned_bounds_use_usual_comparison_conversions() {
 #[test]
 fn cuda_conversions_preserve_unsupported_type_and_literal_errors() {
     for source in [
-        "__global__ void bad(int *out) { out[0] = (double)1; }",
         "__global__ void bad(int *out) { out[0] = static_cast<long>(1); }",
+        "__global__ void bad(int *out) { out[0] = 2147483648; }",
+        "__global__ void bad(int *out) { out[0] = 4294967296u; }",
+    ] {
+        let capabilities = naga::valid::Capabilities::SHADER_INT64;
+        let (module, info) = super::helpers::validate_with_options_and_capabilities(
+            source,
+            &Options::default(),
+            capabilities,
+        );
+        #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+        super::helpers::wgsl_roundtrip_with_capabilities(
+            &module,
+            &info,
+            naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+            capabilities,
+        );
+        let _ = (module, info);
+    }
+    for source in [
+        "__global__ void bad(int *out) { out[0] = (double)1; }",
         "__global__ void bad(int *out) { out[0] = (int*)1; }",
         "__global__ void bad(int *out) { out[0] = static_cast<int*>(out); }",
         "__global__ void bad(int *out) { out[0] = static_cast<int>(out); }",
-        "__global__ void bad(int *out) { out[0] = 2147483648; }",
-        "__global__ void bad(int *out) { out[0] = 4294967296u; }",
         "__global__ void bad(float *out) { out[0] = 1.0; }",
         "__global__ void bad(bool value) {}",
     ] {

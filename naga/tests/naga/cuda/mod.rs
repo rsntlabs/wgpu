@@ -61,6 +61,7 @@ mod local_arrays;
 mod local_declarators;
 mod local_pointers;
 mod logical_operators;
+mod long_types;
 mod loops;
 mod multidimensional_arrays;
 mod multiple_kernels;
@@ -206,6 +207,56 @@ fn cuda_sequential_buffer_stores_validate() {
 
 #[test]
 fn cuda_rejects_unsupported_or_invalid_source() {
+    for (source, literal, scalar) in [
+        (
+            "__global__ void bad(float *out) { out[0] = 1L; }",
+            naga::Literal::I64(1),
+            naga::Scalar::F32,
+        ),
+        (
+            "__global__ void bad(unsigned int *out) { out[0] = 4294967296u; }",
+            naga::Literal::U64(4_294_967_296),
+            naga::Scalar::U32,
+        ),
+    ] {
+        let capabilities = naga::valid::Capabilities::SHADER_INT64;
+        let (module, info) = helpers::validate_with_options_and_capabilities(
+            source,
+            &Options::default(),
+            capabilities,
+        );
+        let function = &module.entry_points[0].function;
+        let mut stores = Vec::new();
+        naga::proc::any_statement(&function.body, &mut |statement| {
+            if let naga::Statement::Store { value, .. } = *statement {
+                stores.push(value);
+            }
+            false
+        });
+        assert_eq!(stores.len(), 1);
+        let naga::Expression::As {
+            expr,
+            kind,
+            convert,
+        } = function.expressions[stores[0]]
+        else {
+            panic!("expected a numeric conversion");
+        };
+        assert_eq!(kind, scalar.kind);
+        assert_eq!(convert, Some(scalar.width));
+        assert_eq!(
+            function.expressions[expr],
+            naga::Expression::Literal(literal)
+        );
+        #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+        helpers::wgsl_roundtrip_with_capabilities(
+            &module,
+            &info,
+            naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+            capabilities,
+        );
+        let _ = (module, info);
+    }
     for source in [
         "",
         "__device__ void helper() {}",
@@ -215,7 +266,6 @@ fn cuda_rejects_unsupported_or_invalid_source() {
         "__global__ void bad(double *out) {}",
         "#include <cuda_runtime.h>\n__global__ void empty() {}",
         "__global__ void bad(float *out) { out[0] = 1.0; }",
-        "__global__ void bad(float *out) { out[0] = 1L; }",
         "__global__ void bad(const float *out) { out[0] = 1.0f; }",
         "__global__ void bad(float *out, float *out) {}",
         "__global__ void bad(unsigned int *out) { unsigned int out = 1u; }",
@@ -223,7 +273,6 @@ fn cuda_rejects_unsupported_or_invalid_source() {
         "__global__ void bad(unsigned int *out) { out[0] = threadIdx.w; }",
         "__global__ void bad(unsigned int *out) { out[0.5f] = 1u; }",
         "__global__ void bad(unsigned int *out) { out[0] = threadIdx.x ? 1u 2u; }",
-        "__global__ void bad(unsigned int *out) { out[0] = 4294967296u; }",
         "__global__ void bad(unsigned int *out) { out[0] = 08u; }",
         "__global__ void bad(unsigned int *out) { switch (1.0f) { case 0: out[0] = 1u; } }",
         "__global__ void bad(unsigned int *out) { out[0] = atomicAdd_system(out, 1u); }",

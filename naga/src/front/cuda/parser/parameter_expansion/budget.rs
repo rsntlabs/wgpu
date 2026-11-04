@@ -319,6 +319,73 @@ mod tests {
     }
 
     #[test]
+    fn long_source_types_check_budget_before_allocation_and_reuse_cached_types() {
+        for kind in [ScalarKind::Sint, ScalarKind::Uint] {
+            for exhaust_bytes in [false, true] {
+                let source = "long";
+                let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                let span = parser.lexer.peek().unwrap().1;
+                let cached_kind = if kind == ScalarKind::Sint {
+                    ScalarKind::Uint
+                } else {
+                    ScalarKind::Sint
+                };
+                let cached_scalar = SourceScalar::Long(cached_kind);
+                let cached_type = parser
+                    .source_scalar_resolution(cached_scalar, span)
+                    .unwrap();
+                let type_count = parser.module.types.len();
+                let cached_types = parser.long_types;
+                if exhaust_bytes {
+                    let remaining = BYTE_LIMIT
+                        - parser.parameter_expansion_budget.bytes
+                        - size_of::<(Type, Span)>();
+                    parser
+                        .parameter_expansion_budget
+                        .charge_bytes(remaining, span)
+                        .unwrap();
+                } else {
+                    let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                    parser
+                        .parameter_expansion_budget
+                        .charge_nodes(remaining, span)
+                        .unwrap();
+                }
+
+                let error = parser
+                    .source_scalar_resolution(SourceScalar::Long(kind), span)
+                    .unwrap_err();
+                assert_eq!(error.message, limit_error(span).message);
+                assert_eq!(error.span, span);
+                assert!(parser.parameter_expansion_budget.is_exhausted());
+                assert_eq!(parser.module.types.len(), type_count);
+                assert_eq!(parser.long_types, cached_types);
+                let charged = (
+                    parser.parameter_expansion_budget.nodes,
+                    parser.parameter_expansion_budget.work,
+                    parser.parameter_expansion_budget.bytes,
+                );
+                assert_eq!(
+                    parser
+                        .source_scalar_resolution(cached_scalar, span)
+                        .unwrap(),
+                    cached_type
+                );
+                assert_eq!(parser.module.types.len(), type_count);
+                assert_eq!(parser.long_types, cached_types);
+                assert_eq!(
+                    (
+                        parser.parameter_expansion_budget.nodes,
+                        parser.parameter_expansion_budget.work,
+                        parser.parameter_expansion_budget.bytes,
+                    ),
+                    charged
+                );
+            }
+        }
+    }
+
+    #[test]
     fn array_type_checks_budget_before_allocation() {
         for exhaust_bytes in [false, true] {
             let source = "int";

@@ -195,8 +195,8 @@ impl Parser<'_> {
         let has_equals = self.lexer.next_if(Token::Operation('='))?;
         if self.lexer.peek()?.0 == Token::Paren('{') {
             let span = self.lexer.peek()?.1;
-            let scalar = self.require_scalar_type(target, span)?;
-            return self.scalar_list_initializer(scalar, !has_equals);
+            let scalar = self.require_source_scalar_type(target, span)?;
+            return self.source_scalar_list_initializer(scalar, !has_equals);
         }
         if !has_equals && self.lexer.peek()?.0 == Token::Paren('(') {
             let value = self.parenthesized_initializer()?;
@@ -444,8 +444,9 @@ impl Parser<'_> {
                 TypeSpecifier::TemplateParameter(_) => {
                     return self.fail("dependent type requires an instantiation");
                 }
-                TypeSpecifier::Scalar(scalar) => {
-                    let value = self.scalar_initializer_clause(scalar)?;
+                TypeSpecifier::Scalar(_) | TypeSpecifier::Long { .. } => {
+                    let value =
+                        self.source_scalar_initializer_clause(specifier.source_scalar().unwrap())?;
                     self.push_statement(
                         Statement::Store {
                             pointer,
@@ -636,9 +637,7 @@ impl Parser<'_> {
             };
         if let Some(ref value) = pending_value {
             if !matches!(self.module.types[ty].inner, TypeInner::Array { .. })
-                && (self
-                    .module
-                    .compare_types(&value.ty, &TypeResolution::Handle(ty))
+                && (self.source_types_equal(&value.ty, &TypeResolution::Handle(ty))
                     || (initialization != AggregateInitialization::Braced
                         && self.dimension_conversion(&value.ty, &TypeResolution::Handle(ty))))
             {
@@ -761,9 +760,7 @@ impl Parser<'_> {
             };
             let target = TypeResolution::Handle(ty);
             if !matches!(self.module.types[ty].inner, TypeInner::Scalar(_))
-                && !self
-                    .module
-                    .compare_types(expression.shader_type()?, &target)
+                && !self.source_types_equal(expression.shader_type()?, &target)
                 && !self.dimension_conversion(expression.shader_type()?, &target)
             {
                 let initialization = if initialization == AggregateInitialization::SingleExpression
@@ -777,10 +774,10 @@ impl Parser<'_> {
                 return self.initialize_aggregate(pointer, ty, initialization, span, Some(value));
             }
             self.convert_value(expression, &target)?
-        } else if let TypeInner::Scalar(scalar) = self.module.types[ty].inner {
+        } else if let Some(scalar) = self.source_scalar(&TypeResolution::Handle(ty)) {
             match pending_value {
-                Some(value) => self.list_convert_scalar(value, scalar)?,
-                None => self.scalar_initializer_clause(scalar)?,
+                Some(value) => self.list_convert_source_scalar(value, scalar)?,
+                None => self.source_scalar_initializer_clause(scalar)?,
             }
         } else {
             let opening = self.lexer.peek()?.1;
@@ -797,57 +794,65 @@ impl Parser<'_> {
     }
 
     fn scalar_initializer_clause(&mut self, scalar: Scalar) -> Result<Value, ParseError> {
+        self.source_scalar_initializer_clause(SourceScalar::Scalar(scalar))
+    }
+
+    fn source_scalar_initializer_clause(
+        &mut self,
+        scalar: SourceScalar,
+    ) -> Result<Value, ParseError> {
         if self.lexer.peek()?.0 == Token::Paren('{') {
-            self.scalar_list_initializer(scalar, false)
+            self.source_scalar_list_initializer(scalar, false)
         } else {
             let expression = self.expression(0)?;
             let value = self.rvalue(expression)?;
-            self.list_convert_scalar(value, scalar)
+            self.list_convert_source_scalar(value, scalar)
         }
     }
 
-    pub(super) fn zero_scalar_value(
+    pub(super) fn zero_source_scalar_value(
         &mut self,
-        scalar: Scalar,
+        scalar: SourceScalar,
         span: Span,
     ) -> Result<Value, ParseError> {
-        let literal = Literal::zero(scalar).ok_or_else(|| ParseError {
+        let literal = Literal::zero(scalar.scalar()).ok_or_else(|| ParseError {
             message: String::from("unsupported scalar value initialization"),
             span,
         })?;
+        let ty = self.source_scalar_resolution(scalar, span)?;
         Ok(Value {
             category: ValueCategory::Prvalue,
             qualifiers: Qualifiers::NONE,
             handle: self.append(Expression::Literal(literal), span)?,
-            ty: scalar_resolution(scalar),
+            ty,
             span,
             constant: literal.into(),
         })
     }
 
-    pub(super) fn scalar_list_initializer(
+    pub(super) fn source_scalar_list_initializer(
         &mut self,
-        scalar: Scalar,
+        scalar: SourceScalar,
         direct: bool,
     ) -> Result<Value, ParseError> {
         let start = self.lexer.expect_span(Token::Paren('{'))?;
         let mut value = if self.lexer.peek()?.0 == Token::Paren('}') {
-            self.zero_scalar_value(scalar, start)?
+            self.zero_source_scalar_value(scalar, start)?
         } else {
             if self.lexer.peek()?.0 == Token::Paren('{') {
                 return self.fail("nested scalar initializer lists are unsupported");
             }
             let expression = self.expression(0)?;
-            let value = if direct && scalar == Scalar::BOOL {
+            let value = if direct && scalar.scalar() == Scalar::BOOL {
                 if let ExpressionValue::NullPointer(value) = expression {
                     self.null_pointer_boolean(value)?
                 } else {
                     let value = self.rvalue(expression)?;
-                    self.list_convert_scalar(value, scalar)?
+                    self.list_convert_source_scalar(value, scalar)?
                 }
             } else {
                 let value = self.rvalue(expression)?;
-                self.list_convert_scalar(value, scalar)?
+                self.list_convert_source_scalar(value, scalar)?
             };
             self.lexer.next_if(Token::Separator(','))?;
             value
@@ -855,6 +860,15 @@ impl Parser<'_> {
         let end = self.lexer.expect_span(Token::Paren('}'))?;
         value.span = start.until(&end);
         Ok(value)
+    }
+
+    pub(super) fn list_convert_source_scalar(
+        &mut self,
+        value: Value,
+        target: SourceScalar,
+    ) -> Result<Value, ParseError> {
+        let value = self.list_convert_scalar(value, target.scalar())?;
+        self.convert_source_scalar(value.into(), target)
     }
 
     pub(super) fn list_convert_scalar(
@@ -930,9 +944,7 @@ impl Parser<'_> {
         } else {
             let expression = self.expression(0)?;
             let value = self.rvalue(expression)?;
-            if self
-                .module
-                .compare_types(&value.ty, &TypeResolution::Handle(actual_ty))
+            if self.source_types_equal(&value.ty, &TypeResolution::Handle(actual_ty))
                 || (!has_braces
                     && self.dimension_conversion(&value.ty, &TypeResolution::Handle(actual_ty)))
             {

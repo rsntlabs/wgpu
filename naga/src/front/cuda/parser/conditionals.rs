@@ -75,7 +75,7 @@ impl Parser<'_> {
             (
                 ExpressionResult::Value(ExpressionValue::Reference(accept)),
                 ExpressionResult::Value(ExpressionValue::Reference(reject)),
-            ) if self.module.compare_types(&accept.ty, &reject.ty)
+            ) if self.source_types_equal(&accept.ty, &reject.ty)
                 && (accept.qualifiers.contains(reject.qualifiers)
                     || reject.qualifiers.contains(accept.qualifiers)) =>
             {
@@ -139,22 +139,20 @@ impl Parser<'_> {
                     )?;
                     return self.pointer_result(pointer);
                 }
-                let ty = if self
-                    .module
-                    .compare_types(accept.shader_type()?, reject.shader_type()?)
-                {
+                let ty = if self.source_types_equal(accept.shader_type()?, reject.shader_type()?) {
                     accept.shader_type()?.clone()
                 } else {
-                    scalar_resolution(Self::arithmetic_scalar(
-                        self.require_scalar_type(accept.shader_type()?, accept.span())?,
-                        self.require_scalar_type(reject.shader_type()?, reject.span())?,
-                    ))
+                    let scalar = Self::arithmetic_scalar(
+                        self.require_source_scalar_type(accept.shader_type()?, accept.span())?,
+                        self.require_source_scalar_type(reject.shader_type()?, reject.span())?,
+                    );
+                    self.source_scalar_resolution(scalar, span)?
                 };
                 let category = match (&accept, &reject) {
                     (&ExpressionValue::Plain(ref accept), &ExpressionValue::Plain(ref reject))
                         if accept.category == ValueCategory::Xvalue
                             && reject.category == ValueCategory::Xvalue
-                            && self.module.compare_types(&accept.ty, &reject.ty)
+                            && self.source_types_equal(&accept.ty, &reject.ty)
                             && (accept.qualifiers.contains(reject.qualifiers)
                                 || reject.qualifiers.contains(accept.qualifiers)) =>
                     {

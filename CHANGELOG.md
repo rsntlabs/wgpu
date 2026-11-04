@@ -142,6 +142,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 
 #### Naga
 
+- Support CUDA LP64 `long`, `unsigned long`, and `size_t`, preserving distinct `long long` overloads and template arguments.
 - Preserve required WGSL 16-bit enable declarations after compacting scalar expression types.
 - Support CUDA `long long` and `unsigned long long` scalars with eight-byte storage, literals, arithmetic, and template arguments.
 - Convert wide integer shift counts when generating WGSL.

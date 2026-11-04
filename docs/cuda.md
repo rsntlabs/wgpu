@@ -224,8 +224,8 @@ Each source contains one or more `__global__ void` kernels, optionally preceded 
 `extern "C"`. Entry points preserve source order. Device helper declarations and
 definitions can surround the kernels and are shared across the module. Every
 kernel body is parsed and checked, including kernels a caller does not dispatch.
-Parameter types are `float`, `short`, `unsigned short`, `int`, and `unsigned int`
-(`unsigned` is also accepted), either by value or as flat pointers. Pointer
+Parameters accept the scalar types described below, either by value or as flat
+pointers, including the 64-bit integer types and `size_t`. Pointer
 parameters also accept `float1`, `float2`, `float3`, `float4`, `int1`, `int2`,
 `int3`, `int4`, `uint1`, `uint2`, `uint3`, `uint4`, `short1`, `short2`, `short3`,
 `short4`, `ushort1`, `ushort2`, `ushort3`, and `ushort4`. Aliases and pointee
@@ -256,9 +256,14 @@ request `wgpu::Features::SHADER_I16` for native execution. Generated WGSL uses
 Brace conversions from integer to float require a constant expression whose value
 is exactly representable, including 16-bit sources.
 
-`long long` and `unsigned long long` name the signed and unsigned 64-bit scalar
-types. Valid orders of `signed`, `unsigned`, `long`, and `int` preserve the same
-type. Aliases, references, overloads, and template parameters retain that identity.
+The frontend uses an LP64 data model: `long`, `unsigned long`, `long long`, and
+`unsigned long long` are 64-bit scalar types. Valid orders of `signed`,
+`unsigned`, `long`, and `int` preserve the corresponding type. `long` and
+`long long` have distinct overload and template identities despite sharing the
+same storage representation; the unsigned types are distinct too. Aliases,
+references, and pointers retain those identities. The built-in `size_t` alias
+names `unsigned long` and is also available as `::size_t` and `std::size_t`.
+It follows ordinary alias scope and shadowing rules; `<cstddef>` is accepted.
 Validate these modules with `Capabilities::SHADER_INT64` and request
 `wgpu::Features::SHADER_INT64` for native execution. Generated WGSL uses
 `i64` and `u64`. HLSL requires Shader Model 6.0 or later, and GLSL uses
@@ -272,7 +277,7 @@ reads and writes. Element layouts are:
 | --- | --- | --- | --- |
 | `short` or `unsigned short` | 2 bytes | 2 bytes | 2 bytes |
 | 32-bit scalar | 4 bytes | 4 bytes | 4 bytes |
-| `long long` or `unsigned long long` | 8 bytes | 8 bytes | 8 bytes |
+| `long`, `unsigned long`, `long long`, or `unsigned long long` | 8 bytes | 8 bytes | 8 bytes |
 | One-component 16-bit vector | 2 bytes | 2 bytes | 2 bytes |
 | One-component 32-bit vector | 4 bytes | 4 bytes | 4 bytes |
 | Two-component 16-bit vector | 4 bytes | 4 bytes | 4 bytes |
@@ -312,7 +317,7 @@ and WGSL's [compute built-in inputs](https://gpuweb.github.io/gpuweb/wgsl/#built
 three integral constant arguments, including macros and template parameters.
 Dependent template operands receive structural checks before instantiation;
 instantiated bounds require integral constant values.
-A `long long` argument must fit `int`, and an `unsigned long long` argument must
+A signed 64-bit argument must fit `int`, and an unsigned 64-bit argument must
 fit `unsigned int`. Arguments become signed 32-bit attribute values. Nonpositive values impose no
 bound. For a positive first argument on a kernel, the product of all three
 `Options::workgroup_size` dimensions must not exceed it. The attribute does not
@@ -632,11 +637,16 @@ Source-defined vector operators can use the same scalar divisions componentwise.
 
 ## Mathematical functions
 
-`min` and `max` accept `int` and `unsigned int` operands in either order.
-Boolean arguments promote to `int`. If either operand is unsigned, both values
+The 32-bit `min` and `max` overloads accept `int` and `unsigned int` operands in
+either order. Boolean arguments promote to `int`. If either operand is unsigned, both values
 convert to `unsigned int` and the result is unsigned; otherwise the result is
 `int`. For example, `min(-1, 2u)` is `2u`, while `max(-1, 2u)` is `0xffffffffu`.
 These rules follow NVIDIA's [integer overloads](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-math-api/cuda_math_api/group__CUDA__MATH__INT.html).
+
+The `long` and `long long` overload families each accept their signed and
+unsigned types. Mixing signedness within either family selects its unsigned
+type. Mixing the two families can be ambiguous and is rejected when no single
+overload is best.
 
 The `float, float` overloads of `min` and `max`, and the functions `fminf` and
 `fmaxf`, return `float`. `fminf` and `fmaxf` also accept scalar arguments that
@@ -1612,12 +1622,16 @@ preprocessing groups continue to skip pragma payloads.
 
 Kernel integer literals support decimal, leading-zero octal, `0x`/`0X`
 hexadecimal, and `0b`/`0B` binary notation. Apostrophes may separate digits, as in
-`1'000` or `0xffff'ffff`. Unsuffixed decimal literals must fit `int`; unsuffixed nondecimal
-literals use `int` when they fit and otherwise `unsigned int`. The `u`/`U` suffix
-selects `unsigned int`. The `ll`/`LL` suffix selects `long long`, with either case
-accepted for each letter. Values above the signed 64-bit range select
-`unsigned long long`, up to its maximum value. Adding `u`/`U`
-before or after the pair of letters selects `unsigned long long` directly.
+`1'000` or `0xffff'ffff`. Unsuffixed decimal literals select `int`, then `long`,
+then `unsigned long long` as their value grows. Unsuffixed nondecimal literals
+select the first fitting type from `int`, `unsigned int`, `long`, and
+`unsigned long`. The `u`/`U` suffix selects `unsigned int`, then `unsigned long`.
+The `l`/`L` suffix selects `long`, then `unsigned long long` for decimal or
+`unsigned long` for nondecimal values. Combining `u` and `l` selects
+`unsigned long`. The `ll`/`LL` suffix selects `long long`, then
+`unsigned long long`; either case is accepted for each letter. Adding `u`/`U`
+before or after the pair selects `unsigned long long` directly. Values above
+the unsigned 64-bit maximum are rejected.
 The signed minimum can be written `-9223372036854775807LL - 1LL`.
 Decimal floating literals require the `f`/`F` suffix,
 such as `2.0f`. Apostrophes may separate decimal digits in the significand and
@@ -1629,10 +1643,12 @@ Literals round directly to binary32 using round-to-nearest, ties-to-even,
 including subnormal and signed-zero results. Values that round to infinity
 are rejected. Unsuffixed and long floating literals remain unsupported.
 Arithmetic promotes `bool`, `short`, and `unsigned short` to `int`. Common
-arithmetic types prefer `float`, then `unsigned long long`, `long long`,
-`unsigned int`, and finally `int`. In particular,
-`long long` represents every `unsigned int` value, so their common type is
-`long long`.
+arithmetic types prefer `float`, then apply integer ranks in the order
+`long long`, `long`, and `int`. Equal-rank signed and unsigned operands use the
+unsigned type. A higher-rank signed type is used when it represents every value
+of the unsigned operand; otherwise its unsigned counterpart is used. For example,
+`long` plus `unsigned int` produces `long`, while `long long` plus
+`unsigned long` produces `unsigned long long`.
 Scalar assignments and ordinary `= expression` initializers convert to the
 destination type; brace initializers use the narrowing rules above. C-style casts,
 `static_cast`, and single-token functional casts such as `int(value)` are
@@ -1666,7 +1682,7 @@ operand before its left operand. Built-in scalar logical short-circuiting also
 applies to assignments and updates inside the right operand.
 
 Static `__shared__` declarations support `float`, `short`, `unsigned short`,
-`int`, `unsigned int`, `long long`, and `unsigned long long`
+`int`, `unsigned int`, `long`, `unsigned long`, `long long`, and `unsigned long long`
 scalars, the numeric vector and struct types above, and fixed arrays of
 those types inside kernels and device helpers. Their aliases are also accepted;
 const-qualified shared types remain unsupported. Vector elements use the sizes, alignments, and

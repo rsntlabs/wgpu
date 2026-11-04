@@ -34,9 +34,11 @@ impl<'a> Parser<'a> {
         if matches!(ty.ty, TypeSpecifier::NullPointer) {
             return self.global_null_pointer_declaration(ty.qualifiers);
         }
-        let TypeSpecifier::Scalar(scalar) = ty.ty else {
+        let Some(scalar) = ty.ty.source_scalar() else {
             return self.fail("constexpr requires a scalar variable");
         };
+        let type_span = self.lexer.peek()?.1;
+        let ty = self.source_scalar_resolution(scalar, type_span)?;
         loop {
             let (name, span) = self.identifier()?;
             self.check_name(name, span)?;
@@ -51,12 +53,12 @@ impl<'a> Parser<'a> {
                 name,
                 GlobalDeclaration::Constant {
                     handle: None,
-                    scalar,
+                    ty: ty.clone(),
                     literal: None,
                 },
             );
-            let literal = self.constant_initializer(&scalar_resolution(scalar))?;
-            self.bind_global_constant(name, scalar, literal, span)?;
+            let literal = self.constant_initializer(&ty)?;
+            self.bind_global_constant(name, ty.clone(), literal, span)?;
             if !self.lexer.next_if(Token::Separator(','))? {
                 self.lexer.expect_span(Token::Separator(';'))?;
                 return Ok(());
@@ -67,7 +69,7 @@ impl<'a> Parser<'a> {
     pub(super) fn bind_global_constant(
         &mut self,
         name: &'a str,
-        scalar: Scalar,
+        source_ty: TypeResolution,
         literal: Literal,
         span: Span,
     ) -> Result<(), ParseError> {
@@ -84,9 +86,13 @@ impl<'a> Parser<'a> {
                     .charge_bytes(name.len() + "_bits".len(), span)?;
                 (Scalar::U32, Literal::U32(value.to_bits()))
             }
-            _ => (scalar, literal),
+            _ => (literal.scalar(), literal),
         };
-        let ty = self.scalar_handle(physical_scalar, span);
+        let ty = if nonfinite {
+            self.scalar_handle(physical_scalar, span)
+        } else {
+            self.type_handle(&source_ty, span)
+        };
         let init = self
             .module
             .global_expressions
@@ -107,7 +113,7 @@ impl<'a> Parser<'a> {
             name,
             GlobalDeclaration::Constant {
                 handle: Some(constant_handle),
-                scalar,
+                ty: source_ty,
                 literal: Some(literal),
             },
         );

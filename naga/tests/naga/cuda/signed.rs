@@ -148,6 +148,28 @@ fn cuda_signed_and_int_share_signatures_while_unsigned_keeps_its_overload() {
 #[test]
 fn cuda_signed_rejects_conflicts_repeats_unsupported_widths_and_large_literals() {
     for declaration in [
+        "signed long value;",
+        "signed value = 2147483648;",
+        "signed value = -2147483648;",
+        "signed value = 4294967296u;",
+    ] {
+        let source = format!("__global__ void kernel() {{ {declaration} }}");
+        let capabilities = naga::valid::Capabilities::SHADER_INT64;
+        let (module, info) = super::helpers::validate_with_options_and_capabilities(
+            &source,
+            &Options::default(),
+            capabilities,
+        );
+        #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+        super::helpers::wgsl_roundtrip_with_capabilities(
+            &module,
+            &info,
+            naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+            capabilities,
+        );
+        let _ = (module, info);
+    }
+    for declaration in [
         "signed signed value;",
         "signed int signed value;",
         "int signed int value;",
@@ -158,11 +180,7 @@ fn cuda_signed_rejects_conflicts_repeats_unsupported_widths_and_large_literals()
         "signed bool value;",
         "signed char value;",
         "signed short short value;",
-        "signed long value;",
         "signed double value;",
-        "signed value = 2147483648;",
-        "signed value = -2147483648;",
-        "signed value = 4294967296u;",
         "signed value = signed int(3);",
     ] {
         rejected(&format!("__global__ void kernel() {{ {declaration} }}"));

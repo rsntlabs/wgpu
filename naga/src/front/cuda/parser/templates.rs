@@ -12,6 +12,8 @@ enum TemplateValue {
     UnsignedShort(u16),
     Int(i32),
     Uint(u32),
+    Long(i64),
+    UnsignedLong(u64),
     LongLong(i64),
     UnsignedLongLong(u64),
     Bool(bool),
@@ -32,14 +34,14 @@ impl TemplateValue {
             Self::UnsignedShort(value) => Literal::U16(value),
             Self::Int(value) => Literal::I32(value),
             Self::Uint(value) => Literal::U32(value),
-            Self::LongLong(value) => Literal::I64(value),
-            Self::UnsignedLongLong(value) => Literal::U64(value),
+            Self::Long(value) | Self::LongLong(value) => Literal::I64(value),
+            Self::UnsignedLong(value) | Self::UnsignedLongLong(value) => Literal::U64(value),
             Self::Bool(value) => Literal::Bool(value),
             Self::Type { .. } | Self::ArrayType { .. } => unreachable!(),
         }
     }
 
-    fn converted(value: Literal, scalar: Scalar) -> Option<Self> {
+    fn converted(value: Literal, scalar: SourceScalar) -> Option<Self> {
         let value = match value {
             Literal::I16(value) => i128::from(value),
             Literal::U16(value) => i128::from(value),
@@ -50,7 +52,14 @@ impl TemplateValue {
             Literal::Bool(value) => i128::from(value),
             _ => return None,
         };
-        match scalar {
+        if let SourceScalar::Long(kind) = scalar {
+            return if kind == ScalarKind::Sint {
+                i64::try_from(value).ok().map(Self::Long)
+            } else {
+                u64::try_from(value).ok().map(Self::UnsignedLong)
+            };
+        }
+        match scalar.scalar() {
             Scalar::I16 => i16::try_from(value).ok().map(Self::Short),
             Scalar::U16 => u16::try_from(value).ok().map(Self::UnsignedShort),
             Scalar::I32 => i32::try_from(value).ok().map(Self::Int),
@@ -68,6 +77,8 @@ impl TemplateValue {
             Self::UnsignedShort(value) => format!("{value}u"),
             Self::Int(value) => format!("{value}"),
             Self::Uint(value) => format!("{value}u"),
+            Self::Long(value) => format!("{value}L"),
+            Self::UnsignedLong(value) => format!("{value}UL"),
             Self::LongLong(value) => format!("{value}LL"),
             Self::UnsignedLongLong(value) => format!("{value}ULL"),
             Self::Bool(value) => String::from(if value { "true" } else { "false" }),
@@ -85,7 +96,7 @@ enum TemplateArgument {
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum TemplateParameterKind {
     Type,
-    Value(Scalar),
+    Value(SourceScalar),
 }
 
 #[derive(Clone)]
@@ -202,7 +213,7 @@ pub(super) struct Templates<'a> {
 impl<'a> Parser<'a> {
     pub(super) fn template_parameter_value(
         &mut self,
-        scalar: Scalar,
+        scalar: SourceScalar,
         literal: Option<Literal>,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
@@ -210,12 +221,13 @@ impl<'a> Parser<'a> {
             message: String::from("dependent template parameter requires an instantiation"),
             span,
         })?;
+        let ty = self.source_scalar_resolution(scalar, span)?;
         let handle = self.append(Expression::Literal(literal), span)?;
         Ok(Value {
             category: ValueCategory::Prvalue,
             qualifiers: Qualifiers::NONE,
             handle,
-            ty: scalar_resolution(scalar),
+            ty,
             span,
             constant: literal.into(),
         }
@@ -479,15 +491,10 @@ impl<'a> Parser<'a> {
                 TemplateParameterKind::Type
             } else {
                 let ty = self.parse_type()?;
-                let TypeSpecifier::Scalar(
-                    scalar @ (Scalar::I16
-                    | Scalar::U16
-                    | Scalar::I32
-                    | Scalar::U32
-                    | Scalar::I64
-                    | Scalar::U64
-                    | Scalar::BOOL),
-                ) = ty.ty
+                let Some(scalar) = ty
+                    .ty
+                    .source_scalar()
+                    .filter(|scalar| scalar.scalar().kind != ScalarKind::Float)
                 else {
                     return Err(ParseError {
                         message: String::from(
@@ -965,6 +972,12 @@ impl<'a> Parser<'a> {
             TypeSpecifier::Scalar(Scalar::U16) => String::from("unsigned short"),
             TypeSpecifier::Scalar(Scalar::I32) => String::from("int"),
             TypeSpecifier::Scalar(Scalar::U32) => String::from("unsigned"),
+            TypeSpecifier::Long {
+                kind: ScalarKind::Sint,
+            } => String::from("long"),
+            TypeSpecifier::Long {
+                kind: ScalarKind::Uint,
+            } => String::from("unsigned long"),
             TypeSpecifier::Scalar(Scalar::I64) => String::from("long long"),
             TypeSpecifier::Scalar(Scalar::U64) => String::from("unsigned long long"),
             TypeSpecifier::Scalar(Scalar::F32) => String::from("float"),
@@ -1038,6 +1051,9 @@ impl<'a> Parser<'a> {
     ) -> Result<TypeSpecifier, ParseError> {
         if Some(ty) == self.dim3_type {
             return Ok(TypeSpecifier::Dim3);
+        }
+        if let Some(SourceScalar::Long(kind)) = self.source_scalar(&TypeResolution::Handle(ty)) {
+            return Ok(TypeSpecifier::Long { kind });
         }
         match self.module.types[ty].inner {
             TypeInner::Scalar(scalar) => Ok(TypeSpecifier::Scalar(scalar)),

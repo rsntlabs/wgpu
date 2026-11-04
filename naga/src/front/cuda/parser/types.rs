@@ -7,6 +7,9 @@ pub(super) enum TypeSpecifier {
     ThreadBlock,
     Dim3,
     Scalar(Scalar),
+    Long {
+        kind: ScalarKind,
+    },
     Vector {
         component_count: u8,
         scalar: Scalar,
@@ -65,7 +68,7 @@ pub(super) enum GlobalDeclaration {
     ConstantMemory(ConstantMemoryDeclaration),
     Constant {
         handle: Option<Handle<crate::Constant>>,
-        scalar: Scalar,
+        ty: TypeResolution,
         literal: Option<Literal>,
     },
 }
@@ -94,11 +97,7 @@ impl IntegerSpecifiers {
             && !self.seen_unsigned
     }
 
-    pub(super) const fn is_supported(&self) -> bool {
-        self.long_count != 1
-    }
-
-    pub(super) fn consume(&mut self, specifier: &str) -> Option<Scalar> {
+    pub(super) fn consume(&mut self, specifier: &str) -> Option<SourceScalar> {
         match specifier {
             "int" if !self.seen_int => self.seen_int = true,
             "short" if !self.seen_short && self.long_count == 0 => self.seen_short = true,
@@ -107,16 +106,36 @@ impl IntegerSpecifiers {
             "unsigned" if !self.seen_unsigned && !self.seen_signed => self.seen_unsigned = true,
             _ => return None,
         }
-        Some(
-            match (self.seen_unsigned, self.seen_short, self.long_count) {
-                (false, _, 1 | 2) => Scalar::I64,
-                (true, _, 1 | 2) => Scalar::U64,
-                (false, false, _) => Scalar::I32,
-                (false, true, _) => Scalar::I16,
-                (true, false, _) => Scalar::U32,
-                (true, true, _) => Scalar::U16,
-            },
-        )
+        let scalar = match (self.seen_unsigned, self.seen_short, self.long_count) {
+            (false, _, 1 | 2) => Scalar::I64,
+            (true, _, 1 | 2) => Scalar::U64,
+            (false, false, _) => Scalar::I32,
+            (false, true, _) => Scalar::I16,
+            (true, false, _) => Scalar::U32,
+            (true, true, _) => Scalar::U16,
+        };
+        Some(if self.long_count == 1 {
+            SourceScalar::Long(scalar.kind)
+        } else {
+            SourceScalar::Scalar(scalar)
+        })
+    }
+}
+
+impl TypeSpecifier {
+    pub(super) const fn from_scalar(scalar: SourceScalar) -> Self {
+        match scalar {
+            SourceScalar::Scalar(scalar) => Self::Scalar(scalar),
+            SourceScalar::Long(kind) => Self::Long { kind },
+        }
+    }
+
+    pub(super) const fn source_scalar(self) -> Option<SourceScalar> {
+        match self {
+            Self::Scalar(scalar) => Some(SourceScalar::Scalar(scalar)),
+            Self::Long { kind } => Some(SourceScalar::Long(kind)),
+            _ => None,
+        }
     }
 }
 
@@ -131,6 +150,14 @@ fn type_name(
         "int" | "signed" => Scalar::I32,
         "short" => Scalar::I16,
         "unsigned" => Scalar::U32,
+        "long" => {
+            return Some(QualifiedType {
+                ty: TypeSpecifier::Long {
+                    kind: ScalarKind::Sint,
+                },
+                qualifiers: Qualifiers::NONE,
+            })
+        }
         _ => {
             return match symbols.lookup(name) {
                 Some(&Symbol::Type(ref ty)) => Some(ty.clone()),
@@ -306,7 +333,7 @@ fn declaration_type(
                     .consume(specifier)
                     .ok_or_else(|| invalid("incompatible or repeated type specifier"))?;
                 ty = Some(QualifiedType {
-                    ty: TypeSpecifier::Scalar(scalar),
+                    ty: TypeSpecifier::from_scalar(scalar),
                     qualifiers: Qualifiers::NONE,
                 });
             }
@@ -319,12 +346,6 @@ fn declaration_type(
             _ => break,
         }
         lexer.next()?;
-    }
-    if !integers.is_supported() {
-        return Err(ParseError {
-            message: String::from("long scalar types are unsupported; use long long"),
-            span: lexer.peek()?.1,
-        });
     }
     if inferred {
         return Ok((
@@ -351,6 +372,128 @@ fn declaration_type(
 }
 
 impl<'a> Parser<'a> {
+    pub(super) fn source_scalar(&self, ty: &TypeResolution) -> Option<SourceScalar> {
+        let &TypeInner::Scalar(scalar) = ty.inner_with(&self.module.types) else {
+            return None;
+        };
+        if ty
+            .handle()
+            .is_some_and(|handle| self.long_types.contains(&Some(handle)))
+        {
+            Some(SourceScalar::Long(scalar.kind))
+        } else {
+            Some(SourceScalar::Scalar(scalar))
+        }
+    }
+
+    pub(super) fn require_source_scalar_type(
+        &self,
+        ty: &TypeResolution,
+        span: Span,
+    ) -> Result<SourceScalar, ParseError> {
+        self.require_scalar_type(ty, span)?;
+        Ok(self.source_scalar(ty).unwrap())
+    }
+
+    pub(super) fn source_scalar_resolution(
+        &mut self,
+        scalar: SourceScalar,
+        span: Span,
+    ) -> Result<TypeResolution, ParseError> {
+        let SourceScalar::Long(kind) = scalar else {
+            return Ok(scalar_resolution(scalar.scalar()));
+        };
+        let index = usize::from(kind == ScalarKind::Uint);
+        if let Some(handle) = self.long_types[index] {
+            return Ok(TypeResolution::Handle(handle));
+        }
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let name = if kind == ScalarKind::Sint {
+            "long"
+        } else {
+            "unsigned_long"
+        };
+        self.parameter_expansion_budget.charge_nodes(1, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<(Type, Span)>(1, span)?;
+        self.parameter_expansion_budget
+            .charge_bytes(name.len(), span)?;
+        let handle = self.module.types.insert(
+            Type {
+                name: Some(String::from(name)),
+                inner: TypeInner::Scalar(scalar.scalar()),
+            },
+            span,
+        );
+        self.long_types[index] = Some(handle);
+        Ok(TypeResolution::Handle(handle))
+    }
+
+    pub(super) fn source_types_equal(&self, left: &TypeResolution, right: &TypeResolution) -> bool {
+        let mut left = left.clone();
+        let mut right = right.clone();
+        for _ in 0..=65 {
+            if left.handle().is_some() && left.handle() == right.handle() {
+                return true;
+            }
+            if let (Some(left), Some(right)) =
+                (self.source_scalar(&left), self.source_scalar(&right))
+            {
+                return left == right;
+            }
+            match (
+                left.inner_with(&self.module.types),
+                right.inner_with(&self.module.types),
+            ) {
+                (
+                    &TypeInner::Pointer {
+                        base: left_base,
+                        space: left_space,
+                    },
+                    &TypeInner::Pointer {
+                        base: right_base,
+                        space: right_space,
+                    },
+                ) if left_space == right_space => {
+                    left = TypeResolution::Handle(left_base);
+                    right = TypeResolution::Handle(right_base);
+                }
+                (
+                    &TypeInner::Array {
+                        base: left_base,
+                        size: left_size,
+                        stride: left_stride,
+                    },
+                    &TypeInner::Array {
+                        base: right_base,
+                        size: right_size,
+                        stride: right_stride,
+                    },
+                ) if left_size == right_size && left_stride == right_stride => {
+                    left = TypeResolution::Handle(left_base);
+                    right = TypeResolution::Handle(right_base);
+                }
+                (&TypeInner::Pointer { base, .. }, &TypeInner::ValuePointer { .. })
+                    if self
+                        .source_scalar(&TypeResolution::Handle(base))
+                        .is_some_and(|scalar| matches!(scalar, SourceScalar::Long(_))) =>
+                {
+                    return false
+                }
+                (&TypeInner::ValuePointer { .. }, &TypeInner::Pointer { base, .. })
+                    if self
+                        .source_scalar(&TypeResolution::Handle(base))
+                        .is_some_and(|scalar| matches!(scalar, SourceScalar::Long(_))) =>
+                {
+                    return false
+                }
+                _ => return self.module.compare_types(&left, &right),
+            }
+        }
+        false
+    }
+
     pub(super) fn lower_type(
         &mut self,
         ty: TypeSpecifier,
@@ -378,6 +521,9 @@ impl<'a> Parser<'a> {
                 })
             }
             TypeSpecifier::Scalar(scalar) => return Ok(scalar_resolution(scalar)),
+            TypeSpecifier::Long { kind } => {
+                return self.source_scalar_resolution(SourceScalar::Long(kind), span)
+            }
             TypeSpecifier::Dim3 => return Ok(TypeResolution::Handle(self.dim3_type(span))),
             TypeSpecifier::Structure(handle) | TypeSpecifier::Array(handle) => {
                 return Ok(TypeResolution::Handle(handle));
@@ -752,7 +898,7 @@ impl<'a> Parser<'a> {
         if global {
             self.check_dynamic_shared_linkage(name, span)?;
         }
-        if matches!(ty.ty, TypeSpecifier::Array(_))
+        if matches!(ty.ty, TypeSpecifier::Array(_) | TypeSpecifier::Long { .. })
             || matches!(ty.ty, TypeSpecifier::Pointer { pointee, .. } if self.is_incomplete_array(pointee))
         {
             self.activate_parameter_expansion(span)?;

@@ -1056,7 +1056,7 @@ impl<'a> Parser<'a> {
             }
             _ => None,
         };
-        let variable = matches!((&accept, &reject), (ExpressionValue::Pointer(accept), ExpressionValue::Pointer(reject)) if matches!(accept.category, PointerValueCategory::Variable { .. }) && matches!(reject.category, PointerValueCategory::Variable { .. }) && accept.qualifiers == reject.qualifiers && self.module.compare_types(&accept.ty, &reject.ty));
+        let variable = matches!((&accept, &reject), (ExpressionValue::Pointer(accept), ExpressionValue::Pointer(reject)) if matches!(accept.category, PointerValueCategory::Variable { .. }) && matches!(reject.category, PointerValueCategory::Variable { .. }) && accept.qualifiers == reject.qualifiers && self.source_types_equal(&accept.ty, &reject.ty));
         let selector = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
         let selected = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
         let mut addresses = Vec::new();
@@ -1130,7 +1130,7 @@ impl<'a> Parser<'a> {
         };
         let (accept, accept_body) = branch(self, accept, accept_body, 1)?;
         let (reject, reject_body) = branch(self, reject, reject_body, 0)?;
-        if !self.module.compare_types(&accept.ty, &reject.ty) {
+        if !self.source_types_equal(&accept.ty, &reject.ty) {
             return Err(ParseError {
                 message: String::from("conditional pointer arms require the same pointee type"),
                 span,

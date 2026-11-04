@@ -97,7 +97,7 @@ impl<'a> Parser<'a> {
     ) -> Result<(), ParseError> {
         let (binding, constant) = match value {
             ExpressionValue::Reference(reference)
-                if self.module.compare_types(&reference.ty, &ty) =>
+                if self.source_types_equal(&reference.ty, &ty) =>
             {
                 if !qualifiers.contains(reference.qualifiers) {
                     return Err(ParseError {
@@ -183,7 +183,7 @@ impl<'a> Parser<'a> {
         if singleton
             && first
                 .as_ref()
-                .is_some_and(|value| matches!(value.source_type(), SourceType::Shader(source) if self.module.compare_types(source, ty)))
+                .is_some_and(|value| matches!(value.source_type(), SourceType::Shader(source) if self.source_types_equal(source, ty)))
         {
             self.lexer.next_if(Token::Separator(','))?;
             self.lexer.expect_span(Token::Paren('}'))?;
@@ -193,11 +193,11 @@ impl<'a> Parser<'a> {
             Some(value) => Some(self.rvalue(value)?),
             None => None,
         };
-        if let TypeInner::Scalar(scalar) = *ty.inner_with(&self.module.types) {
+        if let Some(scalar) = self.source_scalar(ty) {
             let Some(value) = pending else {
                 return self.fail("nested scalar initializer lists are unsupported");
             };
-            let value = self.list_convert_scalar(value, scalar)?;
+            let value = self.list_convert_source_scalar(value, scalar)?;
             self.lexer.next_if(Token::Separator(','))?;
             self.lexer.expect_span(Token::Paren('}'))?;
             return Ok(value.into());
@@ -307,7 +307,7 @@ impl<'a> Parser<'a> {
         let pointer = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
         let is_unsigned_load = match self.function.ir.expressions[index] {
             Expression::Load { pointer } => match self.function.ir.expressions[pointer] {
-                Expression::LocalVariable(local) => self.module.compare_types(
+                Expression::LocalVariable(local) => self.source_types_equal(
                     &TypeResolution::Handle(self.function.ir.local_variables[local].ty),
                     &scalar_resolution(Scalar::U32),
                 ),
