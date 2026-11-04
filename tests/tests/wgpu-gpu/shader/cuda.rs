@@ -8,6 +8,7 @@ use super::{
 };
 
 mod arithmetic;
+mod array_aliases;
 mod arrow_members;
 mod atomic_add;
 mod atomic_cas;
@@ -120,6 +121,8 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
     kernels::all_tests(tests);
     tests.extend([
         CUDA_ARITHMETIC,
+        CUDA_ARRAY_ALIASES,
+        CUDA_INTEGER16_ARRAY_ALIASES,
         CUDA_ARROW_MEMBERS,
         CUDA_ATOMIC_ADD,
         CUDA_ATOMIC_CAS,
@@ -499,6 +502,11 @@ static CUDA_VOLATILE_WORKGROUP: GpuTestConfiguration = configuration_with_featur
 
 #[apply(gpu_test!)]
 static CUDA_ARITHMETIC: GpuTestConfiguration = configuration(arithmetic::cases);
+#[apply(gpu_test!)]
+static CUDA_ARRAY_ALIASES: GpuTestConfiguration = configuration(array_aliases::cases);
+#[apply(gpu_test!)]
+static CUDA_INTEGER16_ARRAY_ALIASES: GpuTestConfiguration =
+    configuration_with_features(array_aliases::integer16_cases, wgpu::Features::SHADER_I16);
 #[apply(gpu_test!)]
 static CUDA_ARROW_MEMBERS: GpuTestConfiguration = configuration(arrow_members::cases);
 #[apply(gpu_test!)]
