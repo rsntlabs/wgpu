@@ -42,6 +42,7 @@ mod structures;
 mod switches;
 mod templates;
 mod trigonometry;
+mod type_queries;
 mod types;
 mod updates;
 mod volatile;

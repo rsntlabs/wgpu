@@ -180,7 +180,7 @@ pub(super) fn pointer_qualifiers(lexer: &mut Lexer<'_>) -> Result<Qualifiers, Pa
     declaration_qualifiers(lexer, Qualifiers::NONE, true)
 }
 
-fn declaration_qualifiers(
+pub(super) fn declaration_qualifiers(
     lexer: &mut Lexer<'_>,
     mut qualifiers: Qualifiers,
     allow_restrict: bool,
@@ -857,7 +857,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn array_alias_declarator(
+    pub(super) fn array_alias_declarator(
         &mut self,
         ty: QualifiedType,
         span: Span,

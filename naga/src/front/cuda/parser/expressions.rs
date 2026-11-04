@@ -350,6 +350,9 @@ impl Parser<'_> {
     }
 
     fn word_expression(&mut self, name: &str, span: Span) -> Result<ExpressionResult, ParseError> {
+        if matches!(name, "sizeof" | "alignof") {
+            return self.type_query(name, span).map(Into::into);
+        }
         if name == "nullptr" {
             self.activate_parameter_expansion(span)?;
             self.parameter_expansion_budget.charge_nodes(1, span)?;
