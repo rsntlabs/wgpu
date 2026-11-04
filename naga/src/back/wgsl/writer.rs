@@ -147,7 +147,7 @@ impl<W: Write> Writer<W> {
         self.reset(module);
 
         // Write all `enable` declarations
-        self.write_enable_declarations(module)?;
+        self.write_enable_declarations(module, info)?;
 
         // Write all structs
         for (handle, ty) in module.types.iter() {
@@ -287,7 +287,11 @@ impl<W: Write> Writer<W> {
 
     /// Helper method which writes all the `enable` declarations
     /// needed for a module.
-    fn write_enable_declarations(&mut self, module: &Module) -> BackendResult {
+    fn write_enable_declarations(
+        &mut self,
+        module: &Module,
+        info: &valid::ModuleInfo,
+    ) -> BackendResult {
         #[derive(Default)]
         struct RequiredEnabled {
             f16: bool,
@@ -380,6 +384,40 @@ impl<W: Write> Writer<W> {
                 }
                 _ => {}
             }
+        }
+
+        let expression_types =
+            module
+                .global_expressions
+                .iter()
+                .map(|(handle, _)| &info[handle])
+                .chain(
+                    module
+                        .functions
+                        .iter()
+                        .flat_map(|(function_handle, function)| {
+                            function
+                                .expressions
+                                .iter()
+                                .map(move |(handle, _)| &info[function_handle][handle].ty)
+                        }),
+                )
+                .chain(
+                    module
+                        .entry_points
+                        .iter()
+                        .enumerate()
+                        .flat_map(|(entry_index, entry)| {
+                            entry.function.expressions.iter().map(move |(handle, _)| {
+                                &info.get_entry_point(entry_index)[handle].ty
+                            })
+                        }),
+                );
+        for scalar in
+            expression_types.filter_map(|resolution| resolution.inner_with(&module.types).scalar())
+        {
+            needed.f16 |= scalar == crate::Scalar::F16;
+            needed.int16 |= scalar == crate::Scalar::I16 || scalar == crate::Scalar::U16;
         }
 
         for ep in &module.entry_points {
