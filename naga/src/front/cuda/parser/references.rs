@@ -136,7 +136,7 @@ impl Parser<'_> {
         }
         self.lexer.expect_span(Token::Paren('['))?;
         let index = self.expression(0)?;
-        let index = self.rvalue(index)?;
+        let mut index = self.rvalue(index)?;
         let scalar = self.require_scalar_type(&index.ty, index.span)?;
         if !matches!(scalar.kind, ScalarKind::Sint | ScalarKind::Uint) {
             return Err(ParseError {
@@ -148,6 +148,9 @@ impl Parser<'_> {
         let span = value.span().until(&end);
         let discardable =
             Self::constant_array_address(value.constant().is_discardable, count, index.constant);
+        if scalar.width == 8 {
+            index = self.convert_scalar(index.into(), Scalar::U32)?;
+        }
         match value {
             ExpressionValue::Plain(value) => {
                 let handle = self.append(

@@ -256,6 +256,14 @@ request `wgpu::Features::SHADER_I16` for native execution. Generated WGSL uses
 Brace conversions from integer to float require a constant expression whose value
 is exactly representable, including 16-bit sources.
 
+`long long` and `unsigned long long` name the signed and unsigned 64-bit scalar
+types. Valid orders of `signed`, `unsigned`, `long`, and `int` preserve the same
+type. Aliases, references, overloads, and template parameters retain that identity.
+Validate these modules with `Capabilities::SHADER_INT64` and request
+`wgpu::Features::SHADER_INT64` for native execution. Generated WGSL uses
+`i64` and `u64`. HLSL requires Shader Model 6.0 or later, and GLSL uses
+`GL_ARB_gpu_shader_int64`.
+
 Pointer parameters become storage buffers with runtime arrays of the corresponding
 element type. A `const` pointee produces a read-only buffer; other buffers permit
 reads and writes. Element layouts are:
@@ -264,6 +272,7 @@ reads and writes. Element layouts are:
 | --- | --- | --- | --- |
 | `short` or `unsigned short` | 2 bytes | 2 bytes | 2 bytes |
 | 32-bit scalar | 4 bytes | 4 bytes | 4 bytes |
+| `long long` or `unsigned long long` | 8 bytes | 8 bytes | 8 bytes |
 | One-component 16-bit vector | 2 bytes | 2 bytes | 2 bytes |
 | One-component 32-bit vector | 4 bytes | 4 bytes | 4 bytes |
 | Two-component 16-bit vector | 4 bytes | 4 bytes | 4 bytes |
@@ -280,7 +289,7 @@ stride. Copies preserve field values; padding bytes are unspecified.
 
 Vector elements support whole-value copies and scalar field access, including
 assignments and updates to writable fields. Vector parameters require pointers.
-Scalar parameters use 16-byte uniform buffers containing the two-byte or four-byte
+Scalar parameters use 16-byte uniform buffers containing the two-, four-, or eight-byte
 value at byte offset 0. Each invocation receives its own parameter value. Assigning
 to a non-`const` parameter changes only that invocation's copy.
 
@@ -303,7 +312,8 @@ and WGSL's [compute built-in inputs](https://gpuweb.github.io/gpuweb/wgsl/#built
 three integral constant arguments, including macros and template parameters.
 Dependent template operands receive structural checks before instantiation;
 instantiated bounds require integral constant values.
-Arguments become signed 32-bit attribute values; nonpositive values impose no
+A `long long` argument must fit `int`, and an `unsigned long long` argument must
+fit `unsigned int`. Arguments become signed 32-bit attribute values. Nonpositive values impose no
 bound. For a positive first argument on a kernel, the product of all three
 `Options::workgroup_size` dimensions must not exceed it. The attribute does not
 choose the workgroup shape. Attributes on device helpers are validated but do
@@ -336,9 +346,8 @@ HLSL constants binding. Helper builtin reads do not add kernel buffer bindings.
 
 ## Device helpers
 
-`__device__` functions can take `float`, `int`,
-`unsigned int`, or `bool` scalars, or the vector and struct value types described below,
-and return a supported value or `void`. Helpers can use
+`__device__` functions accept the scalar, vector, and struct value types described
+above and return a supported value or `void`. Helpers can use
 local declarations, arithmetic, control flow, and calls to previously declared helpers:
 
 ```cuda
@@ -1605,8 +1614,12 @@ Kernel integer literals support decimal, leading-zero octal, `0x`/`0X`
 hexadecimal, and `0b`/`0B` binary notation. Apostrophes may separate digits, as in
 `1'000` or `0xffff'ffff`. Unsuffixed decimal literals must fit `int`; unsuffixed nondecimal
 literals use `int` when they fit and otherwise `unsigned int`. The `u`/`U` suffix
-selects `unsigned int`. Values requiring more than 32 bits and long or size
-suffixes remain unsupported. Decimal floating literals require the `f`/`F` suffix,
+selects `unsigned int`. The `ll`/`LL` suffix selects `long long`, with either case
+accepted for each letter. Values above the signed 64-bit range select
+`unsigned long long`, up to its maximum value. Adding `u`/`U`
+before or after the pair of letters selects `unsigned long long` directly.
+The signed minimum can be written `-9223372036854775807LL - 1LL`.
+Decimal floating literals require the `f`/`F` suffix,
 such as `2.0f`. Apostrophes may separate decimal digits in the significand and
 exponent, as in `1'024.5f` or `1.25e+0'2f`. Hexadecimal floating literals also
 require `f`/`F` and a binary exponent introduced by `p`/`P`, as in `0x1.8p+1f`
@@ -1615,15 +1628,17 @@ separators; exponent digits are decimal and may also contain separators.
 Literals round directly to binary32 using round-to-nearest, ties-to-even,
 including subnormal and signed-zero results. Values that round to infinity
 are rejected. Unsuffixed and long floating literals remain unsupported.
-Arithmetic promotes `bool`, `short`, and `unsigned short` to `int`. A `float`
-operand selects `float`. An `unsigned int` operand selects `unsigned int` for
-integer arithmetic.
+Arithmetic promotes `bool`, `short`, and `unsigned short` to `int`. Common
+arithmetic types prefer `float`, then `unsigned long long`, `long long`,
+`unsigned int`, and finally `int`. In particular,
+`long long` represents every `unsigned int` value, so their common type is
+`long long`.
 Scalar assignments and ordinary `= expression` initializers convert to the
 destination type; brace initializers use the narrowing rules above. C-style casts,
 `static_cast`, and single-token functional casts such as `int(value)` are
 supported for these scalar types. Float-to-integer conversions truncate toward
-zero within the destination range. Integer conversions to a 16-bit type retain
-the low 16 bits. Negation of an `unsigned int` wraps modulo 2^32.
+zero within the destination range. Integer conversions to a narrower type retain
+the low destination-width bits. Unsigned negation wraps at the operand's width.
 
 Empty scalar constructors `bool()`, `short()`, `int()`, `unsigned()`, and `float()`
 produce
@@ -1640,8 +1655,8 @@ are promoted independently, and the result has the promoted left operand's type.
 For either shift operator, the left operand is evaluated before the right.
 Signed right shifts are arithmetic, matching C++20. Source operations with
 undefined C++ behavior have no specified result, including integer division or
-remainder by zero, `INT_MIN / -1`, `INT_MIN % -1`, and shift counts outside
-`0..=31`.
+remainder by zero, signed minimum divided or reduced modulo `-1`, and shift
+counts outside the promoted left operand's bit width.
 
 Assignments are expressions and associate right to left. Compound assignments
 `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `|=`, `^=`, `<<=`, and `>>=` evaluate the
@@ -1651,7 +1666,7 @@ operand before its left operand. Built-in scalar logical short-circuiting also
 applies to assignments and updates inside the right operand.
 
 Static `__shared__` declarations support `float`, `short`, `unsigned short`,
-`int`, and `unsigned int`
+`int`, `unsigned int`, `long long`, and `unsigned long long`
 scalars, the numeric vector and struct types above, and fixed arrays of
 those types inside kernels and device helpers. Their aliases are also accepted;
 const-qualified shared types remain unsupported. Vector elements use the sizes, alignments, and

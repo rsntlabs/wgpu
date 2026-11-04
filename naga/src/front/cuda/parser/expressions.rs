@@ -315,8 +315,9 @@ impl Parser<'_> {
             return Ok(value.into());
         }
         let span = operator_span.until(&value.span);
-        let expression = if self.require_scalar_type(&value.ty, value.span)? == Scalar::U32 {
-            let zero = self.append(Expression::Literal(Literal::U32(0)), span)?;
+        let scalar = self.require_scalar_type(&value.ty, value.span)?;
+        let expression = if scalar.kind == ScalarKind::Uint {
+            let zero = self.append(Expression::Literal(Literal::zero(scalar).unwrap()), span)?;
             Expression::Binary {
                 op: BinaryOperator::Subtract,
                 left: zero,

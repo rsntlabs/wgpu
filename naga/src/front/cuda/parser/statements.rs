@@ -202,6 +202,8 @@ impl<'a> Parser<'a> {
                     | Literal::U16(_)
                     | Literal::I32(_)
                     | Literal::U32(_)
+                    | Literal::I64(_)
+                    | Literal::U64(_)
             ) {
                 return Err(ParseError {
                     message: String::from("unroll factor requires an integral constant expression"),
@@ -449,7 +451,13 @@ impl<'a> Parser<'a> {
                 && matches!(
                     specifier,
                     TypeSpecifier::Scalar(
-                        Scalar::BOOL | Scalar::I16 | Scalar::U16 | Scalar::I32 | Scalar::U32
+                        Scalar::BOOL
+                            | Scalar::I16
+                            | Scalar::U16
+                            | Scalar::I32
+                            | Scalar::U32
+                            | Scalar::I64
+                            | Scalar::U64
                     )
                 )
             {
@@ -713,6 +721,8 @@ impl<'a> Parser<'a> {
             Some(Literal::U16(value)) => u32::from(value),
             Some(Literal::I32(value)) => u32::try_from(value).map_err(|_| invalid())?,
             Some(Literal::U32(value)) => value,
+            Some(Literal::I64(value)) => u32::try_from(value).map_err(|_| invalid())?,
+            Some(Literal::U64(value)) => u32::try_from(value).map_err(|_| invalid())?,
             _ => return Err(invalid()),
         };
         let size = NonZeroU32::new(size).ok_or_else(invalid)?;

@@ -49,6 +49,7 @@ mod inferred_arrays;
 mod inline;
 mod integer16;
 mod integer16_vectors;
+mod integer64;
 mod integer_intrinsics;
 mod integer_math;
 mod integer_operators;

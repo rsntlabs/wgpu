@@ -12,6 +12,8 @@ enum TemplateValue {
     UnsignedShort(u16),
     Int(i32),
     Uint(u32),
+    LongLong(i64),
+    UnsignedLongLong(u64),
     Bool(bool),
     Type {
         ty: TypeSpecifier,
@@ -30,6 +32,8 @@ impl TemplateValue {
             Self::UnsignedShort(value) => Literal::U16(value),
             Self::Int(value) => Literal::I32(value),
             Self::Uint(value) => Literal::U32(value),
+            Self::LongLong(value) => Literal::I64(value),
+            Self::UnsignedLongLong(value) => Literal::U64(value),
             Self::Bool(value) => Literal::Bool(value),
             Self::Type { .. } | Self::ArrayType { .. } => unreachable!(),
         }
@@ -37,11 +41,13 @@ impl TemplateValue {
 
     fn converted(value: Literal, scalar: Scalar) -> Option<Self> {
         let value = match value {
-            Literal::I16(value) => i64::from(value),
-            Literal::U16(value) => i64::from(value),
-            Literal::I32(value) => i64::from(value),
-            Literal::U32(value) => i64::from(value),
-            Literal::Bool(value) => i64::from(value),
+            Literal::I16(value) => i128::from(value),
+            Literal::U16(value) => i128::from(value),
+            Literal::I32(value) => i128::from(value),
+            Literal::U32(value) => i128::from(value),
+            Literal::I64(value) => i128::from(value),
+            Literal::U64(value) => i128::from(value),
+            Literal::Bool(value) => i128::from(value),
             _ => return None,
         };
         match scalar {
@@ -49,6 +55,8 @@ impl TemplateValue {
             Scalar::U16 => u16::try_from(value).ok().map(Self::UnsignedShort),
             Scalar::I32 => i32::try_from(value).ok().map(Self::Int),
             Scalar::U32 => u32::try_from(value).ok().map(Self::Uint),
+            Scalar::I64 => i64::try_from(value).ok().map(Self::LongLong),
+            Scalar::U64 => u64::try_from(value).ok().map(Self::UnsignedLongLong),
             Scalar::BOOL if value == 0 || value == 1 => Some(Self::Bool(value != 0)),
             _ => None,
         }
@@ -60,6 +68,8 @@ impl TemplateValue {
             Self::UnsignedShort(value) => format!("{value}u"),
             Self::Int(value) => format!("{value}"),
             Self::Uint(value) => format!("{value}u"),
+            Self::LongLong(value) => format!("{value}LL"),
+            Self::UnsignedLongLong(value) => format!("{value}ULL"),
             Self::Bool(value) => String::from(if value { "true" } else { "false" }),
             Self::Type { .. } | Self::ArrayType { .. } => unreachable!(),
         }
@@ -470,12 +480,18 @@ impl<'a> Parser<'a> {
             } else {
                 let ty = self.parse_type()?;
                 let TypeSpecifier::Scalar(
-                    scalar @ (Scalar::I16 | Scalar::U16 | Scalar::I32 | Scalar::U32 | Scalar::BOOL),
+                    scalar @ (Scalar::I16
+                    | Scalar::U16
+                    | Scalar::I32
+                    | Scalar::U32
+                    | Scalar::I64
+                    | Scalar::U64
+                    | Scalar::BOOL),
                 ) = ty.ty
                 else {
                     return Err(ParseError {
                         message: String::from(
-                            "non-type template parameters must be short, unsigned short, int, unsigned, or bool",
+                            "non-type template parameters require a supported integral scalar type",
                         ),
                         span: parameter_span,
                     });
@@ -949,6 +965,8 @@ impl<'a> Parser<'a> {
             TypeSpecifier::Scalar(Scalar::U16) => String::from("unsigned short"),
             TypeSpecifier::Scalar(Scalar::I32) => String::from("int"),
             TypeSpecifier::Scalar(Scalar::U32) => String::from("unsigned"),
+            TypeSpecifier::Scalar(Scalar::I64) => String::from("long long"),
+            TypeSpecifier::Scalar(Scalar::U64) => String::from("unsigned long long"),
             TypeSpecifier::Scalar(Scalar::F32) => String::from("float"),
             TypeSpecifier::Scalar(Scalar::BOOL) => String::from("bool"),
             TypeSpecifier::Dim3 => String::from("dim3"),

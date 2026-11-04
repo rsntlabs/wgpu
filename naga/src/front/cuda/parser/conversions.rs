@@ -41,6 +41,8 @@ impl Parser<'_> {
             Scalar::U16,
             Scalar::I32,
             Scalar::U32,
+            Scalar::I64,
+            Scalar::U64,
             Scalar::F32,
         ]
         .contains(&target)
@@ -95,6 +97,10 @@ impl Parser<'_> {
         let scalars = [left, right];
         if scalars.contains(&Scalar::F32) {
             Scalar::F32
+        } else if scalars.contains(&Scalar::U64) {
+            Scalar::U64
+        } else if scalars.contains(&Scalar::I64) {
+            Scalar::I64
         } else if scalars.contains(&Scalar::U32) {
             Scalar::U32
         } else {

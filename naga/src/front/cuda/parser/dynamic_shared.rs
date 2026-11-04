@@ -80,7 +80,7 @@ impl<'a> Parser<'a> {
                     Token::Word("extern") => return Ok(true),
                     Token::Word(
                         "__shared__" | "const" | "volatile" | "int" | "short" | "signed"
-                        | "unsigned",
+                        | "unsigned" | "long",
                     ) => {}
                     Token::Word(name) if self.type_name(name).is_some() => {}
                     _ => return Ok(false),

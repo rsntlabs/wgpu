@@ -14,11 +14,15 @@ const MATH_BUILTINS: [(&str, MathFunction); 4] = [
     ("fmaxf", MathFunction::Max),
 ];
 
-const MATH_SIGNATURES: [([Scalar; 2], Scalar); 5] = [
+const MATH_SIGNATURES: [([Scalar; 2], Scalar); 9] = [
     ([Scalar::I32, Scalar::I32], Scalar::I32),
     ([Scalar::U32, Scalar::U32], Scalar::U32),
     ([Scalar::I32, Scalar::U32], Scalar::U32),
     ([Scalar::U32, Scalar::I32], Scalar::U32),
+    ([Scalar::I64, Scalar::I64], Scalar::I64),
+    ([Scalar::U64, Scalar::U64], Scalar::U64),
+    ([Scalar::I64, Scalar::U64], Scalar::U64),
+    ([Scalar::U64, Scalar::I64], Scalar::U64),
     ([Scalar::F32, Scalar::F32], Scalar::F32),
 ];
 
@@ -96,7 +100,7 @@ fn math_builtins(name: &str) -> impl Iterator<Item = MathBuiltin> + Clone {
         .into_iter()
         .find_map(|(candidate, function)| (candidate == name).then_some(function));
     let signatures = if matches!(name, "fminf" | "fmaxf") {
-        &MATH_SIGNATURES[4..]
+        &MATH_SIGNATURES[8..]
     } else {
         &MATH_SIGNATURES[..]
     };
@@ -517,7 +521,7 @@ impl<'a> Parser<'a> {
                     explicit_volatile = true;
                     result_span.get_or_insert(token.1);
                 }
-                Token::Word(specifier @ ("int" | "short" | "signed" | "unsigned")) => {
+                Token::Word(specifier @ ("int" | "short" | "long" | "signed" | "unsigned")) => {
                     if result.is_some() && integers.is_empty() {
                         return self.fail("incompatible or repeated return type specifier");
                     }
@@ -558,6 +562,9 @@ impl<'a> Parser<'a> {
                 message: String::from("host-only functions are unsupported"),
                 span,
             });
+        }
+        if !integers.is_supported() {
+            return self.fail("long scalar return types are unsupported; use long long");
         }
         let Some(result) = result else {
             return self.fail("expected a supported function return type");
@@ -2207,6 +2214,8 @@ impl<'a> Parser<'a> {
             Scalar::U16,
             Scalar::I32,
             Scalar::U32,
+            Scalar::I64,
+            Scalar::U64,
         ]
         .contains(&source)
         {

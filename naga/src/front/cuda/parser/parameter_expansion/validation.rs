@@ -316,7 +316,7 @@ impl Parser<'_> {
         crate::compact::compact(&mut validation, crate::compact::KeepUnused::Yes);
         crate::valid::Validator::new(
             crate::valid::ValidationFlags::all(),
-            crate::valid::Capabilities::SHADER_INT16,
+            crate::valid::Capabilities::SHADER_INT16 | crate::valid::Capabilities::SHADER_INT64,
         )
         .validate(&validation)
         .map_err(|error| ParseError {

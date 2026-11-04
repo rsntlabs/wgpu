@@ -70,6 +70,12 @@ impl Parser<'_> {
         let selector = self.comma_expression()?;
         let selector = self.integral_operand(selector)?;
         let scalar = self.require_scalar_type(&selector.ty, selector.span)?;
+        if scalar.width == 8 {
+            return Err(ParseError {
+                message: String::from("64-bit switch selectors are unsupported"),
+                span: selector.span,
+            });
+        }
         self.lexer.expect_span(Token::Paren(')'))?;
 
         let initialization_start = self.function.push_scope();
@@ -187,6 +193,12 @@ impl Parser<'_> {
             (Scalar::I32, Literal::U32(integer)) => {
                 i32::try_from(integer).ok().map(crate::SwitchValue::I32)
             }
+            (Scalar::I32, Literal::I64(integer)) => {
+                i32::try_from(integer).ok().map(crate::SwitchValue::I32)
+            }
+            (Scalar::I32, Literal::U64(integer)) => {
+                i32::try_from(integer).ok().map(crate::SwitchValue::I32)
+            }
             (Scalar::U32, Literal::Bool(boolean)) => {
                 Some(crate::SwitchValue::U32(u32::from(boolean)))
             }
@@ -194,6 +206,12 @@ impl Parser<'_> {
                 u32::try_from(integer).ok().map(crate::SwitchValue::U32)
             }
             (Scalar::U32, Literal::U32(integer)) => Some(crate::SwitchValue::U32(integer)),
+            (Scalar::U32, Literal::I64(integer)) => {
+                u32::try_from(integer).ok().map(crate::SwitchValue::U32)
+            }
+            (Scalar::U32, Literal::U64(integer)) => {
+                u32::try_from(integer).ok().map(crate::SwitchValue::U32)
+            }
             _ => None,
         };
         converted.ok_or_else(|| ParseError {

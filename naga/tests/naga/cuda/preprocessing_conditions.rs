@@ -718,7 +718,22 @@ fn cuda_preprocessing_conditions_diagnostics_use_original_operator_and_literal_s
 
 #[test]
 fn cuda_preprocessing_conditions_do_not_enable_wide_or_character_shader_values() {
-    for literal in ["2147483648", "1LL", "1z", "0x100000000", "'A'", "'\\n'"] {
+    let source = kernel("#if 1\n#endif", "out[0] = 1LL;");
+    let capabilities = naga::valid::Capabilities::SHADER_INT64;
+    let (module, info) = super::helpers::validate_with_options_and_capabilities(
+        &source,
+        &Options::default(),
+        capabilities,
+    );
+    #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+    super::helpers::wgsl_roundtrip_with_capabilities(
+        &module,
+        &info,
+        naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+        capabilities,
+    );
+    let _ = (module, info);
+    for literal in ["2147483648", "1z", "0x100000000", "'A'", "'\\n'"] {
         rejected(&kernel("#if 1\n#endif", &format!("out[0] = {literal};")));
     }
     let (module, _) = validate(FIXTURE);

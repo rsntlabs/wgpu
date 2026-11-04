@@ -40,7 +40,7 @@ impl<'a> Parser<'a> {
                 Token::Word("extern") => has_extern = true,
                 Token::Word(
                     "static" | "__device__" | "const" | "volatile" | "int" | "short" | "signed"
-                    | "unsigned" | "constexpr",
+                    | "unsigned" | "long" | "constexpr",
                 )
                 | Token::String("C") => {}
                 Token::Word(name) if self.type_name(name).is_some() => {}
@@ -114,7 +114,7 @@ impl<'a> Parser<'a> {
                     }
                     qualifiers.is_volatile = true;
                 }
-                Token::Word(specifier @ ("int" | "short" | "signed" | "unsigned")) => {
+                Token::Word(specifier @ ("int" | "short" | "long" | "signed" | "unsigned")) => {
                     if ty.is_some() && integers.is_empty() {
                         return self.fail("incompatible or repeated type specifier");
                     }
@@ -135,6 +135,9 @@ impl<'a> Parser<'a> {
                 _ => break,
             }
             self.lexer.next()?;
+        }
+        if !integers.is_supported() {
+            return self.fail("long constant memory types are unsupported; use long long");
         }
         let inherits_constant = has_extern
             && matches!(self.lexer.peek()?.0, Token::Word(name) if matches!(self.global_declarations.get(name), Some(GlobalDeclaration::ConstantMemory(_))));

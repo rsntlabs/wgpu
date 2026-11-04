@@ -11,11 +11,17 @@ pub(super) fn unary(op: UnaryOperator, value: Literal) -> Option<Literal> {
         return None;
     }
     match (op, value) {
+        (UnaryOperator::Negate, Literal::I64(value)) => {
+            value.checked_neg()?;
+        }
         (UnaryOperator::Negate, Literal::I32(value)) => {
             value.checked_neg()?;
         }
         (UnaryOperator::Negate, Literal::U32(_)) => {
             return binary(BinaryOperator::Subtract, Literal::U32(0), value);
+        }
+        (UnaryOperator::Negate, Literal::U64(_)) => {
+            return binary(BinaryOperator::Subtract, Literal::U64(0), value);
         }
         _ => {}
     }
@@ -36,22 +42,45 @@ pub(super) fn binary(op: BinaryOperator, left: Literal, mut right: Literal) -> O
         return None;
     }
     if matches!(op, BinaryOperator::ShiftLeft | BinaryOperator::ShiftRight) {
+        let width = u32::from(left.width()) * 8;
         let count = match right {
-            Literal::I32(count) if (0..32).contains(&count) => count as u32,
-            Literal::U32(count) if count < 32 => count,
+            Literal::I32(count) => u32::try_from(count).ok()?,
+            Literal::U32(count) => count,
+            Literal::I64(count) => u32::try_from(count).ok()?,
+            Literal::U64(count) => u32::try_from(count).ok()?,
             _ => return None,
         };
+        if count >= width {
+            return None;
+        }
         if op == BinaryOperator::ShiftLeft {
             // C++20 shifts wrap; WGSL constant evaluation rejects lost bits.
             return match left {
                 Literal::I32(value) => Some(Literal::I32(value.wrapping_shl(count))),
                 Literal::U32(value) => Some(Literal::U32(value.wrapping_shl(count))),
+                Literal::I64(value) => Some(Literal::I64(value.wrapping_shl(count))),
+                Literal::U64(value) => Some(Literal::U64(value.wrapping_shl(count))),
                 _ => None,
             };
         }
         right = Literal::U32(count);
     }
     match (op, left, right) {
+        (BinaryOperator::Add, Literal::I64(left), Literal::I64(right)) => {
+            left.checked_add(right)?;
+        }
+        (BinaryOperator::Subtract, Literal::I64(left), Literal::I64(right)) => {
+            left.checked_sub(right)?;
+        }
+        (BinaryOperator::Multiply, Literal::I64(left), Literal::I64(right)) => {
+            left.checked_mul(right)?;
+        }
+        (BinaryOperator::Divide, Literal::I64(left), Literal::I64(right)) => {
+            left.checked_div(right)?;
+        }
+        (BinaryOperator::Modulo, Literal::I64(left), Literal::I64(right)) => {
+            left.checked_rem(right)?;
+        }
         (BinaryOperator::Add, Literal::I32(left), Literal::I32(right)) => {
             left.checked_add(right)?;
         }
@@ -67,7 +96,8 @@ pub(super) fn binary(op: BinaryOperator, left: Literal, mut right: Literal) -> O
         (BinaryOperator::Modulo, Literal::I32(left), Literal::I32(right)) => {
             left.checked_rem(right)?;
         }
-        (BinaryOperator::Divide | BinaryOperator::Modulo, Literal::U32(_), Literal::U32(0)) => {
+        (BinaryOperator::Divide | BinaryOperator::Modulo, Literal::U32(_), Literal::U32(0))
+        | (BinaryOperator::Divide | BinaryOperator::Modulo, Literal::U64(_), Literal::U64(0)) => {
             return None
         }
         (BinaryOperator::Modulo, Literal::F32(_), Literal::F32(_)) => return None,
@@ -113,6 +143,8 @@ pub(super) fn convert(value: Literal, target: Scalar) -> Option<Literal> {
             Scalar::U16,
             Scalar::I32,
             Scalar::U32,
+            Scalar::I64,
+            Scalar::U64,
             Scalar::F32,
         ]
         .contains(&target)
@@ -126,6 +158,10 @@ pub(super) fn convert(value: Literal, target: Scalar) -> Option<Literal> {
             Scalar::U16 => (0.0..65_536.0).contains(&truncated),
             Scalar::I32 => (-2_147_483_648.0..2_147_483_648.0).contains(&truncated),
             Scalar::U32 => (0.0..4_294_967_296.0).contains(&truncated),
+            Scalar::I64 => {
+                (-9_223_372_036_854_775_808.0..9_223_372_036_854_775_808.0).contains(&truncated)
+            }
+            Scalar::U64 => (0.0..18_446_744_073_709_551_616.0).contains(&truncated),
             _ => true,
         };
         if !in_range {
@@ -157,6 +193,8 @@ const fn supported_literal(value: Literal) -> bool {
         | Literal::U16(_)
         | Literal::I32(_)
         | Literal::U32(_)
+        | Literal::I64(_)
+        | Literal::U64(_)
         | Literal::F32(_) => true,
         _ => false,
     }

@@ -52,6 +52,7 @@ mod inferred_arrays;
 mod inline;
 mod integer16;
 mod integer16_vectors;
+mod integer64;
 mod integer_intrinsics;
 mod integer_math;
 mod integral_templates;
@@ -172,6 +173,8 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_INLINE,
         CUDA_INTEGER16,
         CUDA_INTEGER16_VECTORS,
+        CUDA_INTEGER64,
+        CUDA_INTEGER64_STORAGE,
         CUDA_INTEGER_INTRINSICS,
         CUDA_INTEGER_MATH,
         CUDA_INTEGRAL_TEMPLATES,
@@ -765,6 +768,14 @@ static CUDA_INTEGER16: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_INTEGER16_VECTORS: GpuTestConfiguration =
     configuration_with_features(integer16_vectors::cases, wgpu::Features::SHADER_I16);
+
+#[apply(gpu_test!)]
+static CUDA_INTEGER64: GpuTestConfiguration =
+    configuration_with_features(integer64::cases, wgpu::Features::SHADER_INT64);
+
+#[apply(gpu_test!)]
+static CUDA_INTEGER64_STORAGE: GpuTestConfiguration =
+    configuration_with_features(integer64::storage_cases, wgpu::Features::SHADER_INT64);
 
 #[apply(gpu_test!)]
 static CUDA_SINGLE_COMPONENT_VECTORS: GpuTestConfiguration =
