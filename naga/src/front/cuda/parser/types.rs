@@ -425,6 +425,9 @@ impl<'a> Parser<'a> {
         layout_span: Span,
         span: Span,
     ) -> Result<Handle<Type>, ParseError> {
+        self.parameter_expansion_budget.charge_nodes(1, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<(Type, Span)>(1, span)?;
         self.layouter
             .update(self.module.to_ctx())
             .map_err(|error| ParseError {

@@ -142,6 +142,7 @@ By @sagudev in [#10307](https://github.com/gfx-rs/wgpu/pull/10307).
 
 #### Naga
 
+- Enforce CUDA array allocation and extent-parsing limits.
 - Preserve CUDA nonzero float-to-boolean conversions, including subnormal values.
 - Enforce CUDA array initialization budgets for fixed and inferred local arrays.
 - Support CUDA parenthesized initialization of fixed and inferred local arrays.

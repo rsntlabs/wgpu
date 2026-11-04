@@ -304,6 +304,8 @@ impl<'a> Parser<'a> {
         qualifiers: Qualifiers,
         mode: ParameterMode,
     ) -> Result<(), ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
         if mode != ParameterMode::Value {
             return Err(ParseError {
                 message: String::from("array reference parameters are unsupported"),
@@ -322,7 +324,6 @@ impl<'a> Parser<'a> {
         if self.lexer.peek()?.0 == Token::Paren('[') {
             return self.fail("multidimensional array parameters are unsupported");
         }
-        self.activate_parameter_expansion(span)?;
         let pointee = self.type_handle(ty, span);
         let pointer_ty = self.pointer_type(pointee, span);
         self.device_parameter(
