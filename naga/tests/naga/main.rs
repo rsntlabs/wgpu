@@ -10,6 +10,7 @@ mod msl_integer16;
 mod snapshots;
 mod spirv_capabilities;
 mod spirv_debug_info;
+mod spirv_integer_bits;
 mod spirv_roundtrip;
 mod spirv_switch_fallthrough;
 mod spirv_workgroup_layout;

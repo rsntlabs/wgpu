@@ -1384,6 +1384,29 @@ impl BlockContext<'_> {
 
                 let id = self.gen_id();
                 let math_op = match fun {
+                    fun @ (Mf::CountLeadingZeros
+                    | Mf::CountTrailingZeros
+                    | Mf::FirstLeadingBit
+                    | Mf::FirstTrailingBit)
+                        if matches!(arg_ty.scalar_width(), Some(2 | 8))
+                            || (arg_ty.scalar() == Some(crate::Scalar::I32)
+                                && matches!(
+                                    fun,
+                                    Mf::CountLeadingZeros | Mf::CountTrailingZeros
+                                )) =>
+                    {
+                        let argument_type = NumericType::from_inner(arg_ty).ok_or(
+                            Error::Validation("Unexpected integer bit scan argument type"),
+                        )?;
+                        MathOp::Custom(self.write_integer_bit_scan(
+                            fun,
+                            argument_type,
+                            arg0_id,
+                            result_type_id,
+                            id,
+                            block,
+                        )?)
+                    }
                     // comparison
                     Mf::Abs => {
                         match arg_scalar_kind {
@@ -1789,7 +1812,7 @@ impl BlockContext<'_> {
                         };
 
                         if width != 4 {
-                            unreachable!("This is validated out until a polyfill is implemented. https://github.com/gfx-rs/wgpu/issues/5276");
+                            unreachable!("Non-32-bit scans are handled separately");
                         };
 
                         let msb_id = self.gen_id();
@@ -1948,7 +1971,7 @@ impl BlockContext<'_> {
                             };
                             MathOp::Ext(thing)
                         } else {
-                            unreachable!("This is validated out until a polyfill is implemented. https://github.com/gfx-rs/wgpu/issues/5276");
+                            unreachable!("Non-32-bit scans are handled separately");
                         }
                     }
                     Mf::Pack4x8unorm => MathOp::Ext(spirv::GlslStd450Op::PackUnorm4x8),
@@ -3186,6 +3209,309 @@ impl BlockContext<'_> {
             result_id,
             &self.temp_list,
         ));
+    }
+
+    fn write_integer_bit_scan(
+        &mut self,
+        function: crate::MathFunction,
+        argument_type: NumericType,
+        mut argument_id: Word,
+        result_type_id: Word,
+        result_id: Word,
+        block: &mut Block,
+    ) -> Result<Instruction, Error> {
+        use crate::MathFunction as Mf;
+
+        let scalar = argument_type.scalar();
+        let bit_width = i32::from(scalar.width) * 8;
+        let word_type = argument_type.with_scalar(crate::Scalar::U32);
+        let scan_type = argument_type.with_scalar(crate::Scalar::I32);
+        let word_type_id = self.get_numeric_type_id(word_type);
+        let scan_type_id = self.get_numeric_type_id(scan_type);
+        let boolean_type_id =
+            self.get_numeric_type_id(argument_type.with_scalar(crate::Scalar::BOOL));
+        let argument_type_id = self.get_numeric_type_id(argument_type);
+        let constant = |context: &mut Self, literal: crate::Literal| {
+            let scalar_id = context.writer.get_constant_scalar(literal);
+            match argument_type {
+                NumericType::Scalar(_) => scalar_id,
+                NumericType::Vector { size, .. } => {
+                    let components = [scalar_id; crate::VectorSize::MAX];
+                    context.writer.get_constant_composite(
+                        LocalType::Numeric(argument_type.with_scalar(literal.scalar())).into(),
+                        &components[..size as usize],
+                    )
+                }
+                NumericType::Matrix { .. } => unreachable!(),
+            }
+        };
+        let zero_word = constant(self, crate::Literal::U32(0));
+
+        if function == Mf::FirstLeadingBit && scalar.kind == crate::ScalarKind::Sint {
+            let zero = crate::Literal::new(0, scalar).ok_or(Error::Validation(
+                "Unexpected integer bit scan argument type",
+            ))?;
+            let zero_id = constant(self, zero);
+            let negative = self.gen_id();
+            block.body.push(Instruction::binary(
+                spirv::Op::SLessThan,
+                boolean_type_id,
+                negative,
+                argument_id,
+                zero_id,
+            ));
+            let inverted = self.gen_id();
+            block.body.push(Instruction::unary(
+                spirv::Op::Not,
+                argument_type_id,
+                inverted,
+                argument_id,
+            ));
+            let normalized = self.gen_id();
+            block.body.push(Instruction::select(
+                argument_type_id,
+                normalized,
+                negative,
+                inverted,
+                argument_id,
+            ));
+            argument_id = normalized;
+        }
+
+        if matches!(scalar, crate::Scalar::I16 | crate::Scalar::I32) {
+            let unsigned_type_id =
+                self.get_numeric_type_id(argument_type.with_scalar(crate::Scalar {
+                    kind: crate::ScalarKind::Uint,
+                    width: scalar.width,
+                }));
+            let unsigned_argument = self.gen_id();
+            block.body.push(Instruction::unary(
+                spirv::Op::Bitcast,
+                unsigned_type_id,
+                unsigned_argument,
+                argument_id,
+            ));
+            argument_id = unsigned_argument;
+        }
+
+        let lower_word = if scalar.width == 4 {
+            argument_id
+        } else {
+            let lower_word = self.gen_id();
+            block.body.push(Instruction::unary(
+                spirv::Op::UConvert,
+                word_type_id,
+                lower_word,
+                argument_id,
+            ));
+            lower_word
+        };
+        let leading = matches!(function, Mf::CountLeadingZeros | Mf::FirstLeadingBit);
+        let scan_operation = if leading {
+            spirv::GlslStd450Op::FindUMsb
+        } else {
+            spirv::GlslStd450Op::FindILsb
+        };
+        let lower_scan_bits = self.gen_id();
+        block.body.push(Instruction::ext_inst_gl_op(
+            self.writer.gl450_ext_inst_id,
+            scan_operation,
+            word_type_id,
+            lower_scan_bits,
+            &[lower_word],
+        ));
+        let lower_scan = self.gen_id();
+        block.body.push(Instruction::unary(
+            spirv::Op::Bitcast,
+            scan_type_id,
+            lower_scan,
+            lower_scan_bits,
+        ));
+
+        let count = if scalar.width != 8 {
+            let count = self.gen_id();
+            if leading {
+                let last_bit = constant(self, crate::Literal::I32(bit_width - 1));
+                block.body.push(Instruction::binary(
+                    spirv::Op::ISub,
+                    scan_type_id,
+                    count,
+                    last_bit,
+                    lower_scan,
+                ));
+            } else {
+                let nonzero = self.gen_id();
+                block.body.push(Instruction::binary(
+                    spirv::Op::INotEqual,
+                    boolean_type_id,
+                    nonzero,
+                    lower_word,
+                    zero_word,
+                ));
+                let width = constant(self, crate::Literal::I32(bit_width));
+                block.body.push(Instruction::select(
+                    scan_type_id,
+                    count,
+                    nonzero,
+                    lower_scan,
+                    width,
+                ));
+            }
+            count
+        } else {
+            let shift = constant(self, crate::Literal::U64(32));
+            let upper_bits = self.gen_id();
+            block.body.push(Instruction::binary(
+                spirv::Op::ShiftRightLogical,
+                argument_type_id,
+                upper_bits,
+                argument_id,
+                shift,
+            ));
+            let upper_word = self.gen_id();
+            block.body.push(Instruction::unary(
+                spirv::Op::UConvert,
+                word_type_id,
+                upper_word,
+                upper_bits,
+            ));
+            let upper_scan_bits = self.gen_id();
+            block.body.push(Instruction::ext_inst_gl_op(
+                self.writer.gl450_ext_inst_id,
+                scan_operation,
+                word_type_id,
+                upper_scan_bits,
+                &[upper_word],
+            ));
+            let upper_scan = self.gen_id();
+            block.body.push(Instruction::unary(
+                spirv::Op::Bitcast,
+                scan_type_id,
+                upper_scan,
+                upper_scan_bits,
+            ));
+            let upper_nonzero = self.gen_id();
+            block.body.push(Instruction::binary(
+                spirv::Op::INotEqual,
+                boolean_type_id,
+                upper_nonzero,
+                upper_word,
+                zero_word,
+            ));
+            let count = self.gen_id();
+            if leading {
+                let lower_last_bit = constant(self, crate::Literal::I32(63));
+                let upper_last_bit = constant(self, crate::Literal::I32(31));
+                let lower_count = self.gen_id();
+                block.body.push(Instruction::binary(
+                    spirv::Op::ISub,
+                    scan_type_id,
+                    lower_count,
+                    lower_last_bit,
+                    lower_scan,
+                ));
+                let upper_count = self.gen_id();
+                block.body.push(Instruction::binary(
+                    spirv::Op::ISub,
+                    scan_type_id,
+                    upper_count,
+                    upper_last_bit,
+                    upper_scan,
+                ));
+                block.body.push(Instruction::select(
+                    scan_type_id,
+                    count,
+                    upper_nonzero,
+                    upper_count,
+                    lower_count,
+                ));
+            } else {
+                let half_width = constant(self, crate::Literal::I32(32));
+                let width = constant(self, crate::Literal::I32(bit_width));
+                let upper_index = self.gen_id();
+                block.body.push(Instruction::binary(
+                    spirv::Op::IAdd,
+                    scan_type_id,
+                    upper_index,
+                    upper_scan,
+                    half_width,
+                ));
+                let upper_count = self.gen_id();
+                block.body.push(Instruction::select(
+                    scan_type_id,
+                    upper_count,
+                    upper_nonzero,
+                    upper_index,
+                    width,
+                ));
+                let lower_nonzero = self.gen_id();
+                block.body.push(Instruction::binary(
+                    spirv::Op::INotEqual,
+                    boolean_type_id,
+                    lower_nonzero,
+                    lower_word,
+                    zero_word,
+                ));
+                block.body.push(Instruction::select(
+                    scan_type_id,
+                    count,
+                    lower_nonzero,
+                    lower_scan,
+                    upper_count,
+                ));
+            }
+            count
+        };
+
+        let scan = match function {
+            Mf::FirstLeadingBit => {
+                let last_bit = constant(self, crate::Literal::I32(bit_width - 1));
+                let index = self.gen_id();
+                block.body.push(Instruction::binary(
+                    spirv::Op::ISub,
+                    scan_type_id,
+                    index,
+                    last_bit,
+                    count,
+                ));
+                index
+            }
+            Mf::FirstTrailingBit => {
+                let width = constant(self, crate::Literal::I32(bit_width));
+                let missing = self.gen_id();
+                block.body.push(Instruction::binary(
+                    spirv::Op::IEqual,
+                    boolean_type_id,
+                    missing,
+                    count,
+                    width,
+                ));
+                let minus_one = constant(self, crate::Literal::I32(-1));
+                let index = self.gen_id();
+                block.body.push(Instruction::select(
+                    scan_type_id,
+                    index,
+                    missing,
+                    minus_one,
+                    count,
+                ));
+                index
+            }
+            _ => count,
+        };
+
+        // Sign-extend the all-ones missing-bit sentinel when changing width.
+        let conversion = if scalar.width == 4 {
+            spirv::Op::CopyObject
+        } else {
+            spirv::Op::SConvert
+        };
+        Ok(Instruction::unary(
+            conversion,
+            result_type_id,
+            result_id,
+            scan,
+        ))
     }
 
     /// Build the instructions for vector - scalar multiplication

@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.1
 ; Generator: rspirv
-; Bound: 240
+; Bound: 258
 OpCapability Shader
 OpExtension "SPV_KHR_storage_buffer_storage_class"
 %1 = OpExtInstImport "GLSL.std.450"
@@ -69,12 +69,12 @@ OpMemberDecorate %7 0 Offset 0
 %76 = OpConstant  %3  28
 %77 = OpConstant  %4  3
 %78 = OpConstant  %3  29
-%82 = OpConstant  %3  31
-%86 = OpTypePointer StorageBuffer %4
-%99 = OpConstant  %43  -2147483600
-%100 = OpConstant  %43  2147483500
-%150 = OpConstant  %43  0
-%151 = OpConstant  %43  4294967000
+%86 = OpConstant  %3  31
+%89 = OpTypePointer StorageBuffer %4
+%108 = OpConstant  %43  -2147483600
+%109 = OpConstant  %43  2147483500
+%162 = OpConstant  %43  0
+%163 = OpConstant  %43  4294967000
 %11 = OpFunction  %3  None %12
 %10 = OpFunctionParameter  %4
 %9 = OpLabel
@@ -108,188 +108,206 @@ OpFunctionEnd
 OpBranch %79
 %79 = OpLabel
 %80 = OpSelect  %3  %38 %20 %39
-%83 = OpExtInst  %3  %1 FindUMsb %80
-%81 = OpISub  %3  %82 %83
-%84 = OpBitcast  %4  %81
-%85 = OpBitcast  %4  %39
-%87 = OpAccessChain  %86  %36 %85
-OpStore %87 %84
-%89 = OpExtInst  %3  %1 FindUMsb %40
-%88 = OpISub  %3  %82 %89
-%90 = OpBitcast  %4  %88
-%91 = OpBitcast  %4  %20
-%92 = OpAccessChain  %86  %36 %91
-OpStore %92 %90
-%93 = OpBitcast  %3  %41
-%95 = OpExtInst  %3  %1 FindUMsb %93
-%94 = OpISub  %3  %82 %95
-%96 = OpBitcast  %4  %94
-%97 = OpBitcast  %4  %42
-%98 = OpAccessChain  %86  %36 %97
+%82 = OpBitcast  %4  %80
+%83 = OpExtInst  %4  %1 FindUMsb %82
+%84 = OpBitcast  %3  %83
+%85 = OpISub  %3  %86 %84
+%81 = OpCopyObject  %3  %85
+%87 = OpBitcast  %4  %81
+%88 = OpBitcast  %4  %39
+%90 = OpAccessChain  %89  %36 %88
+OpStore %90 %87
+%92 = OpBitcast  %4  %40
+%93 = OpExtInst  %4  %1 FindUMsb %92
+%94 = OpBitcast  %3  %93
+%95 = OpISub  %3  %86 %94
+%91 = OpCopyObject  %3  %95
+%96 = OpBitcast  %4  %91
+%97 = OpBitcast  %4  %20
+%98 = OpAccessChain  %89  %36 %97
 OpStore %98 %96
-%101 = OpExtInst  %43  %1 FClamp %44 %99 %100
-%102 = OpConvertFToS  %3  %101
-%104 = OpExtInst  %3  %1 FindUMsb %102
-%103 = OpISub  %3  %82 %104
-%105 = OpBitcast  %4  %103
-%106 = OpBitcast  %4  %45
-%107 = OpAccessChain  %86  %36 %106
+%99 = OpBitcast  %3  %41
+%101 = OpBitcast  %4  %99
+%102 = OpExtInst  %4  %1 FindUMsb %101
+%103 = OpBitcast  %3  %102
+%104 = OpISub  %3  %86 %103
+%100 = OpCopyObject  %3  %104
+%105 = OpBitcast  %4  %100
+%106 = OpBitcast  %4  %42
+%107 = OpAccessChain  %89  %36 %106
 OpStore %107 %105
-%108 = OpSelect  %3  %38 %20 %39
-%109 = OpExtInst  %3  %1 FindILsb %108
-%110 = OpIAdd  %3  %109 %20
-%111 = OpBitcast  %4  %110
-%112 = OpBitcast  %4  %46
-%113 = OpAccessChain  %86  %36 %112
-OpStore %113 %111
-%114 = OpExtInst  %3  %1 FindILsb %40
-%115 = OpIAdd  %3  %114 %20
-%116 = OpBitcast  %4  %115
-%117 = OpBitcast  %4  %47
-%118 = OpAccessChain  %86  %36 %117
-OpStore %118 %116
-%119 = OpBitcast  %3  %41
-%120 = OpExtInst  %3  %1 FindILsb %119
-%121 = OpIAdd  %3  %120 %20
-%122 = OpBitcast  %4  %121
-%123 = OpBitcast  %4  %48
-%124 = OpAccessChain  %86  %36 %123
-OpStore %124 %122
-%125 = OpExtInst  %43  %1 FClamp %44 %99 %100
-%126 = OpConvertFToS  %3  %125
-%127 = OpExtInst  %3  %1 FindILsb %126
-%128 = OpIAdd  %3  %127 %20
-%129 = OpBitcast  %4  %128
-%130 = OpBitcast  %4  %49
-%131 = OpAccessChain  %86  %36 %130
-OpStore %131 %129
-%132 = OpSelect  %4  %38 %68 %35
-%133 = OpBitCount  %4  %132
-%134 = OpBitcast  %3  %133
-%135 = OpBitcast  %4  %134
-%136 = OpBitcast  %4  %40
-%137 = OpAccessChain  %86  %36 %136
-OpStore %137 %135
-%138 = OpSNegate  %3  %20
-%139 = OpBitcast  %4  %138
-%140 = OpBitCount  %4  %139
-%141 = OpBitcast  %3  %140
-%142 = OpBitcast  %4  %141
-%143 = OpBitcast  %4  %50
-%144 = OpAccessChain  %86  %36 %143
-OpStore %144 %142
-%145 = OpBitCount  %4  %51
+%110 = OpExtInst  %43  %1 FClamp %44 %108 %109
+%111 = OpConvertFToS  %3  %110
+%113 = OpBitcast  %4  %111
+%114 = OpExtInst  %4  %1 FindUMsb %113
+%115 = OpBitcast  %3  %114
+%116 = OpISub  %3  %86 %115
+%112 = OpCopyObject  %3  %116
+%117 = OpBitcast  %4  %112
+%118 = OpBitcast  %4  %45
+%119 = OpAccessChain  %89  %36 %118
+OpStore %119 %117
+%120 = OpSelect  %3  %38 %20 %39
+%121 = OpExtInst  %3  %1 FindILsb %120
+%122 = OpIAdd  %3  %121 %20
+%123 = OpBitcast  %4  %122
+%124 = OpBitcast  %4  %46
+%125 = OpAccessChain  %89  %36 %124
+OpStore %125 %123
+%126 = OpExtInst  %3  %1 FindILsb %40
+%127 = OpIAdd  %3  %126 %20
+%128 = OpBitcast  %4  %127
+%129 = OpBitcast  %4  %47
+%130 = OpAccessChain  %89  %36 %129
+OpStore %130 %128
+%131 = OpBitcast  %3  %41
+%132 = OpExtInst  %3  %1 FindILsb %131
+%133 = OpIAdd  %3  %132 %20
+%134 = OpBitcast  %4  %133
+%135 = OpBitcast  %4  %48
+%136 = OpAccessChain  %89  %36 %135
+OpStore %136 %134
+%137 = OpExtInst  %43  %1 FClamp %44 %108 %109
+%138 = OpConvertFToS  %3  %137
+%139 = OpExtInst  %3  %1 FindILsb %138
+%140 = OpIAdd  %3  %139 %20
+%141 = OpBitcast  %4  %140
+%142 = OpBitcast  %4  %49
+%143 = OpAccessChain  %89  %36 %142
+OpStore %143 %141
+%144 = OpSelect  %4  %38 %68 %35
+%145 = OpBitCount  %4  %144
 %146 = OpBitcast  %3  %145
 %147 = OpBitcast  %4  %146
-%148 = OpBitcast  %4  %52
-%149 = OpAccessChain  %86  %36 %148
+%148 = OpBitcast  %4  %40
+%149 = OpAccessChain  %89  %36 %148
 OpStore %149 %147
-%152 = OpExtInst  %43  %1 FClamp %53 %150 %151
-%153 = OpConvertFToU  %4  %152
-%154 = OpBitCount  %4  %153
-%155 = OpBitcast  %3  %154
-%156 = OpBitcast  %4  %155
-%157 = OpBitcast  %4  %54
-%158 = OpAccessChain  %86  %36 %157
-OpStore %158 %156
-%159 = OpSelect  %4  %38 %68 %35
-%160 = OpBitReverse  %4  %159
-%161 = OpBitcast  %4  %55
-%162 = OpAccessChain  %86  %36 %161
-OpStore %162 %160
-%163 = OpSNegate  %3  %20
-%164 = OpBitcast  %4  %163
-%165 = OpBitReverse  %4  %164
-%166 = OpBitcast  %4  %56
-%167 = OpAccessChain  %86  %36 %166
-OpStore %167 %165
-%168 = OpBitReverse  %4  %57
-%169 = OpBitcast  %4  %58
-%170 = OpAccessChain  %86  %36 %169
+%150 = OpSNegate  %3  %20
+%151 = OpBitcast  %4  %150
+%152 = OpBitCount  %4  %151
+%153 = OpBitcast  %3  %152
+%154 = OpBitcast  %4  %153
+%155 = OpBitcast  %4  %50
+%156 = OpAccessChain  %89  %36 %155
+OpStore %156 %154
+%157 = OpBitCount  %4  %51
+%158 = OpBitcast  %3  %157
+%159 = OpBitcast  %4  %158
+%160 = OpBitcast  %4  %52
+%161 = OpAccessChain  %89  %36 %160
+OpStore %161 %159
+%164 = OpExtInst  %43  %1 FClamp %53 %162 %163
+%165 = OpConvertFToU  %4  %164
+%166 = OpBitCount  %4  %165
+%167 = OpBitcast  %3  %166
+%168 = OpBitcast  %4  %167
+%169 = OpBitcast  %4  %54
+%170 = OpAccessChain  %89  %36 %169
 OpStore %170 %168
-%171 = OpExtInst  %43  %1 FClamp %59 %150 %151
-%172 = OpConvertFToU  %4  %171
-%173 = OpBitReverse  %4  %172
-%174 = OpBitcast  %4  %60
-%175 = OpAccessChain  %86  %36 %174
-OpStore %175 %173
-%176 = OpFunctionCall  %3  %11 %51
-%177 = OpBitcast  %4  %176
-%178 = OpBitcast  %4  %61
-%179 = OpAccessChain  %86  %36 %178
+%171 = OpSelect  %4  %38 %68 %35
+%172 = OpBitReverse  %4  %171
+%173 = OpBitcast  %4  %55
+%174 = OpAccessChain  %89  %36 %173
+OpStore %174 %172
+%175 = OpSNegate  %3  %20
+%176 = OpBitcast  %4  %175
+%177 = OpBitReverse  %4  %176
+%178 = OpBitcast  %4  %56
+%179 = OpAccessChain  %89  %36 %178
 OpStore %179 %177
-%180 = OpBitcast  %3  %41
-%181 = OpFunctionCall  %3  %18 %180
-%182 = OpBitcast  %4  %181
-%183 = OpBitcast  %4  %62
-%184 = OpAccessChain  %86  %36 %183
-OpStore %184 %182
-%186 = OpExtInst  %3  %1 FindUMsb %39
-%185 = OpISub  %3  %82 %186
-%187 = OpBitcast  %4  %185
-%188 = OpBitcast  %4  %63
-%189 = OpAccessChain  %86  %36 %188
-OpStore %189 %187
-%190 = OpExtInst  %3  %1 FindILsb %39
-%191 = OpIAdd  %3  %190 %20
-%192 = OpBitcast  %4  %191
-%193 = OpBitcast  %4  %64
-%194 = OpAccessChain  %86  %36 %193
-OpStore %194 %192
-%195 = OpBitCount  %4  %65
-%196 = OpBitcast  %3  %195
-%197 = OpBitcast  %4  %196
-%198 = OpBitcast  %4  %66
-%199 = OpAccessChain  %86  %36 %198
-OpStore %199 %197
-%200 = OpBitReverse  %4  %35
-%201 = OpBitcast  %4  %67
-%202 = OpAccessChain  %86  %36 %201
-OpStore %202 %200
-%203 = OpBitReverse  %4  %68
-%204 = OpBitcast  %4  %69
-%205 = OpAccessChain  %86  %36 %204
-OpStore %205 %203
-%206 = OpBitReverse  %4  %41
-%207 = OpBitcast  %4  %70
-%208 = OpAccessChain  %86  %36 %207
-OpStore %208 %206
-%209 = OpSNegate  %3  %42
-%211 = OpExtInst  %3  %1 FindUMsb %209
-%210 = OpISub  %3  %82 %211
-%212 = OpBitcast  %4  %210
-%213 = OpBitcast  %4  %71
-%214 = OpAccessChain  %86  %36 %213
+%180 = OpBitReverse  %4  %57
+%181 = OpBitcast  %4  %58
+%182 = OpAccessChain  %89  %36 %181
+OpStore %182 %180
+%183 = OpExtInst  %43  %1 FClamp %59 %162 %163
+%184 = OpConvertFToU  %4  %183
+%185 = OpBitReverse  %4  %184
+%186 = OpBitcast  %4  %60
+%187 = OpAccessChain  %89  %36 %186
+OpStore %187 %185
+%188 = OpFunctionCall  %3  %11 %51
+%189 = OpBitcast  %4  %188
+%190 = OpBitcast  %4  %61
+%191 = OpAccessChain  %89  %36 %190
+OpStore %191 %189
+%192 = OpBitcast  %3  %41
+%193 = OpFunctionCall  %3  %18 %192
+%194 = OpBitcast  %4  %193
+%195 = OpBitcast  %4  %62
+%196 = OpAccessChain  %89  %36 %195
+OpStore %196 %194
+%198 = OpBitcast  %4  %39
+%199 = OpExtInst  %4  %1 FindUMsb %198
+%200 = OpBitcast  %3  %199
+%201 = OpISub  %3  %86 %200
+%197 = OpCopyObject  %3  %201
+%202 = OpBitcast  %4  %197
+%203 = OpBitcast  %4  %63
+%204 = OpAccessChain  %89  %36 %203
+OpStore %204 %202
+%205 = OpExtInst  %3  %1 FindILsb %39
+%206 = OpIAdd  %3  %205 %20
+%207 = OpBitcast  %4  %206
+%208 = OpBitcast  %4  %64
+%209 = OpAccessChain  %89  %36 %208
+OpStore %209 %207
+%210 = OpBitCount  %4  %65
+%211 = OpBitcast  %3  %210
+%212 = OpBitcast  %4  %211
+%213 = OpBitcast  %4  %66
+%214 = OpAccessChain  %89  %36 %213
 OpStore %214 %212
-%215 = OpSNegate  %3  %42
-%216 = OpExtInst  %3  %1 FindILsb %215
-%217 = OpIAdd  %3  %216 %20
-%218 = OpBitcast  %4  %217
-%219 = OpBitcast  %4  %72
-%220 = OpAccessChain  %86  %36 %219
+%215 = OpBitReverse  %4  %35
+%216 = OpBitcast  %4  %67
+%217 = OpAccessChain  %89  %36 %216
+OpStore %217 %215
+%218 = OpBitReverse  %4  %68
+%219 = OpBitcast  %4  %69
+%220 = OpAccessChain  %89  %36 %219
 OpStore %220 %218
-%221 = OpBitCount  %4  %73
-%222 = OpBitcast  %3  %221
-%223 = OpBitcast  %4  %222
-%224 = OpBitcast  %4  %74
-%225 = OpAccessChain  %86  %36 %224
-OpStore %225 %223
-%226 = OpBitReverse  %4  %73
-%227 = OpBitcast  %4  %75
-%228 = OpAccessChain  %86  %36 %227
-OpStore %228 %226
-%229 = OpFunctionCall  %3  %27 %45 %46
-%230 = OpBitcast  %4  %229
-%231 = OpBitcast  %4  %76
-%232 = OpAccessChain  %86  %36 %231
+%221 = OpBitReverse  %4  %41
+%222 = OpBitcast  %4  %70
+%223 = OpAccessChain  %89  %36 %222
+OpStore %223 %221
+%224 = OpSNegate  %3  %42
+%226 = OpBitcast  %4  %224
+%227 = OpExtInst  %4  %1 FindUMsb %226
+%228 = OpBitcast  %3  %227
+%229 = OpISub  %3  %86 %228
+%225 = OpCopyObject  %3  %229
+%230 = OpBitcast  %4  %225
+%231 = OpBitcast  %4  %71
+%232 = OpAccessChain  %89  %36 %231
 OpStore %232 %230
-%233 = OpBitCount  %4  %77
-%234 = OpBitcast  %3  %233
-%235 = OpISub  %3  %234 %45
-%236 = OpSLessThan  %37  %235 %39
-%237 = OpSelect  %4  %236 %68 %35
-%238 = OpBitcast  %4  %78
-%239 = OpAccessChain  %86  %36 %238
-OpStore %239 %237
+%233 = OpSNegate  %3  %42
+%234 = OpExtInst  %3  %1 FindILsb %233
+%235 = OpIAdd  %3  %234 %20
+%236 = OpBitcast  %4  %235
+%237 = OpBitcast  %4  %72
+%238 = OpAccessChain  %89  %36 %237
+OpStore %238 %236
+%239 = OpBitCount  %4  %73
+%240 = OpBitcast  %3  %239
+%241 = OpBitcast  %4  %240
+%242 = OpBitcast  %4  %74
+%243 = OpAccessChain  %89  %36 %242
+OpStore %243 %241
+%244 = OpBitReverse  %4  %73
+%245 = OpBitcast  %4  %75
+%246 = OpAccessChain  %89  %36 %245
+OpStore %246 %244
+%247 = OpFunctionCall  %3  %27 %45 %46
+%248 = OpBitcast  %4  %247
+%249 = OpBitcast  %4  %76
+%250 = OpAccessChain  %89  %36 %249
+OpStore %250 %248
+%251 = OpBitCount  %4  %77
+%252 = OpBitcast  %3  %251
+%253 = OpISub  %3  %252 %45
+%254 = OpSLessThan  %37  %253 %39
+%255 = OpSelect  %4  %254 %68 %35
+%256 = OpBitcast  %4  %78
+%257 = OpAccessChain  %89  %36 %256
+OpStore %257 %255
 OpReturn
 OpFunctionEnd

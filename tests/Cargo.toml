@@ -50,6 +50,7 @@ wgpu-hal = { workspace = true, default-features = true, features = ["validation_
 wgpu-sync.workspace = true
 wgpu-types.workspace = true
 naga = { workspace = true, features = [
+    "spv-in",
     "spv-out",
     "wgsl-out",
     "hlsl-out",
