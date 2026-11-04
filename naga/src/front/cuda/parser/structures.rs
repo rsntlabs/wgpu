@@ -149,7 +149,15 @@ impl<'a> Parser<'a> {
                     span: type_span,
                 });
             }
-            if is_const || matches!(specifier, TypeSpecifier::Scalar(Scalar::BOOL)) {
+            let resolution = self.lower_type(specifier, type_span)?;
+            let base = self.type_handle(&resolution, type_span);
+            let (element, _) = self.array_shape(base, type_span)?;
+            if is_const
+                || matches!(
+                    self.module.types[element].inner,
+                    TypeInner::Scalar(Scalar::BOOL)
+                )
+            {
                 return Err(ParseError {
                     message: String::from(
                         "structure members require non-const numeric value types",
@@ -157,8 +165,6 @@ impl<'a> Parser<'a> {
                     span: type_span,
                 });
             }
-            let resolution = self.lower_type(specifier, type_span)?;
-            let base = self.type_handle(&resolution, type_span);
             loop {
                 let (name, span) = self.identifier()?;
                 if !matches!(name, "threadIdx" | "blockIdx" | "gridDim" | "blockDim") {

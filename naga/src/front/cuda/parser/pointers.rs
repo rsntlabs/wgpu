@@ -303,6 +303,7 @@ impl<'a> Parser<'a> {
         ty: &TypeResolution,
         qualifiers: Qualifiers,
         mode: ParameterMode,
+        parameter_index: u32,
     ) -> Result<(), ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
@@ -323,6 +324,19 @@ impl<'a> Parser<'a> {
         self.lexer.expect_span(Token::Paren(']'))?;
         if self.lexer.peek()?.0 == Token::Paren('[') {
             return self.fail("multidimensional array parameters are unsupported");
+        }
+        if self.function.kind == FunctionKind::Kernel {
+            let Some(name) = name else {
+                return self.fail("kernel array parameters require a name");
+            };
+            return self.kernel_pointer_parameter(
+                parameter_index,
+                (name, span),
+                span,
+                ty,
+                qualifiers,
+                false,
+            );
         }
         let pointee = self.type_handle(ty, span);
         let pointer_ty = self.pointer_type(pointee, span);

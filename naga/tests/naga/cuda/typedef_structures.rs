@@ -369,7 +369,6 @@ fn cuda_typedef_structures_keep_existing_member_and_declarator_boundaries() {
         ));
     }
     for source in [
-        "typedef struct { unsigned value; } Record[2]; __global__ void kernel() {}",
         "typedef struct { unsigned value; } &Reference; __global__ void kernel() {}",
         "typedef struct { unsigned value; } Factory(); __global__ void kernel() {}",
         "typedef struct Tag Alias; __global__ void kernel() {}",
@@ -381,6 +380,7 @@ fn cuda_typedef_structures_keep_existing_member_and_declarator_boundaries() {
     ] {
         rejected(source);
     }
+    roundtrip("typedef struct { unsigned value; } Record[2]; __global__ void kernel() {}");
 }
 
 #[test]

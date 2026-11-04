@@ -360,6 +360,82 @@ mod tests {
     }
 
     #[test]
+    fn array_alias_declarations_check_budget_before_types_and_symbols() {
+        for source in [
+            "typedef int Values[3];",
+            "using Values = int[3];",
+            "typedef Row Values;",
+            "using Values = Row;",
+        ] {
+            for global in [false, true] {
+                for exhaust_bytes in [false, true] {
+                    let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                    let span = parser.lexer.peek().unwrap().1;
+                    let element = parser.scalar_handle(Scalar::I32, span);
+                    let count = core::num::NonZeroU32::new(4).unwrap();
+                    let row = parser
+                        .array_type(element, ArraySize::Constant(count), span, span)
+                        .unwrap();
+                    let row_type = QualifiedType {
+                        ty: TypeSpecifier::Array(row),
+                        qualifiers: Qualifiers::NONE,
+                    };
+                    assert!(parser
+                        .global_declarations
+                        .insert("Row", GlobalDeclaration::Type(row_type.clone()))
+                        .is_none());
+                    let type_count = parser.module.types.len();
+                    let declaration_count = parser.global_declarations.len();
+                    parser.parameter_expansion_budget.activate();
+                    if exhaust_bytes {
+                        let preparation = size_of::<FunctionParameterState>();
+                        let remaining =
+                            BYTE_LIMIT - parser.parameter_expansion_budget.bytes - preparation;
+                        parser
+                            .parameter_expansion_budget
+                            .charge_bytes(remaining, span)
+                            .unwrap();
+                    } else {
+                        let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                        parser
+                            .parameter_expansion_budget
+                            .charge_nodes(remaining, span)
+                            .unwrap();
+                    }
+                    assert!(!parser.function.parameter_state_charged);
+
+                    let error = parser.alias_declaration(global).unwrap_err();
+                    assert_eq!(error.message, limit_error(span).message);
+                    assert!(parser.parameter_expansion_budget.is_exhausted());
+                    let range = error.span.to_range().unwrap();
+                    assert!(!range.is_empty());
+                    assert!(source.get(range).is_some());
+                    assert_eq!(parser.module.types.len(), type_count);
+                    assert_eq!(parser.global_declarations.len(), declaration_count);
+                    assert!(!parser.global_declarations.contains_key("Values"));
+                    assert!(parser.function.symbol_table.lookup("Values").is_none());
+                    assert_eq!(parser.type_name("Row"), Some(row_type));
+                    assert!(parser.function.ir.expressions.is_empty());
+                    assert!(parser.function.expression_graph_depths.is_empty());
+                    assert!(parser.function.ir.named_expressions.is_empty());
+                    assert!(parser.function.ir.local_variables.is_empty());
+                    assert!(parser.function.ir.body.is_empty());
+                    assert!(parser.function.parameters.is_empty());
+                    assert!(parser.module.global_variables.is_empty());
+                    assert!(parser.module.functions.is_empty());
+                    assert_eq!(parser.dim3_type, None);
+                    assert_eq!(parser.uint3_type, None);
+                    assert_eq!(parser.float_math_functions, [None; 4]);
+                    assert_eq!(parser.sqrtf_function, None);
+                    assert_eq!(parser.division_function, None);
+                    assert_eq!(parser.fmodf_function, None);
+                    assert_eq!(parser.trigonometry_function, None);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn array_declarators_check_budget_before_extent_expressions() {
         for kind in [FunctionKind::Kernel, FunctionKind::Device] {
             for (source, parameter) in [("1]", false), ("[1]", true)] {
@@ -392,6 +468,7 @@ mod tests {
                             &TypeResolution::Handle(element),
                             Qualifiers::NONE,
                             ParameterMode::Value,
+                            0,
                         )
                     } else {
                         parser.array_declaration(element, false, span).map(|_| ())
@@ -413,6 +490,72 @@ mod tests {
                     assert!(parser.function.symbol_table.lookup("values").is_none());
                     assert!(parser.module.global_variables.is_empty());
                     assert!(parser.module.functions.is_empty());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn array_alias_objects_check_budget_before_explicit_extent_expressions() {
+        for source in ["Row values[1];", "Row values[(1 + 2)];"] {
+            for kind in [FunctionKind::Kernel, FunctionKind::Device] {
+                for exhaust_bytes in [false, true] {
+                    let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                    parser.function = FunctionContext::new(kind);
+                    let span = parser.lexer.peek().unwrap().1;
+                    let element = parser.scalar_handle(Scalar::I32, span);
+                    let count = core::num::NonZeroU32::new(4).unwrap();
+                    let row = parser
+                        .array_type(element, ArraySize::Constant(count), span, span)
+                        .unwrap();
+                    let row_type = QualifiedType {
+                        ty: TypeSpecifier::Array(row),
+                        qualifiers: Qualifiers::NONE,
+                    };
+                    assert!(parser
+                        .global_declarations
+                        .insert("Row", GlobalDeclaration::Type(row_type.clone()))
+                        .is_none());
+                    let type_count = parser.module.types.len();
+                    let declaration_count = parser.global_declarations.len();
+                    parser.parameter_expansion_budget.activate();
+                    if exhaust_bytes {
+                        let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                        parser
+                            .parameter_expansion_budget
+                            .charge_bytes(remaining, span)
+                            .unwrap();
+                    } else {
+                        let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                        parser
+                            .parameter_expansion_budget
+                            .charge_nodes(remaining, span)
+                            .unwrap();
+                    }
+                    assert!(!parser.function.parameter_state_charged);
+
+                    let error = parser.local_declaration().unwrap_err();
+                    assert_eq!(error.message, limit_error(span).message);
+                    assert!(parser.parameter_expansion_budget.is_exhausted());
+                    let range = error.span.to_range().unwrap();
+                    assert!(!range.is_empty());
+                    assert!(source.get(range).is_some());
+                    assert_eq!(parser.module.types.len(), type_count);
+                    assert_eq!(parser.global_declarations.len(), declaration_count);
+                    assert!(!parser.global_declarations.contains_key("values"));
+                    assert!(parser.function.symbol_table.lookup("values").is_none());
+                    assert_eq!(parser.type_name("Row"), Some(row_type));
+                    assert!(parser.function.ir.expressions.is_empty());
+                    assert!(parser.function.expression_graph_depths.is_empty());
+                    assert!(parser.function.ir.named_expressions.is_empty());
+                    assert!(parser.function.ir.local_variables.is_empty());
+                    assert!(parser.function.ir.arguments.is_empty());
+                    assert!(parser.function.ir.body.is_empty());
+                    assert!(parser.function.parameters.is_empty());
+                    assert!(parser.module.global_variables.is_empty());
+                    assert!(parser.module.functions.is_empty());
+                    assert_eq!(parser.dim3_type, None);
+                    assert_eq!(parser.uint3_type, None);
                 }
             }
         }

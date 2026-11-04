@@ -377,7 +377,9 @@ impl Parser<'_> {
             if target.qualifiers.is_volatile
                 && !matches!(
                     target.ty,
-                    TypeSpecifier::Scalar(_) | TypeSpecifier::Pointer { .. }
+                    TypeSpecifier::Scalar(_)
+                        | TypeSpecifier::Pointer { .. }
+                        | TypeSpecifier::Array(_)
                 )
             {
                 return self.fail("volatile class value construction is unsupported");
@@ -589,6 +591,12 @@ impl Parser<'_> {
         target: QualifiedType,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
+        if matches!(target.ty, TypeSpecifier::Array(_)) {
+            return Err(ParseError {
+                message: String::from("array value construction is unsupported"),
+                span,
+            });
+        }
         let mut result = self.type_value_expression(target.ty, span)?;
         if let ExpressionResult::Value(ExpressionValue::Plain(ref mut value)) = result {
             value.qualifiers = self.prvalue_qualifiers(&value.ty, target.qualifiers);

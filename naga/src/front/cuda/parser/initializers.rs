@@ -433,6 +433,14 @@ impl Parser<'_> {
             }
         } else {
             match specifier {
+                TypeSpecifier::Array(_) => {
+                    self.record_initializer_clause(
+                        pointer,
+                        actual_ty,
+                        None,
+                        AggregateInitialization::Braced,
+                    )?;
+                }
                 TypeSpecifier::TemplateParameter(_) => {
                     return self.fail("dependent type requires an instantiation");
                 }

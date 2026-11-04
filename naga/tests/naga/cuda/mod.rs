@@ -1,6 +1,7 @@
 #![cfg(feature = "cuda-in")]
 
 mod adversarial;
+mod array_aliases;
 mod arrow_members;
 mod atomic_add;
 mod atomic_cas;

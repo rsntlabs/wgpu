@@ -876,6 +876,14 @@ impl<'a> Parser<'a> {
         for (parameter, argument) in parameters.iter().zip(arguments) {
             let value = match (parameter.kind, argument) {
                 (TemplateParameterKind::Type, &TemplateArgument::Type(ref ty)) => {
+                    if matches!(ty.ty, TypeSpecifier::Array(_)) {
+                        return Err(ParseError {
+                            message: String::from(
+                                "explicit array template type arguments are unsupported",
+                            ),
+                            span,
+                        });
+                    }
                     TemplateValue::Type {
                         ty: ty.ty,
                         qualifiers: ty.qualifiers,

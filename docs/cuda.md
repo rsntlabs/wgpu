@@ -923,8 +923,9 @@ or `const float &converted = Width;`.
 
 ## Source subset
 
-Aliases support `typedef` and `using` for `bool`, `int`, `unsigned int`,
-`float`, and the vector and struct types below, including alias chains and `const` qualification. For example,
+Aliases support `typedef` and `using` for `bool`, `short`, `unsigned short`,
+`int`, `unsigned int`, `float`, and the vector and struct types below,
+including alias chains and `const` qualification. For example,
 `typedef unsigned int Count, Index;` and `using Sample = const float;` preserve
 the underlying type and its layout. Repeating an alias declaration
 with the same type and qualification is allowed. Explicit duplicate `const`
@@ -933,7 +934,35 @@ qualifiers are rejected; requalifying an already const alias is allowed.
 Aliases can appear at file scope before, between, or after functions, and in
 blocks and `for` initializers. Local values can hide outer type names, and local
 aliases can hide outer values or functions. A `using` alias in a `for` initializer
-uses C++23 syntax. Array, function, and void aliases remain unsupported.
+uses C++23 syntax. Function and void aliases remain unsupported.
+
+Fixed-size array aliases support both declaration forms and compose through
+earlier aliases.
+
+```cuda
+typedef int Row[3], Scalar;
+using Matrix = Row[2];
+using FrozenRow = const Row;
+```
+
+Each `typedef` declarator starts from its declared base type. Array aliases retain
+their element types, extents, layout and qualification. They work in local
+declarations, record members, and the supported shared and constant storage
+forms. Additional written dimensions surround the aliased array, so
+`Row values[2];` has two rows of three integers. Existing initialization and
+constructor defaults apply to the complete array. All aliased extents must be
+positive integral constant expressions. The 64-dimension limit includes inherited
+and written dimensions.
+
+Array parameters adjust their outermost dimension to a pointer. A `Row` parameter
+becomes `int *`, and a `Matrix` parameter becomes `Row *`. A written outer bound,
+as in `Row values[2]`, also produces `Row *`. These forms work in kernel and device
+helper parameters, including prototypes. Const array qualification follows the
+elements, preserving read-only storage bindings. Pointers to aliased rows retain
+their row stride through indexing, arithmetic and helper calls.
+
+Typed array temporaries, whole-array references, incomplete array aliases and
+explicit array template type arguments require further frontend support.
 
 Pointer aliases use the existing scalar, vector, and completed struct pointee
 types, including packed three-component vectors. Both alias forms accept a
@@ -1330,8 +1359,10 @@ bound must be explicit. Initializers accept nested lists and brace elision;
 Each row's omitted elements become zero before the next row's initializer runs.
 Index every dimension to access a scalar or vector element, as in
 `matrix[1][0]`. Borrowing a row preserves its own extent; whole-array and row
-copies remain unsupported. Multidimensional helper array parameter declarators
-remain unsupported. Constant-address checks require each index to fit its own dimension.
+copies remain unsupported. Parameter declarators with multiple written brackets,
+such as `int values[][3]`, require further frontend support. Array aliases provide
+row types for adjusted parameters such as `Row values[]` and `Matrix values`.
+Constant-address checks require each index to fit its own dimension.
 
 Local scalars, vectors, and fixed arrays accept direct-list and copy-list
 initialization, including partial lists and a trailing comma:

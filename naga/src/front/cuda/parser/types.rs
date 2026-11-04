@@ -12,6 +12,7 @@ pub(super) enum TypeSpecifier {
         scalar: Scalar,
     },
     Structure(Handle<Type>),
+    Array(Handle<Type>),
     Pointer {
         pointee: Handle<Type>,
         pointee_qualifiers: Qualifiers,
@@ -358,7 +359,9 @@ impl<'a> Parser<'a> {
             }
             TypeSpecifier::Scalar(scalar) => return Ok(scalar_resolution(scalar)),
             TypeSpecifier::Dim3 => return Ok(TypeResolution::Handle(self.dim3_type(span))),
-            TypeSpecifier::Structure(handle) => return Ok(TypeResolution::Handle(handle)),
+            TypeSpecifier::Structure(handle) | TypeSpecifier::Array(handle) => {
+                return Ok(TypeResolution::Handle(handle));
+            }
             TypeSpecifier::Pointer { pointee, .. } => return Ok(self.pointer_type(pointee, span)),
             TypeSpecifier::Vector {
                 component_count,
@@ -446,6 +449,26 @@ impl<'a> Parser<'a> {
             });
         }
         Ok(self.module.types.insert(Type { name: None, inner }, span))
+    }
+
+    pub(super) fn array_shape(
+        &mut self,
+        mut ty: Handle<Type>,
+        span: Span,
+    ) -> Result<(Handle<Type>, usize), ParseError> {
+        let mut rank = 0;
+        while let TypeInner::Array { base, .. } = self.module.types[ty].inner {
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            rank += 1;
+            if rank > 64 {
+                return Err(ParseError {
+                    message: String::from("CUDA array rank limit exceeded"),
+                    span,
+                });
+            }
+            ty = base;
+        }
+        Ok((ty, rank))
     }
 
     pub(super) fn numeric_storage_type(
@@ -591,6 +614,7 @@ impl<'a> Parser<'a> {
                 let declarator = self.alias_declarator(ty.clone())?;
                 let (name, span) = self.identifier()?;
                 self.check_name(name, span)?;
+                let declarator = self.array_alias_declarator(declarator, span)?;
                 if let TypeSpecifier::Structure(handle) = declarator.ty {
                     self.name_anonymous_structure(handle, name, span)?;
                 }
@@ -607,6 +631,7 @@ impl<'a> Parser<'a> {
         self.lexer.expect_span(Token::Operation('='))?;
         let ty = self.parse_type()?;
         let ty = self.alias_declarator(ty)?;
+        let ty = self.array_alias_declarator(ty, span)?;
         self.lexer.expect_span(Token::Separator(';'))?;
         self.insert_type(name, ty, span, global)
     }
@@ -644,6 +669,32 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn array_alias_declarator(
+        &mut self,
+        ty: QualifiedType,
+        span: Span,
+    ) -> Result<QualifiedType, ParseError> {
+        if self.lexer.peek()?.0 != Token::Paren('[') {
+            return Ok(ty);
+        }
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        if matches!(
+            ty.ty,
+            TypeSpecifier::Pointer { .. } | TypeSpecifier::NullPointer | TypeSpecifier::ThreadBlock
+        ) {
+            return self.fail("array aliases require supported value element types");
+        }
+        self.lexer.next()?;
+        let resolution = self.lower_type(ty.ty, span)?;
+        let base = self.type_handle(&resolution, span);
+        let array = self.array_declaration(base, false, span)?;
+        Ok(QualifiedType {
+            ty: TypeSpecifier::Array(array.ty),
+            qualifiers: ty.qualifiers,
+        })
+    }
+
     pub(super) fn insert_type(
         &mut self,
         name: &'a str,
@@ -654,6 +705,19 @@ impl<'a> Parser<'a> {
         self.check_name(name, span)?;
         if global {
             self.check_dynamic_shared_linkage(name, span)?;
+        }
+        if matches!(ty.ty, TypeSpecifier::Array(_)) {
+            self.activate_parameter_expansion(span)?;
+            self.prepare_parameter_bindings(span)?;
+            self.parameter_expansion_budget.charge_nodes(1, span)?;
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            if global {
+                self.parameter_expansion_budget
+                    .charge_map_entry::<&str, GlobalDeclaration>(1, span)?;
+            } else {
+                self.parameter_expansion_budget
+                    .charge_map_entry::<&str, Symbol>(1, span)?;
+            }
         }
         let compatible = if global {
             match self
