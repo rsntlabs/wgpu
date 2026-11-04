@@ -181,6 +181,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 - Enforce CUDA array allocation and extent-parsing limits.
 - Support incomplete CUDA array aliases and per-object bound inference.
+- Support CUDA pointers to incomplete arrays, including completed-array conversions, helper parameters, and kernel buffers.
 - Support fixed-size CUDA array type aliases in declarations and adjusted parameters.
 - Preserve CUDA nonzero float-to-boolean conversions, including subnormal values.
 - Enforce CUDA array initialization budgets for fixed and inferred local arrays.

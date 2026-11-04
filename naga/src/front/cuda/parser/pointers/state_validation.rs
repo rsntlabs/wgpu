@@ -106,7 +106,8 @@ impl Parser<'_> {
                         return Err(pointer_state_error(span));
                     }
                 }
-                PointerExpressionKind::Offset { base, .. } => {
+                PointerExpressionKind::Offset { base, .. }
+                | PointerExpressionKind::ArrayView { base } => {
                     self.parameter_expansion_budget
                         .charge_slice::<Handle<PointerExpression>>(1, span)?;
                     pending.push(base);
@@ -260,13 +261,17 @@ impl Parser<'_> {
                     if amounts.get(amount, &self.module.types) != &TypeInner::Scalar(Scalar::U32) {
                         return Err(pointer_state_error(span));
                     }
+                    let mut pointee = None;
                     self.validate_pointer_objects(state, function, destination, span, |cell| {
-                        if cell.kind == (PointerCellKind::Object { writable: true }) {
-                            Ok(())
-                        } else {
-                            Err(pointer_state_error(span))
+                        if cell.kind != (PointerCellKind::Object { writable: true }) {
+                            return Err(pointer_state_error(span));
                         }
+                        pointee = Some(cell.pointee);
+                        Ok(())
                     })?;
+                    if pointee.is_some_and(|pointee| self.is_incomplete_array(pointee)) {
+                        return Err(pointer_state_error(span));
+                    }
                 }
             }
         }

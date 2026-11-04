@@ -25,7 +25,7 @@ impl Parser<'_> {
         qualifiers: Qualifiers,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
-        let target = self.pointer_type(pointee, span);
+        let target = self.pointer_type(pointee, span)?;
         let mut pointer = match self.lexer.peek()?.0 {
             Token::Paren('{') => self.pointer_list_initializer(&target, qualifiers)?,
             Token::Paren('(') => {
@@ -122,11 +122,26 @@ impl Parser<'_> {
             return Err(conversion.error(span));
         }
         let mut pointer = self.borrowed_pointer(value)?;
-        if !self.module.compare_types(&pointer.ty, target)
+        let source_pointee = self.source_pointer_pointee(&pointer.ty);
+        let target_pointee = self.source_pointer_pointee(target);
+        let (Some(source_pointee), Some(target_pointee)) = (source_pointee, target_pointee) else {
+            return Err(conversion.error(span));
+        };
+        if !self.pointer_pointee_compatible(source_pointee, target_pointee)
             || !qualifiers.contains(pointer.qualifiers)
         {
             return Err(conversion.error(span));
         }
+        if source_pointee != target_pointee {
+            pointer.expression = self.retain_pointer_expression(
+                PointerExpressionKind::ArrayView {
+                    base: pointer.expression,
+                },
+                target_pointee,
+                span,
+            )?;
+        }
+        pointer.ty = target.clone();
         pointer.qualifiers = qualifiers;
         pointer.constant.is_discardable &= constant.is_discardable;
         pointer.constant = pointer.constant.non_literal();

@@ -972,8 +972,34 @@ their row stride through indexing, arithmetic and helper calls.
 Incomplete aliases use the same adjustment, so a `Values` parameter becomes
 `int *` and a `Rows` parameter becomes `Row *`.
 
-Typed array temporaries, whole-array references, pointers to incomplete arrays and
-explicit array template type arguments require further frontend support.
+Pointers to incomplete arrays retain their unknown outer bound while borrowing
+completed arrays. Each pointer can select arrays with different outer lengths,
+provided their element types and inner dimensions match.
+
+```cuda
+using Values = int[];
+int first[3]{2, 3, 5};
+int second[5]{7, 11, 13, 17, 19};
+Values *view = &first;
+(*view)[1] += 7;
+view = &second;
+int *elements = *view;
+++elements;
+```
+
+Local pointers support initialization, captures, assignment, conditional
+selection and null values under the existing pointer rules. Pointee qualifiers
+follow the array elements. Helper parameters accept these pointers, including
+prototypes and nondependent parameters in templates. Kernel pointers to
+incomplete arrays expose the array elements through the existing storage buffer
+interface. Fixed inner dimensions retain their native row stride.
+
+Whole-array pointer arithmetic requires a known outer bound. Dereferencing an
+incomplete-array pointer permits element indexing and decay to an element
+pointer, which supports the existing arithmetic operations.
+
+Typed array temporaries, whole-array references and explicit array template
+type arguments require further frontend support.
 
 Pointer aliases use the existing scalar, vector, and completed struct pointee
 types, including packed three-component vectors. Both alias forms accept a

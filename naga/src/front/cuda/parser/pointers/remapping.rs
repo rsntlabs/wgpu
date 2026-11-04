@@ -96,6 +96,13 @@ impl Parser<'_> {
             PointerExpressionKind::Address(binding) => PointerExpressionKind::Address(
                 self.remap_bound_binding(source, binding, mapper, span)?,
             ),
+            PointerExpressionKind::ArrayView { base } => {
+                let base = self.remap_pointer_expression(source, base, mapper, depth + 1, span)?;
+                position = base.position;
+                PointerExpressionKind::ArrayView {
+                    base: base.expression,
+                }
+            }
             PointerExpressionKind::Offset {
                 base,
                 offset,

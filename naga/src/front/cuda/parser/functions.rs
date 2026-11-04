@@ -1106,20 +1106,7 @@ impl<'a> Parser<'a> {
             self.parameter_expansion_budget.charge_work(1, span)?;
             modes.push(mode);
         }
-        let argument_ty = if matches!(mode, ParameterMode::Reference { .. }) {
-            self.module.types.insert(
-                Type {
-                    name: None,
-                    inner: TypeInner::Pointer {
-                        base: ty,
-                        space: AddressSpace::Function,
-                    },
-                },
-                span,
-            )
-        } else {
-            ty
-        };
+        let argument_ty = self.physical_parameter_type(ty, mode, span)?;
         let argument_index = self.function.ir.arguments.len() as u32;
         self.function.ir.arguments.push(FunctionArgument {
             name: name.map(String::from),
@@ -1149,6 +1136,42 @@ impl<'a> Parser<'a> {
         } else {
             self.initialize_parameter(name, span, parameter_ty, is_const, value)
         }
+    }
+
+    pub(super) fn physical_parameter_type(
+        &mut self,
+        ty: Handle<Type>,
+        mode: ParameterMode,
+        span: Span,
+    ) -> Result<Handle<Type>, ParseError> {
+        let base = if matches!(mode, ParameterMode::Pointer { .. }) {
+            let Some(pointee) = self.source_pointer_pointee(&TypeResolution::Handle(ty)) else {
+                return Ok(ty);
+            };
+            if !self.is_incomplete_array(pointee) {
+                return Ok(ty);
+            }
+            self.activate_parameter_expansion(span)?;
+            self.prepare_parameter_bindings(span)?;
+            self.parameter_expansion_budget.charge_nodes(1, span)?;
+            self.parameter_expansion_budget
+                .charge_slice::<(Type, Span)>(1, span)?;
+            self.pointer_validation_type(&TypeResolution::Handle(pointee), span)?
+        } else if matches!(mode, ParameterMode::Reference { .. }) {
+            ty
+        } else {
+            return Ok(ty);
+        };
+        Ok(self.module.types.insert(
+            Type {
+                name: None,
+                inner: TypeInner::Pointer {
+                    base,
+                    space: AddressSpace::Function,
+                },
+            },
+            span,
+        ))
     }
 
     pub(super) fn call(&mut self, name: &str, span: Span) -> Result<ExpressionResult, ParseError> {
@@ -1986,10 +2009,20 @@ impl<'a> Parser<'a> {
             return Some(2);
         }
         let source = argument.pointer_type(&self.module)?;
-        self.module
+        if self
+            .module
             .compare_types(&TypeResolution::Handle(source.pointee), pointee)
-            .then(|| qualifiers.qualification_rank(source.qualifiers))
-            .flatten()
+        {
+            return qualifiers.qualification_rank(source.qualifiers);
+        }
+        let target = match *pointee {
+            TypeResolution::Handle(handle) => handle,
+            TypeResolution::Value(_) => return None,
+        };
+        if !self.pointer_pointee_compatible(source.pointee, target) {
+            return None;
+        }
+        qualifiers.contains(source.qualifiers).then_some(1)
     }
 
     pub(super) fn value_argument_conversion(

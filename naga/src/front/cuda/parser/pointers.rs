@@ -67,6 +67,9 @@ pub(super) enum PointerExpressionKind {
     Snapshot(Handle<LocalVariable>),
     Array(Handle<BoundReference>),
     Address(Handle<BoundReference>),
+    ArrayView {
+        base: Handle<PointerExpression>,
+    },
     Offset {
         base: Handle<PointerExpression>,
         offset: Handle<Expression>,
@@ -139,9 +142,6 @@ impl<'a> Parser<'a> {
         pointee_qualifiers: Qualifiers,
         pointer_const: bool,
     ) -> Result<(Span, bool), ParseError> {
-        if matches!(specifier, TypeSpecifier::Array(array) if self.is_incomplete_array(array)) {
-            return self.fail("pointers to incomplete arrays are unsupported");
-        }
         if matches!(
             self.lexer.peek()?.0,
             Token::Operation('*' | '&') | Token::LogicalOperation('&') | Token::Paren('(')
@@ -161,7 +161,7 @@ impl<'a> Parser<'a> {
                 self.type_handle(&pointee, span)
             }
         };
-        let ty = self.pointer_type(pointee, span);
+        let ty = self.pointer_type(pointee, span)?;
         let has_equals = self.lexer.next_if(Token::Operation('='))?;
         let has_braces = self.lexer.peek()?.0 == Token::Paren('{');
         let has_parentheses =
@@ -354,7 +354,7 @@ impl<'a> Parser<'a> {
             );
         }
         let pointee = self.type_handle(ty, span);
-        let pointer_ty = self.pointer_type(pointee, span);
+        let pointer_ty = self.pointer_type(pointee, span)?;
         self.device_parameter(
             name,
             span,
@@ -436,17 +436,127 @@ impl<'a> Parser<'a> {
         self.pointer_result(pointer)
     }
 
-    pub(super) fn pointer_type(&mut self, pointee: Handle<Type>, span: Span) -> TypeResolution {
-        TypeResolution::Handle(self.module.types.insert(
+    pub(super) fn pointer_type(
+        &mut self,
+        pointee: Handle<Type>,
+        span: Span,
+    ) -> Result<TypeResolution, ParseError> {
+        if self.is_incomplete_array(pointee) {
+            self.activate_parameter_expansion(span)?;
+            self.prepare_parameter_bindings(span)?;
+            self.parameter_expansion_budget.charge_nodes(1, span)?;
+            self.parameter_expansion_budget
+                .charge_slice::<(Type, Span)>(1, span)?;
+        }
+        let space = self.source_pointer_space(pointee);
+        Ok(TypeResolution::Handle(self.module.types.insert(
             Type {
                 name: None,
                 inner: TypeInner::Pointer {
                     base: pointee,
-                    space: AddressSpace::Function,
+                    space,
                 },
             },
             span,
-        ))
+        )))
+    }
+
+    fn source_pointer_space(&self, pointee: Handle<Type>) -> AddressSpace {
+        if self.is_incomplete_array(pointee) {
+            // Source descriptors need a valid address space even before pointer lowering.
+            AddressSpace::Storage {
+                access: StorageAccess::LOAD | StorageAccess::STORE,
+            }
+        } else {
+            AddressSpace::Function
+        }
+    }
+
+    pub(super) fn source_pointer_pointee(&self, ty: &TypeResolution) -> Option<Handle<Type>> {
+        let inner = match *ty {
+            TypeResolution::Handle(handle) => &self.module.types.get_handle(handle).ok()?.inner,
+            TypeResolution::Value(ref inner) => inner,
+        };
+        let &TypeInner::Pointer { base, space } = inner else {
+            return None;
+        };
+        self.module.types.check_contains_handle(base).ok()?;
+        (space == self.source_pointer_space(base)).then_some(base)
+    }
+
+    pub(super) fn pointer_pointee_compatible(
+        &self,
+        physical: Handle<Type>,
+        source: Handle<Type>,
+    ) -> bool {
+        let (Ok(physical_type), Ok(source_type)) = (
+            self.module.types.get_handle(physical),
+            self.module.types.get_handle(source),
+        ) else {
+            return false;
+        };
+        if physical == source {
+            return true;
+        }
+        matches!(
+            (&physical_type.inner, &source_type.inner),
+            (
+                TypeInner::Array { base: physical_base, size: ArraySize::Constant(_), stride: physical_stride },
+                TypeInner::Array { base: source_base, size: ArraySize::Dynamic, stride: source_stride }
+            ) if physical_base == source_base && physical_stride == source_stride
+        )
+    }
+
+    pub(super) fn pointer_validation_type(
+        &mut self,
+        ty: &TypeResolution,
+        span: Span,
+    ) -> Result<Handle<Type>, ParseError> {
+        if let TypeInner::Array {
+            base,
+            size: ArraySize::Dynamic,
+            ..
+        } = *ty.inner_with(&self.module.types)
+        {
+            self.activate_parameter_expansion(span)?;
+            self.prepare_parameter_bindings(span)?;
+            // Validation slots are sized while source accesses retain their unknown bound.
+            self.array_type(
+                base,
+                ArraySize::Constant(core::num::NonZeroU32::new(1).unwrap()),
+                span,
+                span,
+            )
+        } else {
+            Ok(self.type_handle(ty, span))
+        }
+    }
+
+    fn pointer_validation_type_matches(
+        &self,
+        source: &TypeResolution,
+        physical: Handle<Type>,
+    ) -> bool {
+        let Ok(physical_type) = self.module.types.get_handle(physical) else {
+            return false;
+        };
+        let source_inner = match *source {
+            TypeResolution::Handle(handle) => match self.module.types.get_handle(handle) {
+                Ok(ty) => &ty.inner,
+                Err(_) => return false,
+            },
+            TypeResolution::Value(ref inner) => inner,
+        };
+        if let &TypeInner::Array {
+            base,
+            size: ArraySize::Dynamic,
+            stride,
+        } = source_inner
+        {
+            return matches!(physical_type.inner, TypeInner::Array { base: actual_base, size: ArraySize::Constant(count), stride: actual_stride } if actual_base == base && count.get() == 1 && actual_stride == stride);
+        }
+        self.module
+            .compare_types(source, &TypeResolution::Handle(physical))
     }
 
     pub(super) fn retain_pointer_expression(
@@ -458,7 +568,8 @@ impl<'a> Parser<'a> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         let depth = match kind {
-            PointerExpressionKind::Offset { base, .. } => {
+            PointerExpressionKind::Offset { base, .. }
+            | PointerExpressionKind::ArrayView { base } => {
                 self.function.pointers.expressions[base].depth + 1
             }
             PointerExpressionKind::Select { accept, reject, .. } => {
@@ -611,7 +722,7 @@ impl<'a> Parser<'a> {
         let binding = self.freeze_reference(reference)?;
         let expression =
             self.retain_pointer_expression(PointerExpressionKind::Array(binding), base, span)?;
-        let ty = self.pointer_type(base, span);
+        let ty = self.pointer_type(base, span)?;
         Ok(PointerValue {
             expression,
             ty,
@@ -663,7 +774,7 @@ impl<'a> Parser<'a> {
         let binding = self.freeze_reference(reference)?;
         let expression =
             self.retain_pointer_expression(PointerExpressionKind::Address(binding), pointee, span)?;
-        let ty = self.pointer_type(pointee, span);
+        let ty = self.pointer_type(pointee, span)?;
         Ok(PointerValue {
             expression,
             ty,
@@ -682,6 +793,13 @@ impl<'a> Parser<'a> {
         subtract: bool,
         span: Span,
     ) -> Result<PointerValue, ParseError> {
+        let pointee = self.function.pointers.expressions[pointer.expression].pointee;
+        if self.is_incomplete_array(pointee) {
+            return Err(ParseError {
+                message: String::from("pointer arithmetic requires a complete array type"),
+                span,
+            });
+        }
         let mut pointer = self.pointer_rvalue(pointer)?;
         pointer.constant_address = pointer.constant_address.and_then(|address| {
             let delta = match offset.constant.literal {
@@ -859,7 +977,8 @@ impl<'a> Parser<'a> {
             return self.append(Expression::LocalVariable(local), span);
         }
         let ty = self.function.pointers.accesses[access].ty.clone();
-        let pointer = self.temporary_pointer(&ty, span)?;
+        let physical = self.pointer_validation_type(&ty, span)?;
+        let pointer = self.temporary_pointer(&TypeResolution::Handle(physical), span)?;
         let Expression::LocalVariable(local) = self.function.ir.expressions[pointer] else {
             unreachable!()
         };
@@ -896,11 +1015,44 @@ impl<'a> Parser<'a> {
         };
         let null_target = if let Some(other) = null_operand {
             Some(match *other.shader_type()?.inner_with(&self.module.types) {
-                TypeInner::Array { base, .. } => self.pointer_type(base, span),
+                TypeInner::Array { base, .. } => self.pointer_type(base, span)?,
                 _ => other.shader_type()?.clone(),
             })
         } else {
             None
+        };
+        let source_type = |value: &ExpressionValue| match *value {
+            ExpressionValue::Pointer(ref pointer) => self
+                .source_pointer_pointee(&pointer.ty)
+                .map(|pointee| (pointee, pointer.qualifiers)),
+            ExpressionValue::Reference(ref reference) => {
+                match *reference.ty.inner_with(&self.module.types) {
+                    TypeInner::Array { base, .. } => Some((base, reference.qualifiers)),
+                    _ => None,
+                }
+            }
+            _ => None,
+        };
+        let common_target = match (source_type(&accept), source_type(&reject)) {
+            (Some((accept, accept_qualifiers)), Some((reject, reject_qualifiers)))
+                if accept != reject =>
+            {
+                let pointee = if self.pointer_pointee_compatible(accept, reject) {
+                    Some(reject)
+                } else if self.pointer_pointee_compatible(reject, accept) {
+                    Some(accept)
+                } else {
+                    None
+                };
+                match pointee {
+                    Some(pointee) => Some((
+                        self.pointer_type(pointee, span)?,
+                        accept_qualifiers.union(reject_qualifiers),
+                    )),
+                    None => None,
+                }
+            }
+            _ => None,
         };
         let variable = matches!((&accept, &reject), (ExpressionValue::Pointer(accept), ExpressionValue::Pointer(reject)) if matches!(accept.category, PointerValueCategory::Variable { .. }) && matches!(reject.category, PointerValueCategory::Variable { .. }) && accept.qualifiers == reject.qualifiers && self.module.compare_types(&accept.ty, &reject.ty));
         let selector = self.temporary_pointer(&scalar_resolution(Scalar::U32), span)?;
@@ -914,6 +1066,8 @@ impl<'a> Parser<'a> {
                         unreachable!()
                     };
                     *pointer
+                } else if let Some((ref target, qualifiers)) = common_target {
+                    parser.convert_pointer(value, target, qualifiers, span)?
                 } else if let Some(ref target) = null_target {
                     let qualifiers = match value {
                         ExpressionValue::Pointer(ref pointer) => pointer.qualifiers,
@@ -1064,7 +1218,8 @@ impl<'a> Parser<'a> {
             | PointerExpressionKind::Parameter(_)
             | PointerExpressionKind::Object(_)
             | PointerExpressionKind::Snapshot(_) => Ok(false),
-            PointerExpressionKind::Offset { base, .. } => self.pointer_origin_is_known(base, span),
+            PointerExpressionKind::Offset { base, .. }
+            | PointerExpressionKind::ArrayView { base } => self.pointer_origin_is_known(base, span),
             PointerExpressionKind::Select { accept, reject, .. } => Ok(self
                 .pointer_origin_is_known(accept, span)?
                 && self.pointer_origin_is_known(reject, span)?),
@@ -1171,6 +1326,11 @@ impl<'a> Parser<'a> {
         let source = self.function.pointers.expressions[expression].clone();
         let ty = TypeResolution::Handle(source.pointee);
         match source.kind {
+            PointerExpressionKind::ArrayView { base } => {
+                let mut reference = self.resolve_pointer_expression(base, offset, span)?;
+                reference.ty = ty;
+                Ok(reference)
+            }
             PointerExpressionKind::Null
             | PointerExpressionKind::Parameter(_)
             | PointerExpressionKind::Object(_)

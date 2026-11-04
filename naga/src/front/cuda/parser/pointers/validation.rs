@@ -67,7 +67,8 @@ fn pointer_dependencies(
             PointerExpressionKind::Array(binding) | PointerExpressionKind::Address(binding) => {
                 visit(PointerDependency::Reference(binding))?;
             }
-            PointerExpressionKind::Offset { base, .. } => {
+            PointerExpressionKind::Offset { base, .. }
+            | PointerExpressionKind::ArrayView { base } => {
                 visit(PointerDependency::Expression(base))?
             }
             PointerExpressionKind::Select { accept, reject, .. } => {
@@ -264,7 +265,23 @@ impl Parser<'_> {
             }
             _ => return Err(pointer_state_error(span)),
         };
-        let mut ty = TypeResolution::Handle(ty);
+        let mut ty = if let Expression::LocalVariable(local) = *root {
+            if let Some(&access) = state.pointers.validation_addresses.get(&local) {
+                let access = state
+                    .pointers
+                    .accesses
+                    .try_get(access)
+                    .map_err(|_| pointer_state_error(span))?;
+                if !self.pointer_validation_type_matches(&access.ty, ty) {
+                    return Err(pointer_state_error(span));
+                }
+                access.ty.clone()
+            } else {
+                TypeResolution::Handle(ty)
+            }
+        } else {
+            TypeResolution::Handle(ty)
+        };
         for projection in &address.projections {
             if let AddressProjection::Index(captured) = *projection {
                 captured_pointer(function, captured, &self.module, span)?;
@@ -291,11 +308,7 @@ impl Parser<'_> {
             .expressions
             .try_get(value.expression)
             .map_err(|_| pointer_state_error(value.span))?;
-        let TypeInner::Pointer {
-            base,
-            space: AddressSpace::Function,
-        } = *value.ty.inner_with(&self.module.types)
-        else {
+        let Some(base) = self.source_pointer_pointee(&value.ty) else {
             return Err(pointer_state_error(value.span));
         };
         if base != expression.pointee {
@@ -325,6 +338,16 @@ impl Parser<'_> {
         &mut self,
         state: &FunctionParameterState,
         function: &Function,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        self.validate_pointer_state_with_parameters(state, function, &[], span)
+    }
+
+    pub(in super::super) fn validate_pointer_state_with_parameters(
+        &mut self,
+        state: &FunctionParameterState,
+        function: &Function,
+        parameters: &[SourceParameter],
         span: Span,
     ) -> Result<(), ParseError> {
         if state.pointers.immutable.is_some() || state.pointers.runtime.is_some() {
@@ -370,12 +393,47 @@ impl Parser<'_> {
                         .arguments
                         .get(index as usize)
                         .ok_or_else(|| pointer_state_error(span))?;
+                    self.parameter_expansion_budget
+                        .charge_work(parameters.len(), span)?;
+                    let logical = parameters
+                        .iter()
+                        .filter(|parameter| parameter.shader_type().is_some())
+                        .nth(index as usize);
+                    if let Some(parameter) = logical {
+                        if !matches!(parameter.mode(), ParameterMode::Pointer { .. })
+                            || parameter.shader_type().and_then(|ty| {
+                                self.source_pointer_pointee(&TypeResolution::Handle(ty))
+                            }) != Some(expression.pointee)
+                        {
+                            return Err(pointer_state_error(span));
+                        }
+                    } else if self.is_incomplete_array(expression.pointee) {
+                        return Err(pointer_state_error(span));
+                    }
                     if !matches!(self.module.types[argument.ty].inner,
-                        TypeInner::Pointer { base, space: AddressSpace::Function } if base == expression.pointee)
+                        TypeInner::Pointer { base, space: AddressSpace::Function }
+                            if self.pointer_validation_type_matches(&TypeResolution::Handle(expression.pointee), base))
                     {
                         return Err(pointer_state_error(span));
                     }
                     1
+                }
+                PointerExpressionKind::ArrayView { base } => {
+                    let child = state
+                        .pointers
+                        .expressions
+                        .try_get(base)
+                        .map_err(|_| pointer_state_error(span))?;
+                    if base.index() >= handle.index()
+                        || child.pointee == expression.pointee
+                        || !self.pointer_pointee_compatible(child.pointee, expression.pointee)
+                    {
+                        return Err(pointer_state_error(span));
+                    }
+                    child
+                        .depth
+                        .checked_add(1)
+                        .ok_or_else(|| pointer_state_error(span))?
                 }
                 PointerExpressionKind::Array(binding) | PointerExpressionKind::Address(binding) => {
                     let reference = state
@@ -396,6 +454,7 @@ impl Parser<'_> {
                                 if !self
                                     .module
                                     .compare_types(&ty, &TypeResolution::Handle(expression.pointee))
+                                    && !matches!(ty, TypeResolution::Handle(actual) if self.pointer_pointee_compatible(actual, expression.pointee))
                                 {
                                     return Err(pointer_state_error(span));
                                 }
@@ -415,7 +474,9 @@ impl Parser<'_> {
                         .expressions
                         .try_get(base)
                         .map_err(|_| pointer_state_error(span))?;
-                    if base.pointee != expression.pointee {
+                    if base.pointee != expression.pointee
+                        || self.is_incomplete_array(expression.pointee)
+                    {
                         return Err(pointer_state_error(span));
                     }
                     base.depth
@@ -489,9 +550,7 @@ impl Parser<'_> {
                 .try_get(local)
                 .map_err(|_| pointer_state_error(span))?;
             if variable.init.is_some()
-                || !self
-                    .module
-                    .compare_types(&TypeResolution::Handle(variable.ty), &access.ty)
+                || !self.pointer_validation_type_matches(&access.ty, variable.ty)
                 || state.pointers.access_addresses.get(&handle) != Some(&local)
             {
                 return Err(pointer_state_error(span));
