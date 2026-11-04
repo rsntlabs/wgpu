@@ -516,7 +516,7 @@ impl<'a> Parser<'a> {
             }
             self.activate_parameter_expansion(pointer_span)?;
             let base = self.type_handle(&ty, type_span);
-            let pointer_ty = self.pointer_type(base, pointer_span);
+            let pointer_ty = self.pointer_type(base, pointer_span)?;
             let name = if matches!(
                 self.lexer.peek()?.0,
                 Token::Separator(',') | Token::Paren(')')
@@ -645,7 +645,12 @@ impl<'a> Parser<'a> {
                 span,
             });
         }
-        let array_ty = self.array_type(base, ArraySize::Dynamic, type_span, span)?;
+        let whole_array = self.is_incomplete_array(base);
+        let array_ty = if whole_array {
+            base
+        } else {
+            self.array_type(base, ArraySize::Dynamic, type_span, span)?
+        };
         let is_const = qualifiers.is_const;
         let access = if is_const {
             StorageAccess::LOAD
@@ -667,14 +672,19 @@ impl<'a> Parser<'a> {
             span,
         );
         let pointer = self.append(Expression::GlobalVariable(global), span)?;
-        let pointer = self.decay_array(ReferenceValue {
+        let reference = ReferenceValue {
             discard_read: true,
             reference: Reference::Pointer(pointer),
             qualifiers,
             ty: TypeResolution::Handle(array_ty),
             span,
             constant: ConstantValue::default(),
-        })?;
+        };
+        let pointer = if whole_array {
+            self.address_of(ExpressionValue::Reference(reference), span)?
+        } else {
+            self.decay_array(reference)?
+        };
         let pointer = self.source_pointer_variable(name, pointer, pointer_const, span)?;
         let pointer = self.retain_pointer_symbol(pointer)?;
         self.insert_symbol(name, Symbol::Pointer(pointer), span)?;

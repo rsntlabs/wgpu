@@ -282,12 +282,28 @@ impl PointerRuntime {
             Expression::GlobalVariable(global) => OriginRoot::Global(global),
             _ => return Err(runtime_error(span)),
         };
+        let mut physical = parser
+            .address_root_type(address.root)
+            .ok_or_else(|| runtime_error(span))?;
+        for projection in &address.projections {
+            parser.parameter_expansion_budget.charge_work(1, span)?;
+            physical = parser.projected_address_type(physical, projection, span)?;
+        }
+        if kind == OriginKind::Array {
+            let TypeInner::Array { base, .. } = parser.module.types[physical].inner else {
+                return Err(runtime_error(span));
+            };
+            physical = base;
+        }
+        if !parser.pointer_pointee_compatible(physical, pointee) {
+            return Err(runtime_error(span));
+        }
         for (index, family) in self.families.iter().enumerate() {
             parser
                 .parameter_expansion_budget
                 .charge_work(address.projections.len() + 1, span)?;
             if family.kind != kind
-                || family.pointee != pointee
+                || family.pointee != physical
                 || family.projections.len() != address.projections.len()
             {
                 continue;
@@ -450,6 +466,9 @@ impl PointerRuntime {
         match expression.kind {
             PointerExpressionKind::Null => self.write_null(parser, destination, span),
             PointerExpressionKind::Parameter(_) => Err(runtime_error(span)),
+            PointerExpressionKind::ArrayView { base } => {
+                self.write_expression(parser, write, base, mapper, depth + 1)
+            }
             PointerExpressionKind::Object(binding) => {
                 self.copy_binding(parser, source, binding, destination, mapper, span)
             }

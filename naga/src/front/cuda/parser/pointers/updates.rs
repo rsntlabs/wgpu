@@ -39,11 +39,7 @@ impl Parser<'_> {
         qualifiers: Qualifiers,
         span: Span,
     ) -> Result<PointerValue, ParseError> {
-        let TypeInner::Pointer {
-            base: pointee,
-            space: AddressSpace::Function,
-        } = *ty.inner_with(&self.module.types)
-        else {
+        let Some(pointee) = self.source_pointer_pointee(ty) else {
             return Err(ParseError {
                 message: String::from("expected a CUDA source pointer type"),
                 span,
@@ -133,6 +129,13 @@ impl Parser<'_> {
         postfix: bool,
         span: Span,
     ) -> Result<ExpressionValue, ParseError> {
+        if self.is_incomplete_array(self.function.pointers.expressions[pointer.expression].pointee)
+        {
+            return Err(ParseError {
+                message: String::from("pointer arithmetic requires a complete array type"),
+                span,
+            });
+        }
         let binding = self.mutable_pointer_binding(&pointer)?;
         let previous = if postfix {
             Some(self.pointer_rvalue(pointer.clone())?)
@@ -166,6 +169,15 @@ impl Parser<'_> {
         }) {
             return Err(ParseError {
                 message: String::from("CUDA pointers support only += and -= compound assignment"),
+                span: pointer.span,
+            });
+        }
+        if operator.is_some()
+            && self
+                .is_incomplete_array(self.function.pointers.expressions[pointer.expression].pointee)
+        {
+            return Err(ParseError {
+                message: String::from("pointer arithmetic requires a complete array type"),
                 span: pointer.span,
             });
         }

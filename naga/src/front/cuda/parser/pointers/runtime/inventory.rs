@@ -174,7 +174,7 @@ impl Inventory<'_> {
                 .families
                 .get(family as usize)
                 .ok_or_else(|| runtime_error(span))?;
-            if family.pointee != cell.pointee
+            if !parser.pointer_pointee_compatible(family.pointee, cell.pointee)
                 || (!cell.qualifiers.is_const && !mutable_source_root(parser, family.root))
             {
                 return Err(runtime_error(span));
@@ -258,7 +258,7 @@ impl Inventory<'_> {
             }
             OriginKind::Array
         } else {
-            if ty != pointee {
+            if !parser.pointer_pointee_compatible(ty, pointee) {
                 return Err(runtime_error(span));
             }
             if last_parent.is_some_and(|parent| {
@@ -270,6 +270,7 @@ impl Inventory<'_> {
                 OriginKind::Object
             }
         };
+        let pointee = if is_array { pointee } else { ty };
         for (index, family) in self.families.iter().enumerate() {
             parser
                 .parameter_expansion_budget
@@ -430,6 +431,9 @@ impl Inventory<'_> {
                 self.clone_set(parser, values, span)
             }
             PointerExpressionKind::Offset { base, .. } => {
+                self.expression(parser, base, depth + 1, span)
+            }
+            PointerExpressionKind::ArrayView { base } => {
                 self.expression(parser, base, depth + 1, span)
             }
             PointerExpressionKind::Select { accept, reject, .. } => {

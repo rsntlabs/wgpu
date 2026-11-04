@@ -279,7 +279,7 @@ impl Parser<'_> {
             pointee_qualifiers,
         } = target.ty
         {
-            let target = self.pointer_type(pointee, span);
+            let target = self.pointer_type(pointee, span)?;
             let pointer = self.cast_pointer(value, &target, pointee_qualifiers, span)?;
             return self
                 .boxed_pointer_value(pointer)

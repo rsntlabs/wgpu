@@ -7,11 +7,7 @@ impl Parser<'_> {
         qualifiers: Qualifiers,
         span: Span,
     ) -> Result<PointerValue, ParseError> {
-        let TypeInner::Pointer {
-            base,
-            space: AddressSpace::Function,
-        } = *target.inner_with(&self.module.types)
-        else {
+        let Some(base) = self.source_pointer_pointee(target) else {
             return Err(ParseError {
                 message: String::from("expected a CUDA source pointer type"),
                 span,

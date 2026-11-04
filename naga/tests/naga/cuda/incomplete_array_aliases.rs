@@ -489,8 +489,12 @@ fn cuda_incomplete_array_aliases_keep_unknown_bound_pointer_and_array_value_boun
         "using Values = int[]; __global__ void kernel() { Values *pointer; }",
         "using Values = int[]; __global__ void kernel(Values *input) {}",
         "using Values = int[]; __device__ void helper(Values *input) {} __global__ void kernel() {}",
-        "using Values = int[]; __global__ void kernel(int *input) { auto pointer = (Values *)input; }",
         "using Values = int[]; __global__ void kernel() { auto pointer = static_cast<Values *>(nullptr); }",
+    ] {
+        roundtrip(source, naga::valid::Capabilities::empty());
+    }
+    for source in [
+        "using Values = int[]; __global__ void kernel(int *input) { auto pointer = (Values *)input; }",
         "using Values = int[]; __global__ void kernel() { Values values{1}; Values &view = values; }",
         "using Values = int[]; __global__ void kernel() { Values{1, 2}; }",
         "using Values = int[]; __device__ Values result() {} __global__ void kernel() {}",

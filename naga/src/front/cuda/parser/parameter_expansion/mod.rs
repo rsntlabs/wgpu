@@ -131,12 +131,13 @@ impl Parser<'_> {
             let parameters = core::mem::take(&mut self.function.parameters);
             let function = core::mem::take(&mut self.function.ir);
             let state = self.function.take_parameter_state();
-            self.validate_pointer_state(&state, &function, span)?;
+            self.validate_pointer_state_with_parameters(&state, &function, &parameters, span)?;
             if !templates[handle.index()] && state.pointers.needs_materialization() {
                 self.materialize_pointer_function(function, state, parameters, span)?;
                 let function = core::mem::take(&mut self.function.ir);
+                let parameters = core::mem::take(&mut self.function.parameters);
                 let state = self.function.take_parameter_state();
-                self.validate_pointer_state(&state, &function, span)?;
+                self.validate_pointer_state_with_parameters(&state, &function, &parameters, span)?;
                 self.check_no_live_pointer_accesses(&function, &state, span)?;
                 self.module.functions[handle] = function;
             } else {
@@ -248,11 +249,13 @@ impl Parser<'_> {
         self.parameter_expansion_budget
             .charge_slice::<MappedExpression>(source.arguments.len(), span)?;
         let mut arguments = Vec::with_capacity(source.arguments.len());
-        for (index, argument) in source.arguments.iter().enumerate() {
+        for index in 0..source.arguments.len() {
             let parameter = self.function.parameters.get(index).copied();
             let mapped = match parameter.map(SourceParameter::mode) {
                 Some(ParameterMode::Pointer { qualifiers }) => {
-                    let ty = TypeResolution::Handle(argument.ty);
+                    let ty = TypeResolution::Handle(
+                        parameter.and_then(SourceParameter::shader_type).unwrap(),
+                    );
                     let pointer = self.parameter_pointer(index as u32, &ty, qualifiers, span)?;
                     MappedExpression::Pointer(self.boxed_pointer_value(pointer)?)
                 }

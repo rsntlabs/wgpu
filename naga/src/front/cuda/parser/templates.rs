@@ -1136,13 +1136,17 @@ impl<'a> Parser<'a> {
             result_qualifiers,
         } = self.resolved_template_signature(template, &key.arguments, span)?;
         let declaration = &self.templates.declarations[template];
+        let kind = declaration.header.kind;
+        let has_host = declaration.header.has_host;
+        let is_static = declaration.header.is_static;
+        let inlining = declaration.header.inlining;
         self.parameter_expansion_budget
             .charge_slice::<Instance>(1, span)?;
         self.parameter_expansion_budget
             .charge_slice::<TemplateValue>(key.arguments.len(), span)?;
         self.parameter_expansion_budget
             .charge_map_entry::<InstanceKey, usize>(1, span)?;
-        let target = if declaration.header.kind == FunctionKind::Device {
+        let target = if kind == FunctionKind::Device {
             self.parameter_expansion_budget
                 .charge_slice::<Function>(1, span)?;
             self.parameter_expansion_budget
@@ -1154,20 +1158,7 @@ impl<'a> Parser<'a> {
             let mut arguments = Vec::with_capacity(signature.len());
             for &parameter in &signature {
                 if let SourceParameter::Shader { ty, mode } = parameter {
-                    let ty = if matches!(mode, ParameterMode::Reference { .. }) {
-                        self.module.types.insert(
-                            Type {
-                                name: None,
-                                inner: TypeInner::Pointer {
-                                    base: ty,
-                                    space: AddressSpace::Function,
-                                },
-                            },
-                            span,
-                        )
-                    } else {
-                        ty
-                    };
+                    let ty = self.physical_parameter_type(ty, mode, span)?;
                     arguments.push(FunctionArgument {
                         name: None,
                         ty,
@@ -1190,9 +1181,9 @@ impl<'a> Parser<'a> {
                     parameters: signature,
                     source_result,
                     result_qualifiers,
-                    has_host: declaration.header.has_host,
-                    is_static: declaration.header.is_static,
-                    inlining: declaration.header.inlining,
+                    has_host,
+                    is_static,
+                    inlining,
                     is_defined: false,
                     calls: Vec::new(),
                 },

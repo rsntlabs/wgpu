@@ -44,6 +44,7 @@ mod helpers;
 mod hex_float_literals;
 mod immutable_pointers;
 mod incomplete_array_aliases;
+mod incomplete_array_pointers;
 mod inferred_arrays;
 mod inline;
 mod integer16;

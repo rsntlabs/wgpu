@@ -273,9 +273,19 @@ impl Parser<'_> {
         for &handle in order {
             if let Some(state) = self.parameter_states.remove(&handle) {
                 let function = core::mem::take(&mut self.module.functions[handle]);
-                self.validate_pointer_state(
+                let parameters = self
+                    .function_declarations
+                    .get(&handle)
+                    .map(|declaration| &declaration.parameters);
+                self.parameter_expansion_budget
+                    .charge_slice::<SourceParameter>(parameters.map_or(0, Vec::len), span)?;
+                self.parameter_expansion_budget
+                    .charge_work(parameters.map_or(0, Vec::len), span)?;
+                let parameters = parameters.cloned().unwrap_or_default();
+                self.validate_pointer_state_with_parameters(
                     &state,
                     &function,
+                    &parameters,
                     self.module.functions.get_span(handle),
                 )?;
                 self.module.functions[handle] = function;

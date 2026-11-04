@@ -362,7 +362,7 @@ impl<'a> Parser<'a> {
             TypeSpecifier::Structure(handle) | TypeSpecifier::Array(handle) => {
                 return Ok(TypeResolution::Handle(handle));
             }
-            TypeSpecifier::Pointer { pointee, .. } => return Ok(self.pointer_type(pointee, span)),
+            TypeSpecifier::Pointer { pointee, .. } => return self.pointer_type(pointee, span),
             TypeSpecifier::Vector {
                 component_count,
                 scalar,
@@ -674,12 +674,6 @@ impl<'a> Parser<'a> {
         let Some(pointer_qualifiers) = pointer_declarator(&mut self.lexer, ty.ty)? else {
             return Ok(ty);
         };
-        if matches!(ty.ty, TypeSpecifier::Array(array) if self.is_incomplete_array(array)) {
-            return Err(ParseError {
-                message: String::from("pointers to incomplete arrays are unsupported"),
-                span,
-            });
-        }
         let resolution = self.lower_type(ty.ty, span)?;
         let pointee = self.type_handle(&resolution, span);
         Ok(QualifiedType {
@@ -732,7 +726,9 @@ impl<'a> Parser<'a> {
         if global {
             self.check_dynamic_shared_linkage(name, span)?;
         }
-        if matches!(ty.ty, TypeSpecifier::Array(_)) {
+        if matches!(ty.ty, TypeSpecifier::Array(_))
+            || matches!(ty.ty, TypeSpecifier::Pointer { pointee, .. } if self.is_incomplete_array(pointee))
+        {
             self.activate_parameter_expansion(span)?;
             self.prepare_parameter_bindings(span)?;
             self.parameter_expansion_budget.charge_nodes(1, span)?;
