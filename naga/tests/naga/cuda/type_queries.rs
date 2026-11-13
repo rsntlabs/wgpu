@@ -424,7 +424,6 @@ fn cuda_type_queries_reject_invalid_types_syntax_and_expression_operands() {
         "alignof(int, float)",
         "sizeof int",
         "alignof int",
-        "sizeof(1)",
         "alignof(1)",
         "sizeof(++value)",
         "sizeof(values[0])",
@@ -999,4 +998,67 @@ fn cuda_sizeof_grouping_remains_constant_and_stops_before_binary_operators() {
         template __global__ void kernel<Record>(unsigned long *);",
         &[100, 100],
     );
+}
+
+#[test]
+fn cuda_sizeof_literals_uses_existing_source_scalar_types() {
+    for (literal, size) in [
+        ("0", 4),
+        ("1u", 4),
+        ("2147483648", 8),
+        ("0xffffffff", 4),
+        ("1L", 8),
+        ("1ul", 8),
+        ("1LL", 8),
+        ("0xffffffffffffffffULL", 8),
+        ("1.0f", 4),
+        ("0x1.8p+2f", 4),
+        ("1'000", 4),
+        ("true", 1),
+        ("false", 1),
+        ("nullptr", 8),
+    ] {
+        assert_query_results(
+            &format!(
+                "__global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof({literal});
+                output[1] = sizeof {literal};
+                output[2] = sizeof((({literal})));
+            }}"
+            ),
+            &[size, size, size],
+        );
+    }
+}
+
+#[test]
+fn cuda_sizeof_literals_supply_constants_without_evaluating_values() {
+    assert_query_results(
+        "constexpr size_t Count = sizeof(true) + sizeof(nullptr);
+        template<class Value> __global__ void kernel(unsigned long *output) {
+            output[0] = sizeof(Value[sizeof(1LL)]);
+            output[1] = sizeof(int[Count]);
+        }
+        template __global__ void kernel<short>(unsigned long *);",
+        &[16, 36],
+    );
+}
+
+#[test]
+fn cuda_sizeof_literals_rejects_unsupported_literal_forms_and_invalid_uses() {
+    for operand in [
+        "1.0",
+        "1.0L",
+        "1e100f",
+        "18446744073709551616u",
+        "true.x",
+        "nullptr->x",
+        "*nullptr",
+        "*1",
+        "1 + 1",
+    ] {
+        rejected(&format!(
+            "__global__ void kernel(unsigned long *output) {{ output[0] = sizeof({operand}); }}"
+        ));
+    }
 }

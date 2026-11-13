@@ -305,3 +305,39 @@ fn cuda_sizeof_grouping_cli_preserves_precedence_without_loads() {
         .iter()
         .all(|(_, global)| global.memory_decorations.is_empty()));
 }
+
+#[test]
+fn cuda_sizeof_literals_cli_discards_unevaluated_wide_types_after_compaction() {
+    let files = TestFiles::new(
+        "cu",
+        "__global__ void kernel(unsigned *output) {
+            output[0] = unsigned(sizeof(1LL));
+            output[1] = unsigned(sizeof true);
+            output[2] = unsigned(sizeof((nullptr)));
+            output[3] = unsigned(sizeof(0x1.8p+2f));
+        }",
+    );
+    let result = files.translate(&["--compact"]);
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let module = files.read_module();
+    assert!(module
+        .types
+        .iter()
+        .all(|(_, ty)| ty.inner.scalar().is_none_or(|scalar| scalar.width <= 4)));
+    let function = &module.entry_points[0].function;
+    let mut values = Vec::new();
+    naga::proc::any_statement(&function.body, &mut |statement| {
+        if let naga::Statement::Store { value, .. } = *statement {
+            values.push(function.expressions[value].clone());
+        }
+        false
+    });
+    assert_eq!(
+        values,
+        [8, 1, 8, 4].map(|value| naga::Expression::Literal(naga::Literal::U32(value)))
+    );
+}

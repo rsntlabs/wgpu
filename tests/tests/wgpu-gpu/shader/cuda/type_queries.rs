@@ -91,7 +91,7 @@ fn layouts() -> ShaderTest {
 
 fn constant_types() -> ShaderTest {
     let mut expected = [SENTINEL; 24];
-    expected[4..17].copy_from_slice(&[2, 2, 3, 1, 2, 1, 2, 12, 16, 4, 11, 16, 8]);
+    expected[4..23].copy_from_slice(&[2, 2, 3, 1, 2, 1, 2, 12, 16, 4, 11, 16, 8, 4, 8, 1, 8, 4, 8]);
     query_case(
         "type query constants retain size_t identity through templates, aliases and bounds",
         "constexpr size_t length = sizeof(float4) / sizeof(float);
@@ -117,6 +117,12 @@ fn constant_types() -> ShaderTest {
             output[14] = values[length - 1UL];
             output[15] = unsigned(sizeof(int[sizeof(int)]));
             output[16] = unsigned(alignof(float2[]));
+            output[17] = unsigned(sizeof(1));
+            output[18] = unsigned(sizeof 1LL);
+            output[19] = unsigned(sizeof((true)));
+            output[20] = unsigned(sizeof(nullptr));
+            output[21] = unsigned(sizeof(0x1.8p+2f));
+            output[22] = unsigned(sizeof(0xffffffffffffffffULL));
         }",
         [1, 1, 1],
         &expected,

@@ -331,8 +331,11 @@ member access and dereferences, as in `sizeof((*pointer).matrix)` and
 `sizeof *((record).matrix)`. Member access after a closing parenthesis still
 belongs to the unevaluated operand, so `sizeof (record).matrix` queries the
 matrix field. Grouping and unary nesting share the expression nesting limit.
-Other expression operands, including indexing, calls, casts, and
-updates, remain unsupported.
+Numeric, Boolean, and `nullptr` literals are also accepted, including grouped
+and unparenthesized forms. Numeric literals use the same supported suffixes,
+separators, ranges, and source types as evaluated literals; querying them does
+not emit their values. Other expression operands, including arithmetic unary
+operators, indexing, calls, casts, and updates, remain unsupported.
 
 Vector elements support whole-value copies and scalar field access, including
 assignments and updates to writable fields. Vector parameters require pointers.

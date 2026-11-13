@@ -53,4 +53,8 @@ struct type_7 {
     output[static_cast<uint>(12)] = static_cast<uint>(24uL);
     output[static_cast<uint>(13)] = static_cast<uint>(12uL);
     output[static_cast<uint>(14)] = static_cast<uint>(12uL);
+    output[static_cast<uint>(15)] = static_cast<uint>(8uL);
+    output[static_cast<uint>(16)] = static_cast<uint>(1uL);
+    output[static_cast<uint>(17)] = static_cast<uint>(8uL);
+    output[static_cast<uint>(18)] = static_cast<uint>(4uL);
 }

@@ -14,7 +14,10 @@ impl Parser<'_> {
         self.prepare_parameter_bindings(span)?;
         if name == "sizeof" {
             let expression_operand = match self.lexer.peek()?.0 {
-                Token::Operation('*') | Token::Paren('(') => true,
+                Token::Operation('*')
+                | Token::Paren('(')
+                | Token::Number(_)
+                | Token::Word("true" | "false" | "nullptr") => true,
                 Token::Word(operand) => self.lookup_symbol(operand).is_some_and(|symbol| {
                     !matches!(
                         symbol,
@@ -146,6 +149,19 @@ impl Parser<'_> {
                 let closing = self.lexer.expect_span(Token::Paren(')'))?;
                 (operand, start.until(&closing))
             }
+            Token::Number(text) => {
+                let number = number::parse(text).ok_or_else(|| ParseError {
+                    message: String::from("unsupported or out-of-range numeric literal"),
+                    span: start,
+                })?;
+                let ty = self.source_scalar_resolution(number.scalar, start)?;
+                (SizeofOperand::Object(ty), start)
+            }
+            Token::Word("true" | "false") => (
+                SizeofOperand::Object(scalar_resolution(Scalar::BOOL)),
+                start,
+            ),
+            Token::Word("nullptr") => (SizeofOperand::NullPointer, start),
             Token::Word(name) => {
                 let symbol = self.lookup_symbol(name).ok_or_else(|| ParseError {
                     message: String::from("sizeof requires a supported named object"),
