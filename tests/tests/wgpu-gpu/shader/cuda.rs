@@ -102,6 +102,7 @@ mod single_component_vectors;
 mod specifiers;
 mod sqrt;
 mod sqrtf;
+mod static_assertions;
 mod structures;
 mod switches;
 mod thread_block;
@@ -228,6 +229,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_SPECIFIERS,
         CUDA_SQRT,
         CUDA_SQRTF,
+        CUDA_STATIC_ASSERTIONS,
         CUDA_STRUCTURES,
         CUDA_SWITCHES,
         CUDA_THREAD_BLOCK,
@@ -789,6 +791,10 @@ static CUDA_LONG_TYPES: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_LONG_TYPES_STORAGE: GpuTestConfiguration =
     configuration_with_features(long_types::storage_cases, wgpu::Features::SHADER_INT64);
+
+#[apply(gpu_test!)]
+static CUDA_STATIC_ASSERTIONS: GpuTestConfiguration =
+    configuration_with_features(static_assertions::cases, wgpu::Features::SHADER_INT64);
 
 #[apply(gpu_test!)]
 static CUDA_TYPE_QUERIES: GpuTestConfiguration =

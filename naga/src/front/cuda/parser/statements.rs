@@ -67,6 +67,10 @@ impl<'a> Parser<'a> {
             self.push_statement(Statement::Block(body), start);
             return Ok(terminated);
         }
+        if self.lexer.peek()?.0 == Token::Word("static_assert") {
+            self.static_assert_declaration()?;
+            return Ok(false);
+        }
         if self.take_ident("if")? {
             self.lexer.expect_span(Token::Paren('('))?;
             let value = self.comma_expression()?;

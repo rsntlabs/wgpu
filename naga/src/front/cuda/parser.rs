@@ -410,7 +410,9 @@ impl<'a> Parser<'a> {
 
     pub fn parse(mut self) -> Result<Module, ParseError> {
         while self.lexer.peek()?.0 != Token::End {
-            if self.lexer.peek()?.0 == Token::Word("template") {
+            if self.lexer.peek()?.0 == Token::Word("static_assert") {
+                self.static_assert_declaration()?;
+            } else if self.lexer.peek()?.0 == Token::Word("template") {
                 self.template_declaration()?;
             } else if self.starts_constant_memory_declaration()? {
                 self.constant_memory_declaration()?;

@@ -1,6 +1,61 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    pub(super) fn static_assert_declaration(&mut self) -> Result<(), ParseError> {
+        let span = self.lexer.expect_span(Token::Word("static_assert"))?;
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        self.lexer.expect_span(Token::Paren('('))?;
+        let (condition, _) = self.capture_block(|parser| {
+            let value = parser.conditional_expression()?;
+            parser.rvalue(value)
+        })?;
+        let literal = Self::required_constant(&condition)?;
+        let Some(Literal::Bool(satisfied)) = constant_evaluation::convert(literal, Scalar::BOOL)
+        else {
+            return Err(ParseError {
+                message: String::from(
+                    "static_assert requires a supported scalar constant expression",
+                ),
+                span: condition.span,
+            });
+        };
+        let mut message = String::new();
+        if self.lexer.next_if(Token::Separator(','))? {
+            loop {
+                let (token, span) = self.lexer.next()?;
+                let Token::String(part) = token else {
+                    return Err(ParseError {
+                        message: String::from(
+                            "static_assert message must be a plain string literal",
+                        ),
+                        span,
+                    });
+                };
+                self.parameter_expansion_budget.charge_work(1, span)?;
+                self.parameter_expansion_budget
+                    .charge_bytes(part.len(), span)?;
+                message.push_str(part);
+                if !matches!(self.lexer.peek()?.0, Token::String(_)) {
+                    break;
+                }
+            }
+        }
+        self.lexer.expect_span(Token::Paren(')'))?;
+        self.lexer.expect_span(Token::Separator(';'))?;
+        if !satisfied {
+            return Err(ParseError {
+                message: if message.is_empty() {
+                    String::from("static assertion failed")
+                } else {
+                    format!("static assertion failed: {message}")
+                },
+                span: condition.span,
+            });
+        }
+        Ok(())
+    }
+
     pub(super) fn starts_constexpr_declaration(&mut self) -> Result<bool, ParseError> {
         let mut lexer = self.lexer.clone();
         loop {

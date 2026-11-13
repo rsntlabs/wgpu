@@ -124,6 +124,32 @@ pub(super) fn limit_error(span: Span) -> ParseError {
 mod tests {
     use super::*;
 
+    #[test]
+    fn static_assertions_activate_resource_accounting_for_simple_conditions() {
+        for exhaust_bytes in [false, true] {
+            let source = "static_assert(true, \"first\"); static_assert(true, \"second\");";
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            parser.static_assert_declaration().unwrap();
+            let span = parser.lexer.peek().unwrap().1;
+            if exhaust_bytes {
+                let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                parser
+                    .parameter_expansion_budget
+                    .charge_bytes(remaining, span)
+                    .unwrap();
+            } else {
+                let remaining = WORK_LIMIT - parser.parameter_expansion_budget.work;
+                parser
+                    .parameter_expansion_budget
+                    .charge_work(remaining, span)
+                    .unwrap();
+            }
+            let error = parser.static_assert_declaration().unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+        }
+    }
+
     fn aggregate_initializer_checks_node_budget(parenthesized: bool) {
         let fields = (0..16)
             .map(|index| format!("int field_{index};"))

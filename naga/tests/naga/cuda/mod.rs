@@ -102,6 +102,7 @@ mod single_component_vectors;
 mod specifiers;
 mod sqrt;
 mod sqrtf;
+mod static_assertions;
 mod streaming;
 mod structures;
 mod switches;
