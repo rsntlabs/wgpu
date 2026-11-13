@@ -169,3 +169,36 @@ fn cuda_type_queries_cli_reports_invalid_queries_without_creating_output() {
         assert!(!files.output.exists(), "{query}");
     }
 }
+
+#[test]
+fn cuda_sizeof_named_objects_cli_compacts_unevaluated_array_queries() {
+    let files = TestFiles::new(
+        "cu",
+        "__global__ void kernel(unsigned *output, volatile unsigned *input) {
+            int values[2][3];
+            volatile unsigned &reference = input[0];
+            output[0] = unsigned(sizeof(values));
+            output[1] = unsigned(sizeof reference);
+        }",
+    );
+    let result = files.translate(&["--compact"]);
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let module = files.read_module();
+    let function = &module.entry_points[0].function;
+    assert!(function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+    assert!(module
+        .types
+        .iter()
+        .all(|(_, ty)| ty.inner.scalar().is_none_or(|scalar| scalar.width <= 4)));
+}

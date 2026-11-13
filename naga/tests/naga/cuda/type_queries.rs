@@ -426,7 +426,6 @@ fn cuda_type_queries_reject_invalid_types_syntax_and_expression_operands() {
         "alignof int",
         "sizeof(1)",
         "alignof(1)",
-        "sizeof(value)",
         "sizeof(++value)",
         "sizeof(values[0])",
         "sizeof(sizeof(int))",
@@ -461,4 +460,201 @@ fn cuda_type_queries_bound_nested_queries_and_pointer_depth() {
     rejected(&format!(
         "__global__ void kernel(unsigned long *output) {{ output[0] = sizeof(int{pointers}); }}"
     ));
+}
+
+#[test]
+fn cuda_sizeof_named_objects_preserves_arrays_references_and_pointer_sizes() {
+    assert_query_results(
+        "struct Record { float3 vector; long tag; };
+        __global__ void kernel(unsigned long *output, unsigned parameter) {
+            short scalar;
+            float3 vector;
+            Record record;
+            int matrix[2][3];
+            Record &reference = record;
+            int *pointer;
+            auto null_value = nullptr;
+            output[0] = sizeof(scalar);
+            output[1] = sizeof(vector);
+            output[2] = sizeof(record);
+            output[3] = sizeof(matrix);
+            output[4] = sizeof(reference);
+            output[5] = sizeof(pointer);
+            output[6] = sizeof(output);
+            output[7] = sizeof(null_value);
+            output[8] = sizeof(parameter);
+        }",
+        &[2, 12, 24, 24, 24, 8, 8, 8, 4],
+    );
+}
+
+#[test]
+fn cuda_sizeof_named_objects_is_unevaluated_and_accepts_unparenthesized_names() {
+    let module = roundtrip(
+        "__global__ void kernel(unsigned long *output, volatile unsigned *input) {
+            volatile unsigned &reference = input[0];
+            unsigned uninitialized;
+            output[0] = sizeof reference;
+            output[1] = sizeof(uninitialized);
+            output[2] = sizeof input + 1UL;
+        }",
+    );
+    let function = &module.entry_points[0].function;
+    assert!(function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+    assert_query_results(
+        "__global__ void kernel(unsigned long *output) {
+            int values[3];
+            output[0] = sizeof values;
+            constexpr size_t Doubled = sizeof values * 2UL;
+            output[1] = sizeof(int[Doubled]);
+        }",
+        &[12, 96],
+    );
+}
+
+#[test]
+fn cuda_sizeof_named_objects_respects_shadowing_and_supplies_template_constants() {
+    assert_query_results(
+        "constexpr unsigned Global = 3u;
+        template<class Value> __global__ void kernel(unsigned long *output) {
+            Value value;
+            constexpr size_t Bytes = sizeof(value);
+            int array[sizeof(value)];
+            output[0] = sizeof(Global);
+            output[1] = sizeof(Bytes);
+            output[2] = sizeof(array);
+            using Name = int;
+            { short Name; output[3] = sizeof(Name); }
+            output[4] = sizeof(Name);
+        }
+        template __global__ void kernel<short>(unsigned long *);",
+        &[4, 8, 8, 2, 4],
+    );
+    let module = roundtrip(
+        "template<size_t Count> __device__ size_t bytes() { return sizeof(Count); }
+        __global__ void kernel(unsigned long *output) {
+            int array[3];
+            output[0] = bytes<sizeof(array)>();
+        }",
+    );
+    assert_eq!(module.functions.len(), 1);
+    let (_, function) = module.functions.iter().next().unwrap();
+    assert!(function
+        .expressions
+        .iter()
+        .any(|(_, expression)| *expression == naga::Expression::Literal(naga::Literal::U64(8))));
+}
+
+#[test]
+fn cuda_sizeof_named_shared_and_constant_memory_keeps_source_layouts() {
+    assert_query_results(
+        "__constant__ float3 coefficients[2];
+        constexpr size_t Bytes = sizeof(coefficients);
+        __global__ void kernel(unsigned long *output) {
+            __shared__ short shared_values[3];
+            output[0] = sizeof(coefficients);
+            output[1] = sizeof(shared_values);
+            output[2] = sizeof(int[Bytes]);
+        }",
+        &[24, 6, 96],
+    );
+    for bytes in [0, 16, 128] {
+        let error = naga::front::cuda::parse_str(
+            "extern __shared__ unsigned dynamic[];
+            __global__ void kernel(unsigned long *output) { output[0] = sizeof(dynamic); }",
+            &Options {
+                dynamic_shared_memory_size: bytes,
+                ..Options::default()
+            },
+        )
+        .unwrap_err();
+        assert!(error.message.contains("complete"), "{error}");
+    }
+}
+
+#[test]
+fn cuda_sizeof_named_objects_rejects_nonobjects_and_unsupported_operands() {
+    for operand in [
+        "missing",
+        "helper",
+        "group",
+        "value++",
+        "value + 1",
+        "*pointer",
+        "value, value",
+    ] {
+        rejected(&format!(
+            "__device__ int helper() {{ return 1; }}
+            __global__ void kernel(unsigned long *output) {{
+                unsigned value = 0; int *pointer;
+                auto group = cooperative_groups::this_thread_block();
+                output[0] = sizeof({operand});
+            }}"
+        ));
+    }
+    for expression in [
+        "alignof(value)",
+        "sizeof value++",
+        "sizeof pointer[0]",
+        "sizeof(value)++",
+    ] {
+        rejected(&format!(
+            "__global__ void kernel(unsigned long *output) {{
+                unsigned value = 0; int *pointer;
+                output[0] = {expression};
+            }}"
+        ));
+    }
+    rejected("__global__ void kernel() { auto value = sizeof(value); }");
+}
+
+#[test]
+fn cuda_sizeof_named_objects_rejects_incomplete_inferred_array_during_initialization() {
+    assert_query_results(
+        "__global__ void kernel(unsigned long *output) {
+            int fixed[2] = { int(sizeof(fixed)), 0 };
+            int scalar = int(sizeof scalar);
+            output[0] = sizeof(fixed);
+            output[1] = sizeof(scalar);
+        }",
+        &[8, 4],
+    );
+    for declaration in [
+        "int values[] = { int(sizeof(values)) };",
+        "using Incomplete = int[]; Incomplete values = { int(sizeof values) };",
+    ] {
+        let error = rejected(&format!("__global__ void kernel() {{ {declaration} }}"));
+        assert!(error.message.contains("complete"), "{error}");
+    }
+}
+
+#[test]
+fn cuda_sizeof_named_objects_uses_adjusted_array_parameter_type() {
+    let module = roundtrip(
+        "__device__ size_t bytes(int values[3]) { return sizeof(values); }
+        __global__ void kernel(unsigned long *output) {
+            int array[3];
+            output[0] = bytes(array);
+        }",
+    );
+    let function = &module.entry_points[0].function;
+    let mut values = Vec::new();
+    naga::proc::any_statement(&function.body, &mut |statement| {
+        if let naga::Statement::Store { value, .. } = *statement {
+            if let naga::Expression::Literal(naga::Literal::U64(value)) =
+                function.expressions[value]
+            {
+                values.push(value);
+            }
+        }
+        false
+    });
+    assert_eq!(values, [8]);
 }

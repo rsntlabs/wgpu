@@ -1,0 +1,63 @@
+; SPIR-V
+; Version: 1.3
+; Generator: rspirv
+; Bound: 40
+OpCapability Shader
+OpCapability Int64
+%1 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %13 "object_sizes"
+OpExecutionMode %13 LocalSize 64 1 1
+OpDecorate %4 ArrayStride 4
+OpMemberDecorate %6 0 Offset 0
+OpMemberDecorate %6 1 Offset 4
+OpMemberDecorate %6 2 Offset 8
+OpDecorate %7 ArrayStride 12
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %10 Block
+OpMemberDecorate %10 0 Offset 0
+%2 = OpTypeVoid
+%3 = OpTypeInt 32 0
+%4 = OpTypeRuntimeArray %3
+%5 = OpTypeFloat 32
+%6 = OpTypeStruct %5 %5 %5
+%8 = OpConstant  %3  2
+%7 = OpTypeArray %6 %8
+%10 = OpTypeStruct %4
+%11 = OpTypePointer StorageBuffer %10
+%9 = OpVariable  %11  StorageBuffer
+%14 = OpTypeFunction %2
+%15 = OpTypePointer StorageBuffer %4
+%16 = OpConstant  %3  0
+%18 = OpTypeInt 64 0
+%19 = OpConstant  %18  24
+%20 = OpTypeInt 32 1
+%21 = OpConstant  %20  0
+%22 = OpConstant  %18  12
+%23 = OpConstant  %20  1
+%24 = OpConstant  %18  8
+%25 = OpConstant  %20  2
+%27 = OpTypePointer Function %7
+%28 = OpConstantNull  %7
+%32 = OpTypePointer StorageBuffer %3
+%13 = OpFunction  %2  None %14
+%12 = OpLabel
+%26 = OpVariable  %27  Function %28
+%17 = OpAccessChain  %15  %9 %16
+OpBranch %29
+%29 = OpLabel
+%30 = OpUConvert  %3  %19
+%31 = OpBitcast  %3  %21
+%33 = OpAccessChain  %32  %17 %31
+OpStore %33 %30
+%34 = OpUConvert  %3  %22
+%35 = OpBitcast  %3  %23
+%36 = OpAccessChain  %32  %17 %35
+OpStore %36 %34
+%37 = OpUConvert  %3  %24
+%38 = OpBitcast  %3  %25
+%39 = OpAccessChain  %32  %17 %38
+OpStore %39 %37
+OpReturn
+OpFunctionEnd

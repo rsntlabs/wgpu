@@ -21,7 +21,7 @@ fn query_case(name: &str, source: &str, workgroup_size: [u32; 3], expected: &[u3
 }
 
 pub(super) fn cases() -> Vec<ShaderTest> {
-    let mut tests = vec![layouts(), constant_types()];
+    let mut tests = vec![layouts(), constant_types(), named_objects()];
     for byte_count in [0, 1, 3, 4, 7, 8, 255, 256, 257, 320, 323] {
         tests.push(copy_bytes(byte_count));
     }
@@ -178,5 +178,42 @@ fn copy_bytes(byte_count: u64) -> ShaderTest {
         ],
         1,
         [4, 1, 1],
+    )
+}
+
+fn named_objects() -> ShaderTest {
+    let mut expected = [SENTINEL; 16];
+    expected[4..12].copy_from_slice(&[24, 12, 8, 4, 24, 4, 24, 8]);
+    query_case(
+        "sizeof named objects preserves source arrays and references without evaluating them",
+        "struct Record { float3 point; long tag; };
+        template<size_t Count> __device__ unsigned count() { return unsigned(Count); }
+        __device__ size_t adjusted(float3 values[2]) { return sizeof values; }
+        __global__ void kernel(unsigned *output) {
+            float3 values[2];
+            float3 &reference = values[0];
+            unsigned scalar;
+            Record record;
+            output[4] = unsigned(sizeof values);
+            output[5] = unsigned(sizeof(reference));
+            output[6] = unsigned(sizeof(output));
+            output[7] = unsigned(sizeof scalar);
+            output[8] = unsigned(sizeof(record));
+            using Name = long;
+            { int Name; output[9] = unsigned(sizeof(Name)); }
+            output[10] = count<sizeof(values)>();
+            output[11] = unsigned(adjusted(values));
+        }",
+        [1, 1, 1],
+        &expected,
+    )
+    .module_buffers(
+        vec![ShaderBuffer::new(
+            0,
+            wgpu::BufferBindingType::Storage { read_only: false },
+            &[SENTINEL; 16],
+        )],
+        0,
+        [1, 1, 1],
     )
 }

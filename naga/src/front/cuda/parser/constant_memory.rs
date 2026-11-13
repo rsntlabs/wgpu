@@ -276,6 +276,13 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    pub(super) fn constant_memory_type(
+        &self,
+        declaration: ConstantMemoryDeclaration,
+    ) -> Handle<Type> {
+        self.module.global_variables[declaration.global].ty
+    }
+
     pub(super) fn constant_memory_symbol(
         &mut self,
         declaration: ConstantMemoryDeclaration,

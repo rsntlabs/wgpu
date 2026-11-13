@@ -294,7 +294,7 @@ stride. Copies preserve field values; padding bytes are unspecified.
 
 `sizeof(type)` and `alignof(type)` produce integral constant expressions of
 the built-in `size_t` type, preserving `unsigned long` overload and template
-identity. Both operators require a parenthesized type-id. Operands can use
+identity. `alignof` requires a parenthesized type-id. Operands can use
 qualified scalar, vector, `dim3`, completed struct, and array types, including
 aliases and dependent template types. Queries use the CUDA layouts above,
 including packed three-component vectors and struct padding. References use
@@ -310,6 +310,15 @@ array whose element type is complete and returns its element alignment.
 Query constants can supply global and local initializers, array bounds,
 template arguments, and launch bounds. Template instantiation resolves
 dependent operands such as `sizeof(Value)`.
+
+`sizeof(object)` and `sizeof object` also accept a direct, unqualified object
+name. Supported objects include scalar, vector, record, and array variables,
+parameters, references, pointers, and constants, including integral template
+parameters. Arrays retain their complete extent; references use the referred
+object's type. The operand is unevaluated, so querying an uninitialized object
+or a volatile reference emits no read. Dynamic shared arrays remain incomplete
+regardless of the configured launch allocation size. General expression operands,
+including indexing, member access, calls, and updates, remain unsupported.
 
 Vector elements support whole-value copies and scalar field access, including
 assignments and updates to writable fields. Vector parameters require pointers.
