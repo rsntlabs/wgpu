@@ -40,17 +40,17 @@ impl Parser<'_> {
         self.field(value, field, span).map(ExpressionResult::Value)
     }
 
-    pub(super) fn field(
+    pub(super) fn field_type(
         &mut self,
-        value: ExpressionValue,
+        ty: &TypeResolution,
         field: &str,
         field_span: Span,
-    ) -> Result<ExpressionValue, ParseError> {
+    ) -> Result<(u32, TypeResolution), ParseError> {
         let invalid = || ParseError {
             message: format!("unknown or unsupported field `{field}`"),
             span: field_span,
         };
-        let (index, ty) = match *value.shader_type()?.inner_with(&self.module.types) {
+        let (index, ty) = match *ty.inner_with(&self.module.types) {
             TypeInner::Vector { size, scalar } => {
                 let index = match field {
                     "x" => 0,
@@ -65,6 +65,8 @@ impl Parser<'_> {
                 (index, scalar_resolution(scalar))
             }
             TypeInner::Struct { ref members, .. } => {
+                self.parameter_expansion_budget
+                    .charge_work(members.len(), field_span)?;
                 let index = members
                     .iter()
                     .position(|member| member.name.as_deref() == Some(field))
@@ -73,6 +75,16 @@ impl Parser<'_> {
             }
             _ => return Err(invalid()),
         };
+        Ok((index, ty))
+    }
+
+    pub(super) fn field(
+        &mut self,
+        value: ExpressionValue,
+        field: &str,
+        field_span: Span,
+    ) -> Result<ExpressionValue, ParseError> {
+        let (index, ty) = self.field_type(value.shader_type()?, field, field_span)?;
         let span = value.span().until(&field_span);
         match value {
             ExpressionValue::NullPointer(value) => Err(ParseError {

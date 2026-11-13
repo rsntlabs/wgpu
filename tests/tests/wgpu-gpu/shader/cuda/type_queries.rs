@@ -21,7 +21,7 @@ fn query_case(name: &str, source: &str, workgroup_size: [u32; 3], expected: &[u3
 }
 
 pub(super) fn cases() -> Vec<ShaderTest> {
-    let mut tests = vec![layouts(), constant_types(), named_objects()];
+    let mut tests = vec![layouts(), constant_types(), named_objects(), members()];
     for byte_count in [0, 1, 3, 4, 7, 8, 255, 256, 257, 320, 323] {
         tests.push(copy_bytes(byte_count));
     }
@@ -203,6 +203,44 @@ fn named_objects() -> ShaderTest {
             { int Name; output[9] = unsigned(sizeof(Name)); }
             output[10] = count<sizeof(values)>();
             output[11] = unsigned(adjusted(values));
+        }",
+        [1, 1, 1],
+        &expected,
+    )
+    .module_buffers(
+        vec![ShaderBuffer::new(
+            0,
+            wgpu::BufferBindingType::Storage { read_only: false },
+            &[SENTINEL; 16],
+        )],
+        0,
+        [1, 1, 1],
+    )
+}
+
+fn members() -> ShaderTest {
+    let mut expected = [SENTINEL; 16];
+    expected[4..12].copy_from_slice(&[12, 24, 24, 4, 4, 24, 12, 12]);
+    query_case(
+        "sizeof member queries retain source layouts without evaluating null pointers or allocating shared memory",
+        "struct Record { float3 vector; int matrix[2][3]; };
+        extern __shared__ Record dynamic_records[];
+        template<size_t Count> __device__ unsigned count() { return unsigned(Count); }
+        template<class Value> __device__ size_t width(const Value *value) { return sizeof(value->vector); }
+        __global__ void kernel(unsigned *output) {
+            Record record;
+            Record &reference = record;
+            Record *null_record = nullptr;
+            Record *uninitialized;
+            Record records[2];
+            output[4] = unsigned(sizeof(record.vector));
+            output[5] = unsigned(sizeof reference.matrix);
+            output[6] = unsigned(sizeof(null_record->matrix));
+            output[7] = unsigned(sizeof records->vector.z);
+            output[8] = unsigned(sizeof(uninitialized->vector.x));
+            output[9] = count<sizeof(record.matrix)>();
+            output[10] = unsigned(sizeof dynamic_records->vector);
+            output[11] = unsigned(width(null_record));
         }",
         [1, 1, 1],
         &expected,

@@ -316,9 +316,13 @@ name. Supported objects include scalar, vector, record, and array variables,
 parameters, references, pointers, and constants, including integral template
 parameters. Arrays retain their complete extent; references use the referred
 object's type. The operand is unevaluated, so querying an uninitialized object
-or a volatile reference emits no read. Dynamic shared arrays remain incomplete
-regardless of the configured launch allocation size. General expression operands,
-including indexing, member access, calls, and updates, remain unsupported.
+or a volatile reference emits no read. Member chains rooted in these names also
+support `.` and `->`, including nested records, vector components, and complete
+array fields. Pointer operands can be null or uninitialized because they are not
+read. Arrays can decay for `->`; querying an element member of an incomplete
+dynamic shared array does not allocate launch storage. The array itself remains
+incomplete regardless of the configured launch allocation size. Other expression
+operands, including indexing, calls, casts, and updates, remain unsupported.
 
 Vector elements support whole-value copies and scalar field access, including
 assignments and updates to writable fields. Vector parameters require pointers.

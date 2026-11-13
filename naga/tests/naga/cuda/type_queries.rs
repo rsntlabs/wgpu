@@ -658,3 +658,158 @@ fn cuda_sizeof_named_objects_uses_adjusted_array_parameter_type() {
     });
     assert_eq!(values, [8]);
 }
+
+#[test]
+fn cuda_sizeof_members_preserves_nested_fields_arrays_and_source_pointer_types() {
+    assert_query_results(
+        "struct Inner { float3 vector; int matrix[2][3]; };
+        struct Record { Inner nested; long tag; };
+        __global__ void kernel(unsigned long *output, const Record *records) {
+            Record record;
+            Record &reference = record;
+            Record *null_record = nullptr;
+            Record *uninitialized;
+            dim3 dimensions;
+            float4 vector;
+            output[0] = sizeof(record.nested.vector);
+            output[1] = sizeof reference.nested.matrix;
+            output[2] = sizeof(records->tag);
+            output[3] = sizeof null_record->nested.vector.z;
+            output[4] = sizeof(uninitialized->nested.matrix);
+            output[5] = sizeof(dimensions.x);
+            output[6] = sizeof vector.w;
+        }",
+        &[12, 24, 8, 4, 24, 4, 4],
+    );
+}
+
+#[test]
+fn cuda_sizeof_members_is_unevaluated_for_volatile_views_and_array_decay() {
+    let module = roundtrip(
+        "struct Record { float3 vector; int values[3]; };
+        __global__ void kernel(unsigned long *output, volatile Record *input) {
+            volatile Record &reference = input[0];
+            Record records[2];
+            output[0] = sizeof(input->vector);
+            output[1] = sizeof reference.values;
+            output[2] = sizeof(records->values);
+        }",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+    assert_query_results(
+        "struct Record { float3 vector; int values[3]; };
+        __global__ void kernel(unsigned long *output) {
+            Record records[2];
+            output[0] = sizeof(records->vector);
+            output[1] = sizeof(records->values);
+        }",
+        &[12, 12],
+    );
+}
+
+#[test]
+fn cuda_sizeof_members_supports_incomplete_array_arrow_without_launch_storage() {
+    for bytes in [0, 16, 128] {
+        let (module, _) = validate_with_options_and_capabilities(
+            "struct Record { float3 vector; int values[3]; };
+            extern __shared__ Record records[];
+            __global__ void kernel(unsigned long *output) {
+                output[0] = sizeof(records->vector);
+                output[1] = sizeof records->values;
+            }",
+            &Options {
+                dynamic_shared_memory_size: bytes,
+                ..Options::default()
+            },
+            Capabilities::SHADER_INT64,
+        );
+        assert_eq!(module.global_variables.len(), 1);
+        let function = &module.entry_points[0].function;
+        let mut values = Vec::new();
+        naga::proc::any_statement(&function.body, &mut |statement| {
+            if let naga::Statement::Store { value, .. } = *statement {
+                values.push(function.expressions[value].clone());
+            }
+            false
+        });
+        assert_eq!(
+            values,
+            [
+                naga::Expression::Literal(naga::Literal::U64(12)),
+                naga::Expression::Literal(naga::Literal::U64(12))
+            ]
+        );
+    }
+    roundtrip(
+        "struct Record { int value; };
+        __global__ void kernel(unsigned long *output) {
+            Record records[] = {{int(sizeof(records->value))}};
+            output[0] = sizeof(records);
+        }",
+    );
+}
+
+#[test]
+fn cuda_sizeof_members_remains_constant_through_templates_and_constant_memory() {
+    assert_query_results(
+        "struct Record { float3 vector; int matrix[2][3]; };
+        __constant__ Record constant_record;
+        constexpr size_t Count = sizeof(constant_record.vector);
+        template<class Value> __global__ void kernel(unsigned long *output) {
+            Value value;
+            constexpr size_t Bytes = sizeof(value.matrix);
+            output[0] = sizeof(int[Count]);
+            output[1] = sizeof(int[Bytes]);
+            output[2] = sizeof(constant_record.matrix);
+        }
+        template __global__ void kernel<Record>(unsigned long *);",
+        &[48, 96, 24],
+    );
+    roundtrip(
+        "struct Record { float3 vector; };
+        template<class Value> __device__ size_t bytes(const Value *value) { return sizeof(value->vector); }
+        __global__ void kernel(unsigned long *output, const Record *records) {
+            output[0] = bytes(records);
+        }",
+    );
+}
+
+#[test]
+fn cuda_sizeof_members_rejects_invalid_access_and_unsupported_expressions() {
+    for operand in [
+        "pointer.vector",
+        "record->vector",
+        "record.missing",
+        "record.vector.w",
+        "scalar.x",
+        "scalar->x",
+        "null_value->vector",
+        "records.vector",
+        "record.matrix.x",
+        "record.matrix->x",
+        "record.vector.x.y",
+        "record.matrix[0]",
+        "record.vector.x++",
+        "pointer->vector.x + 1",
+        "pointer->vector()",
+        "record.vector.x, scalar",
+    ] {
+        rejected(&format!(
+            "struct Record {{ float3 vector; int matrix[2][3]; }};
+            __global__ void kernel(unsigned long *output) {{
+                Record record; Record *pointer; Record records[2];
+                int scalar; auto null_value = nullptr;
+                output[0] = sizeof({operand});
+            }}"
+        ));
+    }
+    rejected("struct Record { int value; }; __global__ void kernel() { Record record; alignof(record.value); }");
+}

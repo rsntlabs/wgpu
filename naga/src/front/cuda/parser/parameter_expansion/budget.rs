@@ -1185,4 +1185,32 @@ mod tests {
         assert!(error.message.contains("read-only"), "{error}");
         assert!(!parser.parameter_expansion_budget.is_exhausted());
     }
+
+    #[test]
+    fn member_type_lookup_charges_structure_scan_work_before_searching() {
+        for field in ["field_0", "field_15", "missing"] {
+            let fields = (0..16)
+                .map(|index| format!("int field_{index};"))
+                .collect::<String>();
+            let source = format!("struct Record {{ {fields} }}; {field}");
+            let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
+            parser.structure_declaration(true).unwrap();
+            let TypeSpecifier::Structure(ty) = parser.type_name("Record").unwrap().ty else {
+                panic!("expected the declared record type");
+            };
+            let span = parser.lexer.peek().unwrap().1;
+            parser.parameter_expansion_budget = ExpansionBudget::default();
+            parser.parameter_expansion_budget.activate();
+            parser
+                .parameter_expansion_budget
+                .charge_work(WORK_LIMIT - 15, span)
+                .unwrap();
+            let error = parser
+                .field_type(&TypeResolution::Handle(ty), field, span)
+                .unwrap_err();
+            assert!(error.message.contains("limit"), "{error}");
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_eq!(error.span, span);
+        }
+    }
 }

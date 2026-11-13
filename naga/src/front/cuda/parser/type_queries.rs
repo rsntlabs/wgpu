@@ -1,5 +1,11 @@
 use super::*;
 
+enum SizeofOperand {
+    Object(TypeResolution),
+    IncompleteArray(TypeResolution),
+    NullPointer,
+}
+
 impl Parser<'_> {
     pub(super) fn type_query(&mut self, name: &str, span: Span) -> Result<Value, ParseError> {
         let parenthesized = self.lexer.next_if(Token::Paren('('))?;
@@ -16,11 +22,11 @@ impl Parser<'_> {
                     )
                 }) {
                     self.lexer.next()?;
-                    let value = self.named_object_size(symbol, operand_span)?;
+                    let (value, end) = self.named_object_size(symbol, operand_span)?;
                     let end = if parenthesized {
                         self.lexer.expect_span(Token::Paren(')'))?
                     } else {
-                        operand_span
+                        end
                     };
                     return self.type_query_result(value, span.until(&end));
                 }
@@ -112,27 +118,85 @@ impl Parser<'_> {
         self.type_query_layout(name, resolution, span)
     }
 
-    fn named_object_size(&mut self, symbol: Symbol, span: Span) -> Result<u32, ParseError> {
-        let resolution = match symbol {
-            Symbol::Pointer(_) | Symbol::NullPointer(_) => return Ok(8),
+    fn named_object_size(&mut self, symbol: Symbol, span: Span) -> Result<(u32, Span), ParseError> {
+        let mut operand = self.named_sizeof_operand(symbol, span)?;
+        let mut end = span;
+        while matches!(self.lexer.peek()?.0, Token::Separator('.') | Token::Arrow) {
+            let arrow = self.lexer.next()?.0 == Token::Arrow;
+            let (field, field_span) = self.identifier()?;
+            self.parameter_expansion_budget.charge_work(1, field_span)?;
+            let invalid = || ParseError {
+                message: String::from(
+                    "sizeof member access requires a record or vector object, or a pointer with ->",
+                ),
+                span: field_span,
+            };
+            let ty = match operand {
+                SizeofOperand::Object(ty) => {
+                    if arrow {
+                        let pointee = self
+                            .source_pointer_pointee(&ty)
+                            .or_else(|| match *ty.inner_with(&self.module.types) {
+                                TypeInner::Array { base, .. } => Some(base),
+                                _ => None,
+                            })
+                            .ok_or_else(invalid)?;
+                        TypeResolution::Handle(pointee)
+                    } else if self.source_pointer_pointee(&ty).is_some() {
+                        return Err(invalid());
+                    } else {
+                        ty
+                    }
+                }
+                SizeofOperand::IncompleteArray(element) if arrow => element,
+                _ => return Err(invalid()),
+            };
+            let (_, ty) = self.field_type(&ty, field, field_span)?;
+            operand = SizeofOperand::Object(ty);
+            end = field_span;
+        }
+        let value = match operand {
+            SizeofOperand::NullPointer => 8,
+            SizeofOperand::IncompleteArray(_) => {
+                return Err(ParseError {
+                    message: String::from("sizeof requires a complete object type"),
+                    span,
+                });
+            }
+            SizeofOperand::Object(ty) => {
+                if self.source_pointer_pointee(&ty).is_some() {
+                    8
+                } else {
+                    self.type_query_layout("sizeof", ty, span.until(&end))?
+                }
+            }
+        };
+        Ok((value, end))
+    }
+
+    fn named_sizeof_operand(
+        &mut self,
+        symbol: Symbol,
+        span: Span,
+    ) -> Result<SizeofOperand, ParseError> {
+        let ty = match symbol {
+            Symbol::Pointer(pointer) => self.function.pointer_symbols[pointer].ty.clone(),
+            Symbol::NullPointer(_) => return Ok(SizeofOperand::NullPointer),
             Symbol::Variable { ty, .. }
             | Symbol::Reference { ty, .. }
             | Symbol::Constant { ty, .. } => ty,
-            Symbol::Array { pointer, .. } => {
-                let ty = match self.function.ir.expressions[pointer] {
+            Symbol::Array { pointer, ty, .. } => {
+                let array = match self.function.ir.expressions[pointer] {
                     Expression::LocalVariable(local) => {
                         if self.function.pending_array == Some(local) {
-                            return Err(ParseError {
-                                message: String::from("sizeof requires a complete object type"),
-                                span,
-                            });
+                            return Ok(SizeofOperand::IncompleteArray(ty));
                         }
                         self.function.ir.local_variables[local].ty
                     }
                     Expression::GlobalVariable(global) => self.module.global_variables[global].ty,
                     _ => unreachable!(),
                 };
-                TypeResolution::Handle(ty)
+                TypeResolution::Handle(array)
             }
             Symbol::ConstantMemory(declaration) => {
                 TypeResolution::Handle(self.constant_memory_type(declaration))
@@ -140,11 +204,10 @@ impl Parser<'_> {
             Symbol::TemplateParameter { scalar, .. } => {
                 self.source_scalar_resolution(scalar, span)?
             }
-            Symbol::DynamicShared(_) => {
-                return Err(ParseError {
-                    message: String::from("sizeof requires a complete object type"),
-                    span,
-                });
+            Symbol::DynamicShared(declaration) => {
+                return Ok(SizeofOperand::IncompleteArray(TypeResolution::Handle(
+                    self.dynamic_shared_element_type(declaration),
+                )));
             }
             _ => {
                 return Err(ParseError {
@@ -153,10 +216,7 @@ impl Parser<'_> {
                 });
             }
         };
-        if self.source_pointer_pointee(&resolution).is_some() {
-            return Ok(8);
-        }
-        self.type_query_layout("sizeof", resolution, span)
+        Ok(SizeofOperand::Object(ty))
     }
 
     fn type_query_layout(

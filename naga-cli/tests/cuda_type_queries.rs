@@ -202,3 +202,44 @@ fn cuda_sizeof_named_objects_cli_compacts_unevaluated_array_queries() {
         .iter()
         .all(|(_, ty)| ty.inner.scalar().is_none_or(|scalar| scalar.width <= 4)));
 }
+
+#[test]
+fn cuda_sizeof_members_cli_preserves_unevaluated_volatile_views_after_compaction() {
+    let files = TestFiles::new(
+        "cu",
+        "struct Record { float3 vector; int matrix[2][3]; };
+        __global__ void kernel(unsigned *output, volatile Record *input) {
+            output[0] = unsigned(sizeof(input->vector));
+            output[1] = unsigned(sizeof input->matrix);
+            output[2] = unsigned(sizeof(input->vector.z));
+        }",
+    );
+    let result = files.translate(&["--compact"]);
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let module = files.read_module();
+    assert_eq!(module.global_variables.len(), 1);
+    assert_eq!(
+        module.global_variables.iter().next().unwrap().1.binding,
+        Some(naga::ResourceBinding {
+            group: 0,
+            binding: 0
+        })
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+    assert!(module
+        .types
+        .iter()
+        .all(|(_, ty)| ty.inner.scalar().is_none_or(|scalar| scalar.width <= 4)));
+}

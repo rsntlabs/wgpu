@@ -251,6 +251,13 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    pub(super) const fn dynamic_shared_element_type(
+        &self,
+        declaration: DynamicSharedDeclaration,
+    ) -> Handle<Type> {
+        declaration.element
+    }
+
     pub(super) fn dynamic_shared_symbol(
         &mut self,
         name: &str,

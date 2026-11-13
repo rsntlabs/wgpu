@@ -4,14 +4,25 @@ struct float3_ {
     float z;
 };
 
+struct Record_cuda_record_0_ {
+    float3_ vector_;
+    int matrix_[2][3];
+};
+
 RWByteAddressBuffer output : register(u0);
 
 [numthreads(64, 1, 1)]
 void object_sizes()
 {
     float3_ values[2] = (float3_[2])0;
+    Record_cuda_record_0_ record = (Record_cuda_record_0_)0;
+    Record_cuda_record_0_ records[2] = (Record_cuda_record_0_[2])0;
 
     output.Store(uint(int(0))*4, asuint(uint(24uL)));
     output.Store(uint(int(1))*4, asuint(uint(12uL)));
     output.Store(uint(int(2))*4, asuint(uint(8uL)));
+    output.Store(uint(int(3))*4, asuint(uint(12uL)));
+    output.Store(uint(int(4))*4, asuint(uint(24uL)));
+    output.Store(uint(int(5))*4, asuint(uint(4uL)));
+    output.Store(uint(int(6))*4, asuint(uint(4uL)));
 }

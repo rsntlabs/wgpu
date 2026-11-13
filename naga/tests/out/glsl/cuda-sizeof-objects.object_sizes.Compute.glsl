@@ -9,13 +9,23 @@ struct float3_ {
     float y;
     float z;
 };
-layout(std430) buffer type_1_block_0Compute { uint _group_0_binding_0_cs[]; };
+struct Record_cuda_record_0_ {
+    float3_ vector;
+    int matrix[2][3];
+};
+layout(std430) buffer type_5_block_0Compute { uint _group_0_binding_0_cs[]; };
 
 
 void main() {
     float3_ values[2] = float3_[2](float3_(0.0, 0.0, 0.0), float3_(0.0, 0.0, 0.0));
+    Record_cuda_record_0_ record = Record_cuda_record_0_(float3_(0.0, 0.0, 0.0), int[2][3](int[3](0, 0, 0), int[3](0, 0, 0)));
+    Record_cuda_record_0_ records[2] = Record_cuda_record_0_[2](Record_cuda_record_0_(float3_(0.0, 0.0, 0.0), int[2][3](int[3](0, 0, 0), int[3](0, 0, 0))), Record_cuda_record_0_(float3_(0.0, 0.0, 0.0), int[2][3](int[3](0, 0, 0), int[3](0, 0, 0))));
     _group_0_binding_0_cs[uint(0)] = uint(24ul);
     _group_0_binding_0_cs[uint(1)] = uint(12ul);
     _group_0_binding_0_cs[uint(2)] = uint(8ul);
+    _group_0_binding_0_cs[uint(3)] = uint(12ul);
+    _group_0_binding_0_cs[uint(4)] = uint(24ul);
+    _group_0_binding_0_cs[uint(5)] = uint(4ul);
+    _group_0_binding_0_cs[uint(6)] = uint(4ul);
 }
 
