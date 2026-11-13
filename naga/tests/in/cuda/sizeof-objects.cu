@@ -12,4 +12,8 @@ extern "C" __global__ void object_sizes(unsigned *output) {
     output[4] = unsigned(sizeof records->matrix);
     output[5] = unsigned(sizeof(records->vector.z));
     output[6] = unsigned(sizeof values->x);
+    output[7] = unsigned(sizeof *values);
+    output[8] = unsigned(sizeof(*record.matrix));
+    output[9] = unsigned(sizeof(**record.matrix));
+    output[10] = unsigned(sizeof(*records));
 }

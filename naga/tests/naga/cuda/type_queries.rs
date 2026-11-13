@@ -587,7 +587,6 @@ fn cuda_sizeof_named_objects_rejects_nonobjects_and_unsupported_operands() {
         "group",
         "value++",
         "value + 1",
-        "*pointer",
         "value, value",
     ] {
         rejected(&format!(
@@ -812,4 +811,101 @@ fn cuda_sizeof_members_rejects_invalid_access_and_unsupported_expressions() {
         ));
     }
     rejected("struct Record { int value; }; __global__ void kernel() { Record record; alignof(record.value); }");
+}
+
+#[test]
+fn cuda_sizeof_dereference_preserves_pointee_and_array_layouts() {
+    assert_query_results(
+        "struct Record { float3 vector; int matrix[2][3]; };
+        using Row = int[3];
+        __global__ void kernel(unsigned long *output, volatile Record *input) {
+            int *uninitialized;
+            float3 *null_pointer = nullptr;
+            Row *rows;
+            int matrix[2][3];
+            output[0] = sizeof *uninitialized;
+            output[1] = sizeof(*null_pointer);
+            output[2] = sizeof(*rows);
+            output[3] = sizeof(*input);
+            output[4] = sizeof(*matrix);
+            output[5] = sizeof(**matrix);
+            output[6] = sizeof(*input->matrix);
+        }",
+        &[4, 12, 12, 36, 12, 4, 12],
+    );
+}
+
+#[test]
+fn cuda_sizeof_dereference_does_not_read_or_allocate_storage() {
+    let module = roundtrip(
+        "extern __shared__ float3 values[];
+        __global__ void kernel(unsigned long *output, volatile int *input) {
+            constexpr size_t Bytes = sizeof(*values);
+            output[0] = sizeof(int[Bytes]);
+            output[1] = sizeof(*input);
+        }",
+    );
+    assert_eq!(module.global_variables.len(), 2);
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+}
+
+#[test]
+fn cuda_sizeof_dereference_rejects_invalid_operands() {
+    for operand in [
+        "*value",
+        "**pointer",
+        "*null_value",
+        "*pointer++",
+        "*pointer + 1",
+        "*pointer, value",
+    ] {
+        rejected(&format!(
+            "__global__ void kernel(unsigned long *output) {{
+                int value; int *pointer; auto null_value = nullptr;
+                output[0] = sizeof({operand});
+            }}"
+        ));
+    }
+}
+
+#[test]
+fn cuda_sizeof_dereference_checks_incomplete_pointees_and_nesting_limit() {
+    assert_query_results(
+        "using Values = int[];
+        __global__ void kernel(unsigned long *output, Values *view) {
+            output[0] = sizeof(**view);
+        }",
+        &[4],
+    );
+    assert_query_results(
+        "using Grid = int[2][3];
+        __global__ void kernel(unsigned long *output, Grid *view) {
+            output[0] = sizeof(*view);
+            output[1] = sizeof(**view);
+            output[2] = sizeof(***view);
+        }",
+        &[24, 12, 4],
+    );
+    let error = rejected(
+        "using Values = int[];
+        __global__ void kernel(unsigned long *output, Values *view) {
+            output[0] = sizeof(*view);
+        }",
+    );
+    assert!(error.message.contains("complete"), "{error}");
+    let error = rejected(&format!(
+        "__global__ void kernel(unsigned long *output, int *input) {{
+            output[0] = sizeof({}input);
+        }}",
+        "*".repeat(65)
+    ));
+    assert!(error.message.contains("nesting limit"), "{error}");
 }

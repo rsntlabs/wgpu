@@ -12,6 +12,14 @@ impl Parser<'_> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         if name == "sizeof" {
+            let mut dereferences = 0;
+            while self.lexer.next_if(Token::Operation('*'))? {
+                self.parameter_expansion_budget.charge_work(1, span)?;
+                dereferences += 1;
+                if dereferences > 64 {
+                    return self.fail("CUDA pointer nesting limit exceeded");
+                }
+            }
             if let (Token::Word(operand), operand_span) = self.lexer.peek()? {
                 if let Some(symbol) = self.lookup_symbol(operand).filter(|symbol| {
                     !matches!(
@@ -22,7 +30,8 @@ impl Parser<'_> {
                     )
                 }) {
                     self.lexer.next()?;
-                    let (value, end) = self.named_object_size(symbol, operand_span)?;
+                    let (value, end) =
+                        self.named_object_size(symbol, operand_span, dereferences)?;
                     let end = if parenthesized {
                         self.lexer.expect_span(Token::Paren(')'))?
                     } else {
@@ -30,6 +39,9 @@ impl Parser<'_> {
                     };
                     return self.type_query_result(value, span.until(&end));
                 }
+            }
+            if dereferences != 0 {
+                return self.fail("sizeof dereference requires a supported named object");
             }
         }
         if !parenthesized {
@@ -118,7 +130,12 @@ impl Parser<'_> {
         self.type_query_layout(name, resolution, span)
     }
 
-    fn named_object_size(&mut self, symbol: Symbol, span: Span) -> Result<(u32, Span), ParseError> {
+    fn named_object_size(
+        &mut self,
+        symbol: Symbol,
+        span: Span,
+        dereferences: usize,
+    ) -> Result<(u32, Span), ParseError> {
         let mut operand = self.named_sizeof_operand(symbol, span)?;
         let mut end = span;
         while matches!(self.lexer.peek()?.0, Token::Separator('.') | Token::Arrow) {
@@ -154,6 +171,25 @@ impl Parser<'_> {
             let (_, ty) = self.field_type(&ty, field, field_span)?;
             operand = SizeofOperand::Object(ty);
             end = field_span;
+        }
+        // Postfix member access binds more tightly than unary dereference.
+        for _ in 0..dereferences {
+            let element = match operand {
+                SizeofOperand::Object(ref ty) => self
+                    .source_pointer_pointee(ty)
+                    .or_else(|| match *ty.inner_with(&self.module.types) {
+                        TypeInner::Array { base, .. } => Some(base),
+                        _ => None,
+                    })
+                    .map(TypeResolution::Handle),
+                SizeofOperand::IncompleteArray(element) => Some(element),
+                SizeofOperand::NullPointer => None,
+            }
+            .ok_or_else(|| ParseError {
+                message: String::from("sizeof dereference requires a pointer or array operand"),
+                span: span.until(&end),
+            })?;
+            operand = SizeofOperand::Object(element);
         }
         let value = match operand {
             SizeofOperand::NullPointer => 8,

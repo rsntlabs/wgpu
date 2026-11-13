@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support unevaluated CUDA `sizeof` dereferences of named pointers, arrays, and member chains.
 - Support unevaluated CUDA `sizeof` queries on record and vector members through objects, pointers, and arrays.
 - Support CUDA `sizeof` on named objects without reading them, preserving array extents and reference layouts.
 - Support CUDA `sizeof(type)` and `alignof(type)` constants with LP64 pointer layout.

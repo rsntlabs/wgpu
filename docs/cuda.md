@@ -321,8 +321,13 @@ support `.` and `->`, including nested records, vector components, and complete
 array fields. Pointer operands can be null or uninitialized because they are not
 read. Arrays can decay for `->`; querying an element member of an incomplete
 dynamic shared array does not allocate launch storage. The array itself remains
-incomplete regardless of the configured launch allocation size. Other expression
-operands, including indexing, calls, casts, and updates, remain unsupported.
+incomplete regardless of the configured launch allocation size. Leading unary
+`*` operators also accept these named operands and member chains, as in
+`sizeof(*pointer)`, `sizeof *array`, and `sizeof(**record.matrix)`. They use
+pointee and array element types without reading pointers; multidimensional array
+elements retain their full extent. Postfix member access binds before these
+operators. Other expression operands, including indexing, calls, casts, and
+updates, remain unsupported.
 
 Vector elements support whole-value copies and scalar field access, including
 assignments and updates to writable fields. Vector parameters require pointers.
