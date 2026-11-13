@@ -126,7 +126,7 @@ const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 5] = [
     ("roundf", FloatMathFunction::Round),
 ];
 
-const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 8] = [
+const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 9] = [
     (
         "__clz",
         MathFunction::CountLeadingZeros,
@@ -150,6 +150,12 @@ const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 8] = [
         MathFunction::ReverseBits,
         Scalar::U32,
         Scalar::U32,
+    ),
+    (
+        "__popcll",
+        MathFunction::CountOneBits,
+        Scalar::U64,
+        Scalar::I32,
     ),
     ("sinf", MathFunction::Sin, Scalar::F32, Scalar::F32),
     ("cosf", MathFunction::Cos, Scalar::F32, Scalar::F32),
@@ -1464,6 +1470,18 @@ impl<'a> Parser<'a> {
         {
             let argument =
                 self.convert_scalar(arguments.into_iter().next().unwrap().into(), source)?;
+            if function == MathFunction::CountOneBits && source == Scalar::U64 {
+                let handle = self.population_count64(argument.handle, span)?;
+                return Ok(Value {
+                    category: ValueCategory::Prvalue,
+                    qualifiers: Qualifiers::NONE,
+                    constant: ConstantValue::default(),
+                    handle,
+                    ty: scalar_resolution(result),
+                    span,
+                }
+                .into());
+            }
             let handle = match function {
                 MathFunction::Saturate => self.saturate(argument.handle, span)?,
                 MathFunction::Sin | MathFunction::Cos => {

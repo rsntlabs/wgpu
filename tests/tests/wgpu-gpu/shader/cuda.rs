@@ -83,6 +83,7 @@ mod pointer_assignments;
 mod pointer_parameters;
 mod pointer_updates;
 mod pointer_values;
+mod popcll;
 mod pragma_unroll;
 mod preprocessing;
 mod preprocessing_conditions;
@@ -212,6 +213,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_POINTER_UPDATES,
         CUDA_POINTER_VALUES,
         CUDA_PRAGMA_UNROLL,
+        CUDA_POPCLL,
         CUDA_PREPROCESSING,
         CUDA_PREPROCESSING_CONDITIONS,
         CUDA_PROTOTYPES,
@@ -791,6 +793,10 @@ static CUDA_LONG_TYPES: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_LONG_TYPES_STORAGE: GpuTestConfiguration =
     configuration_with_features(long_types::storage_cases, wgpu::Features::SHADER_INT64);
+
+#[apply(gpu_test!)]
+static CUDA_POPCLL: GpuTestConfiguration =
+    configuration_with_features(popcll::cases, wgpu::Features::SHADER_INT64);
 
 #[apply(gpu_test!)]
 static CUDA_STATIC_ASSERTIONS: GpuTestConfiguration =

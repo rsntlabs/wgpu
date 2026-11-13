@@ -874,13 +874,14 @@ so exceptional bit patterns are not guaranteed to survive every target.
 
 ## Integer intrinsics
 
-These predefined functions operate on 32-bit integer representations:
+These predefined functions operate on integer representations:
 
 | Function | Parameters | Result | Operation |
 | --- | --- | --- | --- |
 | `__clz` | `int` | `int` | Count leading zero bits; zero returns 32. |
 | `__ffs` | `int` | `int` | Return the first set bit's position, starting at 1; zero returns 0. |
 | `__popc` | `unsigned int` | `int` | Count set bits. |
+| `__popcll` | `unsigned long long` | `int` | Count set bits across all 64 bits. |
 | `__brev` | `unsigned int` | `unsigned int` | Reverse all 32 bits. |
 | `__mul24` | `int, int` | `int` | Multiply signed 24-bit operands and return the low 32 product bits. |
 | `__umul24` | `unsigned int, unsigned int` | `unsigned int` | Multiply unsigned 24-bit operands and return the low 32 product bits. |
@@ -903,7 +904,11 @@ arguments.
 
 These names use the same argument evaluation, overload selection, name hiding,
 and predefined-signature restrictions as the bit reinterpretation functions
-above. The 64-bit `ll` variants and other integer intrinsics remain unsupported.
+above. `__popcll` converts its argument to `unsigned long long` before counting,
+so `__popcll(-1)` is 64 while `__popcll(0xffffffffu)` is 32. Its signed `int`
+result ranges from zero through 64. The implementation counts two 32-bit words,
+so it does not require native 64-bit population-count operations from a backend.
+The other 64-bit `ll` variants and other integer intrinsics remain unsupported.
 Metal output for `__brev` requires MSL version 1.2 or newer.
 
 ## Integer atomics
