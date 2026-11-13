@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.3
 ; Generator: rspirv
-; Bound: 85
+; Bound: 101
 OpCapability Shader
 OpCapability Int64
 %1 = OpExtInstImport "GLSL.std.450"
@@ -58,64 +58,84 @@ OpMemberDecorate %16 0 Offset 0
 %38 = OpConstant  %5  9
 %39 = OpConstant  %24  36
 %40 = OpConstant  %5  10
-%42 = OpTypePointer Function %13
-%43 = OpConstantNull  %13
-%45 = OpTypePointer Function %11
-%46 = OpConstantNull  %11
-%48 = OpTypePointer Function %14
-%49 = OpConstantNull  %14
-%53 = OpTypePointer StorageBuffer %8
+%41 = OpConstant  %5  11
+%42 = OpConstant  %5  12
+%43 = OpConstant  %5  13
+%44 = OpConstant  %5  14
+%46 = OpTypePointer Function %13
+%47 = OpConstantNull  %13
+%49 = OpTypePointer Function %11
+%50 = OpConstantNull  %11
+%52 = OpTypePointer Function %14
+%53 = OpConstantNull  %14
+%57 = OpTypePointer StorageBuffer %8
 %19 = OpFunction  %2  None %20
 %18 = OpLabel
-%41 = OpVariable  %42  Function %43
-%44 = OpVariable  %45  Function %46
-%47 = OpVariable  %48  Function %49
+%45 = OpVariable  %46  Function %47
+%48 = OpVariable  %49  Function %50
+%51 = OpVariable  %52  Function %53
 %23 = OpAccessChain  %21  %15 %22
-OpBranch %50
-%50 = OpLabel
-%51 = OpUConvert  %8  %25
-%52 = OpBitcast  %8  %26
-%54 = OpAccessChain  %53  %23 %52
-OpStore %54 %51
-%55 = OpUConvert  %8  %27
-%56 = OpBitcast  %8  %28
-%57 = OpAccessChain  %53  %23 %56
-OpStore %57 %55
-%58 = OpUConvert  %8  %29
-%59 = OpBitcast  %8  %30
-%60 = OpAccessChain  %53  %23 %59
-OpStore %60 %58
-%61 = OpUConvert  %8  %27
-%62 = OpBitcast  %8  %31
-%63 = OpAccessChain  %53  %23 %62
-OpStore %63 %61
-%64 = OpUConvert  %8  %25
-%65 = OpBitcast  %8  %32
-%66 = OpAccessChain  %53  %23 %65
-OpStore %66 %64
-%67 = OpUConvert  %8  %33
-%68 = OpBitcast  %8  %34
-%69 = OpAccessChain  %53  %23 %68
-OpStore %69 %67
-%70 = OpUConvert  %8  %33
-%71 = OpBitcast  %8  %35
-%72 = OpAccessChain  %53  %23 %71
-OpStore %72 %70
-%73 = OpUConvert  %8  %27
-%74 = OpBitcast  %8  %36
-%75 = OpAccessChain  %53  %23 %74
-OpStore %75 %73
-%76 = OpUConvert  %8  %27
-%77 = OpBitcast  %8  %37
-%78 = OpAccessChain  %53  %23 %77
-OpStore %78 %76
-%79 = OpUConvert  %8  %33
-%80 = OpBitcast  %8  %38
-%81 = OpAccessChain  %53  %23 %80
-OpStore %81 %79
-%82 = OpUConvert  %8  %39
-%83 = OpBitcast  %8  %40
-%84 = OpAccessChain  %53  %23 %83
-OpStore %84 %82
+OpBranch %54
+%54 = OpLabel
+%55 = OpUConvert  %8  %25
+%56 = OpBitcast  %8  %26
+%58 = OpAccessChain  %57  %23 %56
+OpStore %58 %55
+%59 = OpUConvert  %8  %27
+%60 = OpBitcast  %8  %28
+%61 = OpAccessChain  %57  %23 %60
+OpStore %61 %59
+%62 = OpUConvert  %8  %29
+%63 = OpBitcast  %8  %30
+%64 = OpAccessChain  %57  %23 %63
+OpStore %64 %62
+%65 = OpUConvert  %8  %27
+%66 = OpBitcast  %8  %31
+%67 = OpAccessChain  %57  %23 %66
+OpStore %67 %65
+%68 = OpUConvert  %8  %25
+%69 = OpBitcast  %8  %32
+%70 = OpAccessChain  %57  %23 %69
+OpStore %70 %68
+%71 = OpUConvert  %8  %33
+%72 = OpBitcast  %8  %34
+%73 = OpAccessChain  %57  %23 %72
+OpStore %73 %71
+%74 = OpUConvert  %8  %33
+%75 = OpBitcast  %8  %35
+%76 = OpAccessChain  %57  %23 %75
+OpStore %76 %74
+%77 = OpUConvert  %8  %27
+%78 = OpBitcast  %8  %36
+%79 = OpAccessChain  %57  %23 %78
+OpStore %79 %77
+%80 = OpUConvert  %8  %27
+%81 = OpBitcast  %8  %37
+%82 = OpAccessChain  %57  %23 %81
+OpStore %82 %80
+%83 = OpUConvert  %8  %33
+%84 = OpBitcast  %8  %38
+%85 = OpAccessChain  %57  %23 %84
+OpStore %85 %83
+%86 = OpUConvert  %8  %39
+%87 = OpBitcast  %8  %40
+%88 = OpAccessChain  %57  %23 %87
+OpStore %88 %86
+%89 = OpUConvert  %8  %25
+%90 = OpBitcast  %8  %41
+%91 = OpAccessChain  %57  %23 %90
+OpStore %91 %89
+%92 = OpUConvert  %8  %25
+%93 = OpBitcast  %8  %42
+%94 = OpAccessChain  %57  %23 %93
+OpStore %94 %92
+%95 = OpUConvert  %8  %27
+%96 = OpBitcast  %8  %43
+%97 = OpAccessChain  %57  %23 %96
+OpStore %97 %95
+%98 = OpUConvert  %8  %27
+%99 = OpBitcast  %8  %44
+%100 = OpAccessChain  %57  %23 %99
+OpStore %100 %98
 OpReturn
 OpFunctionEnd

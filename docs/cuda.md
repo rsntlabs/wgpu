@@ -326,7 +326,12 @@ incomplete regardless of the configured launch allocation size. Leading unary
 `sizeof(*pointer)`, `sizeof *array`, and `sizeof(**record.matrix)`. They use
 pointee and array element types without reading pointers; multidimensional array
 elements retain their full extent. Postfix member access binds before these
-operators. Other expression operands, including indexing, calls, casts, and
+operators. Grouping parentheses can surround these operands and combine with
+member access and dereferences, as in `sizeof((*pointer).matrix)` and
+`sizeof *((record).matrix)`. Member access after a closing parenthesis still
+belongs to the unevaluated operand, so `sizeof (record).matrix` queries the
+matrix field. Grouping and unary nesting share the expression nesting limit.
+Other expression operands, including indexing, calls, casts, and
 updates, remain unsupported.
 
 Vector elements support whole-value copies and scalar field access, including

@@ -219,8 +219,10 @@ fn named_objects() -> ShaderTest {
 }
 
 fn members() -> ShaderTest {
-    let mut expected = [SENTINEL; 16];
-    expected[4..16].copy_from_slice(&[12, 24, 24, 4, 4, 24, 12, 12, 36, 12, 12, 4]);
+    let mut expected = [SENTINEL; 24];
+    expected[4..22].copy_from_slice(&[
+        12, 24, 24, 4, 4, 24, 12, 12, 36, 12, 12, 4, 24, 12, 24, 12, 4, 24,
+    ]);
     query_case(
         "sizeof member queries retain source layouts without evaluating null pointers or allocating shared memory",
         "struct Record { float3 vector; int matrix[2][3]; };
@@ -245,6 +247,12 @@ fn members() -> ShaderTest {
             output[13] = unsigned(sizeof *uninitialized->matrix);
             output[14] = unsigned(sizeof(*dynamic_records->matrix));
             output[15] = unsigned(sizeof(**record.matrix));
+            output[16] = unsigned(sizeof((record).matrix));
+            output[17] = unsigned(sizeof((*null_record).vector));
+            output[18] = unsigned(sizeof (*uninitialized).matrix);
+            output[19] = unsigned(sizeof *((*dynamic_records).matrix));
+            output[20] = unsigned(sizeof (record).vector.x);
+            output[21] = unsigned(sizeof(((*records).matrix)));
         }",
         [1, 1, 1],
         &expected,
@@ -253,7 +261,7 @@ fn members() -> ShaderTest {
         vec![ShaderBuffer::new(
             0,
             wgpu::BufferBindingType::Storage { read_only: false },
-            &[SENTINEL; 16],
+            &[SENTINEL; 24],
         )],
         0,
         [1, 1, 1],

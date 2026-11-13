@@ -909,3 +909,94 @@ fn cuda_sizeof_dereference_checks_incomplete_pointees_and_nesting_limit() {
     ));
     assert!(error.message.contains("nesting limit"), "{error}");
 }
+
+#[test]
+fn cuda_sizeof_grouping_preserves_operand_precedence_and_array_extents() {
+    assert_query_results(
+        "struct Record { float3 vector; int matrix[2][3]; };
+        __global__ void kernel(unsigned long *output) {
+            Record record;
+            Record *pointer = nullptr;
+            int array[2][3];
+            output[0] = sizeof((array));
+            output[1] = sizeof *(pointer);
+            output[2] = sizeof((*pointer).matrix);
+            output[3] = sizeof *((*pointer).matrix);
+            output[4] = sizeof (record).vector.x;
+            output[5] = sizeof (*pointer).matrix;
+            output[6] = sizeof (((record).matrix));
+            output[7] = sizeof **((record).matrix);
+        }",
+        &[24, 36, 24, 12, 4, 24, 24, 4],
+    );
+}
+
+#[test]
+fn cuda_sizeof_grouping_keeps_volatile_and_dynamic_shared_operands_unevaluated() {
+    let module = roundtrip(
+        "struct Record { int matrix[2][3]; };
+        extern __shared__ Record values[];
+        __global__ void kernel(unsigned long *output, volatile Record *input) {
+            output[0] = sizeof(((*input).matrix));
+            output[1] = sizeof (*(values)).matrix;
+        }",
+    );
+    assert_eq!(module.global_variables.len(), 2);
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+}
+
+#[test]
+fn cuda_sizeof_grouping_rejects_invalid_syntax_and_bounds_nesting() {
+    for operand in [
+        "()",
+        "(int)",
+        "(missing)",
+        "(value + 1)",
+        "(pointer[0])",
+        "(value++)",
+        "(helper())",
+        "(value",
+        "((value)",
+    ] {
+        rejected(&format!(
+            "__device__ int helper() {{ return 1; }}
+            __global__ void kernel(unsigned long *output) {{
+                int value; int *pointer;
+                output[0] = sizeof({operand});
+            }}"
+        ));
+    }
+    let error = rejected(&format!(
+        "__global__ void kernel(unsigned long *output) {{
+            int value; output[0] = sizeof({}value{});
+        }}",
+        "(".repeat(65),
+        ")".repeat(65)
+    ));
+    assert!(error.message.contains("nesting limit"), "{error}");
+}
+
+#[test]
+fn cuda_sizeof_grouping_remains_constant_and_stops_before_binary_operators() {
+    assert_query_results(
+        "struct Record { int matrix[2][3]; };
+        __constant__ Record constant_record;
+        constexpr size_t Bytes = sizeof (constant_record).matrix + 1;
+        template<class Value> __global__ void kernel(unsigned long *output) {
+            Value value;
+            constexpr size_t Count = sizeof ((value).matrix) + 1;
+            output[0] = sizeof(int[Bytes]);
+            output[1] = sizeof(int[Count]);
+        }
+        template __global__ void kernel<Record>(unsigned long *);",
+        &[100, 100],
+    );
+}
