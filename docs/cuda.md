@@ -339,9 +339,15 @@ types without reading them. Arithmetic unary operators apply the usual integral
 promotions, so `sizeof(+short_value)` is four; logical negation has Boolean type.
 Unary `+` preserves pointers and decays arrays once, so `sizeof(+matrix)` is
 eight while `sizeof(*+matrix)` retains the complete row extent. Record and
-vector operator overloads are not resolved within these queries. Other
-expression operands, including indexing, calls, casts, and updates, remain
-unsupported.
+vector operator overloads are not resolved within these queries. Built-in
+subscripts accept integral indices from these same named, literal, grouped,
+member, and unary operand forms, preserving multidimensional array extents.
+Commuted forms such as `index[pointer]` are also supported. Neither pointer nor
+index values are read or bounds-checked, and indexing dynamic shared arrays does
+not allocate launch storage. The selected element type must be complete before
+further subscripts or member access; dereferencing a pointer to an incomplete
+array first permits indexing the array's complete elements. Binary index
+expressions, calls, casts, and updates remain unsupported.
 
 Vector elements support whole-value copies and scalar field access, including
 assignments and updates to writable fields. Vector parameters require pointers.

@@ -27,6 +27,7 @@ pub(super) fn cases() -> Vec<ShaderTest> {
         named_objects(),
         members(),
         unary_operands(),
+        subscript_operands(),
     ];
     for byte_count in [0, 1, 3, 4, 7, 8, 255, 256, 257, 320, 323] {
         tests.push(copy_bytes(byte_count));
@@ -298,6 +299,39 @@ fn unary_operands() -> ShaderTest {
             output[10] = unsigned(sizeof(!dynamic));
             output[11] = unsigned(sizeof(-1LL));
             output[12] = unsigned(sizeof(~false));
+        }",
+        [1, 1, 1],
+        &expected,
+    )
+    .module_buffers(
+        vec![ShaderBuffer::new(
+            0,
+            wgpu::BufferBindingType::Storage { read_only: false },
+            &[SENTINEL; 16],
+        )],
+        0,
+        [1, 1, 1],
+    )
+}
+
+fn subscript_operands() -> ShaderTest {
+    let mut expected = [SENTINEL; 16];
+    expected[4..11].copy_from_slice(&[12, 4, 24, 12, 4, 4, 4]);
+    query_case(
+        "sizeof builtin subscripts preserve row layouts without evaluating indices or allocating shared storage",
+        "struct Record { float3 vector; int matrix[2][3]; };
+        extern __shared__ Record dynamic[];
+        __global__ void kernel(unsigned *output, volatile int *input) {
+            volatile int &index = input[0];
+            int matrix[2][3];
+            Record *pointer = nullptr;
+            output[4] = unsigned(sizeof matrix[index]);
+            output[5] = unsigned(sizeof index[matrix][index]);
+            output[6] = unsigned(sizeof pointer[index].matrix);
+            output[7] = unsigned(sizeof dynamic[index].vector);
+            output[8] = unsigned(sizeof input[index]);
+            output[9] = unsigned(sizeof matrix[-1][0xffffffffffffffffULL]);
+            output[10] = unsigned(sizeof(*+matrix[index]));
         }",
         [1, 1, 1],
         &expected,

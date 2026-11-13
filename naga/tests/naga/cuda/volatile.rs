@@ -272,8 +272,17 @@ fn cuda_volatile_conditional_qualifiers_and_constant_contexts_preserve_evaluatio
         "__global__ void kernel(volatile unsigned *values) { constexpr unsigned value = (&values[0], 4u); }",
         "__global__ void kernel(volatile unsigned *values) { constexpr unsigned value = values[0]; }",
         "__global__ void kernel(volatile unsigned *values) { constexpr unsigned value = (values[0], 4u); }",
-        "__global__ void kernel(volatile unsigned *values) { sizeof(values[0]); }",
     ] { rejected(source); }
+    let (module, _) = validate_with_options_and_capabilities(
+        "__global__ void kernel(volatile unsigned *values) { sizeof(values[0]); }",
+        &options(),
+        capabilities() | Capabilities::SHADER_INT64,
+    );
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, variable)| variable.memory_decorations.is_empty()));
+    assert!(accesses(&module, "values").is_empty());
 }
 
 #[test]

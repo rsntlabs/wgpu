@@ -426,7 +426,6 @@ fn cuda_type_queries_reject_invalid_types_syntax_and_expression_operands() {
         "alignof int",
         "alignof(1)",
         "sizeof(++value)",
-        "sizeof(values[0])",
         "sizeof(sizeof(int))",
         "sizeof(cooperative_groups::thread_block)",
     ] {
@@ -597,12 +596,7 @@ fn cuda_sizeof_named_objects_rejects_nonobjects_and_unsupported_operands() {
             }}"
         ));
     }
-    for expression in [
-        "alignof(value)",
-        "sizeof value++",
-        "sizeof pointer[0]",
-        "sizeof(value)++",
-    ] {
+    for expression in ["alignof(value)", "sizeof value++", "sizeof(value)++"] {
         rejected(&format!(
             "__global__ void kernel(unsigned long *output) {{
                 unsigned value = 0; int *pointer;
@@ -794,7 +788,6 @@ fn cuda_sizeof_members_rejects_invalid_access_and_unsupported_expressions() {
         "record.matrix.x",
         "record.matrix->x",
         "record.vector.x.y",
-        "record.matrix[0]",
         "record.vector.x++",
         "pointer->vector.x + 1",
         "pointer->vector()",
@@ -959,7 +952,6 @@ fn cuda_sizeof_grouping_rejects_invalid_syntax_and_bounds_nesting() {
         "(int)",
         "(missing)",
         "(value + 1)",
-        "(pointer[0])",
         "(value++)",
         "(helper())",
         "(value",
@@ -1129,4 +1121,114 @@ fn cuda_sizeof_unary_rejects_invalid_builtin_operand_types() {
             }}"
         ));
     }
+}
+
+#[test]
+fn cuda_sizeof_subscripts_preserves_element_layout_and_builtin_precedence() {
+    assert_query_results(
+        "struct Record { float3 vector; int matrix[2][3]; };
+        __global__ void kernel(unsigned long *output) {
+            int matrix[2][3]; Record records[2];
+            float3 *pointer = nullptr; short *short_pointer; long index;
+            output[0] = sizeof(matrix[0]);
+            output[1] = sizeof(matrix[0][1]);
+            output[2] = sizeof pointer[index];
+            output[3] = sizeof records[999].matrix;
+            output[4] = sizeof(0[matrix]);
+            output[5] = sizeof(1[2[matrix]]);
+            output[6] = sizeof records[index].vector.z;
+            output[7] = sizeof matrix[true];
+            output[8] = sizeof matrix[0xffffffffffffffffULL];
+            output[9] = sizeof -1[short_pointer];
+            output[10] = sizeof (-1)[short_pointer];
+            output[11] = sizeof matrix[-1];
+            output[12] = sizeof(*(matrix[0]));
+            output[13] = sizeof +matrix[0];
+            output[14] = sizeof *+matrix[0];
+        }",
+        &[12, 4, 12, 24, 12, 4, 4, 12, 12, 4, 2, 12, 4, 8, 4],
+    );
+}
+
+#[test]
+fn cuda_sizeof_subscripts_does_not_read_indices_or_allocate_dynamic_shared_storage() {
+    let module = roundtrip(
+        "struct Record { float3 vector; int matrix[2][3]; };
+        extern __shared__ Record values[];
+        __global__ void kernel(unsigned long *output, volatile int *input) {
+            volatile int &index = input[0];
+            output[0] = sizeof input[index];
+            output[1] = sizeof values[index].matrix;
+            output[2] = sizeof index[values].vector;
+        }",
+    );
+    assert_eq!(module.global_variables.len(), 2);
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+}
+
+#[test]
+fn cuda_sizeof_subscripts_requires_complete_element_types_before_pointer_arithmetic() {
+    assert_query_results(
+        "using Values = int[];
+        __global__ void kernel(unsigned long *output, Values *view) {
+            int inferred[] = {int(sizeof(inferred[0]))};
+            output[0] = sizeof((*view)[0]);
+            output[1] = sizeof(0[*view]);
+            output[2] = sizeof(inferred);
+        }",
+        &[4, 4, 4],
+    );
+    for operand in ["view[0]", "view[0][0]", "0[view][0]"] {
+        let error = rejected(&format!(
+            "using Values = int[];
+            __global__ void kernel(unsigned long *output, Values *view) {{
+                output[0] = sizeof({operand});
+            }}"
+        ));
+        assert!(error.message.contains("complete"), "{error}");
+    }
+}
+
+#[test]
+fn cuda_sizeof_subscripts_rejects_invalid_types_and_unsupported_index_expressions() {
+    for operand in [
+        "pointer[1.0f]",
+        "pointer[nullptr]",
+        "pointer[pointer]",
+        "index[index]",
+        "pointer[record]",
+        "record[index]",
+        "vector[index]",
+        "pointer[missing]",
+        "pointer[index++]",
+        "pointer[index + 1]",
+        "pointer[helper()]",
+        "pointer[]",
+    ] {
+        rejected(&format!(
+            "struct Record {{ int member; }};
+            __device__ int helper() {{ return 0; }}
+            __global__ void kernel(unsigned long *output) {{
+                int *pointer; int index; Record record; float3 vector;
+                output[0] = sizeof({operand});
+            }}"
+        ));
+    }
+}
+
+#[test]
+fn cuda_sizeof_subscripts_bounds_nested_index_expressions() {
+    let operand = format!("{}array{}", "0[".repeat(65), "]".repeat(65));
+    let error = rejected(&format!(
+        "__global__ void kernel(unsigned long *output) {{ int array[2]; output[0] = sizeof({operand}); }}"
+    ));
+    assert!(error.message.contains("nesting limit"), "{error}");
 }

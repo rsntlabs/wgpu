@@ -183,7 +183,16 @@ impl Parser<'_> {
                 })
             }
         };
-        while matches!(self.lexer.peek()?.0, Token::Separator('.') | Token::Arrow) {
+        while matches!(
+            self.lexer.peek()?.0,
+            Token::Separator('.') | Token::Arrow | Token::Paren('[')
+        ) {
+            if self.lexer.next_if(Token::Paren('['))? {
+                let (index, _) = self.sizeof_operand()?;
+                end = self.lexer.expect_span(Token::Paren(']'))?;
+                operand = self.sizeof_subscript(operand, index, start.until(&end))?;
+                continue;
+            }
             let arrow = self.lexer.next()?.0 == Token::Arrow;
             let (field, field_span) = self.identifier()?;
             self.parameter_expansion_budget.charge_work(1, field_span)?;
@@ -218,6 +227,53 @@ impl Parser<'_> {
             end = field_span;
         }
         Ok((operand, start.until(&end)))
+    }
+
+    fn sizeof_integral_operand(&self, operand: &SizeofOperand) -> bool {
+        let SizeofOperand::Object(ref ty) = *operand else {
+            return false;
+        };
+        self.source_scalar(ty).is_some_and(|scalar| {
+            matches!(
+                scalar.scalar().kind,
+                ScalarKind::Sint | ScalarKind::Uint | ScalarKind::Bool
+            )
+        })
+    }
+
+    fn sizeof_subscript(
+        &mut self,
+        base: SizeofOperand,
+        index: SizeofOperand,
+        span: Span,
+    ) -> Result<SizeofOperand, ParseError> {
+        let invalid = || ParseError {
+            message: String::from(
+                "sizeof subscript requires one pointer or array and one integral operand",
+            ),
+            span,
+        };
+        let (pointer, index) = if self.sizeof_integral_operand(&base) {
+            (index, base)
+        } else {
+            (base, index)
+        };
+        if !self.sizeof_integral_operand(&index) {
+            return Err(invalid());
+        }
+        let operand = self
+            .sizeof_dereference(pointer, span)
+            .map_err(|_| invalid())?;
+        if let SizeofOperand::Object(ref ty) = operand {
+            let ty = self.type_handle(ty, span);
+            if self.is_incomplete_array(ty) {
+                return Err(ParseError {
+                    message: String::from("sizeof subscript requires a complete element type"),
+                    span,
+                });
+            }
+        }
+        Ok(operand)
     }
 
     fn sizeof_dereference(

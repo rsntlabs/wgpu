@@ -376,3 +376,35 @@ fn cuda_sizeof_unary_cli_compacts_types_without_evaluating_operands() {
         .iter()
         .all(|(_, global)| global.memory_decorations.is_empty()));
 }
+
+#[test]
+fn cuda_sizeof_subscripts_cli_discards_unevaluated_indices_and_resources() {
+    let files = TestFiles::new(
+        "cu",
+        "struct Record { float3 vector; int matrix[2][3]; };
+        extern __shared__ Record values[];
+        __global__ void kernel(unsigned *output, volatile int *indices) {
+            volatile int &index = indices[0];
+            output[0] = unsigned(sizeof values[index].matrix);
+            output[1] = unsigned(sizeof(index[values].vector));
+            output[2] = unsigned(sizeof indices[index]);
+        }",
+    );
+    let result = files.translate(&["--compact"]);
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let module = files.read_module();
+    assert_eq!(module.global_variables.len(), 1);
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+}

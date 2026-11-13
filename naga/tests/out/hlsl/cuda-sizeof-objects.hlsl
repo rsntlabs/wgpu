@@ -43,4 +43,9 @@ void object_sizes()
     output.Store(uint(int(22))*4, asuint(uint(8uL)));
     output.Store(uint(int(23))*4, asuint(uint(8uL)));
     output.Store(uint(int(24))*4, asuint(uint(12uL)));
+    output.Store(uint(int(25))*4, asuint(uint(12uL)));
+    output.Store(uint(int(26))*4, asuint(uint(12uL)));
+    output.Store(uint(int(27))*4, asuint(uint(4uL)));
+    output.Store(uint(int(28))*4, asuint(uint(4uL)));
+    output.Store(uint(int(29))*4, asuint(uint(4uL)));
 }
