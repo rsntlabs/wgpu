@@ -69,8 +69,10 @@ bool ZeroValuebool() {
 [numthreads(1, 1, 1)]
 void pointer_value_construction(uint local_invocation_index : SV_GroupIndex)
 {
-    if (local_invocation_index == 0) {
-        shared_ = (uint[3])0;
+    [loop]
+    for (uint zero_flat_index = local_invocation_index; zero_flat_index < 3u; zero_flat_index += 1u) {
+        uint zero_index = zero_flat_index;
+        shared_[zero_index] = (uint)0;
     }
     GroupMemoryBarrierWithGroupSync();
     uint output[2] = (uint[2])0;

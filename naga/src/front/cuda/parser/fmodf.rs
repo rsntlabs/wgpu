@@ -9,8 +9,8 @@ impl Parser<'_> {
     ) -> Result<Handle<Expression>, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
-        let dividend_bits = self.fmodf_cast(dividend, ScalarKind::Uint, None, span)?;
-        let divisor_bits = self.fmodf_cast(divisor, ScalarKind::Uint, None, span)?;
+        let dividend_bits = self.bitcast_scalar(dividend, Scalar::U32, span)?;
+        let divisor_bits = self.bitcast_scalar(divisor, Scalar::U32, span)?;
         let function = self.cached_fmodf_function(span)?;
         self.parameter_expansion_budget
             .charge_slice::<Handle<Expression>>(2, span)?;
@@ -26,7 +26,7 @@ impl Parser<'_> {
             },
             span,
         );
-        self.fmodf_cast(result, ScalarKind::Float, None, span)
+        self.bitcast_scalar(result, Scalar::F32, span)
     }
 
     fn cached_fmodf_function(&mut self, span: Span) -> Result<Handle<Function>, ParseError> {
@@ -131,8 +131,7 @@ impl Parser<'_> {
             divisor_exponent,
             span,
         )?;
-        let exponent_difference =
-            self.fmodf_cast(exponent_difference, ScalarKind::Uint, Some(4), span)?;
+        let exponent_difference = self.fmodf_cast(exponent_difference, Scalar::U32, span)?;
         self.fmodf_store(remaining_bits, exponent_difference, span);
         let ((), body) = self.capture_block(|parser| {
             let current_bits = parser.append(
@@ -186,7 +185,7 @@ impl Parser<'_> {
         let eight = self.fmodf_literal(8, span)?;
         let shift = self.fmodf_binary(BinaryOperator::Subtract, leading_zeros, eight, span)?;
         let significand = self.fmodf_binary(BinaryOperator::ShiftLeft, remainder, shift, span)?;
-        let shift = self.fmodf_cast(shift, ScalarKind::Sint, Some(4), span)?;
+        let shift = self.fmodf_cast(shift, Scalar::I32, span)?;
         let exponent =
             self.fmodf_binary(BinaryOperator::Subtract, divisor_exponent, shift, span)?;
         let minimum_exponent = self.append(Expression::Literal(Literal::I32(-126)), span)?;
@@ -198,7 +197,7 @@ impl Parser<'_> {
         )?;
         let bias = self.append(Expression::Literal(Literal::I32(127)), span)?;
         let biased_exponent = self.fmodf_binary(BinaryOperator::Add, exponent, bias, span)?;
-        let biased_exponent = self.fmodf_cast(biased_exponent, ScalarKind::Uint, Some(4), span)?;
+        let biased_exponent = self.fmodf_cast(biased_exponent, Scalar::U32, span)?;
         let fraction_width = self.fmodf_literal(23, span)?;
         let exponent_bits = self.fmodf_binary(
             BinaryOperator::ShiftLeft,
@@ -212,7 +211,7 @@ impl Parser<'_> {
             self.fmodf_binary(BinaryOperator::InclusiveOr, exponent_bits, fraction, span)?;
         let subnormal_shift =
             self.fmodf_binary(BinaryOperator::Subtract, minimum_exponent, exponent, span)?;
-        let subnormal_shift = self.fmodf_cast(subnormal_shift, ScalarKind::Uint, Some(4), span)?;
+        let subnormal_shift = self.fmodf_cast(subnormal_shift, Scalar::U32, span)?;
         let shift_mask = self.fmodf_literal(31, span)?;
         let subnormal_shift =
             self.fmodf_binary(BinaryOperator::And, subnormal_shift, shift_mask, span)?;
@@ -275,18 +274,10 @@ impl Parser<'_> {
     fn fmodf_cast(
         &mut self,
         expr: Handle<Expression>,
-        kind: ScalarKind,
-        convert: Option<u8>,
+        target: Scalar,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
-        self.append(
-            Expression::As {
-                expr,
-                kind,
-                convert,
-            },
-            span,
-        )
+        self.append(Expression::As { expr, target }, span)
     }
 
     fn fmodf_local(&mut self, name: &str, span: Span) -> Result<Handle<Expression>, ParseError> {

@@ -22,24 +22,10 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
         let function = self.trigonometry_function(span)?;
-        let bits = self.append(
-            Expression::As {
-                expr: value,
-                kind: ScalarKind::Uint,
-                convert: None,
-            },
-            span,
-        )?;
+        let bits = self.bitcast_scalar(value, Scalar::U32, span)?;
         let mode = self.trig_literal(u32::from(cosine), span)?;
         let result = self.trig_call(function, &[bits, mode], span)?;
-        self.append(
-            Expression::As {
-                expr: result,
-                kind: ScalarKind::Float,
-                convert: None,
-            },
-            span,
-        )
+        self.bitcast_scalar(result, Scalar::F32, span)
     }
 
     fn trigonometry_function(&mut self, span: Span) -> Result<Handle<Function>, ParseError> {

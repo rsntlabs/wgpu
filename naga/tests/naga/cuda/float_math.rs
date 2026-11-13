@@ -85,11 +85,11 @@ fn cuda_float_minmax_use_integer_classification_and_selection() {
                         );
                     }
                 }
-                naga::Expression::As {
-                    kind: naga::ScalarKind::Uint,
-                    convert: None,
-                    ..
-                } => input_bitcasts += 1,
+                naga::Expression::Bitcast { .. }
+                    if super::helpers::is_bitcast_to(&module, expression, naga::Scalar::U32) =>
+                {
+                    input_bitcasts += 1
+                }
                 _ => {}
             }
         }

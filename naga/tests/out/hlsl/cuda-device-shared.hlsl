@@ -182,14 +182,38 @@ uint ZeroValueuint() {
 [numthreads(4, 1, 1)]
 void device_shared(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_GroupID, uint local_invocation_index : SV_GroupIndex)
 {
+    [loop]
+    for (uint zero_flat_index = local_invocation_index; zero_flat_index < 4u; zero_flat_index += 4u) {
+        uint zero_index = zero_flat_index;
+        slots[zero_index] = (uint)0;
+    }
     if (local_invocation_index == 0) {
-        slots = (uint[4])0;
         counter = (uint)0;
-        slots_1 = (uint[2][2])0;
-        slots_2 = (uint[4])0;
+    }
+    [loop]
+    for (uint zero_flat_index_1 = local_invocation_index; zero_flat_index_1 < 4u; zero_flat_index_1 += 4u) {
+        uint zero_index_1 = zero_flat_index_1 / 2u;
+        uint zero_index_2 = zero_flat_index_1 % 2u;
+        slots_1[zero_index_1][zero_index_2] = (uint)0;
+    }
+    [loop]
+    for (uint zero_flat_index_2 = local_invocation_index; zero_flat_index_2 < 4u; zero_flat_index_2 += 4u) {
+        uint zero_index_3 = zero_flat_index_2;
+        slots_2[zero_index_3] = (uint)0;
+    }
+    if (local_invocation_index == 0) {
         counter_1 = (uint)0;
-        slots_3 = (uint[2][2])0;
-        slots_4 = (uint[4])0;
+    }
+    [loop]
+    for (uint zero_flat_index_3 = local_invocation_index; zero_flat_index_3 < 4u; zero_flat_index_3 += 4u) {
+        uint zero_index_4 = zero_flat_index_3 / 2u;
+        uint zero_index_5 = zero_flat_index_3 % 2u;
+        slots_3[zero_index_4][zero_index_5] = (uint)0;
+    }
+    [loop]
+    for (uint zero_flat_index_4 = local_invocation_index; zero_flat_index_4 < 4u; zero_flat_index_4 += 4u) {
+        uint zero_index_6 = zero_flat_index_4;
+        slots_4[zero_index_6] = (uint)0;
     }
     GroupMemoryBarrierWithGroupSync();
     uint output[2] = (uint[2])0;
@@ -506,14 +530,38 @@ void device_shared(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_Group
 [numthreads(4, 1, 1)]
 void forwarded_shared(uint3 threadIdx_1 : SV_GroupThreadID, uint3 blockIdx_1 : SV_GroupID, uint local_invocation_index_1 : SV_GroupIndex)
 {
+    [loop]
+    for (uint zero_flat_index_5 = local_invocation_index_1; zero_flat_index_5 < 4u; zero_flat_index_5 += 4u) {
+        uint zero_index_7 = zero_flat_index_5;
+        slots[zero_index_7] = (uint)0;
+    }
     if (local_invocation_index_1 == 0) {
-        slots = (uint[4])0;
         counter = (uint)0;
-        slots_1 = (uint[2][2])0;
-        slots_2 = (uint[4])0;
+    }
+    [loop]
+    for (uint zero_flat_index_6 = local_invocation_index_1; zero_flat_index_6 < 4u; zero_flat_index_6 += 4u) {
+        uint zero_index_8 = zero_flat_index_6 / 2u;
+        uint zero_index_9 = zero_flat_index_6 % 2u;
+        slots_1[zero_index_8][zero_index_9] = (uint)0;
+    }
+    [loop]
+    for (uint zero_flat_index_7 = local_invocation_index_1; zero_flat_index_7 < 4u; zero_flat_index_7 += 4u) {
+        uint zero_index_10 = zero_flat_index_7;
+        slots_2[zero_index_10] = (uint)0;
+    }
+    if (local_invocation_index_1 == 0) {
         counter_1 = (uint)0;
-        slots_3 = (uint[2][2])0;
-        slots_4 = (uint[4])0;
+    }
+    [loop]
+    for (uint zero_flat_index_8 = local_invocation_index_1; zero_flat_index_8 < 4u; zero_flat_index_8 += 4u) {
+        uint zero_index_11 = zero_flat_index_8 / 2u;
+        uint zero_index_12 = zero_flat_index_8 % 2u;
+        slots_3[zero_index_11][zero_index_12] = (uint)0;
+    }
+    [loop]
+    for (uint zero_flat_index_9 = local_invocation_index_1; zero_flat_index_9 < 4u; zero_flat_index_9 += 4u) {
+        uint zero_index_13 = zero_flat_index_9;
+        slots_4[zero_index_13] = (uint)0;
     }
     GroupMemoryBarrierWithGroupSync();
     uint output_4[2] = (uint[2])0;

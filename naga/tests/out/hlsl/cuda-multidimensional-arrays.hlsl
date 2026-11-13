@@ -83,9 +83,29 @@ int naga_f2i32(float value) {
 [numthreads(1, 1, 1)]
 void multidimensional_arrays(uint local_invocation_index : SV_GroupIndex)
 {
-    if (local_invocation_index == 0) {
-        shared_values = (int[2][3])0;
-        shared_points = (float3_[2][2])0;
+    [loop]
+    for (uint zero_flat_index = local_invocation_index; zero_flat_index < 6u; zero_flat_index += 1u) {
+        uint zero_index = zero_flat_index / 3u;
+        uint zero_index_1 = zero_flat_index % 3u;
+        shared_values[zero_index][zero_index_1] = (int)0;
+    }
+    [loop]
+    for (uint zero_flat_index_1 = local_invocation_index; zero_flat_index_1 < 4u; zero_flat_index_1 += 1u) {
+        uint zero_index_2 = zero_flat_index_1 / 2u;
+        uint zero_index_3 = zero_flat_index_1 % 2u;
+        shared_points[zero_index_2][zero_index_3].x = (float)0;
+    }
+    [loop]
+    for (uint zero_flat_index_2 = local_invocation_index; zero_flat_index_2 < 4u; zero_flat_index_2 += 1u) {
+        uint zero_index_2 = zero_flat_index_2 / 2u;
+        uint zero_index_3 = zero_flat_index_2 % 2u;
+        shared_points[zero_index_2][zero_index_3].y = (float)0;
+    }
+    [loop]
+    for (uint zero_flat_index_3 = local_invocation_index; zero_flat_index_3 < 4u; zero_flat_index_3 += 1u) {
+        uint zero_index_2 = zero_flat_index_3 / 2u;
+        uint zero_index_3 = zero_flat_index_3 % 2u;
+        shared_points[zero_index_2][zero_index_3].z = (float)0;
     }
     GroupMemoryBarrierWithGroupSync();
     int2 original = (int2)0;

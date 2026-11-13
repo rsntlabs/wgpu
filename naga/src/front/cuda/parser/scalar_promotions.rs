@@ -201,6 +201,7 @@ impl<'a> Analysis<'a> {
                 Expression::Load { pointer } => operand(pointer, true)?,
                 Expression::Unary { expr, .. }
                 | Expression::As { expr, .. }
+                | Expression::Bitcast { expr, .. }
                 | Expression::Splat { value: expr, .. }
                 | Expression::Swizzle { vector: expr, .. }
                 | Expression::Relational { argument: expr, .. }
@@ -457,8 +458,7 @@ impl<'a> Analysis<'a> {
         if !matches!(
             self.function.expressions[handle],
             Expression::As {
-                kind: ScalarKind::Uint,
-                convert: Some(4),
+                target: Scalar::U32,
                 ..
             }
         ) {
@@ -470,8 +470,7 @@ impl<'a> Analysis<'a> {
             let value = match self.function.expressions[handle] {
                 Expression::As {
                     expr,
-                    kind: ScalarKind::Sint,
-                    convert: Some(4),
+                    target: Scalar::I32,
                 } => {
                     has_signed_cast = true;
                     handle = expr;
@@ -479,8 +478,7 @@ impl<'a> Analysis<'a> {
                 }
                 Expression::As {
                     expr,
-                    kind: ScalarKind::Uint,
-                    convert: Some(4),
+                    target: Scalar::U32,
                 } => {
                     handle = expr;
                     continue;

@@ -1401,14 +1401,7 @@ impl<'a> Parser<'a> {
                 );
                 expr = self.append(Expression::Load { pointer }, span)?;
             }
-            let handle = self.append(
-                Expression::As {
-                    expr,
-                    kind: result.kind,
-                    convert: None,
-                },
-                span,
-            )?;
+            let handle = self.bitcast_scalar(expr, result, span)?;
             return Ok(Value {
                 category: ValueCategory::Prvalue,
                 qualifiers: Qualifiers::NONE,
@@ -1544,14 +1537,7 @@ impl<'a> Parser<'a> {
                     span,
                 )?;
                 *operand = if scalar == Scalar::I32 {
-                    self.append(
-                        Expression::As {
-                            expr: extracted,
-                            kind: ScalarKind::Uint,
-                            convert: None,
-                        },
-                        span,
-                    )?
+                    self.bitcast_scalar(extracted, Scalar::U32, span)?
                 } else {
                     extracted
                 };
@@ -1566,14 +1552,7 @@ impl<'a> Parser<'a> {
                 span,
             )?;
             let handle = if scalar == Scalar::I32 {
-                self.append(
-                    Expression::As {
-                        expr: product,
-                        kind: ScalarKind::Sint,
-                        convert: None,
-                    },
-                    span,
-                )?
+                self.bitcast_scalar(product, Scalar::I32, span)?
             } else {
                 product
             };
@@ -1691,14 +1670,7 @@ impl<'a> Parser<'a> {
         let canonical_nan_bits =
             self.append(Expression::Literal(Literal::U32(0x7fc0_0000)), span)?;
         let operands = [left, right].map(|value| {
-            let bits = self.append(
-                Expression::As {
-                    expr: value,
-                    kind: ScalarKind::Uint,
-                    convert: None,
-                },
-                span,
-            )?;
+            let bits = self.bitcast_scalar(value, Scalar::U32, span)?;
             let is_negative = self.append(
                 Expression::Binary {
                     op: BinaryOperator::GreaterEqual,
@@ -1803,14 +1775,7 @@ impl<'a> Parser<'a> {
             },
             span,
         )?;
-        self.append(
-            Expression::As {
-                expr: bits,
-                kind: ScalarKind::Float,
-                convert: None,
-            },
-            span,
-        )
+        self.bitcast_scalar(bits, Scalar::F32, span)
     }
 
     pub(super) fn has_function_candidate(&self, name: &str) -> bool {

@@ -119,7 +119,7 @@ fn cuda_trigonometry_uses_cached_integer_helpers_and_bitcast_results() {
                 );
                 let result = result.unwrap();
                 assert!(function.expressions.iter().any(|(_, expression)| matches!(*expression,
-                    naga::Expression::As { expr, kind: naga::ScalarKind::Float, convert: None } if expr == result
+                    naga::Expression::Bitcast { expr, .. } if expr == result && super::helpers::is_bitcast_to(&module, expression, naga::Scalar::F32)
                 )));
             }
             false

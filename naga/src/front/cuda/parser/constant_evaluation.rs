@@ -170,14 +170,7 @@ pub(super) fn convert(value: Literal, target: Scalar) -> Option<Literal> {
     }
     evaluate(|evaluator| {
         let expr = evaluator.try_eval_and_append(Expression::Literal(value), Span::UNDEFINED)?;
-        evaluator.try_eval_and_append(
-            Expression::As {
-                expr,
-                kind: target.kind,
-                convert: Some(target.width),
-            },
-            Span::UNDEFINED,
-        )
+        evaluator.try_eval_and_append(Expression::As { expr, target }, Span::UNDEFINED)
     })
     .or(match (value, target) {
         (Literal::F32(value), Scalar::F32) => Some(Literal::F32(value)),

@@ -5473,8 +5473,7 @@ mod tests {
             .try_eval_and_append(
                 Expression::As {
                     expr: value,
-                    kind: ScalarKind::Uint,
-                    convert: Some(4),
+                    target: crate::Scalar::U32,
                 },
                 Default::default(),
             )
@@ -5855,8 +5854,7 @@ mod tests {
                 .try_eval_and_append(
                     Expression::As {
                         expr: value,
-                        kind: target.kind,
-                        convert: Some(target.width),
+                        target,
                     },
                     Default::default(),
                 )
@@ -5995,8 +5993,7 @@ mod tests {
                     .try_eval_and_append(
                         Expression::As {
                             expr: vector,
-                            kind: target.kind,
-                            convert: Some(target.width),
+                            target,
                         },
                         Default::default(),
                     )

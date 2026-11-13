@@ -38,9 +38,29 @@ float3_ Constructfloat3_(float arg0, float arg1, float arg2) {
 [numthreads(8, 1, 1)]
 void shared_vectors(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_GroupID, uint local_invocation_index : SV_GroupIndex)
 {
+    [loop]
+    for (uint zero_flat_index = local_invocation_index; zero_flat_index < 8u; zero_flat_index += 8u) {
+        uint zero_index = zero_flat_index;
+        values[zero_index].x = (float)0;
+    }
+    [loop]
+    for (uint zero_flat_index_1 = local_invocation_index; zero_flat_index_1 < 8u; zero_flat_index_1 += 8u) {
+        uint zero_index = zero_flat_index_1;
+        values[zero_index].y = (float)0;
+    }
+    [loop]
+    for (uint zero_flat_index_2 = local_invocation_index; zero_flat_index_2 < 8u; zero_flat_index_2 += 8u) {
+        uint zero_index = zero_flat_index_2;
+        values[zero_index].z = (float)0;
+    }
     if (local_invocation_index == 0) {
-        values = (float3_[8])0;
-        broadcast = (float3_)0;
+        broadcast.x = (float)0;
+    }
+    if (local_invocation_index == 0) {
+        broadcast.y = (float)0;
+    }
+    if (local_invocation_index == 0) {
+        broadcast.z = (float)0;
     }
     GroupMemoryBarrierWithGroupSync();
     float3_ copied = (float3_)0;

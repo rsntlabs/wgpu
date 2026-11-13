@@ -58,8 +58,7 @@ fn cuda_fabs_lowering_converts_before_reinterpretation_without_native_abs_or_dou
             |(_, expression)| matches!(
                 expression,
                 naga::Expression::As {
-                    kind: naga::ScalarKind::Float,
-                    convert: Some(4),
+                    target: naga::Scalar::F32,
                     ..
                 }
             )
@@ -440,21 +439,19 @@ fn cuda_fabs_literal_exceptional_results_remain_runtime_values_in_wgsl() {
             }}"
         ));
         let function = &module.entry_points[0].function;
-        assert!(function.expressions.iter().any(|(_, expression)| matches!(
-            expression,
-            naga::Expression::As {
-                kind: naga::ScalarKind::Float,
-                convert: None,
-                ..
-            }
-        )));
+        assert!(function
+            .expressions
+            .iter()
+            .any(|(_, expression)| super::helpers::is_bitcast_to(
+                &module,
+                expression,
+                naga::Scalar::F32
+            )));
         for (_, expression) in function.expressions.iter() {
-            if let naga::Expression::As {
-                expr,
-                kind: naga::ScalarKind::Float,
-                convert: None,
-            } = *expression
-            {
+            if let naga::Expression::Bitcast { expr, .. } = *expression {
+                if !super::helpers::is_bitcast_to(&module, expression, naga::Scalar::F32) {
+                    continue;
+                }
                 assert!(!matches!(
                     function.expressions[expr],
                     naga::Expression::Literal(_)

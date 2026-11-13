@@ -8,14 +8,7 @@ impl Parser<'_> {
     ) -> Result<Handle<Expression>, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
-        let bits = self.append(
-            Expression::As {
-                expr: value,
-                kind: ScalarKind::Uint,
-                convert: None,
-            },
-            span,
-        )?;
+        let bits = self.bitcast_scalar(value, Scalar::U32, span)?;
         let function = self.sqrtf_function(span)?;
         self.parameter_expansion_budget
             .charge_slice::<Handle<Expression>>(1, span)?;
@@ -31,14 +24,7 @@ impl Parser<'_> {
             },
             span,
         );
-        self.append(
-            Expression::As {
-                expr: result,
-                kind: ScalarKind::Float,
-                convert: None,
-            },
-            span,
-        )
+        self.bitcast_scalar(result, Scalar::F32, span)
     }
 
     pub(super) fn sqrtf_function(&mut self, span: Span) -> Result<Handle<Function>, ParseError> {

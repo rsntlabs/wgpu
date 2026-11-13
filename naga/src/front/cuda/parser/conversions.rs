@@ -1,6 +1,30 @@
 use super::*;
 
 impl Parser<'_> {
+    pub(super) fn bitcast_scalar(
+        &mut self,
+        expr: Handle<Expression>,
+        scalar: Scalar,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        let depth = self.function.expression_graph_depths[expr.index()] + 1;
+        self.prepare_append(depth, span)?;
+        let target = Type {
+            name: None,
+            inner: TypeInner::Scalar(scalar),
+        };
+        let ty = match self.module.types.get(&target) {
+            Some(ty) => ty,
+            None => {
+                self.parameter_expansion_budget.charge_nodes(1, span)?;
+                self.parameter_expansion_budget
+                    .charge_slice::<(Type, Span)>(1, span)?;
+                self.module.types.insert(target, span)
+            }
+        };
+        Ok(self.append_prepared(Expression::Bitcast { expr, ty }, depth, span))
+    }
+
     pub(super) fn convert_value(
         &mut self,
         value: ExpressionValue,
@@ -73,8 +97,7 @@ impl Parser<'_> {
             self.append(
                 Expression::As {
                     expr: value.handle,
-                    kind: scalar.kind,
-                    convert: Some(scalar.width),
+                    target: scalar,
                 },
                 value.span,
             )?

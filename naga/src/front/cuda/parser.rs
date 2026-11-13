@@ -1042,6 +1042,12 @@ impl<'a> Parser<'a> {
         expression: Expression,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
+        let depth = expression_depth(&expression, &self.function.expression_graph_depths);
+        self.prepare_append(depth, span)?;
+        Ok(self.append_prepared(expression, depth, span))
+    }
+
+    fn prepare_append(&mut self, depth: u32, span: Span) -> Result<(), ParseError> {
         if self.function.parameter_state_charged {
             self.parameter_expansion_budget.charge_nodes(1, span)?;
             self.parameter_expansion_budget
@@ -1049,13 +1055,21 @@ impl<'a> Parser<'a> {
             self.parameter_expansion_budget
                 .charge_slice::<u32>(1, span)?;
         }
-        let depth = expression_depth(&expression, &self.function.expression_graph_depths);
         if depth > 64 {
             return Err(ParseError {
                 message: String::from("CUDA expression graph depth limit exceeded"),
                 span,
             });
         }
+        Ok(())
+    }
+
+    fn append_prepared(
+        &mut self,
+        expression: Expression,
+        depth: u32,
+        span: Span,
+    ) -> Handle<Expression> {
         let pre_emitted = expression.needs_pre_emit();
         if pre_emitted {
             self.function
@@ -1068,7 +1082,7 @@ impl<'a> Parser<'a> {
         if pre_emitted {
             self.function.emitter.start(&self.function.ir.expressions);
         }
-        Ok(handle)
+        handle
     }
 
     fn check_name(&self, name: &str, span: Span) -> Result<(), ParseError> {
@@ -1286,6 +1300,7 @@ pub(super) fn expression_depth(expression: &Expression, depths: &[u32]) -> u32 {
     match *expression {
         Expression::Unary { expr: operand, .. }
         | Expression::As { expr: operand, .. }
+        | Expression::Bitcast { expr: operand, .. }
         | Expression::AccessIndex { base: operand, .. }
         | Expression::Load { pointer: operand } => depths[operand.index()] + 1,
         Expression::Binary { left, right, .. }

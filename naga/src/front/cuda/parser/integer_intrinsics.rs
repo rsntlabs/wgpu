@@ -13,8 +13,7 @@ impl Parser<'_> {
         let low = self.append(
             Expression::As {
                 expr: value,
-                kind: ScalarKind::Uint,
-                convert: Some(4),
+                target: Scalar::U32,
             },
             span,
         )?;
@@ -30,8 +29,7 @@ impl Parser<'_> {
         let high = self.append(
             Expression::As {
                 expr: upper,
-                kind: ScalarKind::Uint,
-                convert: Some(4),
+                target: Scalar::U32,
             },
             span,
         )?;
@@ -66,8 +64,7 @@ impl Parser<'_> {
         self.append(
             Expression::As {
                 expr: count,
-                kind: ScalarKind::Sint,
-                convert: Some(4),
+                target: Scalar::I32,
             },
             span,
         )

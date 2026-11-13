@@ -31,8 +31,10 @@ ret_ZeroValuearray2_uint_ ZeroValuearray2_uint_() {
 [numthreads(4, 1, 1)]
 void source_null(uint3 threadIdx : SV_GroupThreadID, uint local_invocation_index : SV_GroupIndex)
 {
-    if (local_invocation_index == 0) {
-        values = (uint[4])0;
+    [loop]
+    for (uint zero_flat_index = local_invocation_index; zero_flat_index < 4u; zero_flat_index += 4u) {
+        uint zero_index = zero_flat_index;
+        values[zero_index] = (uint)0;
     }
     GroupMemoryBarrierWithGroupSync();
     uint output[2] = (uint[2])0;

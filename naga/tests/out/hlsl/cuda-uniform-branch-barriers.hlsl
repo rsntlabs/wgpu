@@ -17,8 +17,10 @@ uint naga_mod(uint lhs, uint rhs) {
 [numthreads(4, 1, 1)]
 void exchange(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_GroupID, uint local_invocation_index : SV_GroupIndex)
 {
-    if (local_invocation_index == 0) {
-        values = (uint[4])0;
+    [loop]
+    for (uint zero_flat_index = local_invocation_index; zero_flat_index < 4u; zero_flat_index += 4u) {
+        uint zero_index = zero_flat_index;
+        values[zero_index] = (uint)0;
     }
     GroupMemoryBarrierWithGroupSync();
     uint local = (uint)0;

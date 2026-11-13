@@ -18,8 +18,10 @@ uint adjusted_8_(uint value_1)
 [numthreads(4, 1, 1)]
 void reduce_4_(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_GroupID, uint local_invocation_index : SV_GroupIndex)
 {
-    if (local_invocation_index == 0) {
-        values = (uint[4])0;
+    [loop]
+    for (uint zero_flat_index = local_invocation_index; zero_flat_index < 4u; zero_flat_index += 4u) {
+        uint zero_index = zero_flat_index;
+        values[zero_index] = (uint)0;
     }
     GroupMemoryBarrierWithGroupSync();
     uint local = (uint)0;
@@ -72,8 +74,10 @@ void reduce_4_(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_GroupID, 
 [numthreads(4, 1, 1)]
 void reduce_8_(uint3 threadIdx_1 : SV_GroupThreadID, uint3 blockIdx_1 : SV_GroupID, uint local_invocation_index_1 : SV_GroupIndex)
 {
-    if (local_invocation_index_1 == 0) {
-        values_1 = (uint[8])0;
+    [loop]
+    for (uint zero_flat_index_1 = local_invocation_index_1; zero_flat_index_1 < 8u; zero_flat_index_1 += 4u) {
+        uint zero_index_1 = zero_flat_index_1;
+        values_1[zero_index_1] = (uint)0;
     }
     GroupMemoryBarrierWithGroupSync();
     uint local_2 = (uint)0;

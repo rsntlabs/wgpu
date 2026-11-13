@@ -119,10 +119,26 @@ fn wgsl_writer_enables_cross_kind_narrow_bitcasts_after_compaction() {
                 let mut validator = Validator::new(ValidationFlags::all(), capabilities);
                 validator.validate(&module).unwrap();
                 naga::compact::compact(&mut module, naga::compact::KeepUnused::Yes);
-                assert!(module
-                    .types
+                let function = if helper {
+                    module.functions.iter().next().unwrap().1
+                } else {
+                    &module.entry_points[0].function
+                };
+                let bitcast_types: Vec<_> = function
+                    .expressions
                     .iter()
-                    .all(|(_, ty)| ty.inner.scalar() != Some(target)));
+                    .filter_map(|(_, expression)| match *expression {
+                        naga::Expression::Bitcast { ty, .. } => Some(ty),
+                        _ => None,
+                    })
+                    .collect();
+                assert_eq!(bitcast_types.len(), 1);
+                let (size, scalar) = module.types[bitcast_types[0]]
+                    .inner
+                    .vector_size_and_scalar()
+                    .unwrap();
+                assert_eq!(scalar, target);
+                assert_eq!(size.map_or(1, |size| size as u8), components);
                 let info = validator.validate(&module).unwrap();
                 let output = naga::back::wgsl::write_string(
                     &module,

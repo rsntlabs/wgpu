@@ -34,8 +34,10 @@ uint naga_f2u32(float value) {
 [numthreads(64, 1, 1)]
 void scalar_aliases(uint3 blockIdx : SV_GroupID, uint3 threadIdx : SV_GroupThreadID, uint local_invocation_index : SV_GroupIndex)
 {
-    if (local_invocation_index == 0) {
-        shared_values = (uint[64])0;
+    [loop]
+    for (uint zero_flat_index = local_invocation_index; zero_flat_index < 64u; zero_flat_index += 64u) {
+        uint zero_index = zero_flat_index;
+        shared_values[zero_index] = (uint)0;
     }
     GroupMemoryBarrierWithGroupSync();
     uint base = (uint)0;

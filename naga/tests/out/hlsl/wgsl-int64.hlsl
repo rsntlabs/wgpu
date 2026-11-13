@@ -90,16 +90,16 @@ int64_t int64_function(int64_t x)
     val = (_e40 + (_e43).xxx.z);
     int64_t _e47 = val;
     uint64_t _e50 = input_uniform.val_u64_;
-    val = (_e47 + _e50);
+    val = (_e47 + int64_t(_e50));
     int64_t _e53 = val;
     uint64_t2 _e56 = input_uniform.val_u64_2_;
-    val = (_e53 + _e56.y);
+    val = (_e53 + int64_t2(_e56).y);
     int64_t _e60 = val;
     uint64_t3 _e63 = input_uniform.val_u64_3_;
-    val = (_e60 + _e63.z);
+    val = (_e60 + int64_t3(_e63).z);
     int64_t _e67 = val;
     uint64_t4 _e70 = input_uniform.val_u64_4_;
-    val = (_e67 + _e70.w);
+    val = (_e67 + int64_t4(_e70).w);
     int64_t _e74 = val;
     val = (_e74 + (-9223372036854775807L - 1L));
     int64_t _e81 = input_uniform.val_i64_;
@@ -183,16 +183,16 @@ uint64_t uint64_function(uint64_t x_1)
     val_1 = (_e38 + (_e41).xxx.z);
     uint64_t _e45 = val_1;
     int64_t _e48 = input_uniform.val_i64_;
-    val_1 = (_e45 + _e48);
+    val_1 = (_e45 + uint64_t(_e48));
     uint64_t _e51 = val_1;
     int64_t2 _e54 = input_uniform.val_i64_2_;
-    val_1 = (_e51 + _e54.y);
+    val_1 = (_e51 + uint64_t2(_e54).y);
     uint64_t _e58 = val_1;
     int64_t3 _e61 = input_uniform.val_i64_3_;
-    val_1 = (_e58 + _e61.z);
+    val_1 = (_e58 + uint64_t3(_e61).z);
     uint64_t _e65 = val_1;
     int64_t4 _e68 = input_uniform.val_i64_4_;
-    val_1 = (_e65 + _e68.w);
+    val_1 = (_e65 + uint64_t4(_e68).w);
     uint64_t _e76 = input_uniform.val_u64_;
     uint64_t _e79 = input_storage.Load<uint64_t>(16);
     output.Store(16, (_e76 + _e79));
@@ -240,6 +240,6 @@ void main()
 {
     const uint64_t _e3 = uint64_function(67uL);
     const int64_t _e5 = int64_function(60L);
-    output.Store(224, (_e3 + _e5));
+    output.Store(224, (_e3 + uint64_t(_e5)));
     return;
 }

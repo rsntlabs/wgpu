@@ -913,8 +913,7 @@ fn glsl_integer64_shifts_accept_valid_ir_unsigned16_and_unsigned64_amounts() {
                         };
                         let naga::Expression::As {
                             expr,
-                            kind: naga::ScalarKind::Uint,
-                            convert: Some(4),
+                            target: naga::Scalar::U32,
                         } = function.expressions[right]
                         else {
                             panic!("expected the WGSL shift amount conversion");
@@ -1022,7 +1021,7 @@ fn glsl_integer64_index_and_selector_contexts_report_explicit_errors() {
             let replace = match (operation, expression) {
                 ("access", naga::Expression::Access { index, .. }) => matches!(
                     function.expressions[*index],
-                    naga::Expression::As { expr, convert: Some(4), .. } if expr == wide
+                    naga::Expression::As { expr, target: naga::Scalar { width: 4, .. }, .. } if expr == wide
                 ),
                 ("load", naga::Expression::ImageLoad { level: Some(_), .. }) => true,
                 ("sample", naga::Expression::ImageSample { array_index: Some(_), .. }) => true,
@@ -1107,18 +1106,12 @@ fn glsl_integer64_half_conversions_report_unsupported_scalars_without_panicking(
             .unwrap();
             let function = &module.entry_points[0].function;
             assert!(function.expressions.iter().any(|(handle, expression)| {
-                matches!(
-                    *expression,
-                    naga::Expression::As {
-                        kind: naga::ScalarKind::Float,
-                        convert: None,
-                        ..
-                    }
-                ) && info.get_entry_point(0)[handle]
-                    .ty
-                    .inner_with(&module.types)
-                    .scalar()
-                    == Some(naga::Scalar::F16)
+                matches!(*expression, naga::Expression::Bitcast { .. })
+                    && info.get_entry_point(0)[handle]
+                        .ty
+                        .inner_with(&module.types)
+                        .scalar()
+                        == Some(naga::Scalar::F16)
                     && info.get_entry_point(0)[handle].ref_count == 1
                     && !function.named_expressions.contains_key(&handle)
             }));

@@ -66,11 +66,7 @@ fn cuda_bitcasts_convert_all_scalar_inputs_to_the_declared_parameter_type() {
                 .expressions
                 .iter()
                 .filter_map(|(handle, expression)| match *expression {
-                    naga::Expression::As {
-                        expr,
-                        convert: None,
-                        ..
-                    } => Some((handle, expr)),
+                    naga::Expression::Bitcast { expr, .. } => Some((handle, expr)),
                     _ => None,
                 })
                 .collect();
@@ -101,19 +97,18 @@ fn cuda_bitcasts_preserve_numeric_conversion_before_reinterpretation() {
         .expressions
         .iter()
         .find_map(|(_, expression)| match *expression {
-            naga::Expression::As {
-                expr,
-                kind: naga::ScalarKind::Sint,
-                convert: None,
-            } => Some(expr),
+            naga::Expression::Bitcast { expr, .. }
+                if super::helpers::is_bitcast_to(&module, expression, naga::Scalar::I32) =>
+            {
+                Some(expr)
+            }
             _ => None,
         })
         .unwrap();
     assert!(matches!(
         function.expressions[argument],
         naga::Expression::As {
-            kind: naga::ScalarKind::Float,
-            convert: Some(4),
+            target: naga::Scalar::F32,
             ..
         }
     ));
@@ -126,14 +121,14 @@ fn cuda_bitcasts_preserve_numeric_conversion_before_reinterpretation() {
         .expressions
         .iter()
         .find_map(|(_, expression)| match *expression {
-            naga::Expression::As {
-                expr,
-                kind: naga::ScalarKind::Float,
-                convert: None,
-            } => match function.expressions[expr] {
-                naga::Expression::Load { pointer } => Some(pointer),
-                _ => panic!("float-result bitcast needs a runtime operand"),
-            },
+            naga::Expression::Bitcast { expr, .. }
+                if super::helpers::is_bitcast_to(&module, expression, naga::Scalar::F32) =>
+            {
+                match function.expressions[expr] {
+                    naga::Expression::Load { pointer } => Some(pointer),
+                    _ => panic!("float-result bitcast needs a runtime operand"),
+                }
+            }
             _ => None,
         })
         .unwrap();
@@ -144,8 +139,7 @@ fn cuda_bitcasts_preserve_numeric_conversion_before_reinterpretation() {
         } if stored == pointer => matches!(
             function.expressions[value],
             naga::Expression::As {
-                kind: naga::ScalarKind::Uint,
-                convert: Some(4),
+                target: naga::Scalar::U32,
                 ..
             }
         ),
@@ -177,11 +171,15 @@ fn cuda_bitcasts_materialize_literal_float_results_as_runtime_loads() {
                 .expressions
                 .iter()
                 .find_map(|(_, expression)| match *expression {
-                    naga::Expression::As {
-                        expr,
-                        kind: naga::ScalarKind::Float,
-                        convert: None,
-                    } => Some(expr),
+                    naga::Expression::Bitcast { expr, .. }
+                        if super::helpers::is_bitcast_to(
+                            &module,
+                            expression,
+                            naga::Scalar::F32,
+                        ) =>
+                    {
+                        Some(expr)
+                    }
                     _ => None,
                 })
                 .unwrap();
@@ -358,13 +356,10 @@ fn cuda_bitcasts_evaluate_helper_arguments_once_and_capture_before_later_argumen
             _ => None,
         })
         .unwrap();
-    assert!(matches!(
-        function.expressions[first_argument],
-        naga::Expression::As {
-            kind: naga::ScalarKind::Sint,
-            convert: None,
-            ..
-        }
+    assert!(super::helpers::is_bitcast_to(
+        &module,
+        &function.expressions[first_argument],
+        naga::Scalar::I32
     ));
     let first_emit = function.body.iter().position(|statement| matches!(*statement, naga::Statement::Emit(ref range) if range.clone().any(|handle| handle == first_argument))).unwrap();
     assert!(function

@@ -104,13 +104,10 @@ fn cuda_roundf_uses_a_runtime_integer_helper_without_native_rounding_or_double_t
         .function
         .expressions
         .iter()
-        .any(|(_, expression)| matches!(
+        .any(|(_, expression)| super::helpers::is_bitcast_to(
+            &module,
             expression,
-            naga::Expression::As {
-                kind: naga::ScalarKind::Uint,
-                convert: None,
-                ..
-            }
+            naga::Scalar::U32
         )));
 }
 

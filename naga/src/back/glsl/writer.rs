@@ -4038,7 +4038,10 @@ impl<'a, W: Write> Writer<'a, W> {
 
                 write!(self.out, "(")?;
                 let clamp_float = target.width == 8
-                    && matches!(target.kind, crate::ScalarKind::Sint | crate::ScalarKind::Uint)
+                    && matches!(
+                        target.kind,
+                        crate::ScalarKind::Sint | crate::ScalarKind::Uint
+                    )
                     && inner.scalar_kind() == Some(crate::ScalarKind::Float);
                 if clamp_float {
                     let source_scalar = inner.scalar().unwrap();
@@ -4049,8 +4052,12 @@ impl<'a, W: Write> Writer<'a, W> {
                     write!(self.out, "clamp(")?;
                     self.write_expr(expr, ctx)?;
                     match (min, max) {
-                        (crate::Literal::F32(min), crate::Literal::F32(max)) => write!(self.out, ", {min:?}, {max:?})")?,
-                        (crate::Literal::F64(min), crate::Literal::F64(max)) => write!(self.out, ", {min:?}LF, {max:?}LF)")?,
+                        (crate::Literal::F32(min), crate::Literal::F32(max)) => {
+                            write!(self.out, ", {min:?}, {max:?})")?
+                        }
+                        (crate::Literal::F64(min), crate::Literal::F64(max)) => {
+                            write!(self.out, ", {min:?}LF, {max:?}LF)")?
+                        }
                         _ => unreachable!(),
                     }
                 } else {
@@ -4083,10 +4090,18 @@ impl<'a, W: Write> Writer<'a, W> {
                 }
 
                 match (src.kind, dst.kind) {
-                    (Sk::Float, Sk::Sint) if src.width == 8 => write!(self.out, "doubleBitsToInt64")?,
-                    (Sk::Float, Sk::Uint) if src.width == 8 => write!(self.out, "doubleBitsToUint64")?,
-                    (Sk::Sint, Sk::Float) if src.width == 8 => write!(self.out, "int64BitsToDouble")?,
-                    (Sk::Uint, Sk::Float) if src.width == 8 => write!(self.out, "uint64BitsToDouble")?,
+                    (Sk::Float, Sk::Sint) if src.width == 8 => {
+                        write!(self.out, "doubleBitsToInt64")?
+                    }
+                    (Sk::Float, Sk::Uint) if src.width == 8 => {
+                        write!(self.out, "doubleBitsToUint64")?
+                    }
+                    (Sk::Sint, Sk::Float) if src.width == 8 => {
+                        write!(self.out, "int64BitsToDouble")?
+                    }
+                    (Sk::Uint, Sk::Float) if src.width == 8 => {
+                        write!(self.out, "uint64BitsToDouble")?
+                    }
                     (Sk::Float, Sk::Sint) if src.width == 4 => write!(self.out, "floatBitsToInt")?,
                     (Sk::Float, Sk::Uint) if src.width == 4 => write!(self.out, "floatBitsToUint")?,
                     (Sk::Sint, Sk::Float) if src.width == 4 => write!(self.out, "intBitsToFloat")?,

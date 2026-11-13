@@ -69,13 +69,9 @@ fn check_unsigned_shift_count_roundtrip(count_width: u8) {
                     .find_map(|(&handle, name)| (name == "shift_count").then_some(handle))
                     .unwrap();
                 match function.expressions[count] {
-                    naga::Expression::As {
-                        kind: naga::ScalarKind::Uint,
-                        ref mut convert,
-                        ..
-                    } => {
-                        assert_eq!(*convert, Some(4));
-                        *convert = Some(count_width);
+                    naga::Expression::As { ref mut target, .. } => {
+                        assert_eq!(*target, naga::Scalar::U32);
+                        target.width = count_width;
                     }
                     ref expression => panic!("unexpected shift count {expression:?}"),
                 }
@@ -126,8 +122,7 @@ fn check_unsigned_shift_count_roundtrip(count_width: u8) {
                             );
                             let naga::Expression::As {
                                 expr,
-                                kind: naga::ScalarKind::Uint,
-                                convert: Some(4),
+                                target: naga::Scalar::U32,
                             } = function.expressions[right]
                             else {
                                 panic!("missing explicit u32 shift count in {output}")

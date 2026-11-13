@@ -86,7 +86,7 @@ kernel void loops(
         loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
         if (!loop_init_1) {
             int _e42 = sum;
-            if (!((sum < 150))) {
+            if (!((_e42 < 150))) {
                 break;
             }
         }

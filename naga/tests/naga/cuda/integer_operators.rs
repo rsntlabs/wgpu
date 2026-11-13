@@ -128,7 +128,9 @@ fn without_cast(
 ) -> naga::Handle<naga::Expression> {
     loop {
         match function.expressions[handle] {
-            naga::Expression::As { expr, .. } => handle = expr,
+            naga::Expression::As { expr, .. } | naga::Expression::Bitcast { expr, .. } => {
+                handle = expr
+            }
             naga::Expression::Load { pointer } if matches!(function.expressions[pointer], naga::Expression::LocalVariable(local) if function.local_variables[local].name.is_none()) =>
             {
                 handle = function

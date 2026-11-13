@@ -872,7 +872,9 @@ impl Parser<'_> {
                 }
                 Expression::AccessIndex { base, .. } => operand(base)?,
                 Expression::Load { pointer } => operand(pointer)?,
-                Expression::Unary { expr, .. } | Expression::As { expr, .. } => operand(expr)?,
+                Expression::Unary { expr, .. }
+                | Expression::As { expr, .. }
+                | Expression::Bitcast { expr, .. } => operand(expr)?,
                 Expression::Binary { left, right, .. } => {
                     operand(left)?;
                     operand(right)?;

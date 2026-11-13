@@ -119,12 +119,12 @@ fn cuda_integer_intrinsics_numerically_convert_float_arguments_before_math() {
             })
             .unwrap();
         assert!(
-            matches!(function.expressions[argument], naga::Expression::As { kind, convert: Some(4), .. } if kind == parameter.kind)
+            matches!(function.expressions[argument], naga::Expression::As { target, .. } if target == parameter)
         );
-        assert!(!function.expressions.iter().any(|(_, expression)| matches!(
-            expression,
-            naga::Expression::As { convert: None, .. }
-        )));
+        assert!(!function
+            .expressions
+            .iter()
+            .any(|(_, expression)| matches!(expression, naga::Expression::Bitcast { .. })));
     }
 }
 
@@ -187,8 +187,7 @@ fn cuda_popc_converts_the_unsigned_count_to_a_signed_result() {
         .unwrap();
     let naga::Expression::As {
         expr,
-        kind: naga::ScalarKind::Sint,
-        convert: Some(4),
+        target: naga::Scalar::I32,
     } = function.expressions[stored]
     else {
         panic!("CUDA popc returns int");

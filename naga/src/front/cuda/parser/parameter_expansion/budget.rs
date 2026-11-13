@@ -964,6 +964,60 @@ mod tests {
     }
 
     #[test]
+    fn bitcast_checks_type_and_expression_nodes_before_inserting_types() {
+        for available_nodes in [0, 1] {
+            let source = "1.5f";
+            let span = Span::new(0, source.len() as u32);
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            let input = parser.number(source, span).unwrap().handle;
+            assert!(parser.module.types.is_empty());
+            parser.parameter_expansion_budget.activate();
+            parser.prepare_parameter_bindings(span).unwrap();
+            let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+            parser
+                .parameter_expansion_budget
+                .charge_nodes(remaining - available_nodes, span)
+                .unwrap();
+            let error = parser.bitcast_scalar(input, Scalar::U32, span).unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert_eq!(error.span, span);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert!(parser.module.types.is_empty());
+            assert_eq!(parser.function.ir.expressions.len(), 1);
+            assert_eq!(parser.function.expression_graph_depths.len(), 1);
+            assert!(parser.function.ir.body.is_empty());
+        }
+    }
+
+    #[test]
+    fn bitcast_checks_type_bytes_before_inserting_types() {
+        let expression_bytes = size_of::<Expression>() + size_of::<u32>();
+        let type_bytes = size_of::<(Type, Span)>();
+        for available_bytes in [0, expression_bytes, expression_bytes + type_bytes - 1] {
+            let source = "1.5f";
+            let span = Span::new(0, source.len() as u32);
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            let input = parser.number(source, span).unwrap().handle;
+            assert!(parser.module.types.is_empty());
+            parser.parameter_expansion_budget.activate();
+            parser.prepare_parameter_bindings(span).unwrap();
+            let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+            parser
+                .parameter_expansion_budget
+                .charge_bytes(remaining - available_bytes, span)
+                .unwrap();
+            let error = parser.bitcast_scalar(input, Scalar::U32, span).unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert_eq!(error.span, span);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert!(parser.module.types.is_empty());
+            assert_eq!(parser.function.ir.expressions.len(), 1);
+            assert_eq!(parser.function.expression_graph_depths.len(), 1);
+            assert!(parser.function.ir.body.is_empty());
+        }
+    }
+
+    #[test]
     fn cached_float_math_checks_node_budget_without_parameter_state() {
         use super::super::super::float_helpers::FloatMathFunction;
 

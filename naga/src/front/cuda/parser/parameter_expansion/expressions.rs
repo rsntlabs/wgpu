@@ -334,14 +334,13 @@ impl Parser<'_> {
                 fun,
                 argument: self.invocation_value(invocation, argument)?,
             },
-            Expression::As {
-                expr,
-                kind,
-                convert,
-            } => Expression::As {
+            Expression::As { expr, target } => Expression::As {
                 expr: self.invocation_value(invocation, expr)?,
-                kind,
-                convert,
+                target,
+            },
+            Expression::Bitcast { expr, ty } => Expression::Bitcast {
+                expr: self.invocation_value(invocation, expr)?,
+                ty,
             },
             Expression::Splat { size, value } => Expression::Splat {
                 size,

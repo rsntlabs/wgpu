@@ -6,14 +6,7 @@ impl Parser<'_> {
         value: Handle<Expression>,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
-        let input_bits = self.append(
-            Expression::As {
-                expr: value,
-                kind: ScalarKind::Uint,
-                convert: None,
-            },
-            span,
-        )?;
+        let input_bits = self.bitcast_scalar(value, Scalar::U32, span)?;
         // Unsigned bits order nonnegative floats and place negatives and NaNs above infinity.
         let one_bits = self.append(Expression::Literal(Literal::U32(0x3f80_0000)), span)?;
         let upper_bounded_bits = self.append(
@@ -44,13 +37,6 @@ impl Parser<'_> {
             },
             span,
         )?;
-        self.append(
-            Expression::As {
-                expr: result_bits,
-                kind: ScalarKind::Float,
-                convert: None,
-            },
-            span,
-        )
+        self.bitcast_scalar(result_bits, Scalar::F32, span)
     }
 }

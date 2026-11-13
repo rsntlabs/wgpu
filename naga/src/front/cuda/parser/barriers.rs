@@ -226,6 +226,7 @@ impl<'a> UniformControlFlow<'a> {
                 Expression::AccessIndex { base, .. } => self.read(base),
                 Expression::Unary { expr, .. }
                 | Expression::As { expr, .. }
+                | Expression::Bitcast { expr, .. }
                 | Expression::Relational { argument: expr, .. }
                 | Expression::Splat { value: expr, .. }
                 | Expression::Swizzle { vector: expr, .. } => self.read(expr),

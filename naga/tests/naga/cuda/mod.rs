@@ -237,16 +237,10 @@ fn cuda_rejects_unsupported_or_invalid_source() {
             false
         });
         assert_eq!(stores.len(), 1);
-        let naga::Expression::As {
-            expr,
-            kind,
-            convert,
-        } = function.expressions[stores[0]]
-        else {
+        let naga::Expression::As { expr, target } = function.expressions[stores[0]] else {
             panic!("expected a numeric conversion");
         };
-        assert_eq!(kind, scalar.kind);
-        assert_eq!(convert, Some(scalar.width));
+        assert_eq!(target, scalar);
         assert_eq!(
             function.expressions[expr],
             naga::Expression::Literal(literal)
@@ -391,6 +385,7 @@ fn hlsl_dispatch_constants_are_required_only_for_selected_entry_points() {
         let mut output = String::new();
         let pipeline = naga::back::hlsl::PipelineOptions {
             entry_point: Some((naga::ShaderStage::Compute, entry_point.into())),
+            ..Default::default()
         };
         let result = naga::back::hlsl::Writer::new(&mut output, &options, &pipeline)
             .write(&module, &info, None);

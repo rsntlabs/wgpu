@@ -112,3 +112,16 @@ pub(crate) fn wgsl_roundtrip_with_capabilities(
         .unwrap();
     (output, reparsed)
 }
+
+pub(crate) fn is_bitcast_to(
+    module: &naga::Module,
+    expression: &naga::Expression,
+    scalar: naga::Scalar,
+) -> bool {
+    match *expression {
+        naga::Expression::Bitcast { ty, .. } => {
+            module.types[ty].inner == naga::TypeInner::Scalar(scalar)
+        }
+        _ => false,
+    }
+}

@@ -9,8 +9,12 @@ uint naga_mod(uint lhs, uint rhs) {
 [numthreads(64, 1, 1)]
 void barriers(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_GroupID, uint local_invocation_index : SV_GroupIndex)
 {
+    [loop]
+    for (uint zero_flat_index = local_invocation_index; zero_flat_index < 64u; zero_flat_index += 64u) {
+        uint zero_index = zero_flat_index;
+        values[zero_index] = (uint)0;
+    }
     if (local_invocation_index == 0) {
-        values = (uint[64])0;
         broadcast = (uint)0;
     }
     GroupMemoryBarrierWithGroupSync();

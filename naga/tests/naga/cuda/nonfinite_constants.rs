@@ -385,14 +385,12 @@ fn cuda_nonfinite_constants_materialize_float_values_through_integer_local_loads
     assert!(module.functions.is_empty());
     let function = &module.entry_points[0].function;
     assert!(function.expressions.iter().any(|(_, expression)| {
-        let naga::Expression::As {
-            expr,
-            kind: naga::ScalarKind::Float,
-            convert: None,
-        } = *expression
-        else {
+        let naga::Expression::Bitcast { expr, .. } = *expression else {
             return false;
         };
+        if !super::helpers::is_bitcast_to(&module, expression, naga::Scalar::F32) {
+            return false;
+        }
         let naga::Expression::Load { pointer } = function.expressions[expr] else {
             return false;
         };

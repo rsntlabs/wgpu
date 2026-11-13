@@ -14,9 +14,15 @@ uint naga_f2u32(float value) {
 [numthreads(64, 1, 1)]
 void shared_storage(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_GroupID, uint local_invocation_index : SV_GroupIndex)
 {
+    [loop]
+    for (uint zero_flat_index = local_invocation_index; zero_flat_index < 64u; zero_flat_index += 64u) {
+        uint zero_index = zero_flat_index;
+        values[zero_index] = (uint)0;
+    }
     if (local_invocation_index == 0) {
-        values = (uint[64])0;
         signed_value = (int)0;
+    }
+    if (local_invocation_index == 0) {
         float_value = (float)0;
     }
     GroupMemoryBarrierWithGroupSync();

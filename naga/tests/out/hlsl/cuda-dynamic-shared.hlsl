@@ -20,9 +20,15 @@ ret_ZeroValuearray2_uint_ ZeroValuearray2_uint_() {
 [numthreads(4, 1, 1)]
 void exchange(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_GroupID, uint local_invocation_index : SV_GroupIndex)
 {
-    if (local_invocation_index == 0) {
-        helper_values = (uint[4])0;
-        fixed_values = (uint[4])0;
+    [loop]
+    for (uint zero_flat_index = local_invocation_index; zero_flat_index < 4u; zero_flat_index += 4u) {
+        uint zero_index = zero_flat_index;
+        helper_values[zero_index] = (uint)0;
+    }
+    [loop]
+    for (uint zero_flat_index_1 = local_invocation_index; zero_flat_index_1 < 4u; zero_flat_index_1 += 4u) {
+        uint zero_index_1 = zero_flat_index_1;
+        fixed_values[zero_index_1] = (uint)0;
     }
     GroupMemoryBarrierWithGroupSync();
     uint output[2] = (uint[2])0;

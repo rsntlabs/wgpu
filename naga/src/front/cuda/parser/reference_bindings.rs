@@ -321,8 +321,7 @@ impl<'a> Parser<'a> {
             self.append(
                 Expression::As {
                     expr: index,
-                    kind: ScalarKind::Uint,
-                    convert: Some(4),
+                    target: Scalar::U32,
                 },
                 span,
             )?

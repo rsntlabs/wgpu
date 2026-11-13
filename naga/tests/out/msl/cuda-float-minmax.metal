@@ -8,7 +8,7 @@ struct _mslBufferSizes {
     uint size0;
 };
 
-typedef float type_1[1];
+typedef float type_2[1];
 
 float min(
     float first_1,
@@ -45,7 +45,7 @@ float bounded(
 }
 
 kernel void float_minmax(
-  device type_1& out [[user(fake0)]]
+  device type_2& out [[user(fake0)]]
 , constant _mslBufferSizes& _buffer_sizes [[user(fake0)]]
 ) {
     float first = {};

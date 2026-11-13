@@ -9,8 +9,8 @@ impl Parser<'_> {
     ) -> Result<Handle<Expression>, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
-        let numerator_bits = self.division_cast(numerator, ScalarKind::Uint, None, span)?;
-        let denominator_bits = self.division_cast(denominator, ScalarKind::Uint, None, span)?;
+        let numerator_bits = self.bitcast_scalar(numerator, Scalar::U32, span)?;
+        let denominator_bits = self.bitcast_scalar(denominator, Scalar::U32, span)?;
         let function = self.cached_division_function(span)?;
         self.parameter_expansion_budget
             .charge_slice::<Handle<Expression>>(2, span)?;
@@ -26,7 +26,7 @@ impl Parser<'_> {
             },
             span,
         );
-        self.division_cast(result, ScalarKind::Float, None, span)
+        self.bitcast_scalar(result, Scalar::F32, span)
     }
 
     fn cached_division_function(&mut self, span: Span) -> Result<Handle<Function>, ParseError> {
@@ -169,8 +169,7 @@ impl Parser<'_> {
             denominator_exponent,
             span,
         )?;
-        let exponent_adjustment =
-            self.division_cast(ratio_below_one, ScalarKind::Sint, Some(4), span)?;
+        let exponent_adjustment = self.division_cast(ratio_below_one, Scalar::I32, span)?;
         let exponent = self.division_binary(
             BinaryOperator::Subtract,
             exponent_difference,
@@ -274,7 +273,7 @@ impl Parser<'_> {
                 exponent,
                 span,
             )?;
-            let shift = parser.division_cast(shift, ScalarKind::Uint, Some(4), span)?;
+            let shift = parser.division_cast(shift, Scalar::U32, span)?;
             let shift_mask = parser.division_literal(31, span)?;
             let shift = parser.division_binary(BinaryOperator::And, shift, shift_mask, span)?;
             let integral_unit =
@@ -345,7 +344,7 @@ impl Parser<'_> {
         let carry =
             self.division_binary(BinaryOperator::ShiftRight, rounded, significand_width, span)?;
         let normalized = self.division_binary(BinaryOperator::ShiftRight, rounded, carry, span)?;
-        let carry = self.division_cast(carry, ScalarKind::Sint, Some(4), span)?;
+        let carry = self.division_cast(carry, Scalar::I32, span)?;
         let exponent = self.division_binary(BinaryOperator::Add, exponent, carry, span)?;
         let maximum_exponent = self.append(Expression::Literal(Literal::I32(127)), span)?;
         let overflow =
@@ -353,7 +352,7 @@ impl Parser<'_> {
         self.division_return_if(overflow, signed_infinity, span);
         let biased_exponent =
             self.division_binary(BinaryOperator::Add, exponent, maximum_exponent, span)?;
-        let exponent_bits = self.division_cast(biased_exponent, ScalarKind::Uint, Some(4), span)?;
+        let exponent_bits = self.division_cast(biased_exponent, Scalar::U32, span)?;
         let exponent_bits = self.division_binary(
             BinaryOperator::ShiftLeft,
             exponent_bits,
@@ -393,7 +392,7 @@ impl Parser<'_> {
         let exponent = self.division_local(exponent_name, Scalar::I32, span)?;
         let normal_significand =
             self.division_binary(BinaryOperator::InclusiveOr, fraction, implicit_bit, span)?;
-        let exponent_value = self.division_cast(exponent_bits, ScalarKind::Sint, Some(4), span)?;
+        let exponent_value = self.division_cast(exponent_bits, Scalar::I32, span)?;
         let bias = self.append(Expression::Literal(Literal::I32(127)), span)?;
         let normal_exponent =
             self.division_binary(BinaryOperator::Subtract, exponent_value, bias, span)?;
@@ -419,7 +418,7 @@ impl Parser<'_> {
                 parser.division_binary(BinaryOperator::ShiftLeft, fraction, shift, span)?;
             parser.division_store(significand, normalized, span);
             let minimum_exponent = parser.append(Expression::Literal(Literal::I32(-126)), span)?;
-            let shift = parser.division_cast(shift, ScalarKind::Sint, Some(4), span)?;
+            let shift = parser.division_cast(shift, Scalar::I32, span)?;
             let adjusted =
                 parser.division_binary(BinaryOperator::Subtract, minimum_exponent, shift, span)?;
             parser.division_store(exponent, adjusted, span);
@@ -460,18 +459,10 @@ impl Parser<'_> {
     fn division_cast(
         &mut self,
         expr: Handle<Expression>,
-        kind: ScalarKind,
-        convert: Option<u8>,
+        target: Scalar,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
-        self.append(
-            Expression::As {
-                expr,
-                kind,
-                convert,
-            },
-            span,
-        )
+        self.append(Expression::As { expr, target }, span)
     }
 
     fn division_select(

@@ -208,14 +208,7 @@ impl<'a> Parser<'a> {
             span,
         );
         let loaded = self.append(Expression::Load { pointer }, span)?;
-        self.append(
-            Expression::As {
-                expr: loaded,
-                kind: ScalarKind::Float,
-                convert: None,
-            },
-            span,
-        )
+        self.bitcast_scalar(loaded, Scalar::F32, span)
     }
 
     pub(super) fn constant_initializer(
