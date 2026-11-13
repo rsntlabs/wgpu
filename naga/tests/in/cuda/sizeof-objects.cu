@@ -24,4 +24,10 @@ extern "C" __global__ void object_sizes(unsigned *output) {
     output[16] = unsigned(sizeof true);
     output[17] = unsigned(sizeof((nullptr)));
     output[18] = unsigned(sizeof(0x1.8p+2f));
+    output[19] = unsigned(sizeof(+reference.z));
+    output[20] = unsigned(sizeof(!output));
+    output[21] = unsigned(sizeof(~true));
+    output[22] = unsigned(sizeof(-1L));
+    output[23] = unsigned(sizeof(+values));
+    output[24] = unsigned(sizeof(*+values));
 }

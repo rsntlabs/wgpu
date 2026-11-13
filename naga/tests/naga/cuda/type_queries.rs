@@ -1062,3 +1062,71 @@ fn cuda_sizeof_literals_rejects_unsupported_literal_forms_and_invalid_uses() {
         ));
     }
 }
+
+#[test]
+fn cuda_sizeof_unary_uses_builtin_scalar_promotions_and_pointer_decay() {
+    assert_query_results(
+        "__global__ void kernel(unsigned long *output) {
+            short small; unsigned short narrow; bool flag; float value;
+            int *pointer; int matrix[2][3];
+            output[0] = sizeof(+small);
+            output[1] = sizeof(-narrow);
+            output[2] = sizeof(~flag);
+            output[3] = sizeof(+true);
+            output[4] = sizeof(-false);
+            output[5] = sizeof(!small);
+            output[6] = sizeof(-value);
+            output[7] = sizeof(-1L);
+            output[8] = sizeof(~0xffffffffffffffffULL);
+            output[9] = sizeof(!nullptr);
+            output[10] = sizeof(+pointer);
+            output[11] = sizeof(*+pointer);
+            output[12] = sizeof(+matrix);
+            output[13] = sizeof(*+matrix);
+            output[14] = sizeof(**+matrix);
+            output[15] = sizeof(!matrix);
+            output[16] = sizeof(-2147483648);
+        }",
+        &[4, 4, 4, 4, 4, 1, 4, 8, 8, 1, 8, 4, 8, 12, 4, 1, 8],
+    );
+}
+
+#[test]
+fn cuda_sizeof_unary_does_not_read_volatile_operands_or_allocate_shared_storage() {
+    let module = roundtrip(
+        "extern __shared__ float3 values[];
+        __global__ void kernel(unsigned long *output, volatile short *input) {
+            output[0] = sizeof(-*input);
+            output[1] = sizeof(+values);
+            output[2] = sizeof(*+values);
+            output[3] = sizeof(!values);
+            output[4] = sizeof(!input);
+        }",
+    );
+    assert_eq!(module.global_variables.len(), 2);
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+}
+
+#[test]
+fn cuda_sizeof_unary_rejects_invalid_builtin_operand_types() {
+    for operand in [
+        "~1.0f", "+nullptr", "-nullptr", "~nullptr", "-pointer", "~pointer", "-matrix", "~matrix",
+        "+record", "-record", "!record", "~record", "+vector", "!vector", "++value", "value++",
+    ] {
+        rejected(&format!(
+            "struct Record {{ int member; }};
+            __global__ void kernel(unsigned long *output) {{
+                int value; int *pointer; int matrix[2][3]; Record record; float3 vector;
+                output[0] = sizeof({operand});
+            }}"
+        ));
+    }
+}

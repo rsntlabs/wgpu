@@ -341,3 +341,38 @@ fn cuda_sizeof_literals_cli_discards_unevaluated_wide_types_after_compaction() {
         [8, 1, 8, 4].map(|value| naga::Expression::Literal(naga::Literal::U32(value)))
     );
 }
+
+#[test]
+fn cuda_sizeof_unary_cli_compacts_types_without_evaluating_operands() {
+    let files = TestFiles::new(
+        "cu",
+        "extern __shared__ float3 values[];
+        __global__ void kernel(unsigned *output, volatile short *input) {
+            output[0] = unsigned(sizeof(-*input));
+            output[1] = unsigned(sizeof(+values));
+            output[2] = unsigned(sizeof(*+values));
+            output[3] = unsigned(sizeof(!input));
+            output[4] = unsigned(sizeof(~true));
+        }",
+    );
+    let result = files.translate(&["--compact"]);
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let module = files.read_module();
+    assert_eq!(module.global_variables.len(), 1);
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(
+            expression,
+            naga::Expression::Load { .. } | naga::Expression::Unary { .. }
+        )));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+}

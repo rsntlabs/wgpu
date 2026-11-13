@@ -14,7 +14,7 @@ impl Parser<'_> {
         self.prepare_parameter_bindings(span)?;
         if name == "sizeof" {
             let expression_operand = match self.lexer.peek()?.0 {
-                Token::Operation('*')
+                Token::Operation('*' | '+' | '-' | '~' | '!')
                 | Token::Paren('(')
                 | Token::Number(_)
                 | Token::Word("true" | "false" | "nullptr") => true,
@@ -144,6 +144,13 @@ impl Parser<'_> {
                     .sizeof_dereference(operand, span)
                     .map(|operand| (operand, span));
             }
+            Token::Operation(operator @ ('+' | '-' | '~' | '!')) => {
+                let (operand, end) = self.sizeof_operand()?;
+                let span = start.until(&end);
+                return self
+                    .sizeof_unary(operator, operand, span)
+                    .map(|operand| (operand, span));
+            }
             Token::Paren('(') => {
                 let (operand, _) = self.sizeof_operand()?;
                 let closing = self.lexer.expect_span(Token::Paren(')'))?;
@@ -234,6 +241,63 @@ impl Parser<'_> {
             span,
         })?;
         Ok(SizeofOperand::Object(element))
+    }
+
+    fn sizeof_unary(
+        &mut self,
+        operator: char,
+        operand: SizeofOperand,
+        span: Span,
+    ) -> Result<SizeofOperand, ParseError> {
+        let invalid = || ParseError {
+            message: String::from("invalid operand for sizeof builtin unary operator"),
+            span,
+        };
+        let ty = match operand {
+            SizeofOperand::NullPointer if operator == '!' => {
+                return Ok(SizeofOperand::Object(scalar_resolution(Scalar::BOOL)));
+            }
+            SizeofOperand::NullPointer => return Err(invalid()),
+            SizeofOperand::IncompleteArray(element) => {
+                if operator == '!' {
+                    return Ok(SizeofOperand::Object(scalar_resolution(Scalar::BOOL)));
+                }
+                if operator != '+' {
+                    return Err(invalid());
+                }
+                let base = self.type_handle(&element, span);
+                return self.pointer_type(base, span).map(SizeofOperand::Object);
+            }
+            SizeofOperand::Object(ty) => ty,
+        };
+        if self.source_pointer_pointee(&ty).is_some() {
+            return match operator {
+                '+' => Ok(SizeofOperand::Object(ty)),
+                '!' => Ok(SizeofOperand::Object(scalar_resolution(Scalar::BOOL))),
+                _ => Err(invalid()),
+            };
+        }
+        if let TypeInner::Array { base, .. } = *ty.inner_with(&self.module.types) {
+            return match operator {
+                '+' => self.pointer_type(base, span).map(SizeofOperand::Object),
+                '!' => Ok(SizeofOperand::Object(scalar_resolution(Scalar::BOOL))),
+                _ => Err(invalid()),
+            };
+        }
+        let scalar = self.require_scalar_type(&ty, span)?;
+        if operator == '!' {
+            return Ok(SizeofOperand::Object(scalar_resolution(Scalar::BOOL)));
+        }
+        if operator == '~' && scalar.kind == ScalarKind::Float {
+            return Err(invalid());
+        }
+        Ok(SizeofOperand::Object(
+            if matches!(scalar, Scalar::BOOL | Scalar::I16 | Scalar::U16) {
+                scalar_resolution(Scalar::I32)
+            } else {
+                ty
+            },
+        ))
     }
 
     fn sizeof_operand_size(

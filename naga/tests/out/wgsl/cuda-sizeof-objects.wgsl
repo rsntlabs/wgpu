@@ -37,4 +37,10 @@ fn object_sizes() {
     output[u32(16i)] = u32(1lu);
     output[u32(17i)] = u32(8lu);
     output[u32(18i)] = u32(4lu);
+    output[u32(19i)] = u32(4lu);
+    output[u32(20i)] = u32(1lu);
+    output[u32(21i)] = u32(4lu);
+    output[u32(22i)] = u32(8lu);
+    output[u32(23i)] = u32(8lu);
+    output[u32(24i)] = u32(12lu);
 }

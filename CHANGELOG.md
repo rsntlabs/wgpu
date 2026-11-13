@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support built-in unary operators in unevaluated CUDA `sizeof` operands, preserving scalar promotions and array decay.
 - Support CUDA `sizeof` queries on numeric, Boolean, and `nullptr` literals.
 - Support grouping parentheses in unevaluated CUDA `sizeof` object, member, and dereference operands.
 - Support unevaluated CUDA `sizeof` dereferences of named pointers, arrays, and member chains.

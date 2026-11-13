@@ -334,8 +334,14 @@ matrix field. Grouping and unary nesting share the expression nesting limit.
 Numeric, Boolean, and `nullptr` literals are also accepted, including grouped
 and unparenthesized forms. Numeric literals use the same supported suffixes,
 separators, ranges, and source types as evaluated literals; querying them does
-not emit their values. Other expression operands, including arithmetic unary
-operators, indexing, calls, casts, and updates, remain unsupported.
+not emit their values. Built-in unary `+`, `-`, `~`, and `!` also use operand
+types without reading them. Arithmetic unary operators apply the usual integral
+promotions, so `sizeof(+short_value)` is four; logical negation has Boolean type.
+Unary `+` preserves pointers and decays arrays once, so `sizeof(+matrix)` is
+eight while `sizeof(*+matrix)` retains the complete row extent. Record and
+vector operator overloads are not resolved within these queries. Other
+expression operands, including indexing, calls, casts, and updates, remain
+unsupported.
 
 Vector elements support whole-value copies and scalar field access, including
 assignments and updates to writable fields. Vector parameters require pointers.

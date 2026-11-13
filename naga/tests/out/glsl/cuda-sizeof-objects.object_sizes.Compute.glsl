@@ -39,5 +39,11 @@ void main() {
     _group_0_binding_0_cs[uint(16)] = uint(1ul);
     _group_0_binding_0_cs[uint(17)] = uint(8ul);
     _group_0_binding_0_cs[uint(18)] = uint(4ul);
+    _group_0_binding_0_cs[uint(19)] = uint(4ul);
+    _group_0_binding_0_cs[uint(20)] = uint(1ul);
+    _group_0_binding_0_cs[uint(21)] = uint(4ul);
+    _group_0_binding_0_cs[uint(22)] = uint(8ul);
+    _group_0_binding_0_cs[uint(23)] = uint(8ul);
+    _group_0_binding_0_cs[uint(24)] = uint(12ul);
 }
 

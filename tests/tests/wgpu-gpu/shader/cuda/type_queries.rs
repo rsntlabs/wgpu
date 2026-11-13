@@ -21,7 +21,13 @@ fn query_case(name: &str, source: &str, workgroup_size: [u32; 3], expected: &[u3
 }
 
 pub(super) fn cases() -> Vec<ShaderTest> {
-    let mut tests = vec![layouts(), constant_types(), named_objects(), members()];
+    let mut tests = vec![
+        layouts(),
+        constant_types(),
+        named_objects(),
+        members(),
+        unary_operands(),
+    ];
     for byte_count in [0, 1, 3, 4, 7, 8, 255, 256, 257, 320, 323] {
         tests.push(copy_bytes(byte_count));
     }
@@ -268,6 +274,39 @@ fn members() -> ShaderTest {
             0,
             wgpu::BufferBindingType::Storage { read_only: false },
             &[SENTINEL; 24],
+        )],
+        0,
+        [1, 1, 1],
+    )
+}
+
+fn unary_operands() -> ShaderTest {
+    let mut expected = [SENTINEL; 16];
+    expected[4..13].copy_from_slice(&[4, 4, 1, 8, 12, 4, 1, 8, 4]);
+    query_case(
+        "sizeof builtin unary operands preserve promotions and array decay without reading storage",
+        "extern __shared__ float3 dynamic[];
+        __global__ void kernel(unsigned *output, volatile int *input) {
+            bool uninitialized;
+            int matrix[2][3];
+            output[4] = unsigned(sizeof(+uninitialized));
+            output[5] = unsigned(sizeof(-*input));
+            output[6] = unsigned(sizeof(!input));
+            output[7] = unsigned(sizeof(+matrix));
+            output[8] = unsigned(sizeof(*+matrix));
+            output[9] = unsigned(sizeof(**+matrix));
+            output[10] = unsigned(sizeof(!dynamic));
+            output[11] = unsigned(sizeof(-1LL));
+            output[12] = unsigned(sizeof(~false));
+        }",
+        [1, 1, 1],
+        &expected,
+    )
+    .module_buffers(
+        vec![ShaderBuffer::new(
+            0,
+            wgpu::BufferBindingType::Storage { read_only: false },
+            &[SENTINEL; 16],
         )],
         0,
         [1, 1, 1],
