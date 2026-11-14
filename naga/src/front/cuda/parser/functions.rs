@@ -115,6 +115,8 @@ const MULTIPLY24_BUILTINS: [(&str, Scalar); 2] =
 const MULTIPLY_HIGH_BUILTINS: [(&str, Scalar); 2] =
     [("__mulhi", Scalar::I32), ("__umulhi", Scalar::U32)];
 
+const SAD_BUILTINS: [(&str, Scalar); 2] = [("__sad", Scalar::I32), ("__usad", Scalar::U32)];
+
 const HALF_ADD_BUILTINS: [(&str, HalfAddBuiltin); 4] = [
     (
         "__hadd",
@@ -323,6 +325,12 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
             )
         }))
+        .chain(SAD_BUILTINS.into_iter().map(|(name, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
         .chain(FUNNEL_SHIFT_BUILTINS.into_iter().map(|(name, _)| {
             (
                 name,
@@ -451,6 +459,7 @@ pub(super) enum FunctionCandidate {
     Multiply24(Scalar),
     MultiplyHigh(Scalar),
     HalfAdd(HalfAddBuiltin),
+    Sad(Scalar),
     FunnelShift(FunnelShiftBuiltin),
     Atomic {
         function: crate::AtomicFunction,
@@ -986,6 +995,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Multiply24(_)
                         | FunctionCandidate::MultiplyHigh(_)
                         | FunctionCandidate::HalfAdd(_)
+                        | FunctionCandidate::Sad(_)
                         | FunctionCandidate::FunnelShift(_)
                         | FunctionCandidate::Atomic { .. }
                         | FunctionCandidate::AtomicCompareExchange(_)
@@ -1230,9 +1240,9 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::AtomicCompareExchange(result)
             | FunctionCandidate::Bitcast { result, .. }
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
-            FunctionCandidate::WrappingAtomic(_) | FunctionCandidate::FunnelShift(_) => {
-                TypeSpecifier::Scalar(Scalar::U32)
-            }
+            FunctionCandidate::WrappingAtomic(_)
+            | FunctionCandidate::FunnelShift(_)
+            | FunctionCandidate::Sad(_) => TypeSpecifier::Scalar(Scalar::U32),
             FunctionCandidate::IntegralDouble { .. } => unreachable!(),
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::Sqrt
@@ -1660,6 +1670,28 @@ impl<'a> Parser<'a> {
             }
             .into());
         }
+        if let FunctionCandidate::Sad(scalar) = candidate {
+            let mut arguments = arguments.into_iter();
+            let left = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
+            let right = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
+            let accumulator = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
+            let handle = self.sum_absolute_difference(
+                scalar,
+                left.handle,
+                right.handle,
+                accumulator.handle,
+                span,
+            )?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: ConstantValue::default(),
+                handle,
+                ty: scalar_resolution(Scalar::U32),
+                span,
+            }
+            .into());
+        }
         if let FunctionCandidate::HalfAdd(builtin) = candidate {
             let mut arguments = arguments.into_iter();
             let left = self.convert_scalar(arguments.next().unwrap().into(), builtin.scalar)?;
@@ -2008,6 +2040,13 @@ impl<'a> Parser<'a> {
                     .map(|(_, builtin)| FunctionCandidate::HalfAdd(builtin)),
             )
             .chain(
+                SAD_BUILTINS
+                    .into_iter()
+                    .find(|&(candidate, _)| candidate == name)
+                    .filter(move |_| builtin_visible)
+                    .map(|(_, scalar)| FunctionCandidate::Sad(scalar)),
+            )
+            .chain(
                 FUNNEL_SHIFT_BUILTINS
                     .into_iter()
                     .find(|&(candidate, _)| candidate == name)
@@ -2085,7 +2124,9 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Atomic { .. }
             | FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::Fmodf => 2,
-            FunctionCandidate::AtomicCompareExchange(_) | FunctionCandidate::FunnelShift(_) => 3,
+            FunctionCandidate::AtomicCompareExchange(_)
+            | FunctionCandidate::FunnelShift(_)
+            | FunctionCandidate::Sad(_) => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::FloatMath(_)
@@ -2139,6 +2180,13 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf => return Some(scalar_resolution(Scalar::F32)),
             FunctionCandidate::FunnelShift(_) => return Some(scalar_resolution(Scalar::U32)),
+            FunctionCandidate::Sad(scalar) => {
+                return Some(scalar_resolution(if logical_index < 2 {
+                    scalar
+                } else {
+                    Scalar::U32
+                }))
+            }
             FunctionCandidate::Constructor { scalar, .. } => {
                 return Some(scalar_resolution(scalar))
             }

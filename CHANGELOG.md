@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA `__sad` and `__usad` with portable full-range differences and wrapping accumulators.
 - Support CUDA `__hadd`, `__rhadd`, `__uhadd`, and `__urhadd` with portable, overflow-safe integer averaging.
 - Support CUDA `__mulhi` and `__umulhi` using portable 32-bit operations.
 - Support CUDA `__funnelshift_lc` and `__funnelshift_rc` with counts clamped to 32 after argument conversion.

@@ -917,6 +917,8 @@ These predefined functions operate on integer representations:
 | `__rhadd` | `int, int` | `int` | Compute the exact signed average, rounded up, without overflowing the sum. |
 | `__uhadd` | `unsigned int, unsigned int` | `unsigned int` | Compute the exact unsigned average, rounded down, without overflowing the sum. |
 | `__urhadd` | `unsigned int, unsigned int` | `unsigned int` | Compute the exact unsigned average, rounded up, without overflowing the sum. |
+| `__sad` | `int, int, unsigned int` | `unsigned int` | Add the absolute signed difference to an unsigned accumulator, wrapping to 32 bits. |
+| `__usad` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Add the absolute unsigned difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__funnelshift_l` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` left and return its high word. |
 | `__funnelshift_r` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` right and return its low word. |
 | `__funnelshift_lc` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift `hi:lo` left by a count clamped to 32 and return its high word. |
@@ -952,6 +954,15 @@ infinity, and the rounded forms round toward positive infinity. For example,
 is `0x7fffffffu` while `__urhadd(0u, 0xffffffffu)` is `0x80000000u`. Equal
 extreme values remain unchanged. Bitwise identities avoid an overflowing sum
 and use only 32-bit operations, including when backends evaluate literal calls.
+
+Sum-of-absolute-difference functions convert their first two arguments to the
+listed operand type and the accumulator to `unsigned int`. Both return an
+unsigned result. The absolute difference uses the full mathematical range:
+`__sad(-2147483647 - 1, 2147483647, 0u)` is `0xffffffffu`. Adding an accumulator
+wraps modulo 2^32, so the same call with `1u` returns zero, and
+`__usad(0u, 0xffffffffu, 0xffffffffu)` is `0xfffffffeu`. Signed operands use
+order-preserving unsigned keys; accumulation uses 16-bit limbs. This requires
+only 32-bit operations and avoids overflowing intermediate constants.
 
 Funnel shifts convert all three arguments to `unsigned int` first. The
 `__funnelshift_l` and `__funnelshift_r` variants reduce the count modulo 32;

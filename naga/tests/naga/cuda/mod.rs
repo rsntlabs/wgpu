@@ -102,6 +102,7 @@ mod reference_categories;
 mod restrict;
 mod roundf;
 mod rsqrtf;
+mod sad;
 mod saturate;
 mod scalar_braces;
 mod scalar_promotion;

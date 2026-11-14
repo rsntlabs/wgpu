@@ -103,6 +103,7 @@ mod reference_categories;
 mod restrict;
 mod roundf;
 mod rsqrtf;
+mod sad;
 mod saturate;
 mod scalar_braces;
 mod scalar_promotion;
@@ -172,6 +173,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FABS,
         CUDA_FFSLL,
         CUDA_HALF_ADD,
+        CUDA_SAD,
         CUDA_FUNNEL_SHIFTS,
         CUDA_FUNNEL_SHIFTS_CLAMPED,
         CUDA_FLOAT_DIVISION,
@@ -895,3 +897,6 @@ static CUDA_MULTIPLY_HIGH: GpuTestConfiguration = configuration(multiply_high::c
 
 #[apply(gpu_test!)]
 static CUDA_HALF_ADD: GpuTestConfiguration = configuration(half_add::cases);
+
+#[apply(gpu_test!)]
+static CUDA_SAD: GpuTestConfiguration = configuration(sad::cases);

@@ -20,6 +20,75 @@ pub(super) struct HalfAddBuiltin {
 }
 
 impl Parser<'_> {
+    pub(super) fn sum_absolute_difference(
+        &mut self,
+        scalar: Scalar,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        accumulator: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let mut keys = [left, right];
+        if scalar == Scalar::I32 {
+            let sign = self.append(Expression::Literal(Literal::U32(0x8000_0000)), span)?;
+            // Biasing signed words preserves their order and mathematical differences.
+            for key in &mut keys {
+                let bits = self.bitcast_scalar(*key, Scalar::U32, span)?;
+                *key = self.sad_binary(BinaryOperator::ExclusiveOr, bits, sign, span)?;
+            }
+        }
+        let [left, right] = keys;
+        let minimum = self.append(
+            Expression::Math {
+                fun: MathFunction::Min,
+                arg: left,
+                arg1: Some(right),
+                arg2: None,
+                arg3: None,
+            },
+            span,
+        )?;
+        let maximum = self.append(
+            Expression::Math {
+                fun: MathFunction::Max,
+                arg: left,
+                arg1: Some(right),
+                arg2: None,
+                arg3: None,
+            },
+            span,
+        )?;
+        let difference = self.sad_binary(BinaryOperator::Subtract, maximum, minimum, span)?;
+        let mask = self.append(Expression::Literal(Literal::U32(0xffff)), span)?;
+        let width = self.append(Expression::Literal(Literal::U32(16)), span)?;
+        // Limb sums stay in range even when a backend evaluates literal arguments.
+        let low = self.sad_binary(BinaryOperator::And, difference, mask, span)?;
+        let low_accumulator = self.sad_binary(BinaryOperator::And, accumulator, mask, span)?;
+        let low_sum = self.sad_binary(BinaryOperator::Add, low, low_accumulator, span)?;
+        let carry = self.sad_binary(BinaryOperator::ShiftRight, low_sum, width, span)?;
+        let high = self.sad_binary(BinaryOperator::ShiftRight, difference, width, span)?;
+        let high_accumulator =
+            self.sad_binary(BinaryOperator::ShiftRight, accumulator, width, span)?;
+        let high_sum = self.sad_binary(BinaryOperator::Add, high, high_accumulator, span)?;
+        let high_sum = self.sad_binary(BinaryOperator::Add, high_sum, carry, span)?;
+        let high_word = self.sad_binary(BinaryOperator::And, high_sum, mask, span)?;
+        let high_word = self.sad_binary(BinaryOperator::ShiftLeft, high_word, width, span)?;
+        let low_word = self.sad_binary(BinaryOperator::And, low_sum, mask, span)?;
+        self.sad_binary(BinaryOperator::InclusiveOr, high_word, low_word, span)
+    }
+
+    fn sad_binary(
+        &mut self,
+        op: BinaryOperator,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.append(Expression::Binary { op, left, right }, span)
+    }
+
     pub(super) fn half_add(
         &mut self,
         rounded: bool,
