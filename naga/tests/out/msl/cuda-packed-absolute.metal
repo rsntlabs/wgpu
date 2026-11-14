@@ -1,0 +1,307 @@
+// language: metal1.0
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using metal::uint;
+
+struct _mslBufferSizes {
+    uint size0;
+    uint size1;
+};
+
+typedef uint type_1[1];
+
+struct packed_absoluteInput {
+};
+kernel void packed_absolute(
+  metal::uint3 threadIdx [[thread_position_in_threadgroup]]
+, device type_1& output [[buffer(0)]]
+, device type_1 const& input [[buffer(1)]]
+, constant _mslBufferSizes& _buffer_sizes [[buffer(2)]]
+) {
+    uint row = {};
+    uint value = {};
+    uint local = {};
+    uint base = {};
+    uint local_1 = {};
+    uint local_2 = {};
+    uint local_3 = {};
+    uint local_4 = {};
+    uint value_1 = {};
+    uint local_5 = {};
+    uint local_6 = {};
+    uint local_7 = {};
+    uint local_8 = {};
+    uint local_9 = {};
+    uint local_10 = {};
+    uint local_11 = {};
+    uint local_12 = {};
+    uint local_13 = {};
+    uint local_14 = {};
+    bool local_15 = {};
+    bool local_16 = {};
+    uint local_17 = {};
+    uint index = {};
+    uint local_18 = {};
+    uint local_19 = {};
+    uint local_20 = {};
+    uint local_21 = {};
+    uint local_22 = {};
+    uint local_23 = {};
+    uint local_24 = {};
+    uint local_25 = {};
+    uint local_26 = {};
+    uint local_27 = {};
+    uint local_28 = {};
+    uint local_29 = {};
+    uint local_30 = {};
+    uint local_31 = {};
+    uint local_32 = {};
+    uint local_33 = {};
+    uint local_34 = {};
+    uint lane = threadIdx.x;
+    uint count = input[static_cast<uint>(0)];
+    {
+        row = lane;
+        uint2 loop_bound = uint2(4294967295u);
+        bool loop_init = true;
+        while(true) {
+            if (metal::all(loop_bound == uint2(0u))) { break; }
+            loop_bound -= uint2(loop_bound.y == 0u, 1u);
+            if (!loop_init) {
+                uint _e169 = row;
+                row = _e169 + 64u;
+            }
+            loop_init = false;
+            uint _e8 = row;
+            if (_e8 < count) {
+            } else {
+                break;
+            }
+            uint _e10 = row;
+            local = static_cast<uint>(1u + _e10);
+            uint _e15 = local;
+            local_29 = _e15;
+            uint _e17 = local_29;
+            uint _e19 = input[_e17];
+            local_30 = _e19;
+            uint _e21 = local_30;
+            local_28 = _e21;
+            uint _e23 = local_28;
+            value = _e23;
+            uint _e25 = row;
+            base = 4u + (_e25 * 4u);
+            uint _e31 = value;
+            uint _e33 = _e31 & 65535u;
+            uint _e41 = (_e31 >> 16u) & 65535u;
+            uint _e47 = base;
+            local_1 = _e47;
+            uint _e49 = local_1;
+            local_31 = _e49;
+            uint _e51 = local_31;
+            output[_e51] = ((_e33 >= 32768u) ? (65536u - _e33) : _e33) | (((_e41 >= 32768u) ? (65536u - _e41) : _e41) << 16u);
+            uint _e54 = value;
+            uint _e56 = _e54 & 255u;
+            uint _e64 = (_e54 >> 8u) & 255u;
+            uint _e72 = (_e54 >> 16u) & 255u;
+            uint _e80 = (_e54 >> 24u) & 255u;
+            uint _e86 = base;
+            local_2 = static_cast<uint>(_e86 + 1u);
+            uint _e91 = local_2;
+            local_32 = _e91;
+            uint _e93 = local_32;
+            output[_e93] = ((((_e56 >= 128u) ? (256u - _e56) : _e56) | (((_e64 >= 128u) ? (256u - _e64) : _e64) << 8u)) | (((_e72 >= 128u) ? (256u - _e72) : _e72) << 16u)) | (((_e80 >= 128u) ? (256u - _e80) : _e80) << 24u);
+            uint _e95 = value;
+            uint _e97 = _e95 & 65535u;
+            uint _e107 = (_e95 >> 16u) & 65535u;
+            uint _e114 = base;
+            local_3 = static_cast<uint>(_e114 + 2u);
+            uint _e119 = local_3;
+            local_33 = _e119;
+            uint _e121 = local_33;
+            output[_e121] = metal::min((_e97 >= 32768u) ? (65536u - _e97) : _e97, 32767u) | (metal::min((_e107 >= 32768u) ? (65536u - _e107) : _e107, 32767u) << 16u);
+            uint _e123 = value;
+            uint _e125 = _e123 & 255u;
+            uint _e135 = (_e123 >> 8u) & 255u;
+            uint _e144 = (_e123 >> 16u) & 255u;
+            uint _e153 = (_e123 >> 24u) & 255u;
+            uint _e160 = base;
+            local_4 = static_cast<uint>(_e160 + 3u);
+            uint _e165 = local_4;
+            local_34 = _e165;
+            uint _e167 = local_34;
+            output[_e167] = ((metal::min((_e125 >= 128u) ? (256u - _e125) : _e125, 127u) | (metal::min((_e135 >= 128u) ? (256u - _e135) : _e135, 127u) << 8u)) | (metal::min((_e144 >= 128u) ? (256u - _e144) : _e144, 127u) << 16u)) | (metal::min((_e153 >= 128u) ? (256u - _e153) : _e153, 127u) << 24u);
+        }
+    }
+    uint base_1 = (4u + (count * 4u)) + (lane * 17u);
+    value_1 = 1u;
+    uint _e181 = value_1;
+    value_1 = _e181 + static_cast<uint>(1);
+    local_5 = (_e181 * 16909060u) ^ 2164195711u;
+    uint _e190 = local_5;
+    uint _e192 = _e190 & 65535u;
+    uint _e200 = (_e190 >> 16u) & 65535u;
+    output[base_1] = ((_e192 >= 32768u) ? (65536u - _e192) : _e192) | (((_e200 >= 32768u) ? (65536u - _e200) : _e200) << 16u);
+    uint _e208 = value_1;
+    value_1 = _e208 + static_cast<uint>(1);
+    local_7 = (_e208 * 16909060u) ^ 2164195711u;
+    uint _e217 = local_7;
+    uint _e219 = _e217 & 255u;
+    uint _e227 = (_e217 >> 8u) & 255u;
+    uint _e235 = (_e217 >> 16u) & 255u;
+    uint _e243 = (_e217 >> 24u) & 255u;
+    local_6 = static_cast<uint>(base_1 + 1u);
+    uint _e253 = local_6;
+    output[_e253] = ((((_e219 >= 128u) ? (256u - _e219) : _e219) | (((_e227 >= 128u) ? (256u - _e227) : _e227) << 8u)) | (((_e235 >= 128u) ? (256u - _e235) : _e235) << 16u)) | (((_e243 >= 128u) ? (256u - _e243) : _e243) << 24u);
+    uint _e255 = value_1;
+    value_1 = _e255 + static_cast<uint>(1);
+    local_9 = (_e255 * 16909060u) ^ 2164195711u;
+    uint _e264 = local_9;
+    uint _e266 = _e264 & 65535u;
+    uint _e276 = (_e264 >> 16u) & 65535u;
+    local_8 = static_cast<uint>(base_1 + 2u);
+    uint _e287 = local_8;
+    output[_e287] = metal::min((_e266 >= 32768u) ? (65536u - _e266) : _e266, 32767u) | (metal::min((_e276 >= 32768u) ? (65536u - _e276) : _e276, 32767u) << 16u);
+    uint _e289 = value_1;
+    value_1 = _e289 + static_cast<uint>(1);
+    local_11 = (_e289 * 16909060u) ^ 2164195711u;
+    uint _e298 = local_11;
+    uint _e300 = _e298 & 255u;
+    uint _e310 = (_e298 >> 8u) & 255u;
+    uint _e319 = (_e298 >> 16u) & 255u;
+    uint _e328 = (_e298 >> 24u) & 255u;
+    local_10 = static_cast<uint>(base_1 + 3u);
+    uint _e339 = local_10;
+    output[_e339] = ((metal::min((_e300 >= 128u) ? (256u - _e300) : _e300, 127u) | (metal::min((_e310 >= 128u) ? (256u - _e310) : _e310, 127u) << 8u)) | (metal::min((_e319 >= 128u) ? (256u - _e319) : _e319, 127u) << 16u)) | (metal::min((_e328 >= 128u) ? (256u - _e328) : _e328, 127u) << 24u);
+    uint _e341 = value_1;
+    value_1 = _e341 + static_cast<uint>(1);
+    uint _e346 = _e341 & 255u;
+    uint _e354 = (_e341 >> 8u) & 255u;
+    uint _e362 = (_e341 >> 16u) & 255u;
+    uint _e370 = (_e341 >> 24u) & 255u;
+    uint _e375 = ((((_e346 >= 128u) ? (256u - _e346) : _e346) | (((_e354 >= 128u) ? (256u - _e354) : _e354) << 8u)) | (((_e362 >= 128u) ? (256u - _e362) : _e362) << 16u)) | (((_e370 >= 128u) ? (256u - _e370) : _e370) << 24u);
+    uint _e377 = _e375 & 255u;
+    uint _e385 = (_e375 >> 8u) & 255u;
+    uint _e393 = (_e375 >> 16u) & 255u;
+    uint _e401 = (_e375 >> 24u) & 255u;
+    local_12 = static_cast<uint>(base_1 + 4u);
+    uint _e411 = local_12;
+    output[_e411] = ((((_e377 >= 128u) ? (256u - _e377) : _e377) | (((_e385 >= 128u) ? (256u - _e385) : _e385) << 8u)) | (((_e393 >= 128u) ? (256u - _e393) : _e393) << 16u)) | (((_e401 >= 128u) ? (256u - _e401) : _e401) << 24u);
+    if ((lane & 1u) == 0u) {
+        uint _e417 = value_1;
+        value_1 = _e417 + static_cast<uint>(1);
+        uint _e422 = _e417 & 255u;
+        uint _e432 = (_e417 >> 8u) & 255u;
+        uint _e441 = (_e417 >> 16u) & 255u;
+        uint _e450 = (_e417 >> 24u) & 255u;
+        local_13 = ((metal::min((_e422 >= 128u) ? (256u - _e422) : _e422, 127u) | (metal::min((_e432 >= 128u) ? (256u - _e432) : _e432, 127u) << 8u)) | (metal::min((_e441 >= 128u) ? (256u - _e441) : _e441, 127u) << 16u)) | (metal::min((_e450 >= 128u) ? (256u - _e450) : _e450, 127u) << 24u);
+    } else {
+        local_13 = 0u;
+    }
+    uint _e460 = value_1;
+    local_14 = static_cast<uint>(base_1 + 5u);
+    uint _e465 = local_14;
+    output[_e465] = _e460;
+    local_15 = false;
+    if (false) {
+        uint _e469 = value_1;
+        value_1 = _e469 + static_cast<uint>(1);
+        uint _e474 = _e469 & 65535u;
+        uint _e482 = (_e469 >> 16u) & 65535u;
+        local_15 = (((_e474 >= 32768u) ? (65536u - _e474) : _e474) | (((_e482 >= 32768u) ? (65536u - _e482) : _e482) << 16u)) != 0u;
+    }
+    local_16 = true;
+    if (true) {
+    } else {
+        uint _e492 = value_1;
+        value_1 = _e492 + static_cast<uint>(1);
+        uint _e497 = _e492 & 255u;
+        uint _e505 = (_e492 >> 8u) & 255u;
+        uint _e513 = (_e492 >> 16u) & 255u;
+        uint _e521 = (_e492 >> 24u) & 255u;
+        local_16 = (((((_e497 >= 128u) ? (256u - _e497) : _e497) | (((_e505 >= 128u) ? (256u - _e505) : _e505) << 8u)) | (((_e513 >= 128u) ? (256u - _e513) : _e513) << 16u)) | (((_e521 >= 128u) ? (256u - _e521) : _e521) << 24u)) != 0u;
+    }
+    uint _e529 = value_1;
+    value_1 = _e529 + static_cast<uint>(1);
+    uint _e533 = value_1;
+    local_17 = static_cast<uint>(base_1 + 6u);
+    uint _e538 = local_17;
+    output[_e538] = _e533;
+    index = 1u;
+    uint _e542 = index;
+    index = _e542 + static_cast<uint>(1);
+    uint _e547 = input[_e542];
+    uint _e549 = _e547 & 65535u;
+    uint _e559 = (_e547 >> 16u) & 65535u;
+    local_18 = static_cast<uint>(base_1 + 7u);
+    uint _e570 = local_18;
+    output[_e570] = metal::min((_e549 >= 32768u) ? (65536u - _e549) : _e549, 32767u) | (metal::min((_e559 >= 32768u) ? (65536u - _e559) : _e559, 32767u) << 16u);
+    uint _e572 = index;
+    local_19 = static_cast<uint>(base_1 + 8u);
+    uint _e577 = local_19;
+    output[_e577] = _e572;
+    uint _e581 = 2147516416u & 65535u;
+    uint _e589 = (2147516416u >> 16u) & 65535u;
+    local_20 = static_cast<uint>(base_1 + 9u);
+    uint _e599 = local_20;
+    output[_e599] = ((_e581 >= 32768u) ? (65536u - _e581) : _e581) | (((_e589 >= 32768u) ? (65536u - _e589) : _e589) << 16u);
+    uint _e603 = 2147516416u & 65535u;
+    uint _e613 = (2147516416u >> 16u) & 65535u;
+    local_21 = static_cast<uint>(base_1 + 10u);
+    uint _e624 = local_21;
+    output[_e624] = metal::min((_e603 >= 32768u) ? (65536u - _e603) : _e603, 32767u) | (metal::min((_e613 >= 32768u) ? (65536u - _e613) : _e613, 32767u) << 16u);
+    uint _e628 = 2155905152u & 255u;
+    uint _e636 = (2155905152u >> 8u) & 255u;
+    uint _e644 = (2155905152u >> 16u) & 255u;
+    uint _e652 = (2155905152u >> 24u) & 255u;
+    local_22 = static_cast<uint>(base_1 + 11u);
+    uint _e662 = local_22;
+    output[_e662] = ((((_e628 >= 128u) ? (256u - _e628) : _e628) | (((_e636 >= 128u) ? (256u - _e636) : _e636) << 8u)) | (((_e644 >= 128u) ? (256u - _e644) : _e644) << 16u)) | (((_e652 >= 128u) ? (256u - _e652) : _e652) << 24u);
+    uint _e666 = 2155905152u & 255u;
+    uint _e676 = (2155905152u >> 8u) & 255u;
+    uint _e685 = (2155905152u >> 16u) & 255u;
+    uint _e694 = (2155905152u >> 24u) & 255u;
+    local_23 = static_cast<uint>(base_1 + 12u);
+    uint _e705 = local_23;
+    output[_e705] = ((metal::min((_e666 >= 128u) ? (256u - _e666) : _e666, 127u) | (metal::min((_e676 >= 128u) ? (256u - _e676) : _e676, 127u) << 8u)) | (metal::min((_e685 >= 128u) ? (256u - _e685) : _e685, 127u) << 16u)) | (metal::min((_e694 >= 128u) ? (256u - _e694) : _e694, 127u) << 24u);
+    uint _e709 = 2147516416u & 65535u;
+    uint _e717 = (2147516416u >> 16u) & 65535u;
+    uint _e722 = ((_e709 >= 32768u) ? (65536u - _e709) : _e709) | (((_e717 >= 32768u) ? (65536u - _e717) : _e717) << 16u);
+    uint _e724 = _e722 & 65535u;
+    uint _e732 = (_e722 >> 16u) & 65535u;
+    local_24 = static_cast<uint>(base_1 + 13u);
+    uint _e742 = local_24;
+    output[_e742] = ((_e724 >= 32768u) ? (65536u - _e724) : _e724) | (((_e732 >= 32768u) ? (65536u - _e732) : _e732) << 16u);
+    uint _e746 = 2155905152u & 255u;
+    uint _e754 = (2155905152u >> 8u) & 255u;
+    uint _e762 = (2155905152u >> 16u) & 255u;
+    uint _e770 = (2155905152u >> 24u) & 255u;
+    uint _e775 = ((((_e746 >= 128u) ? (256u - _e746) : _e746) | (((_e754 >= 128u) ? (256u - _e754) : _e754) << 8u)) | (((_e762 >= 128u) ? (256u - _e762) : _e762) << 16u)) | (((_e770 >= 128u) ? (256u - _e770) : _e770) << 24u);
+    uint _e777 = _e775 & 255u;
+    uint _e785 = (_e775 >> 8u) & 255u;
+    uint _e793 = (_e775 >> 16u) & 255u;
+    uint _e801 = (_e775 >> 24u) & 255u;
+    local_25 = static_cast<uint>(base_1 + 14u);
+    uint _e811 = local_25;
+    output[_e811] = ((((_e777 >= 128u) ? (256u - _e777) : _e777) | (((_e785 >= 128u) ? (256u - _e785) : _e785) << 8u)) | (((_e793 >= 128u) ? (256u - _e793) : _e793) << 16u)) | (((_e801 >= 128u) ? (256u - _e801) : _e801) << 24u);
+    uint _e815 = 2147516416u & 65535u;
+    uint _e825 = (2147516416u >> 16u) & 65535u;
+    uint _e831 = metal::min((_e815 >= 32768u) ? (65536u - _e815) : _e815, 32767u) | (metal::min((_e825 >= 32768u) ? (65536u - _e825) : _e825, 32767u) << 16u);
+    uint _e833 = _e831 & 65535u;
+    uint _e843 = (_e831 >> 16u) & 65535u;
+    local_26 = static_cast<uint>(base_1 + 15u);
+    uint _e854 = local_26;
+    output[_e854] = metal::min((_e833 >= 32768u) ? (65536u - _e833) : _e833, 32767u) | (metal::min((_e843 >= 32768u) ? (65536u - _e843) : _e843, 32767u) << 16u);
+    uint _e858 = 2155905152u & 255u;
+    uint _e868 = (2155905152u >> 8u) & 255u;
+    uint _e877 = (2155905152u >> 16u) & 255u;
+    uint _e886 = (2155905152u >> 24u) & 255u;
+    uint _e892 = ((metal::min((_e858 >= 128u) ? (256u - _e858) : _e858, 127u) | (metal::min((_e868 >= 128u) ? (256u - _e868) : _e868, 127u) << 8u)) | (metal::min((_e877 >= 128u) ? (256u - _e877) : _e877, 127u) << 16u)) | (metal::min((_e886 >= 128u) ? (256u - _e886) : _e886, 127u) << 24u);
+    uint _e894 = _e892 & 255u;
+    uint _e904 = (_e892 >> 8u) & 255u;
+    uint _e913 = (_e892 >> 16u) & 255u;
+    uint _e922 = (_e892 >> 24u) & 255u;
+    local_27 = static_cast<uint>(base_1 + 16u);
+    uint _e933 = local_27;
+    output[_e933] = ((metal::min((_e894 >= 128u) ? (256u - _e894) : _e894, 127u) | (metal::min((_e904 >= 128u) ? (256u - _e904) : _e904, 127u) << 8u)) | (metal::min((_e913 >= 128u) ? (256u - _e913) : _e913, 127u) << 16u)) | (metal::min((_e922 >= 128u) ? (256u - _e922) : _e922, 127u) << 24u);
+}

@@ -61,7 +61,108 @@ pub(super) struct PackedArithmeticBuiltin {
     pub(super) operation: PackedArithmeticOperation,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub(super) struct PackedAbsoluteBuiltin {
+    pub(super) lane_width: u32,
+    pub(super) saturating: bool,
+}
+
 impl Parser<'_> {
+    pub(super) fn lower_packed_absolute_call(
+        &mut self,
+        builtin: PackedAbsoluteBuiltin,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let value =
+            self.convert_scalar(arguments.into_iter().next().unwrap().into(), Scalar::U32)?;
+        let handle = self.packed_absolute(builtin, value.handle, span)?;
+        Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
+            constant: ConstantValue::default(),
+            handle,
+            ty: scalar_resolution(Scalar::U32),
+            span,
+        }
+        .into())
+    }
+
+    pub(super) fn packed_absolute(
+        &mut self,
+        builtin: PackedAbsoluteBuiltin,
+        value: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let lane_radix = 1u32 << builtin.lane_width;
+        let mask = self.append(Expression::Literal(Literal::U32(lane_radix - 1)), span)?;
+        let sign_bit = self.append(Expression::Literal(Literal::U32(lane_radix / 2)), span)?;
+        let radix = self.append(Expression::Literal(Literal::U32(lane_radix)), span)?;
+        let maximum = if builtin.saturating {
+            Some(self.append(Expression::Literal(Literal::U32(lane_radix / 2 - 1)), span)?)
+        } else {
+            None
+        };
+        let mut result = None;
+        for lane in 0..32 / builtin.lane_width {
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            let shift = if lane == 0 {
+                None
+            } else {
+                Some(self.append(
+                    Expression::Literal(Literal::U32(lane * builtin.lane_width)),
+                    span,
+                )?)
+            };
+            let lane = if let Some(shift) = shift {
+                self.integer_binary(BinaryOperator::ShiftRight, value, shift, span)?
+            } else {
+                value
+            };
+            let lane = self.integer_binary(BinaryOperator::And, lane, mask, span)?;
+            let negative =
+                self.integer_binary(BinaryOperator::GreaterEqual, lane, sign_bit, span)?;
+            let negated = self.integer_binary(BinaryOperator::Subtract, radix, lane, span)?;
+            let magnitude = self.append(
+                Expression::Select {
+                    condition: negative,
+                    accept: negated,
+                    reject: lane,
+                },
+                span,
+            )?;
+            let magnitude = if let Some(maximum) = maximum {
+                self.append(
+                    Expression::Math {
+                        fun: MathFunction::Min,
+                        arg: magnitude,
+                        arg1: Some(maximum),
+                        arg2: None,
+                        arg3: None,
+                    },
+                    span,
+                )?
+            } else {
+                magnitude
+            };
+            let magnitude = if let Some(shift) = shift {
+                self.integer_binary(BinaryOperator::ShiftLeft, magnitude, shift, span)?
+            } else {
+                magnitude
+            };
+            result = Some(if let Some(result) = result {
+                self.integer_binary(BinaryOperator::InclusiveOr, result, magnitude, span)?
+            } else {
+                magnitude
+            });
+        }
+        Ok(result.unwrap())
+    }
+
     pub(super) fn packed_arithmetic(
         &mut self,
         builtin: PackedArithmeticBuiltin,

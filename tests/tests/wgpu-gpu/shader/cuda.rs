@@ -89,6 +89,7 @@ mod operator_addition;
 mod operator_compound_assignments;
 mod operator_functions;
 mod operator_null_constants;
+mod packed_absolute;
 mod packed_arithmetic;
 mod packed_averages;
 mod parenthesized_aggregates;
@@ -234,6 +235,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_MULTIPLE_KERNELS,
         CUDA_MULTIPLY24,
         CUDA_MULTIPLY_HIGH,
+        CUDA_PACKED_ABSOLUTE,
         CUDA_PACKED_ARITHMETIC,
         CUDA_PACKED_AVERAGES,
         CUDA_UNSIGNED_SATURATING_ARITHMETIC,
@@ -970,3 +972,6 @@ static CUDA_SIGNED_SATURATING_ARITHMETIC: GpuTestConfiguration =
 
 #[apply(gpu_test!)]
 static CUDA_PACKED_AVERAGES: GpuTestConfiguration = configuration(packed_averages::cases);
+
+#[apply(gpu_test!)]
+static CUDA_PACKED_ABSOLUTE: GpuTestConfiguration = configuration(packed_absolute::cases);

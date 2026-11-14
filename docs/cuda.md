@@ -963,6 +963,10 @@ These predefined functions operate on integer representations:
 | `__rhadd` | `int, int` | `int` | Compute the exact signed average, rounded up, without overflowing the sum. |
 | `__uhadd` | `unsigned int, unsigned int` | `unsigned int` | Compute the exact unsigned average, rounded down, without overflowing the sum. |
 | `__urhadd` | `unsigned int, unsigned int` | `unsigned int` | Compute the exact unsigned average, rounded up, without overflowing the sum. |
+| `__vabs2` | `unsigned int` | `unsigned int` | Take the absolute value of two packed signed 16-bit lanes, returning unsigned lane magnitudes. |
+| `__vabs4` | `unsigned int` | `unsigned int` | Take the absolute value of four packed signed 8-bit lanes, returning unsigned lane magnitudes. |
+| `__vabsss2` | `unsigned int` | `unsigned int` | Take the absolute value of two packed signed 16-bit lanes, saturating to the signed lane maximum. |
+| `__vabsss4` | `unsigned int` | `unsigned int` | Take the absolute value of four packed signed 8-bit lanes, saturating to the signed lane maximum. |
 | `__vadd2` | `unsigned int, unsigned int` | `unsigned int` | Add two packed 16-bit lanes independently, wrapping each lane. |
 | `__vadd4` | `unsigned int, unsigned int` | `unsigned int` | Add four packed 8-bit lanes independently, wrapping each lane. |
 | `__vsub2` | `unsigned int, unsigned int` | `unsigned int` | Subtract two packed 16-bit lanes independently, wrapping each lane. |
@@ -1022,6 +1026,15 @@ and result types remain `unsigned int`. For example,
 `__vsubss4(0x80808080u, 0x01010101u)` is `0x80808080u`. The implementation
 decodes, clamps, and repacks lanes using bounded 32-bit operations, including
 for negative results; it supports the default Metal language version.
+
+Packed absolute values interpret each input lane as signed while retaining
+unsigned public parameter and result types. The ordinary variants preserve the
+full magnitude of the most negative lane: `__vabs2(0x80008000u)` is
+`0x80008000u`, and `__vabs4(0x80808080u)` is `0x80808080u`. The signed
+saturating variants clamp those magnitudes to the positive signed limit:
+`__vabsss2(0x80008000u)` is `0x7fff7fffu`, and
+`__vabsss4(0x80808080u)` is `0x7f7f7f7fu`. Lanes remain independent, using
+bounded 32-bit operations compatible with the default Metal language version.
 
 Packed averages preserve each lane independently and retain unsigned public
 parameter and result types. Signed half-integer averages round away from zero;

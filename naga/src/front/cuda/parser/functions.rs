@@ -4,8 +4,8 @@ use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
 use super::float_helpers::FloatMathFunction;
 use super::function_declarations::Inlining;
 use super::integer_intrinsics::{
-    FunnelShiftBuiltin, FunnelShiftDirection, HalfAddBuiltin, PackedArithmeticBuiltin,
-    PackedArithmeticOperation, PackedArithmeticSaturation,
+    FunnelShiftBuiltin, FunnelShiftDirection, HalfAddBuiltin, PackedAbsoluteBuiltin,
+    PackedArithmeticBuiltin, PackedArithmeticOperation, PackedArithmeticSaturation,
 };
 use super::launch_bounds::LaunchBounds;
 use super::types::{IntegerSpecifiers, VECTOR_TYPES};
@@ -119,6 +119,37 @@ const MULTIPLY_HIGH_BUILTINS: [(&str, Scalar); 2] =
     [("__mulhi", Scalar::I32), ("__umulhi", Scalar::U32)];
 
 const SAD_BUILTINS: [(&str, Scalar); 2] = [("__sad", Scalar::I32), ("__usad", Scalar::U32)];
+
+const PACKED_ABSOLUTE_BUILTINS: [(&str, PackedAbsoluteBuiltin); 4] = [
+    (
+        "__vabs2",
+        PackedAbsoluteBuiltin {
+            lane_width: 16,
+            saturating: false,
+        },
+    ),
+    (
+        "__vabs4",
+        PackedAbsoluteBuiltin {
+            lane_width: 8,
+            saturating: false,
+        },
+    ),
+    (
+        "__vabsss2",
+        PackedAbsoluteBuiltin {
+            lane_width: 16,
+            saturating: true,
+        },
+    ),
+    (
+        "__vabsss4",
+        PackedAbsoluteBuiltin {
+            lane_width: 8,
+            saturating: true,
+        },
+    ),
+];
 
 const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 16] = [
     (
@@ -573,6 +604,12 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         )
     }));
+    declarations.extend(PACKED_ABSOLUTE_BUILTINS.iter().map(|&(name, _)| {
+        (
+            name,
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        )
+    }));
     declarations
 }
 
@@ -609,6 +646,7 @@ pub(super) enum FunctionCandidate {
     Sad(Scalar),
     BytePerm,
     ByteSwap32,
+    PackedAbsolute(PackedAbsoluteBuiltin),
     Fns,
     Dot4(Scalar),
     Dot2 {
@@ -1159,6 +1197,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Sad(_)
                         | FunctionCandidate::BytePerm
                         | FunctionCandidate::ByteSwap32
+                        | FunctionCandidate::PackedAbsolute(_)
                         | FunctionCandidate::Fns
                         | FunctionCandidate::Dot4(_)
                         | FunctionCandidate::Dot2 { .. }
@@ -1427,7 +1466,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::BytePerm
             | FunctionCandidate::ByteSwap32
             | FunctionCandidate::Fns
-            | FunctionCandidate::PackedArithmetic(_) => TypeSpecifier::Scalar(Scalar::U32),
+            | FunctionCandidate::PackedArithmetic(_)
+            | FunctionCandidate::PackedAbsolute(_) => TypeSpecifier::Scalar(Scalar::U32),
             FunctionCandidate::IntegralDouble { .. } => unreachable!(),
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::Sqrt
@@ -1913,6 +1953,9 @@ impl<'a> Parser<'a> {
             }
             .into());
         }
+        if let FunctionCandidate::PackedAbsolute(builtin) = candidate {
+            return self.lower_packed_absolute_call(builtin, arguments, span);
+        }
         if candidate == FunctionCandidate::ByteSwap32 {
             let value =
                 self.convert_scalar(arguments.into_iter().next().unwrap().into(), Scalar::U32)?;
@@ -2393,6 +2436,13 @@ impl<'a> Parser<'a> {
                 (builtin_visible && name == "__nv_bswap32")
                     .then_some(FunctionCandidate::ByteSwap32),
             )
+            .chain(
+                PACKED_ABSOLUTE_BUILTINS
+                    .iter()
+                    .find(|&&(candidate, _)| candidate == name)
+                    .filter(move |_| builtin_visible)
+                    .map(|&(_, builtin)| FunctionCandidate::PackedAbsolute(builtin)),
+            )
             .chain((builtin_visible && name == "__fns").then_some(FunctionCandidate::Fns))
             .chain(
                 [Scalar::I32, Scalar::U32]
@@ -2454,6 +2504,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Fns => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::ByteSwap32
+            | FunctionCandidate::PackedAbsolute(_)
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::FloatMath(_)
             | FunctionCandidate::IntegralDouble { .. }
@@ -2510,9 +2561,8 @@ impl<'a> Parser<'a> {
             FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::BytePerm
             | FunctionCandidate::ByteSwap32
-            | FunctionCandidate::PackedArithmetic(_) => {
-                return Some(scalar_resolution(Scalar::U32))
-            }
+            | FunctionCandidate::PackedArithmetic(_)
+            | FunctionCandidate::PackedAbsolute(_) => return Some(scalar_resolution(Scalar::U32)),
             FunctionCandidate::Sad(scalar) => {
                 return Some(scalar_resolution(if logical_index < 2 {
                     scalar

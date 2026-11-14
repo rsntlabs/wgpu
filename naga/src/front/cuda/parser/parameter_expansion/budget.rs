@@ -124,6 +124,75 @@ pub(super) fn limit_error(span: Span) -> ParseError {
 mod tests {
     use super::*;
 
+    #[test]
+    fn packed_absolute_checks_budgets_before_generating_ir() {
+        for lane_width in [8, 16] {
+            for saturating in [false, true] {
+                for prepared in [false, true] {
+                    for exhaust_bytes in [false, true] {
+                        let mut parser =
+                            Parser::new(Lexer::new("1u").unwrap(), &Options::default());
+                        let span = parser.lexer.peek().unwrap().1;
+                        let value = parser.number("1u", span).unwrap().handle;
+                        parser.activate_parameter_expansion(span).unwrap();
+                        if prepared {
+                            parser.prepare_parameter_bindings(span).unwrap();
+                        }
+                        let before = format!("{:?}", parser.function.ir);
+                        if exhaust_bytes {
+                            parser.parameter_expansion_budget.bytes = BYTE_LIMIT;
+                        } else {
+                            parser.parameter_expansion_budget.nodes = NODE_LIMIT;
+                        }
+                        let error = parser
+                            .packed_absolute(
+                                integer_intrinsics::PackedAbsoluteBuiltin {
+                                    lane_width,
+                                    saturating,
+                                },
+                                value,
+                                span,
+                            )
+                            .unwrap_err();
+                        assert_eq!(error.message, limit_error(span).message);
+                        assert!(parser.parameter_expansion_budget.is_exhausted());
+                        assert_eq!(format!("{:?}", parser.function.ir), before);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn packed_absolute_checks_budgets_before_implicit_operand_conversion() {
+        for lane_width in [8, 16] {
+            for saturating in [false, true] {
+                for exhaust_bytes in [false, true] {
+                    let mut parser = Parser::new(Lexer::new("1").unwrap(), &Options::default());
+                    let span = parser.lexer.peek().unwrap().1;
+                    let arguments = [parser.number("1", span).unwrap()].to_vec();
+                    parser.activate_parameter_expansion(span).unwrap();
+                    let before = format!("{:?}", parser.function.ir);
+                    if exhaust_bytes {
+                        parser.parameter_expansion_budget.bytes = BYTE_LIMIT;
+                    } else {
+                        parser.parameter_expansion_budget.nodes = NODE_LIMIT;
+                    }
+                    let candidate = functions::FunctionCandidate::PackedAbsolute(
+                        integer_intrinsics::PackedAbsoluteBuiltin {
+                            lane_width,
+                            saturating,
+                        },
+                    );
+                    let error = parser.lower_call(candidate, arguments, span).unwrap_err();
+                    assert_eq!(error.message, limit_error(span).message);
+                    assert!(parser.parameter_expansion_budget.is_exhausted());
+                    assert_eq!(format!("{:?}", parser.function.ir), before);
+                }
+            }
+        }
+    }
+
     fn packed_arithmetic_operations() -> [integer_intrinsics::PackedArithmeticOperation; 8] {
         use integer_intrinsics::{
             PackedArithmeticOperation as Operation, PackedArithmeticSaturation as Saturation,
