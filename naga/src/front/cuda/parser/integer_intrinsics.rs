@@ -13,7 +13,66 @@ pub(super) struct FunnelShiftBuiltin {
     pub(super) clamped: bool,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub(super) struct HalfAddBuiltin {
+    pub(super) scalar: Scalar,
+    pub(super) rounded: bool,
+}
+
 impl Parser<'_> {
+    pub(super) fn half_add(
+        &mut self,
+        rounded: bool,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let different = self.append(
+            Expression::Binary {
+                op: BinaryOperator::ExclusiveOr,
+                left,
+                right,
+            },
+            span,
+        )?;
+        let one = self.append(Expression::Literal(Literal::U32(1)), span)?;
+        let half_difference = self.append(
+            Expression::Binary {
+                op: BinaryOperator::ShiftRight,
+                left: different,
+                right: one,
+            },
+            span,
+        )?;
+        // These identities preserve floor/ceil rounding without overflowing the sum.
+        let common = self.append(
+            Expression::Binary {
+                op: if rounded {
+                    BinaryOperator::InclusiveOr
+                } else {
+                    BinaryOperator::And
+                },
+                left,
+                right,
+            },
+            span,
+        )?;
+        self.append(
+            Expression::Binary {
+                op: if rounded {
+                    BinaryOperator::Subtract
+                } else {
+                    BinaryOperator::Add
+                },
+                left: common,
+                right: half_difference,
+            },
+            span,
+        )
+    }
+
     pub(super) fn multiply_high(
         &mut self,
         scalar: Scalar,

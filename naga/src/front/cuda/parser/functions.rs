@@ -3,7 +3,7 @@ use super::*;
 use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
 use super::float_helpers::FloatMathFunction;
 use super::function_declarations::Inlining;
-use super::integer_intrinsics::{FunnelShiftBuiltin, FunnelShiftDirection};
+use super::integer_intrinsics::{FunnelShiftBuiltin, FunnelShiftDirection, HalfAddBuiltin};
 use super::launch_bounds::LaunchBounds;
 use super::types::{IntegerSpecifiers, VECTOR_TYPES};
 use crate::MathFunction;
@@ -114,6 +114,37 @@ const MULTIPLY24_BUILTINS: [(&str, Scalar); 2] =
 
 const MULTIPLY_HIGH_BUILTINS: [(&str, Scalar); 2] =
     [("__mulhi", Scalar::I32), ("__umulhi", Scalar::U32)];
+
+const HALF_ADD_BUILTINS: [(&str, HalfAddBuiltin); 4] = [
+    (
+        "__hadd",
+        HalfAddBuiltin {
+            scalar: Scalar::I32,
+            rounded: false,
+        },
+    ),
+    (
+        "__rhadd",
+        HalfAddBuiltin {
+            scalar: Scalar::I32,
+            rounded: true,
+        },
+    ),
+    (
+        "__uhadd",
+        HalfAddBuiltin {
+            scalar: Scalar::U32,
+            rounded: false,
+        },
+    ),
+    (
+        "__urhadd",
+        HalfAddBuiltin {
+            scalar: Scalar::U32,
+            rounded: true,
+        },
+    ),
+];
 
 const BITCAST_BUILTINS: [(&str, Scalar, Scalar); 4] = [
     ("__float_as_int", Scalar::F32, Scalar::I32),
@@ -286,6 +317,12 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
             )
         }))
+        .chain(HALF_ADD_BUILTINS.into_iter().map(|(name, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
         .chain(FUNNEL_SHIFT_BUILTINS.into_iter().map(|(name, _)| {
             (
                 name,
@@ -413,6 +450,7 @@ pub(super) enum FunctionCandidate {
     Builtin(MathBuiltin),
     Multiply24(Scalar),
     MultiplyHigh(Scalar),
+    HalfAdd(HalfAddBuiltin),
     FunnelShift(FunnelShiftBuiltin),
     Atomic {
         function: crate::AtomicFunction,
@@ -947,6 +985,7 @@ impl<'a> Parser<'a> {
                     FunctionCandidate::Builtin(_)
                         | FunctionCandidate::Multiply24(_)
                         | FunctionCandidate::MultiplyHigh(_)
+                        | FunctionCandidate::HalfAdd(_)
                         | FunctionCandidate::FunnelShift(_)
                         | FunctionCandidate::Atomic { .. }
                         | FunctionCandidate::AtomicCompareExchange(_)
@@ -1186,6 +1225,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Builtin(builtin) => TypeSpecifier::from_scalar(builtin.result),
             FunctionCandidate::Multiply24(result)
             | FunctionCandidate::MultiplyHigh(result)
+            | FunctionCandidate::HalfAdd(HalfAddBuiltin { scalar: result, .. })
             | FunctionCandidate::Atomic { scalar: result, .. }
             | FunctionCandidate::AtomicCompareExchange(result)
             | FunctionCandidate::Bitcast { result, .. }
@@ -1620,6 +1660,21 @@ impl<'a> Parser<'a> {
             }
             .into());
         }
+        if let FunctionCandidate::HalfAdd(builtin) = candidate {
+            let mut arguments = arguments.into_iter();
+            let left = self.convert_scalar(arguments.next().unwrap().into(), builtin.scalar)?;
+            let right = self.convert_scalar(arguments.next().unwrap().into(), builtin.scalar)?;
+            let handle = self.half_add(builtin.rounded, left.handle, right.handle, span)?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: ConstantValue::default(),
+                handle,
+                ty: scalar_resolution(builtin.scalar),
+                span,
+            }
+            .into());
+        }
         if let FunctionCandidate::MultiplyHigh(scalar) = candidate {
             let mut arguments = arguments.into_iter();
             let left = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
@@ -1946,6 +2001,13 @@ impl<'a> Parser<'a> {
                     .map(|(_, scalar)| FunctionCandidate::MultiplyHigh(scalar)),
             )
             .chain(
+                HALF_ADD_BUILTINS
+                    .into_iter()
+                    .find(|&(candidate, _)| candidate == name)
+                    .filter(move |_| builtin_visible)
+                    .map(|(_, builtin)| FunctionCandidate::HalfAdd(builtin)),
+            )
+            .chain(
                 FUNNEL_SHIFT_BUILTINS
                     .into_iter()
                     .find(|&(candidate, _)| candidate == name)
@@ -2019,6 +2081,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Builtin(builtin) => builtin.parameters.len(),
             FunctionCandidate::Multiply24(_)
             | FunctionCandidate::MultiplyHigh(_)
+            | FunctionCandidate::HalfAdd(_)
             | FunctionCandidate::Atomic { .. }
             | FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::Fmodf => 2,
@@ -2068,6 +2131,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Unary { source, .. }
             | FunctionCandidate::Multiply24(source)
             | FunctionCandidate::MultiplyHigh(source)
+            | FunctionCandidate::HalfAdd(HalfAddBuiltin { scalar: source, .. })
             | FunctionCandidate::IntegralDouble { source } => {
                 return Some(scalar_resolution(source))
             }

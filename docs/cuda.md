@@ -913,6 +913,10 @@ These predefined functions operate on integer representations:
 | `__umul24` | `unsigned int, unsigned int` | `unsigned int` | Multiply unsigned 24-bit operands and return the low 32 product bits. |
 | `__mulhi` | `int, int` | `int` | Return the high 32 bits of the signed 64-bit product. |
 | `__umulhi` | `unsigned int, unsigned int` | `unsigned int` | Return the high 32 bits of the unsigned 64-bit product. |
+| `__hadd` | `int, int` | `int` | Compute the exact signed average, rounded down, without overflowing the sum. |
+| `__rhadd` | `int, int` | `int` | Compute the exact signed average, rounded up, without overflowing the sum. |
+| `__uhadd` | `unsigned int, unsigned int` | `unsigned int` | Compute the exact unsigned average, rounded down, without overflowing the sum. |
+| `__urhadd` | `unsigned int, unsigned int` | `unsigned int` | Compute the exact unsigned average, rounded up, without overflowing the sum. |
 | `__funnelshift_l` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` left and return its high word. |
 | `__funnelshift_r` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` right and return its low word. |
 | `__funnelshift_lc` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift `hi:lo` left by a count clamped to 32 and return its high word. |
@@ -925,7 +929,7 @@ Arguments convert to the declared parameter type before the operation, so
 is -1. These signatures and results follow NVIDIA's
 [integer intrinsics](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__INT.html).
 
-The multiply functions ignore the upper eight bits of each converted argument.
+The 24-bit multiply functions ignore the upper eight bits of each converted argument.
 `__mul24` interprets bit 23 as the sign bit; `__umul24` treats the low 24 bits as
 unsigned. Results retain all 32 low product bits, including when the mathematical
 product exceeds 32 bits. For example, `__mul24(0x00800000, 1)` is -8388608, while
@@ -940,6 +944,14 @@ type before multiplication. For example, `__mulhi(-1, 1)` is -1, while
 and 32-bit operations, so they do not require 64-bit shader support. Signed
 high limbs use arithmetic shifts, and intermediate products and sums stay in
 range even when a backend evaluates literal arguments during translation.
+
+Half-add functions convert arguments to their declared 32-bit type before
+computing the mathematical average. The unrounded forms round toward negative
+infinity, and the rounded forms round toward positive infinity. For example,
+`__hadd(-1, 0)` is -1 while `__rhadd(-1, 0)` is 0; `__uhadd(0u, 0xffffffffu)`
+is `0x7fffffffu` while `__urhadd(0u, 0xffffffffu)` is `0x80000000u`. Equal
+extreme values remain unchanged. Bitwise identities avoid an overflowing sum
+and use only 32-bit operations, including when backends evaluate literal calls.
 
 Funnel shifts convert all three arguments to `unsigned int` first. The
 `__funnelshift_l` and `__funnelshift_r` variants reduce the count modulo 32;

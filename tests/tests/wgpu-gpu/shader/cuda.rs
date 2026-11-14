@@ -48,6 +48,7 @@ mod fmodf;
 mod function_macros;
 mod funnel_shifts;
 mod funnel_shifts_clamped;
+mod half_add;
 mod helper_builtins;
 mod helper_parameters;
 mod hex_float_literals;
@@ -170,6 +171,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_EMPTY_SCALAR_CONSTRUCTION,
         CUDA_FABS,
         CUDA_FFSLL,
+        CUDA_HALF_ADD,
         CUDA_FUNNEL_SHIFTS,
         CUDA_FUNNEL_SHIFTS_CLAMPED,
         CUDA_FLOAT_DIVISION,
@@ -890,3 +892,6 @@ static CUDA_FUNNEL_SHIFTS_CLAMPED: GpuTestConfiguration =
 
 #[apply(gpu_test!)]
 static CUDA_MULTIPLY_HIGH: GpuTestConfiguration = configuration(multiply_high::cases);
+
+#[apply(gpu_test!)]
+static CUDA_HALF_ADD: GpuTestConfiguration = configuration(half_add::cases);
