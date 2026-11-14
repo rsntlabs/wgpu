@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support portable CUDA `__nv_bswap32` byte-order reversal with an unsigned result.
 - Support signed and unsigned packed-integer CUDA `__dp2a_lo` and `__dp2a_hi` overloads with wrapping accumulation.
 - Support signed and unsigned packed-integer CUDA `__dp4a` overloads with wrapping accumulation.
 - Support portable CUDA `__byte_perm` with masked nibble selectors.

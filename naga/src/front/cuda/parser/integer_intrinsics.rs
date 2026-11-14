@@ -20,6 +20,29 @@ pub(super) struct HalfAddBuiltin {
 }
 
 impl Parser<'_> {
+    pub(super) fn byte_swap32(
+        &mut self,
+        value: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let byte_mask = self.append(Expression::Literal(Literal::U32(0xff)), span)?;
+        let second_byte_mask = self.append(Expression::Literal(Literal::U32(0xff00)), span)?;
+        let eight = self.append(Expression::Literal(Literal::U32(8)), span)?;
+        let twenty_four = self.append(Expression::Literal(Literal::U32(24)), span)?;
+        let first = self.integer_binary(BinaryOperator::And, value, byte_mask, span)?;
+        let first = self.integer_binary(BinaryOperator::ShiftLeft, first, twenty_four, span)?;
+        let second = self.integer_binary(BinaryOperator::And, value, second_byte_mask, span)?;
+        let second = self.integer_binary(BinaryOperator::ShiftLeft, second, eight, span)?;
+        let third = self.integer_binary(BinaryOperator::ShiftRight, value, eight, span)?;
+        let third = self.integer_binary(BinaryOperator::And, third, second_byte_mask, span)?;
+        let fourth = self.integer_binary(BinaryOperator::ShiftRight, value, twenty_four, span)?;
+        let low = self.integer_binary(BinaryOperator::InclusiveOr, third, fourth, span)?;
+        let high = self.integer_binary(BinaryOperator::InclusiveOr, first, second, span)?;
+        self.integer_binary(BinaryOperator::InclusiveOr, high, low, span)
+    }
+
     pub(super) fn dot2_accumulate(
         &mut self,
         high: bool,

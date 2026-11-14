@@ -909,6 +909,7 @@ These predefined functions operate on integer representations:
 | `__popcll` | `unsigned long long` | `int` | Count set bits across all 64 bits. |
 | `__brev` | `unsigned int` | `unsigned int` | Reverse all 32 bits. |
 | `__brevll` | `unsigned long long` | `unsigned long long` | Reverse all 64 bits. |
+| `__nv_bswap32` | `unsigned int` | `unsigned int` | Reverse the order of the four bytes of a 32-bit word. |
 | `__mul24` | `int, int` | `int` | Multiply signed 24-bit operands and return the low 32 product bits. |
 | `__umul24` | `unsigned int, unsigned int` | `unsigned int` | Multiply unsigned 24-bit operands and return the low 32 product bits. |
 | `__mulhi` | `int, int` | `int` | Return the high 32 bits of the signed 64-bit product. |
@@ -937,6 +938,12 @@ Arguments convert to the declared parameter type before the operation, so
 `__popc(3.75f)` is 2. The signed result of `__popc` is preserved: `__popc(3u) - 3`
 is -1. These signatures and results follow NVIDIA's
 [integer intrinsics](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__INT.html).
+
+Byte-order reversal converts its argument to `unsigned int` before reversing
+its four bytes. For example, `__nv_bswap32(0x12345678u)` is `0x78563412u`.
+Its result remains unsigned, including for signed source arguments. Canonical
+`__host__ __device__` prototypes are accepted. The lowering uses only 32-bit
+masks and fixed shifts and works with the default Metal language version.
 
 The 24-bit multiply functions ignore the upper eight bits of each converted argument.
 `__mul24` interprets bit 23 as the sign bit; `__umul24` treats the low 24 bits as

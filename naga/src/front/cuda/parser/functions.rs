@@ -370,6 +370,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         )))
         .chain(core::iter::once((
+            "__nv_bswap32",
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        )))
+        .chain(core::iter::once((
             "__dp4a",
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         )))
@@ -475,6 +479,7 @@ pub(super) enum FunctionCandidate {
     HalfAdd(HalfAddBuiltin),
     Sad(Scalar),
     BytePerm,
+    ByteSwap32,
     Dot4(Scalar),
     Dot2 {
         high: bool,
@@ -1017,6 +1022,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::HalfAdd(_)
                         | FunctionCandidate::Sad(_)
                         | FunctionCandidate::BytePerm
+                        | FunctionCandidate::ByteSwap32
                         | FunctionCandidate::Dot4(_)
                         | FunctionCandidate::Dot2 { .. }
                         | FunctionCandidate::FunnelShift(_)
@@ -1268,7 +1274,8 @@ impl<'a> Parser<'a> {
             FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
-            | FunctionCandidate::BytePerm => TypeSpecifier::Scalar(Scalar::U32),
+            | FunctionCandidate::BytePerm
+            | FunctionCandidate::ByteSwap32 => TypeSpecifier::Scalar(Scalar::U32),
             FunctionCandidate::IntegralDouble { .. } => unreachable!(),
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::Sqrt
@@ -1736,6 +1743,20 @@ impl<'a> Parser<'a> {
             }
             .into());
         }
+        if candidate == FunctionCandidate::ByteSwap32 {
+            let value =
+                self.convert_scalar(arguments.into_iter().next().unwrap().into(), Scalar::U32)?;
+            let handle = self.byte_swap32(value.handle, span)?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: ConstantValue::default(),
+                handle,
+                ty: scalar_resolution(Scalar::U32),
+                span,
+            }
+            .into());
+        }
         if candidate == FunctionCandidate::BytePerm {
             let mut arguments = arguments.into_iter();
             let left = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
@@ -2175,6 +2196,10 @@ impl<'a> Parser<'a> {
                 (builtin_visible && name == "__byte_perm").then_some(FunctionCandidate::BytePerm),
             )
             .chain(
+                (builtin_visible && name == "__nv_bswap32")
+                    .then_some(FunctionCandidate::ByteSwap32),
+            )
+            .chain(
                 [Scalar::I32, Scalar::U32]
                     .into_iter()
                     .filter(move |_| dot4_visible)
@@ -2231,6 +2256,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Dot4(_)
             | FunctionCandidate::Dot2 { .. } => 3,
             FunctionCandidate::Bitcast { .. }
+            | FunctionCandidate::ByteSwap32
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::FloatMath(_)
             | FunctionCandidate::IntegralDouble { .. }
@@ -2284,9 +2310,9 @@ impl<'a> Parser<'a> {
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf => return Some(scalar_resolution(Scalar::F32)),
-            FunctionCandidate::FunnelShift(_) | FunctionCandidate::BytePerm => {
-                return Some(scalar_resolution(Scalar::U32))
-            }
+            FunctionCandidate::FunnelShift(_)
+            | FunctionCandidate::BytePerm
+            | FunctionCandidate::ByteSwap32 => return Some(scalar_resolution(Scalar::U32)),
             FunctionCandidate::Sad(scalar) => {
                 return Some(scalar_resolution(if logical_index < 2 {
                     scalar

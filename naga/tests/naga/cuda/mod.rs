@@ -13,6 +13,7 @@ mod bitcasts;
 mod boolean_parameters;
 mod brevll;
 mod byte_perm;
+mod byte_swap32;
 mod cached_math;
 mod ceilf;
 mod class_values;

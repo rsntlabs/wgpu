@@ -19,6 +19,7 @@ mod bitcasts;
 mod boolean_parameters;
 mod brevll;
 mod byte_perm;
+mod byte_swap32;
 mod cached_math;
 mod ceilf;
 mod class_values;
@@ -155,6 +156,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_BOOLEAN_PARAMETERS,
         CUDA_BREVLL,
         CUDA_BYTE_PERM,
+        CUDA_BYTE_SWAP32,
         CUDA_CACHED_MATH,
         CUDA_CEILF,
         CUDA_CLASS_VALUES,
@@ -915,3 +917,6 @@ static CUDA_DP4A: GpuTestConfiguration = configuration(dp4a::cases);
 
 #[apply(gpu_test!)]
 static CUDA_DP2A: GpuTestConfiguration = configuration(dp2a::cases);
+
+#[apply(gpu_test!)]
+static CUDA_BYTE_SWAP32: GpuTestConfiguration = configuration(byte_swap32::cases);
