@@ -44,6 +44,7 @@ pub(super) enum PackedArithmeticOperation {
     Maximum { signed: bool },
     Equal { mask: bool },
     NotEqual { mask: bool },
+    LessThan { signed: bool, mask: bool },
 }
 
 #[derive(Clone, Copy)]
@@ -238,7 +239,10 @@ impl Parser<'_> {
         };
         let comparison_constants = match builtin.operation {
             PackedArithmeticOperation::Equal { mask: output_mask }
-            | PackedArithmeticOperation::NotEqual { mask: output_mask } => {
+            | PackedArithmeticOperation::NotEqual { mask: output_mask }
+            | PackedArithmeticOperation::LessThan {
+                mask: output_mask, ..
+            } => {
                 let zero = self.append(Expression::Literal(Literal::U32(0)), span)?;
                 let true_value = if output_mask {
                     mask
@@ -255,6 +259,7 @@ impl Parser<'_> {
                 | PackedArithmeticOperation::SumAbsoluteDifferences { signed: true }
                 | PackedArithmeticOperation::Minimum { signed: true }
                 | PackedArithmeticOperation::Maximum { signed: true }
+                | PackedArithmeticOperation::LessThan { signed: true, .. }
         ) {
             Some(self.append(Expression::Literal(Literal::U32(lane_radix / 2)), span)?)
         } else {
@@ -313,11 +318,20 @@ impl Parser<'_> {
             let left = self.integer_binary(BinaryOperator::And, left, mask, span)?;
             let right = self.integer_binary(BinaryOperator::And, right, mask, span)?;
             let value = if let Some((zero, true_value)) = comparison_constants {
+                let (left, right) = if let Some(sign_bit) = ordered_sign_bit {
+                    (
+                        self.integer_binary(BinaryOperator::ExclusiveOr, left, sign_bit, span)?,
+                        self.integer_binary(BinaryOperator::ExclusiveOr, right, sign_bit, span)?,
+                    )
+                } else {
+                    (left, right)
+                };
                 let condition = self.integer_binary(
-                    if matches!(builtin.operation, PackedArithmeticOperation::Equal { .. }) {
-                        BinaryOperator::Equal
-                    } else {
-                        BinaryOperator::NotEqual
+                    match builtin.operation {
+                        PackedArithmeticOperation::Equal { .. } => BinaryOperator::Equal,
+                        PackedArithmeticOperation::NotEqual { .. } => BinaryOperator::NotEqual,
+                        PackedArithmeticOperation::LessThan { .. } => BinaryOperator::Less,
+                        _ => unreachable!(),
                     },
                     left,
                     right,

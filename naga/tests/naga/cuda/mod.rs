@@ -94,6 +94,7 @@ mod packed_arithmetic;
 mod packed_averages;
 mod packed_equality;
 mod packed_half_sums;
+mod packed_less_than;
 mod packed_min_max;
 mod packed_negation;
 mod packed_sad;

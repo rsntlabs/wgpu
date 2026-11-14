@@ -483,6 +483,86 @@ const PACKED_ARITHMETIC_BUILTINS: &[(&str, PackedArithmeticBuiltin)] = &[
             operation: PackedArithmeticOperation::NotEqual { mask: false },
         },
     ),
+    (
+        "__vcmplts2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::LessThan {
+                signed: true,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vcmplts4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::LessThan {
+                signed: true,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vcmpltu2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::LessThan {
+                signed: false,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vcmpltu4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::LessThan {
+                signed: false,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vsetlts2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::LessThan {
+                signed: true,
+                mask: false,
+            },
+        },
+    ),
+    (
+        "__vsetlts4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::LessThan {
+                signed: true,
+                mask: false,
+            },
+        },
+    ),
+    (
+        "__vsetltu2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::LessThan {
+                signed: false,
+                mask: false,
+            },
+        },
+    ),
+    (
+        "__vsetltu4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::LessThan {
+                signed: false,
+                mask: false,
+            },
+        },
+    ),
 ];
 
 const HALF_ADD_BUILTINS: [(&str, HalfAddBuiltin); 4] = [
