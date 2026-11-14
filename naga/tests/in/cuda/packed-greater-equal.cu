@@ -1,0 +1,60 @@
+__device__ unsigned greater_equal_word(unsigned &value) { return 0x40404040u - (value++ * 0x01010101u); }
+extern "C" __global__ void packed_greater_equal(unsigned *output, const unsigned *input) {
+    unsigned lane = threadIdx.x;
+    unsigned count = input[0];
+    for (unsigned row = lane; row < count; row += 64u) {
+        unsigned a = input[1u + row * 2u];
+        unsigned b = input[2u + row * 2u];
+        unsigned base = 4u + row * 8u;
+        output[base + 0u] = __vcmpges2(a, b);
+        output[base + 1u] = __vcmpges4(a, b);
+        output[base + 2u] = __vcmpgeu2(a, b);
+        output[base + 3u] = __vcmpgeu4(a, b);
+        output[base + 4u] = __vsetges2(a, b);
+        output[base + 5u] = __vsetges4(a, b);
+        output[base + 6u] = __vsetgeu2(a, b);
+        output[base + 7u] = __vsetgeu4(a, b);
+    }
+    unsigned base = 4u + count * 8u + lane * 35u;
+    unsigned value = 1u;
+    output[base + 0u] = __vcmpges2(greater_equal_word(value), greater_equal_word(value));
+    output[base + 1u] = __vcmpges4(greater_equal_word(value), greater_equal_word(value));
+    output[base + 2u] = __vcmpgeu2(greater_equal_word(value), greater_equal_word(value));
+    output[base + 3u] = __vcmpgeu4(greater_equal_word(value), greater_equal_word(value));
+    output[base + 4u] = __vsetges2(greater_equal_word(value), greater_equal_word(value));
+    output[base + 5u] = __vsetges4(greater_equal_word(value), greater_equal_word(value));
+    output[base + 6u] = __vsetgeu2(greater_equal_word(value), greater_equal_word(value));
+    output[base + 7u] = __vsetgeu4(greater_equal_word(value), greater_equal_word(value));
+    output[base + 8u] = __vcmpges2(__vcmpges2(value++, 0xffffffffu), 0xffffffffu);
+    (lane & 1u) == 0u ? __vsetgeu2(value++, value++) : 0u;
+    output[base + 9u] = value;
+    false && __vcmpges4(value++, value++);
+    true || __vsetges4(value++, value++);
+    __vcmpgeu4(value++, value++);
+    output[base + 10u] = value;
+    unsigned index = 1u;
+    output[base + 11u] = __vsetges4(input[index++], input[index++]);
+    output[base + 12u] = index;
+    output[base + 13u] = __vcmpges2(0x00010001u, 0u);
+    output[base + 14u] = __vcmpges4(0x01010101u, 0u);
+    output[base + 15u] = __vcmpgeu2(0x00010001u, 0u);
+    output[base + 16u] = __vcmpgeu4(0x01010101u, 0u);
+    output[base + 17u] = __vsetges2(0x00010001u, 0u);
+    output[base + 18u] = __vsetges4(0x01010101u, 0u);
+    output[base + 19u] = __vsetgeu2(0x00010001u, 0u);
+    output[base + 20u] = __vsetgeu4(0x01010101u, 0u);
+    output[base + 21u] = __vcmpges2(0x80008000u, 0x7fff7fffu);
+    output[base + 22u] = __vcmpgeu2(0x80008000u, 0x7fff7fffu);
+    output[base + 23u] = __vsetges4(0x80808080u, 0x7f7f7f7fu);
+    output[base + 24u] = __vsetgeu4(0x80808080u, 0x7f7f7f7fu);
+    output[base + 25u] = __vcmpges2(0x80ff017fu, 0x80ff017fu);
+    output[base + 26u] = __vsetgeu4(0x80ff017fu, 0x80ff017fu);
+    output[base + 27u] = __vcmpges2(0x80ff017fu, 0x80ff017fu);
+    output[base + 28u] = __vcmpges4(0x80ff017fu, 0x80ff017fu);
+    output[base + 29u] = __vcmpgeu2(0x80ff017fu, 0x80ff017fu);
+    output[base + 30u] = __vcmpgeu4(0x80ff017fu, 0x80ff017fu);
+    output[base + 31u] = __vsetges2(0x80ff017fu, 0x80ff017fu);
+    output[base + 32u] = __vsetges4(0x80ff017fu, 0x80ff017fu);
+    output[base + 33u] = __vsetgeu2(0x80ff017fu, 0x80ff017fu);
+    output[base + 34u] = __vsetgeu4(0x80ff017fu, 0x80ff017fu);
+}

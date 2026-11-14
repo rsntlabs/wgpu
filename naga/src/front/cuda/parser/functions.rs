@@ -723,6 +723,86 @@ const PACKED_ARITHMETIC_BUILTINS: &[(&str, PackedArithmeticBuiltin)] = &[
             },
         },
     ),
+    (
+        "__vcmpges2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::GreaterEqual {
+                signed: true,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vcmpges4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::GreaterEqual {
+                signed: true,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vcmpgeu2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::GreaterEqual {
+                signed: false,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vcmpgeu4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::GreaterEqual {
+                signed: false,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vsetges2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::GreaterEqual {
+                signed: true,
+                mask: false,
+            },
+        },
+    ),
+    (
+        "__vsetges4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::GreaterEqual {
+                signed: true,
+                mask: false,
+            },
+        },
+    ),
+    (
+        "__vsetgeu2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::GreaterEqual {
+                signed: false,
+                mask: false,
+            },
+        },
+    ),
+    (
+        "__vsetgeu4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::GreaterEqual {
+                signed: false,
+                mask: false,
+            },
+        },
+    ),
 ];
 
 const HALF_ADD_BUILTINS: [(&str, HalfAddBuiltin); 4] = [

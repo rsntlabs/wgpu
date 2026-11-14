@@ -1011,6 +1011,14 @@ These predefined functions operate on integer representations:
 | `__vsetgts4` | `unsigned int, unsigned int` | `unsigned int` | Return signed greater-than as 0 or 1 in each of four packed 8-bit lanes. |
 | `__vsetgtu2` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned greater-than as 0 or 1 in each of two packed 16-bit lanes. |
 | `__vsetgtu4` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned greater-than as 0 or 1 in each of four packed 8-bit lanes. |
+| `__vcmpges2` | `unsigned int, unsigned int` | `unsigned int` | Return signed greater-than-or-equal masks in two packed 16-bit lanes. |
+| `__vcmpges4` | `unsigned int, unsigned int` | `unsigned int` | Return signed greater-than-or-equal masks in four packed 8-bit lanes. |
+| `__vcmpgeu2` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned greater-than-or-equal masks in two packed 16-bit lanes. |
+| `__vcmpgeu4` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned greater-than-or-equal masks in four packed 8-bit lanes. |
+| `__vsetges2` | `unsigned int, unsigned int` | `unsigned int` | Return signed greater-than-or-equal as 0 or 1 in each of two packed 16-bit lanes. |
+| `__vsetges4` | `unsigned int, unsigned int` | `unsigned int` | Return signed greater-than-or-equal as 0 or 1 in each of four packed 8-bit lanes. |
+| `__vsetgeu2` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned greater-than-or-equal as 0 or 1 in each of two packed 16-bit lanes. |
+| `__vsetgeu4` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned greater-than-or-equal as 0 or 1 in each of four packed 8-bit lanes. |
 | `__vneg2` | `unsigned int` | `unsigned int` | Negate two packed signed 16-bit lanes with lane-width wrapping. |
 | `__vneg4` | `unsigned int` | `unsigned int` | Negate four packed signed 8-bit lanes with lane-width wrapping. |
 | `__vnegss2` | `unsigned int` | `unsigned int` | Negate two packed signed 16-bit lanes with signed saturation. |
@@ -1156,6 +1164,14 @@ return zero because the comparison is strict. For example,
 `set` results are `0x00000001u` and `0x00010000u`. All eight functions
 retain unsigned public parameter and result types and use bounded 32-bit
 operations compatible with the default Metal language version.
+
+Packed greater-than-or-equal comparisons include equal lanes while retaining
+the same signed or unsigned ordering and mask or per-lane `1` result shapes.
+For example, `__vcmpges4(0xffffffffu, 0xffffffffu)` is `0xffffffffu`, and
+`__vsetges4(0xffffffffu, 0xffffffffu)` is `0x01010101u`. Each lane is
+compared independently. All eight functions retain unsigned public parameter
+and result types and use bounded 32-bit operations compatible with the default
+Metal language version.
 
 Packed negation also interprets each lane as signed while keeping unsigned
 public parameter and result types. Wrapping negation leaves the most negative

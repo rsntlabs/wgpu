@@ -47,6 +47,7 @@ pub(super) enum PackedArithmeticOperation {
     LessThan { signed: bool, mask: bool },
     LessEqual { signed: bool, mask: bool },
     GreaterThan { signed: bool, mask: bool },
+    GreaterEqual { signed: bool, mask: bool },
 }
 
 #[derive(Clone, Copy)]
@@ -250,6 +251,9 @@ impl Parser<'_> {
             }
             | PackedArithmeticOperation::GreaterThan {
                 mask: output_mask, ..
+            }
+            | PackedArithmeticOperation::GreaterEqual {
+                mask: output_mask, ..
             } => {
                 let zero = self.append(Expression::Literal(Literal::U32(0)), span)?;
                 let true_value = if output_mask {
@@ -270,6 +274,7 @@ impl Parser<'_> {
                 | PackedArithmeticOperation::LessThan { signed: true, .. }
                 | PackedArithmeticOperation::LessEqual { signed: true, .. }
                 | PackedArithmeticOperation::GreaterThan { signed: true, .. }
+                | PackedArithmeticOperation::GreaterEqual { signed: true, .. }
         ) {
             Some(self.append(Expression::Literal(Literal::U32(lane_radix / 2)), span)?)
         } else {
@@ -343,6 +348,9 @@ impl Parser<'_> {
                         PackedArithmeticOperation::LessThan { .. } => BinaryOperator::Less,
                         PackedArithmeticOperation::LessEqual { .. } => BinaryOperator::LessEqual,
                         PackedArithmeticOperation::GreaterThan { .. } => BinaryOperator::Greater,
+                        PackedArithmeticOperation::GreaterEqual { .. } => {
+                            BinaryOperator::GreaterEqual
+                        }
                         _ => unreachable!(),
                     },
                     left,
