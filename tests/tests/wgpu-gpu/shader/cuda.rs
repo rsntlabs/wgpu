@@ -74,6 +74,7 @@ mod long_types;
 mod multidimensional_arrays;
 mod multiple_kernels;
 mod multiply24;
+mod multiply_high;
 mod nonfinite_constants;
 mod null_pointers;
 mod nullptr;
@@ -209,6 +210,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_MULTIDIMENSIONAL_ARRAYS,
         CUDA_MULTIPLE_KERNELS,
         CUDA_MULTIPLY24,
+        CUDA_MULTIPLY_HIGH,
         CUDA_NONFINITE_CONSTANTS,
         CUDA_NULL_POINTERS,
         CUDA_NULLPTR,
@@ -885,3 +887,6 @@ static CUDA_FUNNEL_SHIFTS: GpuTestConfiguration = configuration(funnel_shifts::c
 #[apply(gpu_test!)]
 static CUDA_FUNNEL_SHIFTS_CLAMPED: GpuTestConfiguration =
     configuration(funnel_shifts_clamped::cases);
+
+#[apply(gpu_test!)]
+static CUDA_MULTIPLY_HIGH: GpuTestConfiguration = configuration(multiply_high::cases);

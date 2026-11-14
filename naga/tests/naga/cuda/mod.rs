@@ -72,6 +72,7 @@ mod loops;
 mod multidimensional_arrays;
 mod multiple_kernels;
 mod multiply24;
+mod multiply_high;
 mod nonfinite_constants;
 mod null_pointers;
 mod nullptr;

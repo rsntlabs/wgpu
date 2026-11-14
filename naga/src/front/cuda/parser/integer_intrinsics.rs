@@ -14,6 +14,85 @@ pub(super) struct FunnelShiftBuiltin {
 }
 
 impl Parser<'_> {
+    pub(super) fn multiply_high(
+        &mut self,
+        scalar: Scalar,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let mask = self.append(
+            Expression::Literal(if scalar == Scalar::I32 {
+                Literal::I32(0xffff)
+            } else {
+                Literal::U32(0xffff)
+            }),
+            span,
+        )?;
+        let width = self.append(Expression::Literal(Literal::U32(16)), span)?;
+        let left_low = self.multiply_high_binary(BinaryOperator::And, left, mask, span)?;
+        let right_low = self.multiply_high_binary(BinaryOperator::And, right, mask, span)?;
+        let left_high = self.multiply_high_binary(BinaryOperator::ShiftRight, left, width, span)?;
+        let right_high =
+            self.multiply_high_binary(BinaryOperator::ShiftRight, right, width, span)?;
+        let mut low_words = [left_low, right_low];
+        if scalar == Scalar::I32 {
+            for word in &mut low_words {
+                *word = self.append(
+                    Expression::As {
+                        expr: *word,
+                        target: Scalar::U32,
+                    },
+                    span,
+                )?;
+            }
+        }
+        // Only the low-limb product needs unsigned range; signed cross products fit i32.
+        let product =
+            self.multiply_high_binary(BinaryOperator::Multiply, low_words[0], low_words[1], span)?;
+        let mut carry =
+            self.multiply_high_binary(BinaryOperator::ShiftRight, product, width, span)?;
+        if scalar == Scalar::I32 {
+            carry = self.append(
+                Expression::As {
+                    expr: carry,
+                    target: scalar,
+                },
+                span,
+            )?;
+        }
+        let first_cross =
+            self.multiply_high_binary(BinaryOperator::Multiply, left_high, right_low, span)?;
+        let first_cross =
+            self.multiply_high_binary(BinaryOperator::Add, first_cross, carry, span)?;
+        let middle = self.multiply_high_binary(BinaryOperator::And, first_cross, mask, span)?;
+        let upper =
+            self.multiply_high_binary(BinaryOperator::ShiftRight, first_cross, width, span)?;
+        let second_cross =
+            self.multiply_high_binary(BinaryOperator::Multiply, left_low, right_high, span)?;
+        let second_cross =
+            self.multiply_high_binary(BinaryOperator::Add, second_cross, middle, span)?;
+        let carry =
+            self.multiply_high_binary(BinaryOperator::ShiftRight, second_cross, width, span)?;
+        let high_product =
+            self.multiply_high_binary(BinaryOperator::Multiply, left_high, right_high, span)?;
+        let high_product =
+            self.multiply_high_binary(BinaryOperator::Add, high_product, upper, span)?;
+        self.multiply_high_binary(BinaryOperator::Add, high_product, carry, span)
+    }
+
+    fn multiply_high_binary(
+        &mut self,
+        op: BinaryOperator,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.append(Expression::Binary { op, left, right }, span)
+    }
+
     pub(super) fn funnel_shift(
         &mut self,
         builtin: FunnelShiftBuiltin,

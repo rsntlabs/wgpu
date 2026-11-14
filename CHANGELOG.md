@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA `__mulhi` and `__umulhi` using portable 32-bit operations.
 - Support CUDA `__funnelshift_lc` and `__funnelshift_rc` with counts clamped to 32 after argument conversion.
 - Support portable CUDA `__funnelshift_l` and `__funnelshift_r` with modulo-32 shift counts.
 - Support CUDA cv-qualified void casts and functional void expressions with declaration disambiguation.

@@ -911,6 +911,8 @@ These predefined functions operate on integer representations:
 | `__brevll` | `unsigned long long` | `unsigned long long` | Reverse all 64 bits. |
 | `__mul24` | `int, int` | `int` | Multiply signed 24-bit operands and return the low 32 product bits. |
 | `__umul24` | `unsigned int, unsigned int` | `unsigned int` | Multiply unsigned 24-bit operands and return the low 32 product bits. |
+| `__mulhi` | `int, int` | `int` | Return the high 32 bits of the signed 64-bit product. |
+| `__umulhi` | `unsigned int, unsigned int` | `unsigned int` | Return the high 32 bits of the unsigned 64-bit product. |
 | `__funnelshift_l` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` left and return its high word. |
 | `__funnelshift_r` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` right and return its low word. |
 | `__funnelshift_lc` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift `hi:lo` left by a count clamped to 32 and return its high word. |
@@ -931,6 +933,13 @@ product exceeds 32 bits. For example, `__mul24(0x00800000, 1)` is -8388608, whil
 [24-bit multiply intrinsics](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__INT.html).
 Calls do not provide source constant expressions, including calls with literal
 arguments.
+
+High-half multiplication converts both arguments to the declared 32-bit parameter
+type before multiplication. For example, `__mulhi(-1, 1)` is -1, while
+`__umulhi(0xffffffffu, 0xffffffffu)` is `0xfffffffeu`. Both use 16-bit limbs
+and 32-bit operations, so they do not require 64-bit shader support. Signed
+high limbs use arithmetic shifts, and intermediate products and sums stay in
+range even when a backend evaluates literal arguments during translation.
 
 Funnel shifts convert all three arguments to `unsigned int` first. The
 `__funnelshift_l` and `__funnelshift_r` variants reduce the count modulo 32;

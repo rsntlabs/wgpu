@@ -112,6 +112,9 @@ const MATH_SIGNATURES: [([SourceScalar; 2], SourceScalar); 13] = [
 const MULTIPLY24_BUILTINS: [(&str, Scalar); 2] =
     [("__mul24", Scalar::I32), ("__umul24", Scalar::U32)];
 
+const MULTIPLY_HIGH_BUILTINS: [(&str, Scalar); 2] =
+    [("__mulhi", Scalar::I32), ("__umulhi", Scalar::U32)];
+
 const BITCAST_BUILTINS: [(&str, Scalar, Scalar); 4] = [
     ("__float_as_int", Scalar::F32, Scalar::I32),
     ("__float_as_uint", Scalar::F32, Scalar::U32),
@@ -277,6 +280,12 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
             )
         }))
+        .chain(MULTIPLY_HIGH_BUILTINS.into_iter().map(|(name, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
         .chain(FUNNEL_SHIFT_BUILTINS.into_iter().map(|(name, _)| {
             (
                 name,
@@ -403,6 +412,7 @@ pub(super) enum FunctionCandidate {
     Current,
     Builtin(MathBuiltin),
     Multiply24(Scalar),
+    MultiplyHigh(Scalar),
     FunnelShift(FunnelShiftBuiltin),
     Atomic {
         function: crate::AtomicFunction,
@@ -936,6 +946,7 @@ impl<'a> Parser<'a> {
                     candidate,
                     FunctionCandidate::Builtin(_)
                         | FunctionCandidate::Multiply24(_)
+                        | FunctionCandidate::MultiplyHigh(_)
                         | FunctionCandidate::FunnelShift(_)
                         | FunctionCandidate::Atomic { .. }
                         | FunctionCandidate::AtomicCompareExchange(_)
@@ -1174,6 +1185,7 @@ impl<'a> Parser<'a> {
             }
             FunctionCandidate::Builtin(builtin) => TypeSpecifier::from_scalar(builtin.result),
             FunctionCandidate::Multiply24(result)
+            | FunctionCandidate::MultiplyHigh(result)
             | FunctionCandidate::Atomic { scalar: result, .. }
             | FunctionCandidate::AtomicCompareExchange(result)
             | FunctionCandidate::Bitcast { result, .. }
@@ -1608,6 +1620,21 @@ impl<'a> Parser<'a> {
             }
             .into());
         }
+        if let FunctionCandidate::MultiplyHigh(scalar) = candidate {
+            let mut arguments = arguments.into_iter();
+            let left = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
+            let right = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
+            let handle = self.multiply_high(scalar, left.handle, right.handle, span)?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: ConstantValue::default(),
+                handle,
+                ty: scalar_resolution(scalar),
+                span,
+            }
+            .into());
+        }
         if let FunctionCandidate::Multiply24(scalar) = candidate {
             let mut arguments = arguments.into_iter();
             let left = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
@@ -1912,6 +1939,13 @@ impl<'a> Parser<'a> {
                     .map(|(_, scalar)| FunctionCandidate::Multiply24(scalar)),
             )
             .chain(
+                MULTIPLY_HIGH_BUILTINS
+                    .into_iter()
+                    .find(|&(candidate, _)| candidate == name)
+                    .filter(move |_| builtin_visible)
+                    .map(|(_, scalar)| FunctionCandidate::MultiplyHigh(scalar)),
+            )
+            .chain(
                 FUNNEL_SHIFT_BUILTINS
                     .into_iter()
                     .find(|&(candidate, _)| candidate == name)
@@ -1984,6 +2018,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Current => self.function.parameters.len(),
             FunctionCandidate::Builtin(builtin) => builtin.parameters.len(),
             FunctionCandidate::Multiply24(_)
+            | FunctionCandidate::MultiplyHigh(_)
             | FunctionCandidate::Atomic { .. }
             | FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::Fmodf => 2,
@@ -2032,6 +2067,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Bitcast { source, .. }
             | FunctionCandidate::Unary { source, .. }
             | FunctionCandidate::Multiply24(source)
+            | FunctionCandidate::MultiplyHigh(source)
             | FunctionCandidate::IntegralDouble { source } => {
                 return Some(scalar_resolution(source))
             }
