@@ -5,7 +5,7 @@ use super::float_helpers::FloatMathFunction;
 use super::function_declarations::Inlining;
 use super::integer_intrinsics::{
     FunnelShiftBuiltin, FunnelShiftDirection, HalfAddBuiltin, PackedArithmeticBuiltin,
-    PackedArithmeticOperation, PackedArithmeticSaturation, PackedUnaryBuiltin,
+    PackedArithmeticOperation, PackedArithmeticSaturation, PackedAverageMode, PackedUnaryBuiltin,
     PackedUnaryOperation,
 };
 use super::launch_bounds::LaunchBounds;
@@ -188,7 +188,7 @@ const PACKED_UNARY_BUILTINS: [(&str, PackedUnaryBuiltin); 8] = [
     ),
 ];
 
-const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 16] = [
+const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 18] = [
     (
         "__vadd2",
         PackedArithmeticBuiltin {
@@ -277,28 +277,42 @@ const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 16] = [
         "__vavgs2",
         PackedArithmeticBuiltin {
             lane_width: 16,
-            operation: PackedArithmeticOperation::Average { signed: true },
+            operation: PackedArithmeticOperation::Average(PackedAverageMode::SignedAwayFromZero),
         },
     ),
     (
         "__vavgs4",
         PackedArithmeticBuiltin {
             lane_width: 8,
-            operation: PackedArithmeticOperation::Average { signed: true },
+            operation: PackedArithmeticOperation::Average(PackedAverageMode::SignedAwayFromZero),
         },
     ),
     (
         "__vavgu2",
         PackedArithmeticBuiltin {
             lane_width: 16,
-            operation: PackedArithmeticOperation::Average { signed: false },
+            operation: PackedArithmeticOperation::Average(PackedAverageMode::UnsignedUp),
         },
     ),
     (
         "__vavgu4",
         PackedArithmeticBuiltin {
             lane_width: 8,
-            operation: PackedArithmeticOperation::Average { signed: false },
+            operation: PackedArithmeticOperation::Average(PackedAverageMode::UnsignedUp),
+        },
+    ),
+    (
+        "__vhaddu2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::Average(PackedAverageMode::UnsignedDown),
+        },
+    ),
+    (
+        "__vhaddu4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::Average(PackedAverageMode::UnsignedDown),
         },
     ),
 ];

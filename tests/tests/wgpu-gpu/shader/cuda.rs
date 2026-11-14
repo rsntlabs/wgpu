@@ -92,6 +92,7 @@ mod operator_null_constants;
 mod packed_absolute;
 mod packed_arithmetic;
 mod packed_averages;
+mod packed_half_sums;
 mod packed_negation;
 mod parenthesized_aggregates;
 mod parenthesized_arrays;
@@ -240,6 +241,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_PACKED_NEGATION,
         CUDA_PACKED_ARITHMETIC,
         CUDA_PACKED_AVERAGES,
+        CUDA_PACKED_HALF_SUMS,
         CUDA_UNSIGNED_SATURATING_ARITHMETIC,
         CUDA_SIGNED_SATURATING_ARITHMETIC,
         CUDA_NONFINITE_CONSTANTS,
@@ -980,3 +982,6 @@ static CUDA_PACKED_ABSOLUTE: GpuTestConfiguration = configuration(packed_absolut
 
 #[apply(gpu_test!)]
 static CUDA_PACKED_NEGATION: GpuTestConfiguration = configuration(packed_negation::cases);
+
+#[apply(gpu_test!)]
+static CUDA_PACKED_HALF_SUMS: GpuTestConfiguration = configuration(packed_half_sums::cases);

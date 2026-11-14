@@ -91,6 +91,7 @@ mod overloads;
 mod packed_absolute;
 mod packed_arithmetic;
 mod packed_averages;
+mod packed_half_sums;
 mod packed_negation;
 mod parameters;
 mod parenthesized_aggregates;

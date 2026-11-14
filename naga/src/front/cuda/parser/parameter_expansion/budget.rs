@@ -205,9 +205,10 @@ mod tests {
         }
     }
 
-    fn packed_arithmetic_operations() -> [integer_intrinsics::PackedArithmeticOperation; 8] {
+    fn packed_arithmetic_operations() -> [integer_intrinsics::PackedArithmeticOperation; 9] {
         use integer_intrinsics::{
             PackedArithmeticOperation as Operation, PackedArithmeticSaturation as Saturation,
+            PackedAverageMode as Average,
         };
         [
             Operation::Add(Saturation::Wrapping),
@@ -216,8 +217,9 @@ mod tests {
             Operation::Subtract(Saturation::Unsigned),
             Operation::Add(Saturation::Signed),
             Operation::Subtract(Saturation::Signed),
-            Operation::Average { signed: false },
-            Operation::Average { signed: true },
+            Operation::Average(Average::UnsignedUp),
+            Operation::Average(Average::SignedAwayFromZero),
+            Operation::Average(Average::UnsignedDown),
         ]
     }
 

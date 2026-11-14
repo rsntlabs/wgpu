@@ -27,10 +27,17 @@ pub(super) enum PackedArithmeticSaturation {
 }
 
 #[derive(Clone, Copy, PartialEq)]
+pub(super) enum PackedAverageMode {
+    SignedAwayFromZero,
+    UnsignedUp,
+    UnsignedDown,
+}
+
+#[derive(Clone, Copy, PartialEq)]
 pub(super) enum PackedArithmeticOperation {
     Add(PackedArithmeticSaturation),
     Subtract(PackedArithmeticSaturation),
-    Average { signed: bool },
+    Average(PackedAverageMode),
 }
 
 #[derive(Clone, Copy)]
@@ -213,23 +220,26 @@ impl Parser<'_> {
         } else {
             None
         };
-        let unsigned_average =
-            if builtin.operation == (PackedArithmeticOperation::Average { signed: false }) {
-                Some(self.append(Expression::Literal(Literal::U32(1)), span)?)
-            } else {
-                None
-            };
+        let unsigned_average = if matches!(
+            builtin.operation,
+            PackedArithmeticOperation::Average(
+                PackedAverageMode::UnsignedUp | PackedAverageMode::UnsignedDown
+            )
+        ) {
+            Some(self.append(Expression::Literal(Literal::U32(1)), span)?)
+        } else {
+            None
+        };
         let signed_constants = if matches!(
             builtin.operation,
             PackedArithmeticOperation::Add(PackedArithmeticSaturation::Signed)
                 | PackedArithmeticOperation::Subtract(PackedArithmeticSaturation::Signed)
-                | PackedArithmeticOperation::Average { signed: true }
+                | PackedArithmeticOperation::Average(PackedAverageMode::SignedAwayFromZero)
         ) {
             let bias = (lane_radix / 2) as i32;
             let sign_bit = self.append(Expression::Literal(Literal::U32(lane_radix / 2)), span)?;
             let bias_handle = self.append(Expression::Literal(Literal::I32(bias)), span)?;
-            let rounding = if matches!(builtin.operation, PackedArithmeticOperation::Average { .. })
-            {
+            let rounding = if matches!(builtin.operation, PackedArithmeticOperation::Average(_)) {
                 PackedSignedRounding::Average {
                     zero: self.append(Expression::Literal(Literal::I32(0)), span)?,
                     negative_one: self.append(Expression::Literal(Literal::I32(-1)), span)?,
@@ -276,7 +286,13 @@ impl Parser<'_> {
                 self.packed_signed_arithmetic(subtract, left, right, constants, span)?
             } else if let Some(one) = unsigned_average {
                 let sum = self.integer_binary(BinaryOperator::Add, left, right, span)?;
-                let sum = self.integer_binary(BinaryOperator::Add, sum, one, span)?;
+                let sum = if builtin.operation
+                    == PackedArithmeticOperation::Average(PackedAverageMode::UnsignedUp)
+                {
+                    self.integer_binary(BinaryOperator::Add, sum, one, span)?
+                } else {
+                    sum
+                };
                 self.integer_binary(BinaryOperator::ShiftRight, sum, one, span)?
             } else if matches!(
                 builtin.operation,

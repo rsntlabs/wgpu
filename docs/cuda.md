@@ -987,6 +987,8 @@ These predefined functions operate on integer representations:
 | `__vavgs4` | `unsigned int, unsigned int` | `unsigned int` | Average four packed signed 8-bit lanes, rounding ties away from zero. |
 | `__vavgu2` | `unsigned int, unsigned int` | `unsigned int` | Average two packed unsigned 16-bit lanes, rounding upward. |
 | `__vavgu4` | `unsigned int, unsigned int` | `unsigned int` | Average four packed unsigned 8-bit lanes, rounding upward. |
+| `__vhaddu2` | `unsigned int, unsigned int` | `unsigned int` | Average two packed unsigned 16-bit lanes, rounding downward. |
+| `__vhaddu4` | `unsigned int, unsigned int` | `unsigned int` | Average four packed unsigned 8-bit lanes, rounding downward. |
 | `__sad` | `int, int, unsigned int` | `unsigned int` | Add the absolute signed difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__usad` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Add the absolute unsigned difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__byte_perm` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Select four output bytes from eight input bytes using four selector nibbles. |
@@ -1057,6 +1059,14 @@ unsigned half-integer averages round upward. For example,
 `__vavgu4(0xffffffffu, 0u)` is `0x80808080u`. Exact integer averages remain
 unchanged. These operations use bounded 32-bit intermediates and support the
 default Metal language version.
+
+Packed unsigned half sums (`__vhaddu2` and `__vhaddu4`) instead round
+half-integer averages toward zero, which is downward for unsigned values.
+They halve each lane's full sum without wrapping it to the lane width first.
+For example, `__vhaddu4(0xffffffffu, 0u)` is `0x7f7f7f7fu`, while
+`__vhaddu4(0xffffffffu, 0xffffffffu)` is `0xffffffffu`. Public parameters
+and results remain `unsigned int`, with independent lanes and bounded 32-bit
+intermediates compatible with the default Metal language version.
 
 Nth-set-bit searches convert the mask and base to `unsigned int` and the offset
 to `int`. `__fns` searches upward for positive offsets and downward for negative
