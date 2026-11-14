@@ -922,6 +922,10 @@ These predefined functions operate on integer representations:
 | `__byte_perm` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Select four output bytes from eight input bytes using four selector nibbles. |
 | `__dp4a` | `int, int, int` | `int` | Sum four signed packed-byte products and a signed accumulator, wrapping to 32 bits. |
 | `__dp4a` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Sum four unsigned packed-byte products and an unsigned accumulator, wrapping to 32 bits. |
+| `__dp2a_lo` | `int, int, int` | `int` | Multiply two signed 16-bit lanes by the low two signed byte lanes and accumulate with 32-bit wrapping. |
+| `__dp2a_lo` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Multiply two unsigned 16-bit lanes by the low two unsigned byte lanes and accumulate with 32-bit wrapping. |
+| `__dp2a_hi` | `int, int, int` | `int` | Multiply two signed 16-bit lanes by the high two signed byte lanes and accumulate with 32-bit wrapping. |
+| `__dp2a_hi` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Multiply two unsigned 16-bit lanes by the high two unsigned byte lanes and accumulate with 32-bit wrapping. |
 | `__funnelshift_l` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` left and return its high word. |
 | `__funnelshift_r` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` right and return its low word. |
 | `__funnelshift_lc` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift `hi:lo` left by a count clamped to 32 and return its high word. |
@@ -983,6 +987,17 @@ interprets each byte as a two's-complement signed value. For example,
 including signed overflow. Both overloads use Naga's packed-dot operations
 and bounded 32-bit accumulation, preserving backend compatibility without
 64-bit shader support. Vector-argument overloads remain unsupported.
+
+Two-way packed dot products interpret the first word as two 16-bit lanes.
+`__dp2a_lo` pairs them with bytes 0 and 1 of the second word;
+`__dp2a_hi` pairs them with bytes 2 and 3. The unused half of the second word
+has no effect. Signed overloads sign-extend both lane widths; unsigned
+overloads zero-extend them. Arguments convert to the selected signature before
+extraction, and accumulation wraps to 32 bits. Both variants use 32-bit
+operations without requiring 64-bit shader support. Vector-argument overloads
+remain unsupported.
+
+The Metal backend requires MSL 1.2 or later for these two-way lane extractions.
 
 Funnel shifts convert all three arguments to `unsigned int` first. The
 `__funnelshift_l` and `__funnelshift_r` variants reduce the count modulo 32;

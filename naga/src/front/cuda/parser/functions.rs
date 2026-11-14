@@ -373,6 +373,12 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             "__dp4a",
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         )))
+        .chain(["__dp2a_lo", "__dp2a_hi"].into_iter().map(|name| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
         .chain(INTEGER_ATOMICS.into_iter().map(|(name, _)| {
             (
                 name,
@@ -470,6 +476,10 @@ pub(super) enum FunctionCandidate {
     Sad(Scalar),
     BytePerm,
     Dot4(Scalar),
+    Dot2 {
+        high: bool,
+        scalar: Scalar,
+    },
     FunnelShift(FunnelShiftBuiltin),
     Atomic {
         function: crate::AtomicFunction,
@@ -1008,6 +1018,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Sad(_)
                         | FunctionCandidate::BytePerm
                         | FunctionCandidate::Dot4(_)
+                        | FunctionCandidate::Dot2 { .. }
                         | FunctionCandidate::FunnelShift(_)
                         | FunctionCandidate::Atomic { .. }
                         | FunctionCandidate::AtomicCompareExchange(_)
@@ -1248,6 +1259,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Multiply24(result)
             | FunctionCandidate::MultiplyHigh(result)
             | FunctionCandidate::Dot4(result)
+            | FunctionCandidate::Dot2 { scalar: result, .. }
             | FunctionCandidate::HalfAdd(HalfAddBuiltin { scalar: result, .. })
             | FunctionCandidate::Atomic { scalar: result, .. }
             | FunctionCandidate::AtomicCompareExchange(result)
@@ -1684,6 +1696,29 @@ impl<'a> Parser<'a> {
             }
             .into());
         }
+        if let FunctionCandidate::Dot2 { high, scalar } = candidate {
+            let mut arguments = arguments.into_iter();
+            let left = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
+            let right = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
+            let accumulator = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
+            let handle = self.dot2_accumulate(
+                high,
+                scalar,
+                left.handle,
+                right.handle,
+                accumulator.handle,
+                span,
+            )?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: ConstantValue::default(),
+                handle,
+                ty: scalar_resolution(scalar),
+                span,
+            }
+            .into());
+        }
         if let FunctionCandidate::Dot4(scalar) = candidate {
             let mut arguments = arguments.into_iter();
             let left = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
@@ -2055,6 +2090,11 @@ impl<'a> Parser<'a> {
             });
         let compare_exchange_visible = builtin_visible && name == "atomicCAS";
         let dot4_visible = builtin_visible && name == "__dp4a";
+        let dot2_half = match (builtin_visible, name) {
+            (true, "__dp2a_lo") => Some(false),
+            (true, "__dp2a_hi") => Some(true),
+            _ => None,
+        };
         functions
             .iter()
             .copied()
@@ -2140,6 +2180,9 @@ impl<'a> Parser<'a> {
                     .filter(move |_| dot4_visible)
                     .map(FunctionCandidate::Dot4),
             )
+            .chain(dot2_half.into_iter().flat_map(|high| {
+                [Scalar::I32, Scalar::U32].map(|scalar| FunctionCandidate::Dot2 { high, scalar })
+            }))
             .chain(atomic_function.into_iter().flat_map(|function| {
                 [Scalar::I32, Scalar::U32]
                     .map(|scalar| FunctionCandidate::Atomic { function, scalar })
@@ -2185,7 +2228,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
             | FunctionCandidate::BytePerm
-            | FunctionCandidate::Dot4(_) => 3,
+            | FunctionCandidate::Dot4(_)
+            | FunctionCandidate::Dot2 { .. } => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::FloatMath(_)
@@ -2232,6 +2276,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Multiply24(source)
             | FunctionCandidate::MultiplyHigh(source)
             | FunctionCandidate::Dot4(source)
+            | FunctionCandidate::Dot2 { scalar: source, .. }
             | FunctionCandidate::HalfAdd(HalfAddBuiltin { scalar: source, .. })
             | FunctionCandidate::IntegralDouble { source } => {
                 return Some(scalar_resolution(source))

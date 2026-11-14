@@ -20,6 +20,60 @@ pub(super) struct HalfAddBuiltin {
 }
 
 impl Parser<'_> {
+    pub(super) fn dot2_accumulate(
+        &mut self,
+        high: bool,
+        scalar: Scalar,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        accumulator: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let half_word = self.append(Expression::Literal(Literal::U32(16)), span)?;
+        let byte = self.append(Expression::Literal(Literal::U32(8)), span)?;
+        let mut dot = self.append(
+            Expression::Literal(if scalar == Scalar::I32 {
+                Literal::I32(0)
+            } else {
+                Literal::U32(0)
+            }),
+            span,
+        )?;
+        for lane in 0..2 {
+            let left_offset = self.append(Expression::Literal(Literal::U32(lane * 16)), span)?;
+            let right_offset = self.append(
+                Expression::Literal(Literal::U32((if high { 16 } else { 0 }) + lane * 8)),
+                span,
+            )?;
+            let left_lane = self.append(
+                Expression::Math {
+                    fun: MathFunction::ExtractBits,
+                    arg: left,
+                    arg1: Some(left_offset),
+                    arg2: Some(half_word),
+                    arg3: None,
+                },
+                span,
+            )?;
+            let right_lane = self.append(
+                Expression::Math {
+                    fun: MathFunction::ExtractBits,
+                    arg: right,
+                    arg1: Some(right_offset),
+                    arg2: Some(byte),
+                    arg3: None,
+                },
+                span,
+            )?;
+            let product =
+                self.integer_binary(BinaryOperator::Multiply, left_lane, right_lane, span)?;
+            dot = self.integer_binary(BinaryOperator::Add, dot, product, span)?;
+        }
+        self.accumulate32(scalar, dot, accumulator, span)
+    }
+
     pub(super) fn dot4_accumulate(
         &mut self,
         scalar: Scalar,
@@ -36,7 +90,7 @@ impl Parser<'_> {
                 *word = self.bitcast_scalar(*word, Scalar::U32, span)?;
             }
         }
-        let mut dot = self.append(
+        let dot = self.append(
             Expression::Math {
                 fun: if scalar == Scalar::I32 {
                     MathFunction::Dot4I8Packed
@@ -50,13 +104,27 @@ impl Parser<'_> {
             },
             span,
         )?;
-        let accumulator = if scalar == Scalar::I32 {
-            dot = self.bitcast_scalar(dot, Scalar::U32, span)?;
-            self.bitcast_scalar(accumulator, Scalar::U32, span)?
+        self.accumulate32(scalar, dot, accumulator, span)
+    }
+
+    fn accumulate32(
+        &mut self,
+        scalar: Scalar,
+        value: Handle<Expression>,
+        accumulator: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let (value, accumulator) = if scalar == Scalar::I32 {
+            (
+                self.bitcast_scalar(value, Scalar::U32, span)?,
+                self.bitcast_scalar(accumulator, Scalar::U32, span)?,
+            )
         } else {
-            accumulator
+            (value, accumulator)
         };
-        let result = self.wrapping_add32(dot, accumulator, span)?;
+        let result = self.wrapping_add32(value, accumulator, span)?;
         if scalar == Scalar::I32 {
             self.bitcast_scalar(result, Scalar::I32, span)
         } else {

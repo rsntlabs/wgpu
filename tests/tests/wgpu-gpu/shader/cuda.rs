@@ -35,6 +35,7 @@ mod dim3;
 mod direct_aggregate_initialization;
 mod direct_borrowed_initialization;
 mod direct_initialization;
+mod dp2a;
 mod dp4a;
 mod dual_execution;
 mod dynamic_shared;
@@ -170,6 +171,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_DIRECT_AGGREGATE_INITIALIZATION,
         CUDA_DIRECT_BORROWED_INITIALIZATION,
         CUDA_DIRECT_INITIALIZATION,
+        CUDA_DP2A,
         CUDA_DP4A,
         CUDA_DUAL_EXECUTION,
         CUDA_DYNAMIC_SHARED,
@@ -910,3 +912,6 @@ static CUDA_BYTE_PERM: GpuTestConfiguration = configuration(byte_perm::cases);
 
 #[apply(gpu_test!)]
 static CUDA_DP4A: GpuTestConfiguration = configuration(dp4a::cases);
+
+#[apply(gpu_test!)]
+static CUDA_DP2A: GpuTestConfiguration = configuration(dp2a::cases);
