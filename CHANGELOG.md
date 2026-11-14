@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Accept CUDA barriers controlled by uniform predefined arithmetic results, including cached math helpers.
 - Support CUDA `__fns` inclusive nth-set-bit searches with a bounded portable helper.
 - Support portable CUDA `__nv_bswap32` byte-order reversal with an unsigned result.
 - Support signed and unsigned packed-integer CUDA `__dp2a_lo` and `__dp2a_hi` overloads with wrapping accumulation.

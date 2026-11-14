@@ -1967,9 +1967,11 @@ parameters, and workgroup builtins. A switch also needs uniform case exits:
 a divergent `break` can skip a barrier even when its selector is uniform.
 Divergent branches and gathers can reconverge before a barrier when they do not
 return or make later control nonuniform. Storage and shared memory reads and
-opaque helper results remain unproved controls. The predefined `__fns` result
-is uniform when all three converted arguments are workgroup-uniform; user-defined
-overloads retain the ordinary helper restrictions.
+opaque helper results remain unproved controls. Predefined math functions and
+`__fns` preserve uniformity when all converted arguments are workgroup-uniform.
+This includes rounding, absolute value, square root, remainder, trigonometry,
+and floating division. User-defined overloads retain the ordinary helper
+restrictions.
 
 Calls to synchronizing helpers require uniform control flow. Uniform scalar
 arguments can control helper branches and loops; varying data arguments can

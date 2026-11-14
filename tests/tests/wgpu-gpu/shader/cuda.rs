@@ -132,6 +132,7 @@ mod type_templates;
 mod typedef_structures;
 mod uniform_branch_barriers;
 mod uniform_loop_barriers;
+mod uniform_math_barriers;
 mod uninitialized;
 mod uninitialized_pointers;
 mod updates;
@@ -279,6 +280,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_UNINITIALIZED_POINTERS,
         CUDA_UNIFORM_BRANCH_BARRIERS,
         CUDA_UNIFORM_LOOP_BARRIERS,
+        CUDA_UNIFORM_MATH_BARRIERS,
         CUDA_UPDATES,
         CUDA_VECTOR_RESOURCES,
         CUDA_VECTOR_VALUES,
@@ -925,3 +927,7 @@ static CUDA_BYTE_SWAP32: GpuTestConfiguration = configuration(byte_swap32::cases
 
 #[apply(gpu_test!)]
 static CUDA_FNS: GpuTestConfiguration = configuration(fns::cases);
+
+#[apply(gpu_test!)]
+static CUDA_UNIFORM_MATH_BARRIERS: GpuTestConfiguration =
+    configuration(uniform_math_barriers::cases);

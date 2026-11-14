@@ -213,8 +213,7 @@ impl Parser<'_> {
             let mut proof = UniformControlFlow::new(
                 &self.module,
                 &entry.function,
-                self.float_math_functions[FloatMathFunction::AbsoluteValue.index()],
-                self.fns_function,
+                self.pure_intrinsic_functions(),
                 &mut self.parameter_expansion_budget,
                 span,
             )?;
@@ -237,8 +236,7 @@ impl Parser<'_> {
             let mut proof = UniformControlFlow::new(
                 &self.module,
                 function,
-                self.float_math_functions[FloatMathFunction::AbsoluteValue.index()],
-                self.fns_function,
+                self.pure_intrinsic_functions(),
                 &mut self.parameter_expansion_budget,
                 self.module.functions.get_span(handle),
             )?;

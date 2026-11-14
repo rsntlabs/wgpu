@@ -291,12 +291,14 @@ impl Parser<'_> {
             span,
         )?;
         self.parameter_expansion_budget
-            .charge_work(self.float_math_functions.len() + 1, span)?;
-        for function in self
-            .float_math_functions
-            .iter_mut()
-            .chain(core::iter::once(&mut self.fns_function))
-        {
+            .charge_work(self.float_math_functions.len() + 5, span)?;
+        for function in self.float_math_functions.iter_mut().chain([
+            &mut self.sqrtf_function,
+            &mut self.division_function,
+            &mut self.fmodf_function,
+            &mut self.trigonometry_function,
+            &mut self.fns_function,
+        ]) {
             if let Some(previous) = *function {
                 *function = handles[previous.index()];
             }

@@ -133,6 +133,7 @@ mod type_templates;
 mod typedef_structures;
 mod uniform_branch_barriers;
 mod uniform_loop_barriers;
+mod uniform_math_barriers;
 mod uninitialized;
 mod uninitialized_pointers;
 mod updates;

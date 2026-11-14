@@ -1,11 +1,27 @@
-use super::float_helpers::FloatMathFunction;
 use super::*;
 
 mod helpers;
 
 use helpers::CallUniformity;
 
+type PureIntrinsicFunctions = [Option<Handle<Function>>; 9];
+
 impl Parser<'_> {
+    const fn pure_intrinsic_functions(&self) -> PureIntrinsicFunctions {
+        let [floor, ceil, absolute, round] = self.float_math_functions;
+        [
+            floor,
+            ceil,
+            absolute,
+            round,
+            self.sqrtf_function,
+            self.division_function,
+            self.fmodf_function,
+            self.trigonometry_function,
+            self.fns_function,
+        ]
+    }
+
     pub(super) fn emit_workgroup_barrier(&mut self, span: Span) -> Result<(), ParseError> {
         if self.function.kind == FunctionKind::Device {
             self.activate_parameter_expansion(span)?;
@@ -46,8 +62,7 @@ impl Parser<'_> {
             let mut proof = UniformControlFlow::new(
                 &self.module,
                 function,
-                self.float_math_functions[FloatMathFunction::AbsoluteValue.index()],
-                self.fns_function,
+                self.pure_intrinsic_functions(),
                 &mut self.parameter_expansion_budget,
                 error.span,
             )?;
@@ -72,8 +87,7 @@ struct UniformControlFlow<'a> {
     span: Span,
     locals: Vec<bool>,
     values: Vec<bool>,
-    absolute_value_function: Option<Handle<Function>>,
-    fns_function: Option<Handle<Function>>,
+    pure_functions: PureIntrinsicFunctions,
     loops: Vec<LoopUniformity<'a>>,
     changed: bool,
     calls: Option<CallUniformity<'a>>,
@@ -83,8 +97,7 @@ impl<'a> UniformControlFlow<'a> {
     fn new(
         module: &'a Module,
         function: &'a Function,
-        absolute_value_function: Option<Handle<Function>>,
-        fns_function: Option<Handle<Function>>,
+        pure_functions: PureIntrinsicFunctions,
         budget: &'a mut parameter_expansion::ExpansionBudget,
         span: Span,
     ) -> Result<Self, ParseError> {
@@ -102,7 +115,7 @@ impl<'a> UniformControlFlow<'a> {
             .expressions
             .iter()
             .map(|(_, expression)| {
-                matches!(*expression, Expression::CallResult(callee) if Some(callee) == absolute_value_function || Some(callee) == fns_function)
+                matches!(*expression, Expression::CallResult(callee) if pure_functions.contains(&Some(callee)))
             })
             .collect();
         let mut proof = Self {
@@ -112,8 +125,7 @@ impl<'a> UniformControlFlow<'a> {
             span,
             locals,
             values,
-            absolute_value_function,
-            fns_function,
+            pure_functions,
             loops: Vec::new(),
             changed: false,
             calls: None,
@@ -262,8 +274,7 @@ impl<'a> UniformControlFlow<'a> {
                     uniform
                 }
                 Expression::CallResult(function)
-                    if Some(function) == self.absolute_value_function
-                        || Some(function) == self.fns_function =>
+                    if self.pure_functions.contains(&Some(function)) =>
                 {
                     self.value(handle)
                 }
@@ -442,8 +453,7 @@ impl<'a> UniformControlFlow<'a> {
                         arguments_uniform &= self.read(argument);
                     }
                     if let Some(result) = result {
-                        if (Some(function) == self.absolute_value_function
-                            || Some(function) == self.fns_function)
+                        if self.pure_functions.contains(&Some(function))
                             && !arguments_uniform
                             && self.values[result.index()]
                         {
