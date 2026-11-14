@@ -126,7 +126,11 @@ mod tests {
 
     #[test]
     fn packed_arithmetic_checks_node_and_byte_budgets_before_generating_ir() {
-        for saturating in [false, true] {
+        for saturation in [
+            integer_intrinsics::PackedArithmeticSaturation::Wrapping,
+            integer_intrinsics::PackedArithmeticSaturation::Unsigned,
+            integer_intrinsics::PackedArithmeticSaturation::Signed,
+        ] {
             for lane_width in [8, 16] {
                 for subtract in [false, true] {
                     for prepared in [false, true] {
@@ -151,7 +155,7 @@ mod tests {
                                     integer_intrinsics::PackedArithmeticBuiltin {
                                         lane_width,
                                         subtract,
-                                        saturating,
+                                        saturation,
                                     },
                                     left,
                                     right,
@@ -170,7 +174,11 @@ mod tests {
 
     #[test]
     fn packed_arithmetic_checks_budgets_before_implicit_operand_conversions() {
-        for saturating in [false, true] {
+        for saturation in [
+            integer_intrinsics::PackedArithmeticSaturation::Wrapping,
+            integer_intrinsics::PackedArithmeticSaturation::Unsigned,
+            integer_intrinsics::PackedArithmeticSaturation::Signed,
+        ] {
             for lane_width in [8, 16] {
                 for subtract in [false, true] {
                     for exhaust_bytes in [false, true] {
@@ -191,7 +199,7 @@ mod tests {
                             integer_intrinsics::PackedArithmeticBuiltin {
                                 lane_width,
                                 subtract,
-                                saturating,
+                                saturation,
                             },
                         );
                         let error = parser.lower_call(candidate, arguments, span).unwrap_err();

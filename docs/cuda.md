@@ -971,6 +971,10 @@ These predefined functions operate on integer representations:
 | `__vaddus4` | `unsigned int, unsigned int` | `unsigned int` | Add four packed unsigned 8-bit lanes, saturating each sum at `0xff`. |
 | `__vsubus2` | `unsigned int, unsigned int` | `unsigned int` | Subtract two packed unsigned 16-bit lanes, saturating each difference at zero. |
 | `__vsubus4` | `unsigned int, unsigned int` | `unsigned int` | Subtract four packed unsigned 8-bit lanes, saturating each difference at zero. |
+| `__vaddss2` | `unsigned int, unsigned int` | `unsigned int` | Add two packed signed 16-bit lanes, saturating each sum to the signed lane range. |
+| `__vaddss4` | `unsigned int, unsigned int` | `unsigned int` | Add four packed signed 8-bit lanes, saturating each sum to the signed lane range. |
+| `__vsubss2` | `unsigned int, unsigned int` | `unsigned int` | Subtract two packed signed 16-bit lanes, saturating each difference to the signed lane range. |
+| `__vsubss4` | `unsigned int, unsigned int` | `unsigned int` | Subtract four packed signed 8-bit lanes, saturating each difference to the signed lane range. |
 | `__sad` | `int, int, unsigned int` | `unsigned int` | Add the absolute signed difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__usad` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Add the absolute unsigned difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__byte_perm` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Select four output bytes from eight input bytes using four selector nibbles. |
@@ -1006,6 +1010,14 @@ The unsigned saturating variants clamp each lane separately. For example,
 extraction, so signed source arguments still supply unsigned lane values.
 These variants also use only bounded 32-bit operations and support the default
 Metal language version.
+
+The signed saturating variants interpret each lane as a two's-complement signed
+integer and clamp to `[-32768, 32767]` or `[-128, 127]`. Their public parameter
+and result types remain `unsigned int`. For example,
+`__vaddss4(0x7f7f7f7fu, 0x01010101u)` is `0x7f7f7f7fu`, and
+`__vsubss4(0x80808080u, 0x01010101u)` is `0x80808080u`. The implementation
+decodes, clamps, and repacks lanes using bounded 32-bit operations, including
+for negative results; it supports the default Metal language version.
 
 Nth-set-bit searches convert the mask and base to `unsigned int` and the offset
 to `int`. `__fns` searches upward for positive offsets and downward for negative

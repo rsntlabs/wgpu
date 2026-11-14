@@ -116,6 +116,7 @@ mod scalar_braces;
 mod scalar_promotion;
 mod shared_vectors;
 mod signed;
+mod signed_saturating_arithmetic;
 mod single_component_vectors;
 mod specifiers;
 mod sqrt;
@@ -234,6 +235,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_MULTIPLY_HIGH,
         CUDA_PACKED_ARITHMETIC,
         CUDA_UNSIGNED_SATURATING_ARITHMETIC,
+        CUDA_SIGNED_SATURATING_ARITHMETIC,
         CUDA_NONFINITE_CONSTANTS,
         CUDA_NULL_POINTERS,
         CUDA_NULLPTR,
@@ -959,3 +961,7 @@ static CUDA_PACKED_ARITHMETIC: GpuTestConfiguration = configuration(packed_arith
 #[apply(gpu_test!)]
 static CUDA_UNSIGNED_SATURATING_ARITHMETIC: GpuTestConfiguration =
     configuration(unsigned_saturating_arithmetic::cases);
+
+#[apply(gpu_test!)]
+static CUDA_SIGNED_SATURATING_ARITHMETIC: GpuTestConfiguration =
+    configuration(signed_saturating_arithmetic::cases);

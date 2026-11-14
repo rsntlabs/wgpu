@@ -20,10 +20,17 @@ pub(super) struct HalfAddBuiltin {
 }
 
 #[derive(Clone, Copy, PartialEq)]
+pub(super) enum PackedArithmeticSaturation {
+    Wrapping,
+    Unsigned,
+    Signed,
+}
+
+#[derive(Clone, Copy, PartialEq)]
 pub(super) struct PackedArithmeticBuiltin {
     pub(super) lane_width: u32,
     pub(super) subtract: bool,
-    pub(super) saturating: bool,
+    pub(super) saturation: PackedArithmeticSaturation,
 }
 
 impl Parser<'_> {
@@ -36,10 +43,23 @@ impl Parser<'_> {
     ) -> Result<Handle<Expression>, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
-        let radix = 1u32 << builtin.lane_width;
-        let mask = self.append(Expression::Literal(Literal::U32(radix - 1)), span)?;
-        let radix = if builtin.subtract && !builtin.saturating {
-            Some(self.append(Expression::Literal(Literal::U32(radix)), span)?)
+        let lane_radix = 1u32 << builtin.lane_width;
+        let mask = self.append(Expression::Literal(Literal::U32(lane_radix - 1)), span)?;
+        let radix =
+            if builtin.subtract && builtin.saturation == PackedArithmeticSaturation::Wrapping {
+                Some(self.append(Expression::Literal(Literal::U32(lane_radix)), span)?)
+            } else {
+                None
+            };
+        let signed_constants = if builtin.saturation == PackedArithmeticSaturation::Signed {
+            let bias = (lane_radix / 2) as i32;
+            Some([
+                self.append(Expression::Literal(Literal::U32(lane_radix / 2)), span)?,
+                self.append(Expression::Literal(Literal::I32(bias)), span)?,
+                self.append(Expression::Literal(Literal::I32(-bias)), span)?,
+                self.append(Expression::Literal(Literal::I32(bias - 1)), span)?,
+                self.append(Expression::Literal(Literal::I32(lane_radix as i32)), span)?,
+            ])
         } else {
             None
         };
@@ -64,7 +84,9 @@ impl Parser<'_> {
             };
             let left = self.integer_binary(BinaryOperator::And, left, mask, span)?;
             let right = self.integer_binary(BinaryOperator::And, right, mask, span)?;
-            let value = if builtin.saturating {
+            let value = if let Some(constants) = signed_constants {
+                self.packed_signed_arithmetic(builtin.subtract, left, right, constants, span)?
+            } else if builtin.saturation == PackedArithmeticSaturation::Unsigned {
                 if builtin.subtract {
                     let left = self.append(
                         Expression::Math {
@@ -109,6 +131,64 @@ impl Parser<'_> {
             });
         }
         Ok(result.unwrap())
+    }
+
+    fn packed_signed_arithmetic(
+        &mut self,
+        subtract: bool,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        constants: [Handle<Expression>; 5],
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        let [sign_bit, bias, minimum, maximum, radix] = constants;
+        let left = self.integer_binary(BinaryOperator::ExclusiveOr, left, sign_bit, span)?;
+        let right = self.integer_binary(BinaryOperator::ExclusiveOr, right, sign_bit, span)?;
+        let left = self.append(
+            Expression::As {
+                expr: left,
+                target: Scalar::I32,
+            },
+            span,
+        )?;
+        let right = self.append(
+            Expression::As {
+                expr: right,
+                target: Scalar::I32,
+            },
+            span,
+        )?;
+        let left = self.integer_binary(BinaryOperator::Subtract, left, bias, span)?;
+        let right = self.integer_binary(BinaryOperator::Subtract, right, bias, span)?;
+        let value = self.integer_binary(
+            if subtract {
+                BinaryOperator::Subtract
+            } else {
+                BinaryOperator::Add
+            },
+            left,
+            right,
+            span,
+        )?;
+        let value = self.append(
+            Expression::Math {
+                fun: MathFunction::Clamp,
+                arg: value,
+                arg1: Some(minimum),
+                arg2: Some(maximum),
+                arg3: None,
+            },
+            span,
+        )?;
+        // Add the radix so constant evaluation converts only nonnegative values.
+        let value = self.integer_binary(BinaryOperator::Add, value, radix, span)?;
+        self.append(
+            Expression::As {
+                expr: value,
+                target: Scalar::U32,
+            },
+            span,
+        )
     }
 
     pub(super) fn byte_swap32(

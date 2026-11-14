@@ -5,6 +5,7 @@ use super::float_helpers::FloatMathFunction;
 use super::function_declarations::Inlining;
 use super::integer_intrinsics::{
     FunnelShiftBuiltin, FunnelShiftDirection, HalfAddBuiltin, PackedArithmeticBuiltin,
+    PackedArithmeticSaturation,
 };
 use super::launch_bounds::LaunchBounds;
 use super::types::{IntegerSpecifiers, VECTOR_TYPES};
@@ -119,13 +120,13 @@ const MULTIPLY_HIGH_BUILTINS: [(&str, Scalar); 2] =
 
 const SAD_BUILTINS: [(&str, Scalar); 2] = [("__sad", Scalar::I32), ("__usad", Scalar::U32)];
 
-const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 8] = [
+const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 12] = [
     (
         "__vadd2",
         PackedArithmeticBuiltin {
             lane_width: 16,
             subtract: false,
-            saturating: false,
+            saturation: PackedArithmeticSaturation::Wrapping,
         },
     ),
     (
@@ -133,7 +134,7 @@ const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 8] = [
         PackedArithmeticBuiltin {
             lane_width: 8,
             subtract: false,
-            saturating: false,
+            saturation: PackedArithmeticSaturation::Wrapping,
         },
     ),
     (
@@ -141,7 +142,7 @@ const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 8] = [
         PackedArithmeticBuiltin {
             lane_width: 16,
             subtract: true,
-            saturating: false,
+            saturation: PackedArithmeticSaturation::Wrapping,
         },
     ),
     (
@@ -149,7 +150,7 @@ const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 8] = [
         PackedArithmeticBuiltin {
             lane_width: 8,
             subtract: true,
-            saturating: false,
+            saturation: PackedArithmeticSaturation::Wrapping,
         },
     ),
     (
@@ -157,7 +158,7 @@ const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 8] = [
         PackedArithmeticBuiltin {
             lane_width: 16,
             subtract: false,
-            saturating: true,
+            saturation: PackedArithmeticSaturation::Unsigned,
         },
     ),
     (
@@ -165,7 +166,7 @@ const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 8] = [
         PackedArithmeticBuiltin {
             lane_width: 8,
             subtract: false,
-            saturating: true,
+            saturation: PackedArithmeticSaturation::Unsigned,
         },
     ),
     (
@@ -173,7 +174,7 @@ const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 8] = [
         PackedArithmeticBuiltin {
             lane_width: 16,
             subtract: true,
-            saturating: true,
+            saturation: PackedArithmeticSaturation::Unsigned,
         },
     ),
     (
@@ -181,7 +182,39 @@ const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 8] = [
         PackedArithmeticBuiltin {
             lane_width: 8,
             subtract: true,
-            saturating: true,
+            saturation: PackedArithmeticSaturation::Unsigned,
+        },
+    ),
+    (
+        "__vaddss2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            subtract: false,
+            saturation: PackedArithmeticSaturation::Signed,
+        },
+    ),
+    (
+        "__vaddss4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            subtract: false,
+            saturation: PackedArithmeticSaturation::Signed,
+        },
+    ),
+    (
+        "__vsubss2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            subtract: true,
+            saturation: PackedArithmeticSaturation::Signed,
+        },
+    ),
+    (
+        "__vsubss4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            subtract: true,
+            saturation: PackedArithmeticSaturation::Signed,
         },
     ),
 ];
