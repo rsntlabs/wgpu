@@ -12,6 +12,7 @@ mod barriers;
 mod bitcasts;
 mod boolean_parameters;
 mod brevll;
+mod byte_perm;
 mod cached_math;
 mod ceilf;
 mod class_values;

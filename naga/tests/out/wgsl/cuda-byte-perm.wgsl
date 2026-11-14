@@ -1,0 +1,251 @@
+@group(0) @binding(0)
+var<storage, read_write> output: array<u32>;
+@group(0) @binding(1)
+var<storage> input: array<u32>;
+
+@compute @workgroup_size(64, 1, 1)
+fn byte_perm(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
+    var row: u32;
+    var at: u32;
+    var local: u32;
+    var local_1: u32;
+    var local_2: u32;
+    var local_3: u32;
+    var value: u32;
+    var local_4: u32;
+    var local_5: u32;
+    var local_6: u32;
+    var local_7: u32;
+    var local_8: u32;
+    var local_9: bool;
+    var local_10: bool;
+    var local_11: u32;
+    var index: u32;
+    var local_12: u32;
+    var local_13: u32;
+    var local_14: u32;
+    var local_15: u32;
+    var local_16: u32;
+    var local_17: u32;
+    var local_18: u32;
+    var local_19: u32;
+    var local_20: u32;
+    var local_21: u32;
+    var scale: u32;
+    var bias: u32;
+    var scale_1: u32;
+    var bias_1: u32;
+    var local_22: u32;
+    var local_23: u32;
+    var local_24: u32;
+    var local_25: u32;
+    var local_26: u32;
+    var local_27: u32;
+    var local_28: u32;
+
+    let lane = threadIdx.x;
+    let count = input[u32(0i)];
+    {
+        row = lane;
+        loop {
+            let _e8 = row;
+            if (_e8 < count) {
+            } else {
+                break;
+            }
+            let _e10 = row;
+            at = (1u + (_e10 * 3u));
+            let _e16 = at;
+            local_1 = _e16;
+            let _e18 = local_1;
+            local_22 = _e18;
+            let _e20 = local_22;
+            let _e22 = input[_e20];
+            local_23 = _e22;
+            let _e24 = local_23;
+            local_19 = _e24;
+            let _e26 = local_19;
+            let _e27 = at;
+            local_2 = u32((_e27 + 1u));
+            let _e32 = local_2;
+            local_24 = _e32;
+            let _e34 = local_24;
+            let _e36 = input[_e34];
+            local_25 = _e36;
+            let _e38 = local_25;
+            local_20 = _e38;
+            let _e40 = local_20;
+            let _e41 = at;
+            local_3 = u32((_e41 + 2u));
+            let _e46 = local_3;
+            local_26 = _e46;
+            let _e48 = local_26;
+            let _e50 = input[_e48];
+            local_27 = _e50;
+            let _e52 = local_27;
+            local_21 = _e52;
+            let _e54 = local_21;
+            let _e58 = ((_e54 >> 0u) & 7u);
+            let _e75 = ((_e54 >> 4u) & 7u);
+            let _e87 = ((_e54 >> 8u) & 7u);
+            let _e99 = ((_e54 >> 12u) & 7u);
+            let _e109 = row;
+            local = u32((4u + _e109));
+            let _e114 = local;
+            local_28 = _e114;
+            let _e116 = local_28;
+            output[_e116] = ((((0u | (((select(_e40, _e26, (_e58 < 4u)) >> ((_e58 & 3u) * 8u)) & 255u) << 0u)) | (((select(_e40, _e26, (_e75 < 4u)) >> ((_e75 & 3u) * 8u)) & 255u) << 8u)) | (((select(_e40, _e26, (_e87 < 4u)) >> ((_e87 & 3u) * 8u)) & 255u) << 16u)) | (((select(_e40, _e26, (_e99 < 4u)) >> ((_e99 & 3u) * 8u)) & 255u) << 24u));
+            continuing {
+                let _e119 = row;
+                row = (_e119 + 64u);
+            }
+        }
+    }
+    let base = ((4u + count) + (lane * 10u));
+    value = 1u;
+    scale = u32();
+    bias = u32();
+    scale = 16909060u;
+    bias = 2164195711u;
+    let _e137 = value;
+    value = (_e137 + u32(1i));
+    let _e141 = scale;
+    let _e143 = bias;
+    local_4 = ((_e137 * _e141) ^ _e143);
+    let _e146 = local_4;
+    scale_1 = u32();
+    bias_1 = u32();
+    scale_1 = 50661129u;
+    bias_1 = 4261576960u;
+    let _e155 = value;
+    value = (_e155 + u32(1i));
+    let _e159 = scale_1;
+    let _e161 = bias_1;
+    local_5 = ((_e155 * _e159) ^ _e161);
+    let _e164 = local_5;
+    let _e165 = value;
+    value = (_e165 + u32(1i));
+    local_6 = ((_e165 * 258u) ^ 30006u);
+    let _e174 = local_6;
+    let _e178 = ((_e174 >> 0u) & 7u);
+    let _e195 = ((_e174 >> 4u) & 7u);
+    let _e207 = ((_e174 >> 8u) & 7u);
+    let _e219 = ((_e174 >> 12u) & 7u);
+    output[base] = ((((0u | (((select(_e164, _e146, (_e178 < 4u)) >> ((_e178 & 3u) * 8u)) & 255u) << 0u)) | (((select(_e164, _e146, (_e195 < 4u)) >> ((_e195 & 3u) * 8u)) & 255u) << 8u)) | (((select(_e164, _e146, (_e207 < 4u)) >> ((_e207 & 3u) * 8u)) & 255u) << 16u)) | (((select(_e164, _e146, (_e219 < 4u)) >> ((_e219 & 3u) * 8u)) & 255u) << 24u));
+    if ((lane & 1u) == 0u) {
+        let _e235 = value;
+        value = (_e235 + u32(1i));
+        let _e239 = value;
+        value = (_e239 + u32(1i));
+        let _e243 = value;
+        value = (_e243 + u32(1i));
+        let _e250 = ((_e243 >> 0u) & 7u);
+        let _e267 = ((_e243 >> 4u) & 7u);
+        let _e279 = ((_e243 >> 8u) & 7u);
+        let _e291 = ((_e243 >> 12u) & 7u);
+        local_7 = ((((0u | (((select(_e239, _e235, (_e250 < 4u)) >> ((_e250 & 3u) * 8u)) & 255u) << 0u)) | (((select(_e239, _e235, (_e267 < 4u)) >> ((_e267 & 3u) * 8u)) & 255u) << 8u)) | (((select(_e239, _e235, (_e279 < 4u)) >> ((_e279 & 3u) * 8u)) & 255u) << 16u)) | (((select(_e239, _e235, (_e291 < 4u)) >> ((_e291 & 3u) * 8u)) & 255u) << 24u));
+    } else {
+        local_7 = 0u;
+    }
+    let _e304 = value;
+    local_8 = u32((base + 1u));
+    let _e309 = local_8;
+    output[_e309] = _e304;
+    local_9 = false;
+    if false {
+        let _e313 = value;
+        value = (_e313 + u32(1i));
+        let _e317 = value;
+        value = (_e317 + u32(1i));
+        let _e321 = value;
+        value = (_e321 + u32(1i));
+        let _e328 = ((_e321 >> 0u) & 7u);
+        let _e345 = ((_e321 >> 4u) & 7u);
+        let _e357 = ((_e321 >> 8u) & 7u);
+        let _e369 = ((_e321 >> 12u) & 7u);
+        local_9 = (((((0u | (((select(_e317, _e313, (_e328 < 4u)) >> ((_e328 & 3u) * 8u)) & 255u) << 0u)) | (((select(_e317, _e313, (_e345 < 4u)) >> ((_e345 & 3u) * 8u)) & 255u) << 8u)) | (((select(_e317, _e313, (_e357 < 4u)) >> ((_e357 & 3u) * 8u)) & 255u) << 16u)) | (((select(_e317, _e313, (_e369 < 4u)) >> ((_e369 & 3u) * 8u)) & 255u) << 24u)) != 0u);
+    }
+    local_10 = true;
+    if true {
+    } else {
+        let _e383 = value;
+        value = (_e383 + u32(1i));
+        let _e387 = value;
+        value = (_e387 + u32(1i));
+        let _e391 = value;
+        value = (_e391 + u32(1i));
+        let _e398 = ((_e391 >> 0u) & 7u);
+        let _e415 = ((_e391 >> 4u) & 7u);
+        let _e427 = ((_e391 >> 8u) & 7u);
+        let _e439 = ((_e391 >> 12u) & 7u);
+        local_10 = (((((0u | (((select(_e387, _e383, (_e398 < 4u)) >> ((_e398 & 3u) * 8u)) & 255u) << 0u)) | (((select(_e387, _e383, (_e415 < 4u)) >> ((_e415 & 3u) * 8u)) & 255u) << 8u)) | (((select(_e387, _e383, (_e427 < 4u)) >> ((_e427 & 3u) * 8u)) & 255u) << 16u)) | (((select(_e387, _e383, (_e439 < 4u)) >> ((_e439 & 3u) * 8u)) & 255u) << 24u)) != 0u);
+    }
+    let _e451 = value;
+    value = (_e451 + u32(1i));
+    let _e455 = value;
+    value = (_e455 + u32(1i));
+    let _e459 = value;
+    value = (_e459 + u32(1i));
+    let _e463 = value;
+    local_11 = u32((base + 2u));
+    let _e468 = local_11;
+    output[_e468] = _e463;
+    index = 1u;
+    let _e472 = index;
+    index = (_e472 + u32(1i));
+    let _e477 = input[_e472];
+    let _e478 = index;
+    index = (_e478 + u32(1i));
+    let _e483 = input[_e478];
+    let _e484 = index;
+    index = (_e484 + u32(1i));
+    let _e489 = input[_e484];
+    let _e493 = ((_e489 >> 0u) & 7u);
+    let _e510 = ((_e489 >> 4u) & 7u);
+    let _e522 = ((_e489 >> 8u) & 7u);
+    let _e534 = ((_e489 >> 12u) & 7u);
+    local_12 = u32((base + 3u));
+    let _e548 = local_12;
+    output[_e548] = ((((0u | (((select(_e483, _e477, (_e493 < 4u)) >> ((_e493 & 3u) * 8u)) & 255u) << 0u)) | (((select(_e483, _e477, (_e510 < 4u)) >> ((_e510 & 3u) * 8u)) & 255u) << 8u)) | (((select(_e483, _e477, (_e522 < 4u)) >> ((_e522 & 3u) * 8u)) & 255u) << 16u)) | (((select(_e483, _e477, (_e534 < 4u)) >> ((_e534 & 3u) * 8u)) & 255u) << 24u));
+    let _e550 = index;
+    local_13 = u32((base + 4u));
+    let _e555 = local_13;
+    output[_e555] = _e550;
+    let _e561 = ((65535u >> 0u) & 7u);
+    let _e580 = ((65535u >> 4u) & 7u);
+    let _e592 = ((65535u >> 8u) & 7u);
+    let _e604 = ((65535u >> 12u) & 7u);
+    local_14 = u32((base + 5u));
+    let _e618 = local_14;
+    output[_e618] = ((((0u | (((select(4261576960u, 2164195711u, (_e561 < 4u)) >> ((_e561 & 3u) * 8u)) & 255u) << 0u)) | (((select(4261576960u, 2164195711u, (_e580 < 4u)) >> ((_e580 & 3u) * 8u)) & 255u) << 8u)) | (((select(4261576960u, 2164195711u, (_e592 < 4u)) >> ((_e592 & 3u) * 8u)) & 255u) << 16u)) | (((select(4261576960u, 2164195711u, (_e604 < 4u)) >> ((_e604 & 3u) * 8u)) & 255u) << 24u));
+    let _e624 = ((65535u >> 0u) & 7u);
+    let _e643 = ((65535u >> 4u) & 7u);
+    let _e655 = ((65535u >> 8u) & 7u);
+    let _e667 = ((65535u >> 12u) & 7u);
+    local_15 = u32((base + 6u));
+    let _e681 = local_15;
+    output[_e681] = ((((0u | (((select(0u, 4294967295u, (_e624 < 4u)) >> ((_e624 & 3u) * 8u)) & 255u) << 0u)) | (((select(0u, 4294967295u, (_e643 < 4u)) >> ((_e643 & 3u) * 8u)) & 255u) << 8u)) | (((select(0u, 4294967295u, (_e655 < 4u)) >> ((_e655 & 3u) * 8u)) & 255u) << 16u)) | (((select(0u, 4294967295u, (_e667 < 4u)) >> ((_e667 & 3u) * 8u)) & 255u) << 24u));
+    let _e687 = ((4294932052u >> 0u) & 7u);
+    let _e706 = ((4294932052u >> 4u) & 7u);
+    let _e718 = ((4294932052u >> 8u) & 7u);
+    let _e730 = ((4294932052u >> 12u) & 7u);
+    local_16 = u32((base + 7u));
+    let _e744 = local_16;
+    output[_e744] = ((((0u | (((select(4261576960u, 2164195711u, (_e687 < 4u)) >> ((_e687 & 3u) * 8u)) & 255u) << 0u)) | (((select(4261576960u, 2164195711u, (_e706 < 4u)) >> ((_e706 & 3u) * 8u)) & 255u) << 8u)) | (((select(4261576960u, 2164195711u, (_e718 < 4u)) >> ((_e718 & 3u) * 8u)) & 255u) << 16u)) | (((select(4261576960u, 2164195711u, (_e730 < 4u)) >> ((_e730 & 3u) * 8u)) & 255u) << 24u));
+    let _e748 = u32(-(1i));
+    let _e752 = ((_e748 >> 0u) & 7u);
+    let _e771 = ((_e748 >> 4u) & 7u);
+    let _e783 = ((_e748 >> 8u) & 7u);
+    let _e795 = ((_e748 >> 12u) & 7u);
+    local_17 = u32((base + 8u));
+    let _e809 = local_17;
+    output[_e809] = ((((0u | (((select(4261576960u, 2164195711u, (_e752 < 4u)) >> ((_e752 & 3u) * 8u)) & 255u) << 0u)) | (((select(4261576960u, 2164195711u, (_e771 < 4u)) >> ((_e771 & 3u) * 8u)) & 255u) << 8u)) | (((select(4261576960u, 2164195711u, (_e783 < 4u)) >> ((_e783 & 3u) * 8u)) & 255u) << 16u)) | (((select(4261576960u, 2164195711u, (_e795 < 4u)) >> ((_e795 & 3u) * 8u)) & 255u) << 24u));
+    let _e813 = u32(-(1i));
+    let _e818 = ((12816u >> 0u) & 7u);
+    let _e836 = ((12816u >> 4u) & 7u);
+    let _e848 = ((12816u >> 8u) & 7u);
+    let _e860 = ((12816u >> 12u) & 7u);
+    local_18 = u32((base + 9u));
+    let _e874 = local_18;
+    output[_e874] = ((((0u | (((select(0u, _e813, (_e818 < 4u)) >> ((_e818 & 3u) * 8u)) & 255u) << 0u)) | (((select(0u, _e813, (_e836 < 4u)) >> ((_e836 & 3u) * 8u)) & 255u) << 8u)) | (((select(0u, _e813, (_e848 < 4u)) >> ((_e848 & 3u) * 8u)) & 255u) << 16u)) | (((select(0u, _e813, (_e860 < 4u)) >> ((_e860 & 3u) * 8u)) & 255u) << 24u));
+}

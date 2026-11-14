@@ -365,6 +365,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             "fmodf",
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         )))
+        .chain(core::iter::once((
+            "__byte_perm",
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        )))
         .chain(INTEGER_ATOMICS.into_iter().map(|(name, _)| {
             (
                 name,
@@ -460,6 +464,7 @@ pub(super) enum FunctionCandidate {
     MultiplyHigh(Scalar),
     HalfAdd(HalfAddBuiltin),
     Sad(Scalar),
+    BytePerm,
     FunnelShift(FunnelShiftBuiltin),
     Atomic {
         function: crate::AtomicFunction,
@@ -996,6 +1001,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::MultiplyHigh(_)
                         | FunctionCandidate::HalfAdd(_)
                         | FunctionCandidate::Sad(_)
+                        | FunctionCandidate::BytePerm
                         | FunctionCandidate::FunnelShift(_)
                         | FunctionCandidate::Atomic { .. }
                         | FunctionCandidate::AtomicCompareExchange(_)
@@ -1242,7 +1248,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
             FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::FunnelShift(_)
-            | FunctionCandidate::Sad(_) => TypeSpecifier::Scalar(Scalar::U32),
+            | FunctionCandidate::Sad(_)
+            | FunctionCandidate::BytePerm => TypeSpecifier::Scalar(Scalar::U32),
             FunctionCandidate::IntegralDouble { .. } => unreachable!(),
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::Sqrt
@@ -1670,6 +1677,22 @@ impl<'a> Parser<'a> {
             }
             .into());
         }
+        if candidate == FunctionCandidate::BytePerm {
+            let mut arguments = arguments.into_iter();
+            let left = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
+            let right = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
+            let selector = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
+            let handle = self.byte_permutation(left.handle, right.handle, selector.handle, span)?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: ConstantValue::default(),
+                handle,
+                ty: scalar_resolution(Scalar::U32),
+                span,
+            }
+            .into());
+        }
         if let FunctionCandidate::Sad(scalar) = candidate {
             let mut arguments = arguments.into_iter();
             let left = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
@@ -2083,6 +2106,9 @@ impl<'a> Parser<'a> {
                     .then_some(FunctionCandidate::Sqrt),
             )
             .chain((builtin_visible && name == "fmodf").then_some(FunctionCandidate::Fmodf))
+            .chain(
+                (builtin_visible && name == "__byte_perm").then_some(FunctionCandidate::BytePerm),
+            )
             .chain(atomic_function.into_iter().flat_map(|function| {
                 [Scalar::I32, Scalar::U32]
                     .map(|scalar| FunctionCandidate::Atomic { function, scalar })
@@ -2126,7 +2152,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Fmodf => 2,
             FunctionCandidate::AtomicCompareExchange(_)
             | FunctionCandidate::FunnelShift(_)
-            | FunctionCandidate::Sad(_) => 3,
+            | FunctionCandidate::Sad(_)
+            | FunctionCandidate::BytePerm => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::FloatMath(_)
@@ -2179,7 +2206,9 @@ impl<'a> Parser<'a> {
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf => return Some(scalar_resolution(Scalar::F32)),
-            FunctionCandidate::FunnelShift(_) => return Some(scalar_resolution(Scalar::U32)),
+            FunctionCandidate::FunnelShift(_) | FunctionCandidate::BytePerm => {
+                return Some(scalar_resolution(Scalar::U32))
+            }
             FunctionCandidate::Sad(scalar) => {
                 return Some(scalar_resolution(if logical_index < 2 {
                     scalar

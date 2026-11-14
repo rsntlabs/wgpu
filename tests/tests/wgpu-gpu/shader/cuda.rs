@@ -18,6 +18,7 @@ mod auto_declarations;
 mod bitcasts;
 mod boolean_parameters;
 mod brevll;
+mod byte_perm;
 mod cached_math;
 mod ceilf;
 mod class_values;
@@ -151,6 +152,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_BITCASTS,
         CUDA_BOOLEAN_PARAMETERS,
         CUDA_BREVLL,
+        CUDA_BYTE_PERM,
         CUDA_CACHED_MATH,
         CUDA_CEILF,
         CUDA_CLASS_VALUES,
@@ -900,3 +902,6 @@ static CUDA_HALF_ADD: GpuTestConfiguration = configuration(half_add::cases);
 
 #[apply(gpu_test!)]
 static CUDA_SAD: GpuTestConfiguration = configuration(sad::cases);
+
+#[apply(gpu_test!)]
+static CUDA_BYTE_PERM: GpuTestConfiguration = configuration(byte_perm::cases);

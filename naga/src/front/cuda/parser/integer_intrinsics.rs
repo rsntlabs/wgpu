@@ -20,6 +20,60 @@ pub(super) struct HalfAddBuiltin {
 }
 
 impl Parser<'_> {
+    pub(super) fn byte_permutation(
+        &mut self,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        selector: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let selector_mask = self.append(Expression::Literal(Literal::U32(7)), span)?;
+        let byte_index_mask = self.append(Expression::Literal(Literal::U32(3)), span)?;
+        let byte_bits = self.append(Expression::Literal(Literal::U32(8)), span)?;
+        let word_bytes = self.append(Expression::Literal(Literal::U32(4)), span)?;
+        let byte_mask = self.append(Expression::Literal(Literal::U32(255)), span)?;
+        let mut result = self.append(Expression::Literal(Literal::U32(0)), span)?;
+        for byte in 0..4 {
+            let selector_shift = self.append(Expression::Literal(Literal::U32(byte * 4)), span)?;
+            let nibble =
+                self.byte_perm_binary(BinaryOperator::ShiftRight, selector, selector_shift, span)?;
+            let index = self.byte_perm_binary(BinaryOperator::And, nibble, selector_mask, span)?;
+            let in_left = self.byte_perm_binary(BinaryOperator::Less, index, word_bytes, span)?;
+            let word = self.append(
+                Expression::Select {
+                    condition: in_left,
+                    accept: left,
+                    reject: right,
+                },
+                span,
+            )?;
+            let offset =
+                self.byte_perm_binary(BinaryOperator::And, index, byte_index_mask, span)?;
+            let offset =
+                self.byte_perm_binary(BinaryOperator::Multiply, offset, byte_bits, span)?;
+            let unpacked = self.byte_perm_binary(BinaryOperator::ShiftRight, word, offset, span)?;
+            let extracted =
+                self.byte_perm_binary(BinaryOperator::And, unpacked, byte_mask, span)?;
+            let output_shift = self.append(Expression::Literal(Literal::U32(byte * 8)), span)?;
+            let placed =
+                self.byte_perm_binary(BinaryOperator::ShiftLeft, extracted, output_shift, span)?;
+            result = self.byte_perm_binary(BinaryOperator::InclusiveOr, result, placed, span)?;
+        }
+        Ok(result)
+    }
+
+    fn byte_perm_binary(
+        &mut self,
+        op: BinaryOperator,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.append(Expression::Binary { op, left, right }, span)
+    }
+
     pub(super) fn sum_absolute_difference(
         &mut self,
         scalar: Scalar,

@@ -919,6 +919,7 @@ These predefined functions operate on integer representations:
 | `__urhadd` | `unsigned int, unsigned int` | `unsigned int` | Compute the exact unsigned average, rounded up, without overflowing the sum. |
 | `__sad` | `int, int, unsigned int` | `unsigned int` | Add the absolute signed difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__usad` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Add the absolute unsigned difference to an unsigned accumulator, wrapping to 32 bits. |
+| `__byte_perm` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Select four output bytes from eight input bytes using four selector nibbles. |
 | `__funnelshift_l` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` left and return its high word. |
 | `__funnelshift_r` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` right and return its low word. |
 | `__funnelshift_lc` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift `hi:lo` left by a count clamped to 32 and return its high word. |
@@ -963,6 +964,14 @@ wraps modulo 2^32, so the same call with `1u` returns zero, and
 `__usad(0u, 0xffffffffu, 0xffffffffu)` is `0xfffffffeu`. Signed operands use
 order-preserving unsigned keys; accumulation uses 16-bit limbs. This requires
 only 32-bit operations and avoids overflowing intermediate constants.
+
+Byte permutation converts all arguments to `unsigned int`. Each of the four
+low selector nibbles uses its low three bits to choose a byte: indices 0–3
+select from the first word, and 4–7 select from the second. Bytes and selector
+fields are numbered from least significant to most significant. Nibble bit 3
+and selector bits 16–31 are ignored; bytes are copied without sign extension.
+For example, `__byte_perm(0x33221100u, 0x77665544u, 0x7531u)` is
+`0x77553311u`. The lowering uses 32-bit operations with bounded shift counts.
 
 Funnel shifts convert all three arguments to `unsigned int` first. The
 `__funnelshift_l` and `__funnelshift_r` variants reduce the count modulo 32;
