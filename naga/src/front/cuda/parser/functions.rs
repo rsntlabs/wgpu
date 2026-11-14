@@ -563,6 +563,86 @@ const PACKED_ARITHMETIC_BUILTINS: &[(&str, PackedArithmeticBuiltin)] = &[
             },
         },
     ),
+    (
+        "__vcmples2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::LessEqual {
+                signed: true,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vcmples4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::LessEqual {
+                signed: true,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vcmpleu2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::LessEqual {
+                signed: false,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vcmpleu4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::LessEqual {
+                signed: false,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vsetles2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::LessEqual {
+                signed: true,
+                mask: false,
+            },
+        },
+    ),
+    (
+        "__vsetles4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::LessEqual {
+                signed: true,
+                mask: false,
+            },
+        },
+    ),
+    (
+        "__vsetleu2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::LessEqual {
+                signed: false,
+                mask: false,
+            },
+        },
+    ),
+    (
+        "__vsetleu4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::LessEqual {
+                signed: false,
+                mask: false,
+            },
+        },
+    ),
 ];
 
 const HALF_ADD_BUILTINS: [(&str, HalfAddBuiltin); 4] = [

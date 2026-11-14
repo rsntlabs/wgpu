@@ -995,6 +995,14 @@ These predefined functions operate on integer representations:
 | `__vsetlts4` | `unsigned int, unsigned int` | `unsigned int` | Return signed less-than as 0 or 1 in each of four packed 8-bit lanes. |
 | `__vsetltu2` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned less-than as 0 or 1 in each of two packed 16-bit lanes. |
 | `__vsetltu4` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned less-than as 0 or 1 in each of four packed 8-bit lanes. |
+| `__vcmples2` | `unsigned int, unsigned int` | `unsigned int` | Return signed less-than-or-equal masks in two packed 16-bit lanes. |
+| `__vcmples4` | `unsigned int, unsigned int` | `unsigned int` | Return signed less-than-or-equal masks in four packed 8-bit lanes. |
+| `__vcmpleu2` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned less-than-or-equal masks in two packed 16-bit lanes. |
+| `__vcmpleu4` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned less-than-or-equal masks in four packed 8-bit lanes. |
+| `__vsetles2` | `unsigned int, unsigned int` | `unsigned int` | Return signed less-than-or-equal as 0 or 1 in each of two packed 16-bit lanes. |
+| `__vsetles4` | `unsigned int, unsigned int` | `unsigned int` | Return signed less-than-or-equal as 0 or 1 in each of four packed 8-bit lanes. |
+| `__vsetleu2` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned less-than-or-equal as 0 or 1 in each of two packed 16-bit lanes. |
+| `__vsetleu4` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned less-than-or-equal as 0 or 1 in each of four packed 8-bit lanes. |
 | `__vneg2` | `unsigned int` | `unsigned int` | Negate two packed signed 16-bit lanes with lane-width wrapping. |
 | `__vneg4` | `unsigned int` | `unsigned int` | Negate four packed signed 8-bit lanes with lane-width wrapping. |
 | `__vnegss2` | `unsigned int` | `unsigned int` | Negate two packed signed 16-bit lanes with signed saturation. |
@@ -1123,6 +1131,14 @@ are false because the comparison is strict. For example,
 The corresponding `set` results are `0x00010000u` and `0x00000001u`.
 All eight functions retain unsigned public parameter and result types and use
 bounded 32-bit operations compatible with the default Metal language version.
+
+Packed less-than-or-equal comparisons use the same signed or unsigned lane
+ordering and mask or per-lane `1` result shapes, with equal lanes evaluating
+true. For example, `__vcmples4(0xffffffffu, 0xffffffffu)` is `0xffffffffu`,
+and `__vsetles4(0xffffffffu, 0xffffffffu)` is `0x01010101u`. Each lane is
+compared independently. All eight functions retain unsigned public parameter
+and result types and use bounded 32-bit operations compatible with the default
+Metal language version.
 
 Packed negation also interprets each lane as signed while keeping unsigned
 public parameter and result types. Wrapping negation leaves the most negative

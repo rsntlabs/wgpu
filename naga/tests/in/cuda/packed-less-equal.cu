@@ -1,0 +1,60 @@
+__device__ unsigned less_equal_word(unsigned &value, unsigned scale, unsigned bias) { return (value++ * scale) ^ bias; }
+extern "C" __global__ void packed_less_equal(unsigned *output, const unsigned *input) {
+    unsigned lane = threadIdx.x;
+    unsigned count = input[0];
+    for (unsigned row = lane; row < count; row += 64u) {
+        unsigned a = input[1u + row * 2u];
+        unsigned b = input[2u + row * 2u];
+        unsigned base = 4u + row * 8u;
+        output[base + 0u] = __vcmples2(a, b);
+        output[base + 1u] = __vcmples4(a, b);
+        output[base + 2u] = __vcmpleu2(a, b);
+        output[base + 3u] = __vcmpleu4(a, b);
+        output[base + 4u] = __vsetles2(a, b);
+        output[base + 5u] = __vsetles4(a, b);
+        output[base + 6u] = __vsetleu2(a, b);
+        output[base + 7u] = __vsetleu4(a, b);
+    }
+    unsigned base = 4u + count * 8u + lane * 35u;
+    unsigned value = 1u;
+    output[base + 0u] = __vcmples2(less_equal_word(value, 0x02020202u, 0u), less_equal_word(value, 0x01010101u, 0x01010101u));
+    output[base + 1u] = __vcmples4(less_equal_word(value, 0x02020202u, 0u), less_equal_word(value, 0x01010101u, 0x03030303u));
+    output[base + 2u] = __vcmpleu2(less_equal_word(value, 0x02020202u, 0u), less_equal_word(value, 0x01010101u, 0x0d0d0d0du));
+    output[base + 3u] = __vcmpleu4(less_equal_word(value, 0x02020202u, 0u), less_equal_word(value, 0x01010101u, 0x07070707u));
+    output[base + 4u] = __vsetles2(less_equal_word(value, 0x02020202u, 0u), less_equal_word(value, 0x01010101u, 0x19191919u));
+    output[base + 5u] = __vsetles4(less_equal_word(value, 0x02020202u, 0u), less_equal_word(value, 0x01010101u, 0x1b1b1b1bu));
+    output[base + 6u] = __vsetleu2(less_equal_word(value, 0x02020202u, 0u), less_equal_word(value, 0x01010101u, 0x15151515u));
+    output[base + 7u] = __vsetleu4(less_equal_word(value, 0x02020202u, 0u), less_equal_word(value, 0x01010101u, 0x0f0f0f0fu));
+    output[base + 8u] = __vcmples2(__vcmples2(value++, 0xffffffffu), 0xffffffffu);
+    (lane & 1u) == 0u ? __vsetleu2(value++, value++) : 0u;
+    output[base + 9u] = value;
+    false && __vcmples4(value++, value++);
+    true || __vsetles4(value++, value++);
+    __vcmpleu4(value++, value++);
+    output[base + 10u] = value;
+    unsigned index = 1u;
+    output[base + 11u] = __vsetles4(input[index++], input[index++]);
+    output[base + 12u] = index;
+    output[base + 13u] = __vcmples2(0u, 0x00010001u);
+    output[base + 14u] = __vcmples4(0u, 0x01010101u);
+    output[base + 15u] = __vcmpleu2(0u, 0x00010001u);
+    output[base + 16u] = __vcmpleu4(0u, 0x01010101u);
+    output[base + 17u] = __vsetles2(0u, 0x00010001u);
+    output[base + 18u] = __vsetles4(0u, 0x01010101u);
+    output[base + 19u] = __vsetleu2(0u, 0x00010001u);
+    output[base + 20u] = __vsetleu4(0u, 0x01010101u);
+    output[base + 21u] = __vcmples2(0x80008000u, 0x7fff7fffu);
+    output[base + 22u] = __vcmpleu2(0x80008000u, 0x7fff7fffu);
+    output[base + 23u] = __vsetles4(0x80808080u, 0x7f7f7f7fu);
+    output[base + 24u] = __vsetleu4(0x80808080u, 0x7f7f7f7fu);
+    output[base + 25u] = __vcmples2(0x80ff017fu, 0x80ff017fu);
+    output[base + 26u] = __vsetleu4(0x80ff017fu, 0x80ff017fu);
+    output[base + 27u] = __vcmples2(0x80ff017fu, 0x80ff017fu);
+    output[base + 28u] = __vcmples4(0x80ff017fu, 0x80ff017fu);
+    output[base + 29u] = __vcmpleu2(0x80ff017fu, 0x80ff017fu);
+    output[base + 30u] = __vcmpleu4(0x80ff017fu, 0x80ff017fu);
+    output[base + 31u] = __vsetles2(0x80ff017fu, 0x80ff017fu);
+    output[base + 32u] = __vsetles4(0x80ff017fu, 0x80ff017fu);
+    output[base + 33u] = __vsetleu2(0x80ff017fu, 0x80ff017fu);
+    output[base + 34u] = __vsetleu4(0x80ff017fu, 0x80ff017fu);
+}

@@ -95,6 +95,7 @@ mod packed_arithmetic;
 mod packed_averages;
 mod packed_equality;
 mod packed_half_sums;
+mod packed_less_equal;
 mod packed_less_than;
 mod packed_min_max;
 mod packed_negation;
@@ -248,6 +249,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_PACKED_MIN_MAX,
         CUDA_PACKED_EQUALITY,
         CUDA_PACKED_LESS_THAN,
+        CUDA_PACKED_LESS_EQUAL,
         CUDA_PACKED_SAD,
         CUDA_PACKED_ARITHMETIC,
         CUDA_PACKED_AVERAGES,
@@ -1011,3 +1013,6 @@ static CUDA_PACKED_EQUALITY: GpuTestConfiguration = configuration(packed_equalit
 
 #[apply(gpu_test!)]
 static CUDA_PACKED_LESS_THAN: GpuTestConfiguration = configuration(packed_less_than::cases);
+
+#[apply(gpu_test!)]
+static CUDA_PACKED_LESS_EQUAL: GpuTestConfiguration = configuration(packed_less_equal::cases);
