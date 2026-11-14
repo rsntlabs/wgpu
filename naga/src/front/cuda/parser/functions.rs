@@ -374,6 +374,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         )))
         .chain(core::iter::once((
+            "__fns",
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        )))
+        .chain(core::iter::once((
             "__dp4a",
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         )))
@@ -480,6 +484,7 @@ pub(super) enum FunctionCandidate {
     Sad(Scalar),
     BytePerm,
     ByteSwap32,
+    Fns,
     Dot4(Scalar),
     Dot2 {
         high: bool,
@@ -1023,6 +1028,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Sad(_)
                         | FunctionCandidate::BytePerm
                         | FunctionCandidate::ByteSwap32
+                        | FunctionCandidate::Fns
                         | FunctionCandidate::Dot4(_)
                         | FunctionCandidate::Dot2 { .. }
                         | FunctionCandidate::FunnelShift(_)
@@ -1275,7 +1281,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
             | FunctionCandidate::BytePerm
-            | FunctionCandidate::ByteSwap32 => TypeSpecifier::Scalar(Scalar::U32),
+            | FunctionCandidate::ByteSwap32
+            | FunctionCandidate::Fns => TypeSpecifier::Scalar(Scalar::U32),
             FunctionCandidate::IntegralDouble { .. } => unreachable!(),
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::Sqrt
@@ -1743,6 +1750,22 @@ impl<'a> Parser<'a> {
             }
             .into());
         }
+        if candidate == FunctionCandidate::Fns {
+            let mut arguments = arguments.into_iter();
+            let mask = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
+            let base = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
+            let offset = self.convert_scalar(arguments.next().unwrap().into(), Scalar::I32)?;
+            let handle = self.call_fns(mask.handle, base.handle, offset.handle, span)?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: ConstantValue::default(),
+                handle,
+                ty: scalar_resolution(Scalar::U32),
+                span,
+            }
+            .into());
+        }
         if candidate == FunctionCandidate::ByteSwap32 {
             let value =
                 self.convert_scalar(arguments.into_iter().next().unwrap().into(), Scalar::U32)?;
@@ -2199,6 +2222,7 @@ impl<'a> Parser<'a> {
                 (builtin_visible && name == "__nv_bswap32")
                     .then_some(FunctionCandidate::ByteSwap32),
             )
+            .chain((builtin_visible && name == "__fns").then_some(FunctionCandidate::Fns))
             .chain(
                 [Scalar::I32, Scalar::U32]
                     .into_iter()
@@ -2254,7 +2278,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Sad(_)
             | FunctionCandidate::BytePerm
             | FunctionCandidate::Dot4(_)
-            | FunctionCandidate::Dot2 { .. } => 3,
+            | FunctionCandidate::Dot2 { .. }
+            | FunctionCandidate::Fns => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::ByteSwap32
             | FunctionCandidate::Unary { .. }
@@ -2318,6 +2343,13 @@ impl<'a> Parser<'a> {
                     scalar
                 } else {
                     Scalar::U32
+                }))
+            }
+            FunctionCandidate::Fns => {
+                return Some(scalar_resolution(if logical_index < 2 {
+                    Scalar::U32
+                } else {
+                    Scalar::I32
                 }))
             }
             FunctionCandidate::Constructor { scalar, .. } => {

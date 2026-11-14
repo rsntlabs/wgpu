@@ -905,6 +905,7 @@ These predefined functions operate on integer representations:
 | `__clzll` | `long long` | `int` | Count leading zero bits across all 64 bits; zero returns 64. |
 | `__ffs` | `int` | `int` | Return the first set bit's position, starting at 1; zero returns 0. |
 | `__ffsll` | `long long` | `int` | Return the first set bit's position across all 64 bits, starting at 1; zero returns 0. |
+| `__fns` | `unsigned int mask, unsigned int base, int offset` | `unsigned int` | Find a set bit by signed rank from a base position; return `0xffffffffu` when none is found. |
 | `__popc` | `unsigned int` | `int` | Count set bits. |
 | `__popcll` | `unsigned long long` | `int` | Count set bits across all 64 bits. |
 | `__brev` | `unsigned int` | `unsigned int` | Reverse all 32 bits. |
@@ -938,6 +939,16 @@ Arguments convert to the declared parameter type before the operation, so
 `__popc(3.75f)` is 2. The signed result of `__popc` is preserved: `__popc(3u) - 3`
 is -1. These signatures and results follow NVIDIA's
 [integer intrinsics](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__INT.html).
+
+Nth-set-bit searches convert the mask and base to `unsigned int` and the offset
+to `int`. `__fns` searches upward for positive offsets and downward for negative
+offsets, counting set bits starting at the base position inclusively. Offset
+zero returns the base only when its bit is set. An unsuccessful search returns
+`0xffffffffu`. For example, `__fns(0xaaaaaaaau, 2u, 1)` is 3, while offset -1
+returns 1 and offset zero finds no bit. CUDA requires the converted base to be
+between 0 and 31; other bases have undefined CUDA behavior. A single cached
+32-bit helper examines at most 32 positions and handles the full signed offset
+range without negating `INT_MIN`.
 
 Byte-order reversal converts its argument to `unsigned int` before reversing
 its four bytes. For example, `__nv_bswap32(0x12345678u)` is `0x78563412u`.
@@ -1956,7 +1967,9 @@ parameters, and workgroup builtins. A switch also needs uniform case exits:
 a divergent `break` can skip a barrier even when its selector is uniform.
 Divergent branches and gathers can reconverge before a barrier when they do not
 return or make later control nonuniform. Storage and shared memory reads and
-opaque helper results remain unproved controls.
+opaque helper results remain unproved controls. The predefined `__fns` result
+is uniform when all three converted arguments are workgroup-uniform; user-defined
+overloads retain the ordinary helper restrictions.
 
 Calls to synchronizing helpers require uniform control flow. Uniform scalar
 arguments can control helper branches and loops; varying data arguments can

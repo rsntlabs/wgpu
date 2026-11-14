@@ -214,6 +214,7 @@ impl Parser<'_> {
                 &self.module,
                 &entry.function,
                 self.float_math_functions[FloatMathFunction::AbsoluteValue.index()],
+                self.fns_function,
                 &mut self.parameter_expansion_budget,
                 span,
             )?;
@@ -237,6 +238,7 @@ impl Parser<'_> {
                 &self.module,
                 function,
                 self.float_math_functions[FloatMathFunction::AbsoluteValue.index()],
+                self.fns_function,
                 &mut self.parameter_expansion_budget,
                 self.module.functions.get_span(handle),
             )?;

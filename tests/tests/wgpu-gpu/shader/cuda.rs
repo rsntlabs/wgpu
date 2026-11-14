@@ -49,6 +49,7 @@ mod float_separators;
 mod float_truthiness;
 mod floorf;
 mod fmodf;
+mod fns;
 mod function_macros;
 mod funnel_shifts;
 mod funnel_shifts_clamped;
@@ -180,6 +181,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_EMPTY_SCALAR_CONSTRUCTION,
         CUDA_FABS,
         CUDA_FFSLL,
+        CUDA_FNS,
         CUDA_HALF_ADD,
         CUDA_SAD,
         CUDA_FUNNEL_SHIFTS,
@@ -920,3 +922,6 @@ static CUDA_DP2A: GpuTestConfiguration = configuration(dp2a::cases);
 
 #[apply(gpu_test!)]
 static CUDA_BYTE_SWAP32: GpuTestConfiguration = configuration(byte_swap32::cases);
+
+#[apply(gpu_test!)]
+static CUDA_FNS: GpuTestConfiguration = configuration(fns::cases);

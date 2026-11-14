@@ -47,6 +47,7 @@ impl Parser<'_> {
                 &self.module,
                 function,
                 self.float_math_functions[FloatMathFunction::AbsoluteValue.index()],
+                self.fns_function,
                 &mut self.parameter_expansion_budget,
                 error.span,
             )?;
@@ -72,6 +73,7 @@ struct UniformControlFlow<'a> {
     locals: Vec<bool>,
     values: Vec<bool>,
     absolute_value_function: Option<Handle<Function>>,
+    fns_function: Option<Handle<Function>>,
     loops: Vec<LoopUniformity<'a>>,
     changed: bool,
     calls: Option<CallUniformity<'a>>,
@@ -82,6 +84,7 @@ impl<'a> UniformControlFlow<'a> {
         module: &'a Module,
         function: &'a Function,
         absolute_value_function: Option<Handle<Function>>,
+        fns_function: Option<Handle<Function>>,
         budget: &'a mut parameter_expansion::ExpansionBudget,
         span: Span,
     ) -> Result<Self, ParseError> {
@@ -99,7 +102,7 @@ impl<'a> UniformControlFlow<'a> {
             .expressions
             .iter()
             .map(|(_, expression)| {
-                matches!(*expression, Expression::CallResult(callee) if Some(callee) == absolute_value_function)
+                matches!(*expression, Expression::CallResult(callee) if Some(callee) == absolute_value_function || Some(callee) == fns_function)
             })
             .collect();
         let mut proof = Self {
@@ -110,6 +113,7 @@ impl<'a> UniformControlFlow<'a> {
             locals,
             values,
             absolute_value_function,
+            fns_function,
             loops: Vec::new(),
             changed: false,
             calls: None,
@@ -258,7 +262,8 @@ impl<'a> UniformControlFlow<'a> {
                     uniform
                 }
                 Expression::CallResult(function)
-                    if Some(function) == self.absolute_value_function =>
+                    if Some(function) == self.absolute_value_function
+                        || Some(function) == self.fns_function =>
                 {
                     self.value(handle)
                 }
@@ -437,7 +442,8 @@ impl<'a> UniformControlFlow<'a> {
                         arguments_uniform &= self.read(argument);
                     }
                     if let Some(result) = result {
-                        if Some(function) == self.absolute_value_function
+                        if (Some(function) == self.absolute_value_function
+                            || Some(function) == self.fns_function)
                             && !arguments_uniform
                             && self.values[result.index()]
                         {

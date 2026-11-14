@@ -1109,6 +1109,171 @@ mod tests {
         }
     }
 
+    fn fns_budget_parser() -> (Parser<'static>, [Handle<Expression>; 3], Span) {
+        let source = "1u 0u 1";
+        let span = Span::new(0, source.len() as u32);
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        parser.function = FunctionContext::new(FunctionKind::Kernel);
+        parser.function.ir.name = Some(String::from("caller"));
+        parser.function.loop_depth = 1;
+        parser.function.expression_depth = 2;
+        let inputs = [
+            parser.number("1u", span).unwrap().handle,
+            parser.number("0u", span).unwrap().handle,
+            parser.number("1", span).unwrap().handle,
+        ];
+        parser
+            .function
+            .ir
+            .named_expressions
+            .insert(inputs[0], String::from("mask"));
+        parser.function.symbol_table.add(
+            "marker",
+            Symbol::TemplateParameter {
+                scalar: SourceScalar::Scalar(Scalar::U32),
+                literal: Some(Literal::U32(7)),
+            },
+        );
+        (parser, inputs, span)
+    }
+
+    fn assert_fns_budget_caller(parser: &Parser<'_>, mask: Handle<Expression>) {
+        assert!(parser.function.kind == FunctionKind::Kernel);
+        assert_eq!(parser.function.ir.name.as_deref(), Some("caller"));
+        assert_eq!(parser.function.loop_depth, 1);
+        assert_eq!(parser.function.expression_depth, 2);
+        assert_eq!(
+            parser
+                .function
+                .ir
+                .named_expressions
+                .get(&mask)
+                .map(String::as_str),
+            Some("mask")
+        );
+        assert!(matches!(
+            parser.function.symbol_table.lookup("marker"),
+            Some(&Symbol::TemplateParameter {
+                scalar: SourceScalar::Scalar(Scalar::U32),
+                literal: Some(Literal::U32(7))
+            })
+        ));
+        assert!(parser.function.ir.local_variables.is_empty());
+        assert!(parser.function.ir.arguments.is_empty());
+        assert!(parser.function.parameters.is_empty());
+    }
+
+    #[test]
+    fn fns_first_call_checks_node_and_byte_budget_before_allocating() {
+        for exhaust_bytes in [false, true] {
+            let (mut parser, [mask, base, offset], span) = fns_budget_parser();
+            let caller = format!("{:?}", parser.function.ir);
+            let depths = parser.function.expression_graph_depths.clone();
+            let type_count = parser.module.types.len();
+            parser.parameter_expansion_budget.activate();
+            if exhaust_bytes {
+                let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                parser
+                    .parameter_expansion_budget
+                    .charge_bytes(remaining, span)
+                    .unwrap();
+            } else {
+                let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                parser
+                    .parameter_expansion_budget
+                    .charge_nodes(remaining, span)
+                    .unwrap();
+            }
+            let error = parser.call_fns(mask, base, offset, span).unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert_eq!(error.span, span);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_fns_budget_caller(&parser, mask);
+            assert_eq!(format!("{:?}", parser.function.ir), caller);
+            assert_eq!(parser.function.expression_graph_depths, depths);
+            assert_eq!(parser.module.types.len(), type_count);
+            assert!(parser.module.global_variables.is_empty());
+            assert!(parser.module.functions.is_empty());
+            assert_eq!(parser.fns_function, None);
+        }
+    }
+
+    #[test]
+    fn fns_cached_call_checks_node_and_byte_budget_before_changing_caller() {
+        for exhaust_bytes in [false, true] {
+            let (mut parser, [mask, base, offset], span) = fns_budget_parser();
+            parser.call_fns(mask, base, offset, span).unwrap();
+            let cached = parser
+                .fns_function
+                .expect("completed helper must be cached");
+            assert_eq!(parser.module.functions.len(), 1);
+            assert_eq!(parser.module.functions[cached].arguments.len(), 3);
+            assert!(parser.module.functions[cached].result.is_some());
+            assert!(parser.module.functions[cached]
+                .body
+                .iter()
+                .any(|statement| matches!(*statement, Statement::Return { value: Some(_) })));
+            let helper = format!("{:?}", parser.module.functions[cached]);
+            let caller = format!("{:?}", parser.function.ir);
+            let depths = parser.function.expression_graph_depths.clone();
+            let type_count = parser.module.types.len();
+            if exhaust_bytes {
+                let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                parser
+                    .parameter_expansion_budget
+                    .charge_bytes(remaining, span)
+                    .unwrap();
+            } else {
+                let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                parser
+                    .parameter_expansion_budget
+                    .charge_nodes(remaining, span)
+                    .unwrap();
+            }
+            let error = parser.call_fns(mask, base, offset, span).unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert_eq!(error.span, span);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_fns_budget_caller(&parser, mask);
+            assert_eq!(format!("{:?}", parser.function.ir), caller);
+            assert_eq!(parser.function.expression_graph_depths, depths);
+            assert_eq!(parser.module.types.len(), type_count);
+            assert!(parser.module.global_variables.is_empty());
+            assert_eq!(parser.module.functions.len(), 1);
+            assert_eq!(parser.fns_function, Some(cached));
+            assert_eq!(format!("{:?}", parser.module.functions[cached]), helper);
+        }
+    }
+
+    #[test]
+    fn fns_failed_helper_construction_restores_caller_without_publishing_cache() {
+        for available_nodes in [2, 5, 12, 20] {
+            let (mut parser, [mask, base, offset], span) = fns_budget_parser();
+            let caller = format!("{:?}", parser.function.ir);
+            let depths = parser.function.expression_graph_depths.clone();
+            let type_count = parser.module.types.len();
+            parser.parameter_expansion_budget.activate();
+            let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes - available_nodes;
+            parser
+                .parameter_expansion_budget
+                .charge_nodes(remaining, span)
+                .unwrap();
+            let error = parser.call_fns(mask, base, offset, span).unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert_eq!(error.span, span);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_fns_budget_caller(&parser, mask);
+            assert_eq!(format!("{:?}", parser.function.ir), caller);
+            assert_eq!(parser.function.expression_graph_depths, depths);
+            assert!(parser.module.global_variables.is_empty());
+            assert!(parser.module.functions.is_empty());
+            assert_eq!(parser.fns_function, None);
+            if available_nodes >= 12 {
+                assert!(parser.module.types.len() > type_count);
+            }
+        }
+    }
+
     #[test]
     fn cached_float_math_checks_node_budget_without_parameter_state() {
         use super::super::super::float_helpers::FloatMathFunction;
