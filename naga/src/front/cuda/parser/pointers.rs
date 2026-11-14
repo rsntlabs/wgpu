@@ -461,6 +461,28 @@ impl<'a> Parser<'a> {
         )))
     }
 
+    pub(super) fn query_parameter_pointer_type(
+        &mut self,
+        pointee: Handle<Type>,
+        span: Span,
+    ) -> Result<Handle<Type>, ParseError> {
+        self.parameter_expansion_budget.charge_work(1, span)?;
+        let ty = Type {
+            name: None,
+            inner: TypeInner::Pointer {
+                base: pointee,
+                space: self.source_pointer_space(pointee),
+            },
+        };
+        if let Some(handle) = self.module.types.get(&ty) {
+            return Ok(handle);
+        }
+        self.parameter_expansion_budget.charge_nodes(1, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<(Type, Span)>(1, span)?;
+        Ok(self.module.types.insert(ty, span))
+    }
+
     fn source_pointer_space(&self, pointee: Handle<Type>) -> AddressSpace {
         if self.is_incomplete_array(pointee) {
             // Source descriptors need a valid address space even before pointer lowering.

@@ -66,6 +66,16 @@ impl From<KeepUnused> for bool {
 ///
 /// If `module` would not pass validation, this may panic.
 pub fn compact(module: &mut crate::Module, keep_unused: KeepUnused) {
+    compact_with_prunable_types(module, keep_unused, |_| false);
+}
+
+/// Allow selected named types to be removed when nothing references them.
+/// Other named objects retain the behavior specified by [`compact`].
+pub(crate) fn compact_with_prunable_types(
+    module: &mut crate::Module,
+    keep_unused: KeepUnused,
+    prunable_types: impl Fn(crate::Handle<crate::Type>) -> bool,
+) {
     // The trickiest part of compaction is determining what is used and what is
     // not. Once we have computed that correctly, it's easy enough to call
     // `retain_mut` on each arena, drop unused elements, and fix up the handles
@@ -254,9 +264,9 @@ pub fn compact(module: &mut crate::Module, keep_unused: KeepUnused) {
             }
         }
 
-        // Treat all named types as used.
+        // Named types are roots unless the caller permits pruning them.
         for (handle, ty) in module.types.iter() {
-            if ty.name.is_some() {
+            if ty.name.is_some() && !prunable_types(handle) {
                 module_tracer.types_used.insert(handle);
             }
         }
@@ -702,6 +712,106 @@ impl From<FunctionTracer<'_>> for FunctionMap {
             expressions: HandleMap::from_set(used.expressions_used),
         }
     }
+}
+
+#[test]
+fn prunable_named_types_preserve_public_compaction_behavior() {
+    let mut module = crate::Module::default();
+    let prunable = module.types.insert(
+        crate::Type {
+            name: Some("source_long".to_string()),
+            inner: crate::TypeInner::Scalar(crate::Scalar::I64),
+        },
+        crate::Span::UNDEFINED,
+    );
+    module.types.insert(
+        crate::Type {
+            name: Some("user_long".to_string()),
+            inner: crate::TypeInner::Scalar(crate::Scalar::U64),
+        },
+        crate::Span::UNDEFINED,
+    );
+    let mut public = module.clone();
+    compact(&mut public, KeepUnused::Yes);
+    assert_eq!(public.types.len(), 2);
+    compact_with_prunable_types(&mut module, KeepUnused::Yes, |handle| handle == prunable);
+    assert_eq!(module.types.len(), 1);
+    assert_eq!(
+        module.types.iter().next().unwrap().1.name.as_deref(),
+        Some("user_long")
+    );
+}
+
+#[test]
+fn prunable_named_types_remain_when_referenced_by_unused_helpers() {
+    let mut module = crate::Module::default();
+    let scalar = module.types.insert(
+        crate::Type {
+            name: Some("source_long".to_string()),
+            inner: crate::TypeInner::Scalar(crate::Scalar::I64),
+        },
+        crate::Span::UNDEFINED,
+    );
+    let array = module.types.insert(
+        crate::Type {
+            name: None,
+            inner: crate::TypeInner::Array {
+                base: scalar,
+                size: crate::ArraySize::Constant(core::num::NonZeroU32::new(2).unwrap()),
+                stride: 8,
+            },
+        },
+        crate::Span::UNDEFINED,
+    );
+    let pointer = module.types.insert(
+        crate::Type {
+            name: None,
+            inner: crate::TypeInner::Pointer {
+                base: array,
+                space: crate::AddressSpace::Function,
+            },
+        },
+        crate::Span::UNDEFINED,
+    );
+    let mut function = crate::Function {
+        name: Some("unused_helper".to_string()),
+        arguments: alloc::vec![crate::FunctionArgument {
+            name: None,
+            ty: pointer,
+            binding: None
+        }],
+        ..crate::Function::default()
+    };
+    function.body.push(
+        crate::Statement::Return { value: None },
+        crate::Span::UNDEFINED,
+    );
+    module.functions.append(function, crate::Span::UNDEFINED);
+    compact_with_prunable_types(&mut module, KeepUnused::Yes, |handle| handle == scalar);
+    assert_eq!(module.functions.len(), 1);
+    assert_eq!(module.types.len(), 3);
+    let function = module.functions.iter().next().unwrap().1;
+    let crate::TypeInner::Pointer { base: array, .. } =
+        module.types[function.arguments[0].ty].inner
+    else {
+        panic!("expected pointer argument")
+    };
+    let crate::TypeInner::Array { base: scalar, .. } = module.types[array].inner else {
+        panic!("expected array pointee")
+    };
+    assert_eq!(module.types[scalar].name.as_deref(), Some("source_long"));
+    crate::valid::Validator::new(
+        crate::valid::ValidationFlags::all(),
+        crate::valid::Capabilities::SHADER_INT64,
+    )
+    .validate(&module)
+    .unwrap();
+    assert!(crate::valid::Validator::new(
+        crate::valid::ValidationFlags::all(),
+        crate::valid::Capabilities::empty()
+    )
+    .validate(&module)
+    .is_err());
 }
 
 #[test]

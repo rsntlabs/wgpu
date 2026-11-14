@@ -386,6 +386,20 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<SizeofOperand, ParseError> {
         let ty = match symbol {
+            Symbol::TemplateFunctionParameter(Some(SourceType::Shader(ty))) => {
+                TypeResolution::Handle(ty)
+            }
+            Symbol::TemplateFunctionParameter(Some(SourceType::NullPointer)) => {
+                return Ok(SizeofOperand::NullPointer)
+            }
+            Symbol::TemplateFunctionParameter(_) => {
+                return Err(ParseError {
+                    message: String::from(
+                        "sizeof requires a known nondependent function parameter type",
+                    ),
+                    span,
+                })
+            }
             Symbol::Member(Some(ty)) => TypeResolution::Handle(ty),
             Symbol::Pointer(pointer) => self.function.pointer_symbols[pointer].ty.clone(),
             Symbol::NullPointer(_) => return Ok(SizeofOperand::NullPointer),

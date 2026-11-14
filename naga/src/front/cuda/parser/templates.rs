@@ -679,6 +679,33 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn bind_template_function_parameter(
+        &mut self,
+        name: &'a str,
+        pattern: ParameterPattern,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        self.parameter_expansion_budget.charge_work(1, span)?;
+        self.parameter_expansion_budget
+            .charge_map_entry::<&str, Symbol>(1, span)?;
+        let ty = match pattern {
+            ParameterPattern::Shader {
+                ty: PatternType::Concrete(ty),
+                mode,
+            } => {
+                let ty = if matches!(mode, ParameterMode::Pointer { .. }) {
+                    self.query_parameter_pointer_type(ty, span)?
+                } else {
+                    ty
+                };
+                Some(SourceType::Shader(ty))
+            }
+            ParameterPattern::NullPointer { .. } => Some(SourceType::NullPointer),
+            _ => None,
+        };
+        self.insert_symbol(name, Symbol::TemplateFunctionParameter(ty), span)
+    }
+
     fn template_parameter_patterns(&mut self) -> Result<Vec<ParameterPattern>, ParseError> {
         self.lexer.expect_span(Token::Paren('('))?;
         let mut parameters = Vec::new();
@@ -691,7 +718,7 @@ impl<'a> Parser<'a> {
         }
         loop {
             let declaration = self.parameter_type()?;
-            if !matches!(
+            let name = if !matches!(
                 self.lexer.peek()?.0,
                 Token::Separator(',')
                     | Token::Paren(')')
@@ -700,10 +727,10 @@ impl<'a> Parser<'a> {
             ) {
                 let (name, span) = self.identifier()?;
                 self.check_name(name, span)?;
-                self.parameter_expansion_budget
-                    .charge_map_entry::<&str, Symbol>(1, span)?;
-                self.insert_symbol(name, Symbol::PendingAuto, span)?;
-            }
+                Some((name, span))
+            } else {
+                None
+            };
             let is_array = self.lexer.next_if(Token::Paren('['))?;
             if is_array {
                 self.skip_template_array_bound()?;
@@ -713,6 +740,9 @@ impl<'a> Parser<'a> {
                 }
             }
             let pattern = self.parameter_pattern(declaration, is_array)?;
+            if let Some((name, span)) = name {
+                self.bind_template_function_parameter(name, pattern, span)?;
+            }
             self.template_parameter_default(pattern, parameters.len())?;
             self.parameter_expansion_budget
                 .charge_slice::<ParameterPattern>(1, self.lexer.peek()?.1)?;

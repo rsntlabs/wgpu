@@ -570,6 +570,12 @@ impl Parser<'_> {
                     span,
                 });
             }
+            Symbol::TemplateFunctionParameter(_) => {
+                return Err(ParseError {
+                    message: String::from("function template parameters cannot be used as values while declaring defaults"),
+                    span,
+                });
+            }
             Symbol::PendingAuto => {
                 return Err(ParseError {
                     message: String::from("auto initializer cannot use its own binding"),

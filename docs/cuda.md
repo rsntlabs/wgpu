@@ -110,8 +110,14 @@ later declarations and definitions inherit them and cannot add or repeat them.
 Their names and converted values bind at that initial declaration, even if the
 definition or caller uses different names. The default parameter's type and
 expression must not mention template parameters. Defaults that query function
-parameters, dependent defaults such as `Value extra = Value(1)`, and defaults on
-kernel templates remain unsupported.
+parameters with known nondependent types are accepted, such as
+`int count, int bytes = sizeof(count)`. These queries use source types without
+reading parameter values. References query their referents, and array parameters
+query their adjusted pointer types. Pointer dereference, subscript, and member
+queries follow the ordinary `sizeof` rules below. Evaluated parameter uses remain
+invalid, including discarded values and unselected conditional arms. Queries of
+dependent parameter types, dependent defaults such as `Value extra = Value(1)`,
+and defaults on kernel templates remain unsupported.
 
 Class-valued function results and qualified constructors retain source
 qualification. Members of temporary class values retain that qualification when

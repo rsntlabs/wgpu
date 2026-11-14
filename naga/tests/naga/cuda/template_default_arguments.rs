@@ -142,7 +142,6 @@ fn cuda_template_default_arguments_reject_dependent_or_nonscalar_default_context
         "template<class T> __device__ int f(T value, int bias = sizeof(T)) { return bias; } __global__ void kernel() {}",
         "template<class T> __device__ int f(T value, int bias = T(1)) { return bias; } __global__ void kernel() {}",
         "template<class T> __device__ int f(T value, int bias = sizeof(value)) { return bias; } __global__ void kernel() {}",
-        "template<class T> __device__ int f(T value, int fixed, int bias = sizeof(fixed)) { return bias; } __global__ void kernel() {}",
         "template<class T> __device__ int f(T value, int bias = ((void)value, 3)) { return bias; } __global__ void kernel() {}",
         "template<class T> __device__ int f(T value, int fixed, int bias = false ? fixed : 3) { return bias; } __global__ void kernel() {}",
         "template<class T> __device__ int f(T value, const int &bias = 3) { return bias; } __global__ void kernel() {}",

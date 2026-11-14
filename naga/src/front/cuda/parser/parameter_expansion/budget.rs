@@ -125,6 +125,50 @@ mod tests {
     use super::*;
 
     #[test]
+    fn query_parameter_pointer_descriptors_check_budgets_before_insertion() {
+        for exhausted in 0..3 {
+            let mut parser = Parser::new(Lexer::new("pointer").unwrap(), &Options::default());
+            let span = parser.lexer.peek().unwrap().1;
+            let pointee = parser.scalar_handle(Scalar::I32, span);
+            parser.activate_parameter_expansion(span).unwrap();
+            let types = parser.module.types.len();
+            match exhausted {
+                0 => parser.parameter_expansion_budget.nodes = NODE_LIMIT,
+                1 => parser.parameter_expansion_budget.bytes = BYTE_LIMIT,
+                _ => parser.parameter_expansion_budget.work = WORK_LIMIT,
+            }
+            let error = parser
+                .query_parameter_pointer_type(pointee, span)
+                .unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_eq!(parser.module.types.len(), types);
+            assert!(parser.function.ir.expressions.is_empty());
+            assert!(parser.function.ir.local_variables.is_empty());
+        }
+    }
+
+    #[test]
+    fn query_parameter_pointer_descriptors_reuse_types_without_allocation_budget() {
+        let mut parser = Parser::new(Lexer::new("pointer").unwrap(), &Options::default());
+        let span = parser.lexer.peek().unwrap().1;
+        let pointee = parser.scalar_handle(Scalar::I32, span);
+        parser.activate_parameter_expansion(span).unwrap();
+        let pointer = parser.query_parameter_pointer_type(pointee, span).unwrap();
+        let types = parser.module.types.len();
+        parser.parameter_expansion_budget.nodes = NODE_LIMIT;
+        parser.parameter_expansion_budget.bytes = BYTE_LIMIT;
+        assert_eq!(
+            parser.query_parameter_pointer_type(pointee, span).unwrap(),
+            pointer
+        );
+        assert_eq!(parser.module.types.len(), types);
+        assert!(!parser.parameter_expansion_budget.is_exhausted());
+        assert!(parser.function.ir.expressions.is_empty());
+        assert!(parser.function.ir.local_variables.is_empty());
+    }
+
+    #[test]
     fn template_default_replay_checks_work_before_consuming_source() {
         let source = "template<class T> __device__ int helper(T value, int bias = (1 + 2));";
         let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());

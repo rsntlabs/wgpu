@@ -123,6 +123,7 @@ mod static_assertions;
 mod structures;
 mod switches;
 mod template_default_arguments;
+mod template_default_type_queries;
 mod thread_block;
 mod thread_block_dimensions;
 mod thread_block_parameters;
@@ -278,6 +279,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_TYPE_ALIASES,
         CUDA_TYPE_QUERIES,
         CUDA_TEMPLATE_DEFAULT_ARGUMENTS,
+        CUDA_TEMPLATE_DEFAULT_TYPE_QUERIES,
         CUDA_TYPE_TEMPLATES,
         CUDA_TYPEDEF_STRUCTURES,
         CUDA_UNINITIALIZED,
@@ -942,3 +944,7 @@ static CUDA_DEFAULT_ARGUMENTS: GpuTestConfiguration = configuration(default_argu
 #[apply(gpu_test!)]
 static CUDA_TEMPLATE_DEFAULT_ARGUMENTS: GpuTestConfiguration =
     configuration(template_default_arguments::cases);
+
+#[apply(gpu_test!)]
+static CUDA_TEMPLATE_DEFAULT_TYPE_QUERIES: GpuTestConfiguration =
+    configuration(template_default_type_queries::cases);

@@ -98,6 +98,7 @@ enum Symbol {
     PendingReference,
     PendingPointer,
     PendingAuto,
+    TemplateFunctionParameter(Option<SourceType<Handle<Type>>>),
     PendingThreadBlock,
     NullPointer(NullPointerValue),
     Pointer(Handle<PointerValue>),
@@ -468,7 +469,10 @@ impl<'a> Parser<'a> {
         } else {
             crate::compact::KeepUnused::Yes
         };
-        crate::compact::compact(&mut self.module, keep_unused);
+        let long_types = self.long_types;
+        crate::compact::compact_with_prunable_types(&mut self.module, keep_unused, |handle| {
+            long_types.contains(&Some(handle))
+        });
         Ok(self.module)
     }
 
