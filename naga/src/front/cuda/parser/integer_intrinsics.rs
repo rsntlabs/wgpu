@@ -62,15 +62,22 @@ pub(super) struct PackedArithmeticBuiltin {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-pub(super) struct PackedAbsoluteBuiltin {
+pub(super) enum PackedUnaryOperation {
+    Absolute,
+    Negate,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub(super) struct PackedUnaryBuiltin {
     pub(super) lane_width: u32,
+    pub(super) operation: PackedUnaryOperation,
     pub(super) saturating: bool,
 }
 
 impl Parser<'_> {
-    pub(super) fn lower_packed_absolute_call(
+    pub(super) fn lower_packed_unary_call(
         &mut self,
-        builtin: PackedAbsoluteBuiltin,
+        builtin: PackedUnaryBuiltin,
         arguments: Vec<Value>,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
@@ -78,7 +85,7 @@ impl Parser<'_> {
         self.prepare_parameter_bindings(span)?;
         let value =
             self.convert_scalar(arguments.into_iter().next().unwrap().into(), Scalar::U32)?;
-        let handle = self.packed_absolute(builtin, value.handle, span)?;
+        let handle = self.packed_unary(builtin, value.handle, span)?;
         Ok(Value {
             category: ValueCategory::Prvalue,
             qualifiers: Qualifiers::NONE,
@@ -90,9 +97,9 @@ impl Parser<'_> {
         .into())
     }
 
-    pub(super) fn packed_absolute(
+    pub(super) fn packed_unary(
         &mut self,
-        builtin: PackedAbsoluteBuiltin,
+        builtin: PackedUnaryBuiltin,
         value: Handle<Expression>,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
@@ -124,40 +131,64 @@ impl Parser<'_> {
                 value
             };
             let lane = self.integer_binary(BinaryOperator::And, lane, mask, span)?;
-            let negative =
-                self.integer_binary(BinaryOperator::GreaterEqual, lane, sign_bit, span)?;
-            let negated = self.integer_binary(BinaryOperator::Subtract, radix, lane, span)?;
-            let magnitude = self.append(
-                Expression::Select {
-                    condition: negative,
-                    accept: negated,
-                    reject: lane,
-                },
-                span,
-            )?;
-            let magnitude = if let Some(maximum) = maximum {
-                self.append(
-                    Expression::Math {
-                        fun: MathFunction::Min,
-                        arg: magnitude,
-                        arg1: Some(maximum),
-                        arg2: None,
-                        arg3: None,
-                    },
-                    span,
-                )?
-            } else {
-                magnitude
+            let lane_value = match builtin.operation {
+                PackedUnaryOperation::Absolute => {
+                    let negative =
+                        self.integer_binary(BinaryOperator::GreaterEqual, lane, sign_bit, span)?;
+                    let negated =
+                        self.integer_binary(BinaryOperator::Subtract, radix, lane, span)?;
+                    let magnitude = self.append(
+                        Expression::Select {
+                            condition: negative,
+                            accept: negated,
+                            reject: lane,
+                        },
+                        span,
+                    )?;
+                    if let Some(maximum) = maximum {
+                        self.append(
+                            Expression::Math {
+                                fun: MathFunction::Min,
+                                arg: magnitude,
+                                arg1: Some(maximum),
+                                arg2: None,
+                                arg3: None,
+                            },
+                            span,
+                        )?
+                    } else {
+                        magnitude
+                    }
+                }
+                PackedUnaryOperation::Negate => {
+                    let negated =
+                        self.integer_binary(BinaryOperator::Subtract, radix, lane, span)?;
+                    let negated = self.integer_binary(BinaryOperator::And, negated, mask, span)?;
+                    if let Some(maximum) = maximum {
+                        let minimum =
+                            self.integer_binary(BinaryOperator::Equal, lane, sign_bit, span)?;
+                        self.append(
+                            Expression::Select {
+                                condition: minimum,
+                                accept: maximum,
+                                reject: negated,
+                            },
+                            span,
+                        )?
+                    } else {
+                        negated
+                    }
+                }
             };
-            let magnitude = if let Some(shift) = shift {
-                self.integer_binary(BinaryOperator::ShiftLeft, magnitude, shift, span)?
+            let lane_value = if let Some(shift) = shift {
+                self.integer_binary(BinaryOperator::ShiftLeft, lane_value, shift, span)?
             } else {
-                magnitude
+                lane_value
             };
             result = Some(if let Some(result) = result {
-                self.integer_binary(BinaryOperator::InclusiveOr, result, magnitude, span)?
+                self.integer_binary(BinaryOperator::InclusiveOr, result, lane_value, span)?
             } else {
-                magnitude
+                lane_value
             });
         }
         Ok(result.unwrap())

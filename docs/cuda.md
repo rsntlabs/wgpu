@@ -967,6 +967,10 @@ These predefined functions operate on integer representations:
 | `__vabs4` | `unsigned int` | `unsigned int` | Take the absolute value of four packed signed 8-bit lanes, returning unsigned lane magnitudes. |
 | `__vabsss2` | `unsigned int` | `unsigned int` | Take the absolute value of two packed signed 16-bit lanes, saturating to the signed lane maximum. |
 | `__vabsss4` | `unsigned int` | `unsigned int` | Take the absolute value of four packed signed 8-bit lanes, saturating to the signed lane maximum. |
+| `__vneg2` | `unsigned int` | `unsigned int` | Negate two packed signed 16-bit lanes with lane-width wrapping. |
+| `__vneg4` | `unsigned int` | `unsigned int` | Negate four packed signed 8-bit lanes with lane-width wrapping. |
+| `__vnegss2` | `unsigned int` | `unsigned int` | Negate two packed signed 16-bit lanes with signed saturation. |
+| `__vnegss4` | `unsigned int` | `unsigned int` | Negate four packed signed 8-bit lanes with signed saturation. |
 | `__vadd2` | `unsigned int, unsigned int` | `unsigned int` | Add two packed 16-bit lanes independently, wrapping each lane. |
 | `__vadd4` | `unsigned int, unsigned int` | `unsigned int` | Add four packed 8-bit lanes independently, wrapping each lane. |
 | `__vsub2` | `unsigned int, unsigned int` | `unsigned int` | Subtract two packed 16-bit lanes independently, wrapping each lane. |
@@ -1035,6 +1039,16 @@ saturating variants clamp those magnitudes to the positive signed limit:
 `__vabsss2(0x80008000u)` is `0x7fff7fffu`, and
 `__vabsss4(0x80808080u)` is `0x7f7f7f7fu`. Lanes remain independent, using
 bounded 32-bit operations compatible with the default Metal language version.
+
+Packed negation also interprets each lane as signed while keeping unsigned
+public parameter and result types. Wrapping negation leaves the most negative
+lane unchanged: `__vneg2(0x80008000u)` is `0x80008000u`, and
+`__vneg4(0x80808080u)` is `0x80808080u`. Signed saturating negation maps
+those lanes to the positive signed limit: `__vnegss2(0x80008000u)` is
+`0x7fff7fffu`, and `__vnegss4(0x80808080u)` is `0x7f7f7f7fu`. Other lanes
+negate normally; for example, `__vnegss4(0x01010101u)` is `0xffffffffu`.
+Each lane wraps or saturates independently using bounded 32-bit operations,
+including zero lanes, and supports the default Metal language version.
 
 Packed averages preserve each lane independently and retain unsigned public
 parameter and result types. Signed half-integer averages round away from zero;

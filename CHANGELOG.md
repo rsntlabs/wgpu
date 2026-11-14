@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA `__vneg2`, `__vneg4`, `__vnegss2`, and `__vnegss4` packed wrapping and signed saturating negation.
 - Support CUDA `__vabs2`, `__vabs4`, `__vabsss2`, and `__vabsss4` packed absolute values and signed saturation.
 - Support CUDA `__vavgs2`, `__vavgs4`, `__vavgu2`, and `__vavgu4` packed averages with their signed and unsigned rounding rules.
 - Support CUDA `__vaddss2`, `__vaddss4`, `__vsubss2`, and `__vsubss4` signed saturating packed arithmetic.

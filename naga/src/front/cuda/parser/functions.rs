@@ -4,8 +4,9 @@ use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
 use super::float_helpers::FloatMathFunction;
 use super::function_declarations::Inlining;
 use super::integer_intrinsics::{
-    FunnelShiftBuiltin, FunnelShiftDirection, HalfAddBuiltin, PackedAbsoluteBuiltin,
-    PackedArithmeticBuiltin, PackedArithmeticOperation, PackedArithmeticSaturation,
+    FunnelShiftBuiltin, FunnelShiftDirection, HalfAddBuiltin, PackedArithmeticBuiltin,
+    PackedArithmeticOperation, PackedArithmeticSaturation, PackedUnaryBuiltin,
+    PackedUnaryOperation,
 };
 use super::launch_bounds::LaunchBounds;
 use super::types::{IntegerSpecifiers, VECTOR_TYPES};
@@ -120,32 +121,68 @@ const MULTIPLY_HIGH_BUILTINS: [(&str, Scalar); 2] =
 
 const SAD_BUILTINS: [(&str, Scalar); 2] = [("__sad", Scalar::I32), ("__usad", Scalar::U32)];
 
-const PACKED_ABSOLUTE_BUILTINS: [(&str, PackedAbsoluteBuiltin); 4] = [
+const PACKED_UNARY_BUILTINS: [(&str, PackedUnaryBuiltin); 8] = [
     (
         "__vabs2",
-        PackedAbsoluteBuiltin {
+        PackedUnaryBuiltin {
             lane_width: 16,
+            operation: PackedUnaryOperation::Absolute,
             saturating: false,
         },
     ),
     (
         "__vabs4",
-        PackedAbsoluteBuiltin {
+        PackedUnaryBuiltin {
             lane_width: 8,
+            operation: PackedUnaryOperation::Absolute,
             saturating: false,
         },
     ),
     (
         "__vabsss2",
-        PackedAbsoluteBuiltin {
+        PackedUnaryBuiltin {
             lane_width: 16,
+            operation: PackedUnaryOperation::Absolute,
             saturating: true,
         },
     ),
     (
         "__vabsss4",
-        PackedAbsoluteBuiltin {
+        PackedUnaryBuiltin {
             lane_width: 8,
+            operation: PackedUnaryOperation::Absolute,
+            saturating: true,
+        },
+    ),
+    (
+        "__vneg2",
+        PackedUnaryBuiltin {
+            lane_width: 16,
+            operation: PackedUnaryOperation::Negate,
+            saturating: false,
+        },
+    ),
+    (
+        "__vneg4",
+        PackedUnaryBuiltin {
+            lane_width: 8,
+            operation: PackedUnaryOperation::Negate,
+            saturating: false,
+        },
+    ),
+    (
+        "__vnegss2",
+        PackedUnaryBuiltin {
+            lane_width: 16,
+            operation: PackedUnaryOperation::Negate,
+            saturating: true,
+        },
+    ),
+    (
+        "__vnegss4",
+        PackedUnaryBuiltin {
+            lane_width: 8,
+            operation: PackedUnaryOperation::Negate,
             saturating: true,
         },
     ),
@@ -604,7 +641,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         )
     }));
-    declarations.extend(PACKED_ABSOLUTE_BUILTINS.iter().map(|&(name, _)| {
+    declarations.extend(PACKED_UNARY_BUILTINS.iter().map(|&(name, _)| {
         (
             name,
             GlobalDeclaration::Functions(FunctionOverloads::default()),
@@ -646,7 +683,7 @@ pub(super) enum FunctionCandidate {
     Sad(Scalar),
     BytePerm,
     ByteSwap32,
-    PackedAbsolute(PackedAbsoluteBuiltin),
+    PackedUnary(PackedUnaryBuiltin),
     Fns,
     Dot4(Scalar),
     Dot2 {
@@ -1197,7 +1234,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Sad(_)
                         | FunctionCandidate::BytePerm
                         | FunctionCandidate::ByteSwap32
-                        | FunctionCandidate::PackedAbsolute(_)
+                        | FunctionCandidate::PackedUnary(_)
                         | FunctionCandidate::Fns
                         | FunctionCandidate::Dot4(_)
                         | FunctionCandidate::Dot2 { .. }
@@ -1467,7 +1504,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::ByteSwap32
             | FunctionCandidate::Fns
             | FunctionCandidate::PackedArithmetic(_)
-            | FunctionCandidate::PackedAbsolute(_) => TypeSpecifier::Scalar(Scalar::U32),
+            | FunctionCandidate::PackedUnary(_) => TypeSpecifier::Scalar(Scalar::U32),
             FunctionCandidate::IntegralDouble { .. } => unreachable!(),
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::Sqrt
@@ -1953,8 +1990,8 @@ impl<'a> Parser<'a> {
             }
             .into());
         }
-        if let FunctionCandidate::PackedAbsolute(builtin) = candidate {
-            return self.lower_packed_absolute_call(builtin, arguments, span);
+        if let FunctionCandidate::PackedUnary(builtin) = candidate {
+            return self.lower_packed_unary_call(builtin, arguments, span);
         }
         if candidate == FunctionCandidate::ByteSwap32 {
             let value =
@@ -2437,11 +2474,11 @@ impl<'a> Parser<'a> {
                     .then_some(FunctionCandidate::ByteSwap32),
             )
             .chain(
-                PACKED_ABSOLUTE_BUILTINS
+                PACKED_UNARY_BUILTINS
                     .iter()
                     .find(|&&(candidate, _)| candidate == name)
                     .filter(move |_| builtin_visible)
-                    .map(|&(_, builtin)| FunctionCandidate::PackedAbsolute(builtin)),
+                    .map(|&(_, builtin)| FunctionCandidate::PackedUnary(builtin)),
             )
             .chain((builtin_visible && name == "__fns").then_some(FunctionCandidate::Fns))
             .chain(
@@ -2504,7 +2541,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Fns => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::ByteSwap32
-            | FunctionCandidate::PackedAbsolute(_)
+            | FunctionCandidate::PackedUnary(_)
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::FloatMath(_)
             | FunctionCandidate::IntegralDouble { .. }
@@ -2562,7 +2599,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::BytePerm
             | FunctionCandidate::ByteSwap32
             | FunctionCandidate::PackedArithmetic(_)
-            | FunctionCandidate::PackedAbsolute(_) => return Some(scalar_resolution(Scalar::U32)),
+            | FunctionCandidate::PackedUnary(_) => return Some(scalar_resolution(Scalar::U32)),
             FunctionCandidate::Sad(scalar) => {
                 return Some(scalar_resolution(if logical_index < 2 {
                     scalar
