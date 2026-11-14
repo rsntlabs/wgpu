@@ -90,6 +90,7 @@ mod operator_compound_assignments;
 mod operator_functions;
 mod operator_null_constants;
 mod packed_absolute;
+mod packed_absolute_differences;
 mod packed_arithmetic;
 mod packed_averages;
 mod packed_half_sums;
@@ -238,6 +239,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_MULTIPLY24,
         CUDA_MULTIPLY_HIGH,
         CUDA_PACKED_ABSOLUTE,
+        CUDA_PACKED_ABSOLUTE_DIFFERENCES,
         CUDA_PACKED_NEGATION,
         CUDA_PACKED_ARITHMETIC,
         CUDA_PACKED_AVERAGES,
@@ -985,3 +987,7 @@ static CUDA_PACKED_NEGATION: GpuTestConfiguration = configuration(packed_negatio
 
 #[apply(gpu_test!)]
 static CUDA_PACKED_HALF_SUMS: GpuTestConfiguration = configuration(packed_half_sums::cases);
+
+#[apply(gpu_test!)]
+static CUDA_PACKED_ABSOLUTE_DIFFERENCES: GpuTestConfiguration =
+    configuration(packed_absolute_differences::cases);

@@ -967,6 +967,10 @@ These predefined functions operate on integer representations:
 | `__vabs4` | `unsigned int` | `unsigned int` | Take the absolute value of four packed signed 8-bit lanes, returning unsigned lane magnitudes. |
 | `__vabsss2` | `unsigned int` | `unsigned int` | Take the absolute value of two packed signed 16-bit lanes, saturating to the signed lane maximum. |
 | `__vabsss4` | `unsigned int` | `unsigned int` | Take the absolute value of four packed signed 8-bit lanes, saturating to the signed lane maximum. |
+| `__vabsdiffs2` | `unsigned int, unsigned int` | `unsigned int` | Take the absolute differences of two packed signed 16-bit lanes, returning unsigned magnitudes. |
+| `__vabsdiffs4` | `unsigned int, unsigned int` | `unsigned int` | Take the absolute differences of four packed signed 8-bit lanes, returning unsigned magnitudes. |
+| `__vabsdiffu2` | `unsigned int, unsigned int` | `unsigned int` | Take the absolute differences of two packed unsigned 16-bit lanes. |
+| `__vabsdiffu4` | `unsigned int, unsigned int` | `unsigned int` | Take the absolute differences of four packed unsigned 8-bit lanes. |
 | `__vneg2` | `unsigned int` | `unsigned int` | Negate two packed signed 16-bit lanes with lane-width wrapping. |
 | `__vneg4` | `unsigned int` | `unsigned int` | Negate four packed signed 8-bit lanes with lane-width wrapping. |
 | `__vnegss2` | `unsigned int` | `unsigned int` | Negate two packed signed 16-bit lanes with signed saturation. |
@@ -1041,6 +1045,16 @@ saturating variants clamp those magnitudes to the positive signed limit:
 `__vabsss2(0x80008000u)` is `0x7fff7fffu`, and
 `__vabsss4(0x80808080u)` is `0x7f7f7f7fu`. Lanes remain independent, using
 bounded 32-bit operations compatible with the default Metal language version.
+
+Packed absolute differences return each lane's full unsigned magnitude,
+without wrapping the subtraction first or saturating to a signed limit. The
+signed variants interpret input lanes as signed; the unsigned variants use
+unsigned input lanes. For example,
+`__vabsdiffs2(0x80008000u, 0x7fff7fffu)` is `0xffffffffu`, while
+`__vabsdiffu2(0x80008000u, 0x7fff7fffu)` is `0x00010001u`. Equal lanes
+produce zero. All four functions retain unsigned public parameter and result
+types, use bounded 32-bit operations, and support the default Metal language
+version.
 
 Packed negation also interprets each lane as signed while keeping unsigned
 public parameter and result types. Wrapping negation leaves the most negative

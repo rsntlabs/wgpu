@@ -89,6 +89,7 @@ mod operator_functions;
 mod operator_null_constants;
 mod overloads;
 mod packed_absolute;
+mod packed_absolute_differences;
 mod packed_arithmetic;
 mod packed_averages;
 mod packed_half_sums;

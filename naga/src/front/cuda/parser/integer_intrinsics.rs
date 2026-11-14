@@ -38,6 +38,7 @@ pub(super) enum PackedArithmeticOperation {
     Add(PackedArithmeticSaturation),
     Subtract(PackedArithmeticSaturation),
     Average(PackedAverageMode),
+    AbsoluteDifference { signed: bool },
 }
 
 #[derive(Clone, Copy)]
@@ -230,6 +231,13 @@ impl Parser<'_> {
         } else {
             None
         };
+        let difference_sign_bit = if builtin.operation
+            == (PackedArithmeticOperation::AbsoluteDifference { signed: true })
+        {
+            Some(self.append(Expression::Literal(Literal::U32(lane_radix / 2)), span)?)
+        } else {
+            None
+        };
         let signed_constants = if matches!(
             builtin.operation,
             PackedArithmeticOperation::Add(PackedArithmeticSaturation::Signed)
@@ -282,7 +290,41 @@ impl Parser<'_> {
             };
             let left = self.integer_binary(BinaryOperator::And, left, mask, span)?;
             let right = self.integer_binary(BinaryOperator::And, right, mask, span)?;
-            let value = if let Some(constants) = signed_constants {
+            let value = if matches!(
+                builtin.operation,
+                PackedArithmeticOperation::AbsoluteDifference { .. }
+            ) {
+                let (left, right) = if let Some(sign_bit) = difference_sign_bit {
+                    // Flipping the sign bit biases signed lanes without changing distances.
+                    (
+                        self.integer_binary(BinaryOperator::ExclusiveOr, left, sign_bit, span)?,
+                        self.integer_binary(BinaryOperator::ExclusiveOr, right, sign_bit, span)?,
+                    )
+                } else {
+                    (left, right)
+                };
+                let maximum = self.append(
+                    Expression::Math {
+                        fun: MathFunction::Max,
+                        arg: left,
+                        arg1: Some(right),
+                        arg2: None,
+                        arg3: None,
+                    },
+                    span,
+                )?;
+                let minimum = self.append(
+                    Expression::Math {
+                        fun: MathFunction::Min,
+                        arg: left,
+                        arg1: Some(right),
+                        arg2: None,
+                        arg3: None,
+                    },
+                    span,
+                )?;
+                self.integer_binary(BinaryOperator::Subtract, maximum, minimum, span)?
+            } else if let Some(constants) = signed_constants {
                 self.packed_signed_arithmetic(subtract, left, right, constants, span)?
             } else if let Some(one) = unsigned_average {
                 let sum = self.integer_binary(BinaryOperator::Add, left, right, span)?;

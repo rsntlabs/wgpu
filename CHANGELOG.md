@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA `__vabsdiffs2`, `__vabsdiffs4`, `__vabsdiffu2`, and `__vabsdiffu4` packed absolute differences.
 - Support CUDA `__vhaddu2` and `__vhaddu4` packed unsigned averages rounded toward zero.
 - Support CUDA `__vneg2`, `__vneg4`, `__vnegss2`, and `__vnegss4` packed wrapping and signed saturating negation.
 - Support CUDA `__vabs2`, `__vabs4`, `__vabsss2`, and `__vabsss4` packed absolute values and signed saturation.
