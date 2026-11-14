@@ -971,6 +971,14 @@ These predefined functions operate on integer representations:
 | `__vabsdiffs4` | `unsigned int, unsigned int` | `unsigned int` | Take the absolute differences of four packed signed 8-bit lanes, returning unsigned magnitudes. |
 | `__vabsdiffu2` | `unsigned int, unsigned int` | `unsigned int` | Take the absolute differences of two packed unsigned 16-bit lanes. |
 | `__vabsdiffu4` | `unsigned int, unsigned int` | `unsigned int` | Take the absolute differences of four packed unsigned 8-bit lanes. |
+| `__vmins2` | `unsigned int, unsigned int` | `unsigned int` | Select signed minima in two packed 16-bit lanes. |
+| `__vmins4` | `unsigned int, unsigned int` | `unsigned int` | Select signed minima in four packed 8-bit lanes. |
+| `__vminu2` | `unsigned int, unsigned int` | `unsigned int` | Select unsigned minima in two packed 16-bit lanes. |
+| `__vminu4` | `unsigned int, unsigned int` | `unsigned int` | Select unsigned minima in four packed 8-bit lanes. |
+| `__vmaxs2` | `unsigned int, unsigned int` | `unsigned int` | Select signed maxima in two packed 16-bit lanes. |
+| `__vmaxs4` | `unsigned int, unsigned int` | `unsigned int` | Select signed maxima in four packed 8-bit lanes. |
+| `__vmaxu2` | `unsigned int, unsigned int` | `unsigned int` | Select unsigned maxima in two packed 16-bit lanes. |
+| `__vmaxu4` | `unsigned int, unsigned int` | `unsigned int` | Select unsigned maxima in four packed 8-bit lanes. |
 | `__vneg2` | `unsigned int` | `unsigned int` | Negate two packed signed 16-bit lanes with lane-width wrapping. |
 | `__vneg4` | `unsigned int` | `unsigned int` | Negate four packed signed 8-bit lanes with lane-width wrapping. |
 | `__vnegss2` | `unsigned int` | `unsigned int` | Negate two packed signed 16-bit lanes with signed saturation. |
@@ -1055,6 +1063,16 @@ unsigned input lanes. For example,
 produce zero. All four functions retain unsigned public parameter and result
 types, use bounded 32-bit operations, and support the default Metal language
 version.
+
+Packed minimum and maximum select each lane independently using signed
+ordering for the `s` variants and unsigned ordering for the `u` variants.
+They preserve the selected lane's original bits, including negative signed
+values, while retaining unsigned public parameter and result types. For example,
+`__vmins4(0x80808080u, 0x7f7f7f7fu)` is `0x80808080u`, while
+`__vminu4(0x80808080u, 0x7f7f7f7fu)` is `0x7f7f7f7fu`. The corresponding
+signed and unsigned maxima select `0x7f7f7f7fu` and `0x80808080u`, respectively.
+All eight functions use bounded 32-bit operations compatible with the default
+Metal language version.
 
 Packed negation also interprets each lane as signed while keeping unsigned
 public parameter and result types. Wrapping negation leaves the most negative

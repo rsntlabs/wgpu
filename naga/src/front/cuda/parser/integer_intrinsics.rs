@@ -39,6 +39,8 @@ pub(super) enum PackedArithmeticOperation {
     Subtract(PackedArithmeticSaturation),
     Average(PackedAverageMode),
     AbsoluteDifference { signed: bool },
+    Minimum { signed: bool },
+    Maximum { signed: bool },
 }
 
 #[derive(Clone, Copy)]
@@ -231,9 +233,12 @@ impl Parser<'_> {
         } else {
             None
         };
-        let difference_sign_bit = if builtin.operation
-            == (PackedArithmeticOperation::AbsoluteDifference { signed: true })
-        {
+        let ordered_sign_bit = if matches!(
+            builtin.operation,
+            PackedArithmeticOperation::AbsoluteDifference { signed: true }
+                | PackedArithmeticOperation::Minimum { signed: true }
+                | PackedArithmeticOperation::Maximum { signed: true }
+        ) {
             Some(self.append(Expression::Literal(Literal::U32(lane_radix / 2)), span)?)
         } else {
             None
@@ -294,7 +299,7 @@ impl Parser<'_> {
                 builtin.operation,
                 PackedArithmeticOperation::AbsoluteDifference { .. }
             ) {
-                let (left, right) = if let Some(sign_bit) = difference_sign_bit {
+                let (left, right) = if let Some(sign_bit) = ordered_sign_bit {
                     // Flipping the sign bit biases signed lanes without changing distances.
                     (
                         self.integer_binary(BinaryOperator::ExclusiveOr, left, sign_bit, span)?,
@@ -324,6 +329,41 @@ impl Parser<'_> {
                     span,
                 )?;
                 self.integer_binary(BinaryOperator::Subtract, maximum, minimum, span)?
+            } else if matches!(
+                builtin.operation,
+                PackedArithmeticOperation::Minimum { .. }
+                    | PackedArithmeticOperation::Maximum { .. }
+            ) {
+                let (left, right) = if let Some(sign_bit) = ordered_sign_bit {
+                    (
+                        self.integer_binary(BinaryOperator::ExclusiveOr, left, sign_bit, span)?,
+                        self.integer_binary(BinaryOperator::ExclusiveOr, right, sign_bit, span)?,
+                    )
+                } else {
+                    (left, right)
+                };
+                let selected = self.append(
+                    Expression::Math {
+                        fun: if matches!(
+                            builtin.operation,
+                            PackedArithmeticOperation::Minimum { .. }
+                        ) {
+                            MathFunction::Min
+                        } else {
+                            MathFunction::Max
+                        },
+                        arg: left,
+                        arg1: Some(right),
+                        arg2: None,
+                        arg3: None,
+                    },
+                    span,
+                )?;
+                if let Some(sign_bit) = ordered_sign_bit {
+                    self.integer_binary(BinaryOperator::ExclusiveOr, selected, sign_bit, span)?
+                } else {
+                    selected
+                }
             } else if let Some(constants) = signed_constants {
                 self.packed_signed_arithmetic(subtract, left, right, constants, span)?
             } else if let Some(one) = unsigned_average {

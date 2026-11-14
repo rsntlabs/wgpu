@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA packed signed and unsigned 8-bit and 16-bit minimum and maximum intrinsics.
 - Support CUDA `__vabsdiffs2`, `__vabsdiffs4`, `__vabsdiffu2`, and `__vabsdiffu4` packed absolute differences.
 - Support CUDA `__vhaddu2` and `__vhaddu4` packed unsigned averages rounded toward zero.
 - Support CUDA `__vneg2`, `__vneg4`, `__vnegss2`, and `__vnegss4` packed wrapping and signed saturating negation.

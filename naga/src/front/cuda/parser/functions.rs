@@ -188,7 +188,7 @@ const PACKED_UNARY_BUILTINS: [(&str, PackedUnaryBuiltin); 8] = [
     ),
 ];
 
-const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 22] = [
+const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 30] = [
     (
         "__vadd2",
         PackedArithmeticBuiltin {
@@ -341,6 +341,62 @@ const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 22] = [
         PackedArithmeticBuiltin {
             lane_width: 8,
             operation: PackedArithmeticOperation::AbsoluteDifference { signed: false },
+        },
+    ),
+    (
+        "__vmins2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::Minimum { signed: true },
+        },
+    ),
+    (
+        "__vmins4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::Minimum { signed: true },
+        },
+    ),
+    (
+        "__vminu2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::Minimum { signed: false },
+        },
+    ),
+    (
+        "__vminu4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::Minimum { signed: false },
+        },
+    ),
+    (
+        "__vmaxs2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::Maximum { signed: true },
+        },
+    ),
+    (
+        "__vmaxs4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::Maximum { signed: true },
+        },
+    ),
+    (
+        "__vmaxu2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::Maximum { signed: false },
+        },
+    ),
+    (
+        "__vmaxu4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::Maximum { signed: false },
         },
     ),
 ];

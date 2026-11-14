@@ -205,7 +205,7 @@ mod tests {
         }
     }
 
-    fn packed_arithmetic_operations() -> [integer_intrinsics::PackedArithmeticOperation; 11] {
+    fn packed_arithmetic_operations() -> [integer_intrinsics::PackedArithmeticOperation; 15] {
         use integer_intrinsics::{
             PackedArithmeticOperation as Operation, PackedArithmeticSaturation as Saturation,
             PackedAverageMode as Average,
@@ -222,6 +222,10 @@ mod tests {
             Operation::Average(Average::UnsignedDown),
             Operation::AbsoluteDifference { signed: false },
             Operation::AbsoluteDifference { signed: true },
+            Operation::Minimum { signed: false },
+            Operation::Minimum { signed: true },
+            Operation::Maximum { signed: false },
+            Operation::Maximum { signed: true },
         ]
     }
 
