@@ -90,7 +90,7 @@ enum Symbol {
     Namespace(Namespace),
     ThreadBlock,
     Type(QualifiedType),
-    Member,
+    Member(Option<Handle<Type>>),
     PendingReference,
     PendingPointer,
     PendingAuto,

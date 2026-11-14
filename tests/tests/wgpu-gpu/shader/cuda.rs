@@ -93,6 +93,7 @@ mod preprocessing;
 mod preprocessing_conditions;
 mod prototypes;
 mod qualified_values;
+mod record_static_assertions;
 mod reference_bindings;
 mod reference_categories;
 mod restrict;
@@ -226,6 +227,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_PREPROCESSING_CONDITIONS,
         CUDA_PROTOTYPES,
         CUDA_QUALIFIED_VALUES,
+        CUDA_RECORD_STATIC_ASSERTIONS,
         CUDA_REFERENCE_BINDINGS,
         CUDA_REFERENCE_CATEGORIES,
         CUDA_RESTRICT,
@@ -819,6 +821,12 @@ static CUDA_FFSLL: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_POPCLL: GpuTestConfiguration =
     configuration_with_features(popcll::cases, wgpu::Features::SHADER_INT64);
+
+#[apply(gpu_test!)]
+static CUDA_RECORD_STATIC_ASSERTIONS: GpuTestConfiguration = configuration_with_features(
+    record_static_assertions::cases,
+    wgpu::Features::SHADER_INT64,
+);
 
 #[apply(gpu_test!)]
 static CUDA_STATIC_ASSERTIONS: GpuTestConfiguration =

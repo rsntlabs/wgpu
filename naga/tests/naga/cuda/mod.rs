@@ -92,6 +92,7 @@ mod pragma_unroll;
 mod preprocessing;
 mod preprocessing_conditions;
 mod prototypes;
+mod record_static_assertions;
 mod reference_bindings;
 mod reference_categories;
 mod restrict;

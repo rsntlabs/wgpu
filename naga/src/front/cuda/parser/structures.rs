@@ -39,7 +39,7 @@ impl<'a> Parser<'a> {
         self.lexer.next()?;
         let initialization_start = self.function.push_scope();
         if let Some((name, _)) = tag {
-            self.function.symbol_table.add(name, Symbol::Member);
+            self.function.symbol_table.add(name, Symbol::Member(None));
         }
         let definition = self.structure_members();
         self.function.pop_scope(initialization_start);
@@ -131,6 +131,10 @@ impl<'a> Parser<'a> {
         let mut requires_default_constructor = false;
         let mut const_default_constructible = true;
         while !self.lexer.next_if(Token::Paren('}'))? {
+            if self.lexer.peek()?.0 == Token::Word("static_assert") {
+                self.static_assert_declaration()?;
+                continue;
+            }
             let type_span = self.lexer.peek()?.1;
             let QualifiedType {
                 ty: specifier,
@@ -226,7 +230,9 @@ impl<'a> Parser<'a> {
                         span,
                     })?;
                 alignment = alignment.max(layout.alignment);
-                self.function.symbol_table.add(name, Symbol::Member);
+                self.function
+                    .symbol_table
+                    .add(name, Symbol::Member(Some(ty)));
                 if !self.lexer.next_if(Token::Separator(','))? {
                     self.lexer.expect_span(Token::Separator(';'))?;
                     break;

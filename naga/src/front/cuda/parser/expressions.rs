@@ -364,7 +364,7 @@ impl Parser<'_> {
             self.lexer.expect_span(Token::Paren(')'))?;
             return self.null_pointer_constructor(span);
         }
-        if matches!(self.lookup_symbol(name), Some(Symbol::Member)) {
+        if matches!(self.lookup_symbol(name), Some(Symbol::Member(_))) {
             return Err(ParseError {
                 message: String::from("non-static structure member requires an object"),
                 span,
@@ -514,7 +514,7 @@ impl Parser<'_> {
                     },
                 )));
             }
-            Symbol::Member => {
+            Symbol::Member(_) => {
                 return Err(ParseError {
                     message: String::from("non-static structure member requires an object"),
                     span,

@@ -150,6 +150,66 @@ mod tests {
         }
     }
 
+    #[test]
+    fn record_static_assertions_reject_resource_exhaustion_before_fields() {
+        for resource in 0..3 {
+            let source = "static_assert(true); struct Record { static_assert(true, \"record\"); int field; };";
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            parser.static_assert_declaration().unwrap();
+            let span = parser.lexer.peek().unwrap().1;
+            match resource {
+                0 => {
+                    let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                    parser
+                        .parameter_expansion_budget
+                        .charge_nodes(remaining, span)
+                        .unwrap();
+                }
+                1 => {
+                    let remaining = WORK_LIMIT - parser.parameter_expansion_budget.work;
+                    parser
+                        .parameter_expansion_budget
+                        .charge_work(remaining, span)
+                        .unwrap();
+                }
+                _ => {
+                    let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                    parser
+                        .parameter_expansion_budget
+                        .charge_bytes(remaining, span)
+                        .unwrap();
+                }
+            }
+            let type_count = parser.module.types.len();
+            let declaration_count = parser.global_declarations.len();
+            let error = parser.structure_declaration(true).unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_eq!(parser.module.types.len(), type_count);
+            assert!(parser.structures.is_empty());
+            assert_eq!(parser.global_declarations.len(), declaration_count);
+            assert!(!parser.global_declarations.contains_key("Record"));
+            assert_eq!(parser.next_structure_id, 0);
+            assert!(parser.function.symbol_table.lookup("Record").is_none());
+            assert!(parser.function.symbol_table.lookup("field").is_none());
+        }
+    }
+
+    #[test]
+    fn record_static_assertions_restore_scope_after_failed_member_check() {
+        let source = "struct Record { int field; static_assert(sizeof(field) == 8); };";
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        let declaration_count = parser.global_declarations.len();
+        let error = parser.structure_declaration(true).unwrap_err();
+        assert!(error.message.contains("static assertion failed"), "{error}");
+        assert!(parser.structures.is_empty());
+        assert_eq!(parser.global_declarations.len(), declaration_count);
+        assert!(!parser.global_declarations.contains_key("Record"));
+        assert_eq!(parser.next_structure_id, 0);
+        assert!(parser.function.symbol_table.lookup("Record").is_none());
+        assert!(parser.function.symbol_table.lookup("field").is_none());
+    }
+
     fn aggregate_initializer_checks_node_budget(parenthesized: bool) {
         let fields = (0..16)
             .map(|index| format!("int field_{index};"))

@@ -349,16 +349,19 @@ further subscripts or member access; dereferencing a pointer to an incomplete
 array first permits indexing the array's complete elements. Binary index
 expressions, calls, casts, and updates remain unsupported.
 
-`static_assert(condition);` declarations are accepted at global and function
-scope, including instantiated template bodies. Conditions use the supported
-scalar constant-expression rules and contextual Boolean conversion. Assertions
-are checked even after a return or inside an unreachable runtime branch; unused
-template bodies retain the ordinary deferred-checking rules above. A false
-condition produces a source-spanned diagnostic, including an optional plain
-string message. Adjacent plain strings concatenate; escaped or prefixed strings,
-record-scope assertions, and C++26 message expressions remain unsupported.
-Successful assertions add no runtime checks. Requested template instances are
-checked before CLI entry selection.
+`static_assert(condition);` declarations are accepted at global, function, and
+record scope, including local records in instantiated function templates.
+Record assertions may use `sizeof` on previously declared members, preserving
+their complete array and record types. Members still require an object in
+ordinary expressions, and the record being defined remains incomplete.
+Conditions use the supported scalar constant-expression rules and contextual
+Boolean conversion. Assertions are checked even after a return or inside an
+unreachable runtime branch; unused template bodies retain the ordinary
+deferred-checking rules above. A false condition produces a source-spanned
+diagnostic, including an optional plain string message. Adjacent plain strings
+concatenate; escaped or prefixed strings and C++26 message expressions remain
+unsupported. Successful assertions add no runtime checks. Requested template
+instances are checked before CLI entry selection.
 
 Vector elements support whole-value copies and scalar field access, including
 assignments and updates to writable fields. Vector parameters require pointers.

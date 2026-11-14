@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA record-scope `static_assert`, including `sizeof` queries on earlier members.
 - Support CUDA `__ffsll` with portable 64-bit first-set-bit positions and a signed `int` result.
 - Support CUDA `__clzll` with portable 64-bit leading-zero counts and a signed `int` result.
 - Support portable CUDA `__brevll` with the declared `unsigned long long` result type.
