@@ -301,7 +301,12 @@ impl Parser<'_> {
         };
         let name = Operator::And.name();
         if matches!(
-            self.select_overload(name, core::slice::from_ref(&argument)),
+            self.select_overload(
+                name,
+                core::slice::from_ref(&argument),
+                self.lexer.position(),
+                operator_span
+            )?,
             functions::OverloadResolution::NoViable
         ) {
             let pointer = self.address_of(argument.value.require_value()?, span)?;

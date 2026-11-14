@@ -414,13 +414,13 @@ fn cuda_device_functions_reject_unsupported_signatures_and_captures() {
     for source in [
         "__device__ int *helper(int value) { return value; } __global__ void kernel() {}",
         "__device__ double helper(double value) { return value; } __global__ void kernel() {}",
-        "__device__ int helper(int value = 1) { return value; } __global__ void kernel() {}",
         "__device__ int helper(int value, ...) { return value; } __global__ void kernel() {}",
         "__device__ int helper() { __shared__ int value = 1; return 1; } __global__ void kernel() {}",
         "__device__ int helper() { return output[0]; } __global__ void kernel(int *output) {}",
     ] {
         assert_rejected(source);
     }
+    validate("__device__ int helper(int value = 1) { return value; } __global__ void kernel() {}");
     validate(
         "__device__ int helper() { __shared__ int value; return 1; } __global__ void kernel() {}",
     );

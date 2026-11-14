@@ -125,6 +125,45 @@ mod tests {
     use super::*;
 
     #[test]
+    fn default_arguments_check_budgets_before_materializing_omitted_values() {
+        for captured in [false, true] {
+            for exhausted in 0..3 {
+                let source = "__device__ int helper(int value = 3);";
+                let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                parser.function_definition().unwrap();
+                let candidate = parser.function_candidates("helper").next().unwrap();
+                let span = Span::new(0, source.len() as u32);
+                let expressions = parser.function.ir.expressions.len();
+                match exhausted {
+                    0 => parser.parameter_expansion_budget.nodes = NODE_LIMIT,
+                    1 => parser.parameter_expansion_budget.bytes = BYTE_LIMIT,
+                    _ => parser.parameter_expansion_budget.work = WORK_LIMIT,
+                }
+                let error = if captured {
+                    let mut arguments = Vec::new();
+                    let error = parser
+                        .append_captured_defaults(candidate, &mut arguments, span)
+                        .unwrap_err();
+                    assert!(arguments.is_empty());
+                    error
+                } else {
+                    let mut arguments = Vec::new();
+                    let error = parser
+                        .append_default_arguments(candidate, &mut arguments, span)
+                        .unwrap_err();
+                    assert!(arguments.is_empty());
+                    error
+                };
+                assert_eq!(error.message, limit_error(span).message);
+                assert!(parser.parameter_expansion_budget.is_exhausted());
+                assert_eq!(parser.function.ir.expressions.len(), expressions);
+                assert!(parser.function.ir.body.is_empty());
+                assert!(parser.function.ir.local_variables.is_empty());
+            }
+        }
+    }
+
+    #[test]
     fn empty_void_values_charge_source_nodes_without_shader_allocations() {
         for source in ["void()", "void{}"] {
             for available_nodes in [0, 1] {

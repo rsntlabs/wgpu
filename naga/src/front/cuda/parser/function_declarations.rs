@@ -14,8 +14,17 @@ pub(super) struct FunctionCall {
     pub(super) span: Span,
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct ScalarDefault {
+    pub(super) literal: Literal,
+    pub(super) ty: Handle<Type>,
+    pub(super) position: super::super::lexer::LexerPosition,
+    pub(super) span: Span,
+}
+
 pub(super) struct FunctionDeclaration {
     pub(super) parameters: Vec<SourceParameter>,
+    pub(super) defaults: Vec<Option<ScalarDefault>>,
     pub(super) source_result: ReturnType,
     pub(super) result_qualifiers: Qualifiers,
     pub(super) has_host: bool,

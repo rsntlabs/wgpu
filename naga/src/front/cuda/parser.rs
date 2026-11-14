@@ -12,6 +12,7 @@ mod context;
 mod conversions;
 mod cooperative_groups;
 mod declarations;
+mod defaults;
 mod dim3;
 mod division;
 mod dynamic_shared;
@@ -55,7 +56,9 @@ use constant_memory::{ConstantMemory, ConstantMemoryDeclaration};
 use context::{FunctionContext, FunctionKind};
 use cooperative_groups::{Namespace, ThreadBlockValue};
 use dynamic_shared::{DynamicShared, DynamicSharedDeclaration};
-use function_declarations::{FunctionCall, FunctionDeclaration, IntrinsicDeclaration};
+use function_declarations::{
+    FunctionCall, FunctionDeclaration, IntrinsicDeclaration, ScalarDefault,
+};
 use parameter_calls::{
     CallArgument, CapturedArgument, DeferredCall, FunctionParameterState, ParameterMode,
     SourceParameter,
@@ -537,7 +540,7 @@ impl<'a> Parser<'a> {
             let pointer_ty = self.pointer_type(base, pointer_span)?;
             let name = if matches!(
                 self.lexer.peek()?.0,
-                Token::Separator(',') | Token::Paren(')')
+                Token::Separator(',') | Token::Paren(')') | Token::Operation('=')
             ) {
                 None
             } else {
@@ -599,7 +602,7 @@ impl<'a> Parser<'a> {
         if self.function.kind == FunctionKind::Device
             && matches!(
                 self.lexer.peek()?.0,
-                Token::Separator(',') | Token::Paren(')')
+                Token::Separator(',') | Token::Paren(')') | Token::Operation('=')
             )
         {
             if mode == ParameterMode::Value {

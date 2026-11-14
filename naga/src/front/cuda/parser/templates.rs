@@ -562,7 +562,10 @@ impl<'a> Parser<'a> {
             let declaration = self.parameter_type()?;
             if !matches!(
                 self.lexer.peek()?.0,
-                Token::Separator(',') | Token::Paren(')') | Token::Paren('[')
+                Token::Separator(',')
+                    | Token::Paren(')')
+                    | Token::Paren('[')
+                    | Token::Operation('=')
             ) {
                 let (name, span) = self.identifier()?;
                 self.check_name(name, span)?;
@@ -577,6 +580,9 @@ impl<'a> Parser<'a> {
                 if self.lexer.peek()?.0 == Token::Paren('[') {
                     return self.fail("multidimensional array parameters are unsupported");
                 }
+            }
+            if self.lexer.peek()?.0 == Token::Operation('=') {
+                return self.fail("default arguments on function templates are unsupported");
             }
             let pattern = self.parameter_pattern(declaration, is_array)?;
             self.parameter_expansion_budget
@@ -1213,6 +1219,7 @@ impl<'a> Parser<'a> {
                 function,
                 FunctionDeclaration {
                     parameters: signature,
+                    defaults: Vec::new(),
                     source_result,
                     result_qualifiers,
                     has_host,
@@ -1481,6 +1488,7 @@ impl<'a> Parser<'a> {
         explicit: Option<Vec<TemplateArgument>>,
         arguments: Vec<CapturedArgument>,
     ) -> Result<ExpressionResult, ParseError> {
+        let call_position = self.lexer.position();
         let ids = match &self.global_declarations[name] {
             &GlobalDeclaration::Functions(ref overloads) => {
                 self.parameter_expansion_budget
@@ -1503,7 +1511,12 @@ impl<'a> Parser<'a> {
             for candidate in ordinary {
                 self.parameter_expansion_budget
                     .charge_work(arguments.len() + 1, span)?;
-                if self.candidate_arity(candidate) != arguments.len() {
+                self.parameter_expansion_budget.charge_work(
+                    self.candidate_arity(candidate)
+                        .saturating_sub(arguments.len()),
+                    span,
+                )?;
+                if !self.candidate_accepts_arity(candidate, arguments.len(), call_position) {
                     continue;
                 }
                 self.parameter_expansion_budget
@@ -1632,6 +1645,8 @@ impl<'a> Parser<'a> {
                 FunctionCandidate::Defined(function)
             }
         };
+        let mut arguments = arguments;
+        self.append_captured_defaults(candidate, &mut arguments, span.until(&end))?;
         self.lower_captured_call(candidate, arguments, span.until(&end))
     }
 
@@ -1654,6 +1669,9 @@ impl<'a> Parser<'a> {
         let parsed = (|| {
             self.prepare_parameter_bindings(span)?;
             self.parameters_with_launch_bounds(&mut header.launch_bounds)?;
+            if !self.function.defaults.is_empty() {
+                return self.fail("kernel template default arguments are unsupported");
+            }
             Ok::<_, ParseError>(core::mem::take(&mut self.function.parameters))
         })();
         self.function = saved;

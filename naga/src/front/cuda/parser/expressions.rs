@@ -394,6 +394,14 @@ impl Parser<'_> {
         if matches!(name, "sizeof" | "alignof") {
             return self.type_query(name, span).map(Into::into);
         }
+        if self.function.parsing_default && self.function.symbol_table.lookup(name).is_some() {
+            return Err(ParseError {
+                message: String::from(
+                    "function parameters cannot appear in evaluated default arguments",
+                ),
+                span,
+            });
+        }
         if name == "void" {
             return self.void_value_expression(span);
         }

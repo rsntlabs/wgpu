@@ -354,6 +354,8 @@ impl Parser<'_> {
         self.parameter_expansion_budget
             .charge_work(arguments.len(), span)?;
         let candidate = self.resolve_overload(name, &arguments, name_span)?;
+        let mut arguments = arguments;
+        self.append_captured_defaults(candidate, &mut arguments, span)?;
         self.lower_captured_call_in_order(candidate, arguments, span, order)
     }
 

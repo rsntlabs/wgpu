@@ -30,6 +30,7 @@ mod constant_expressions;
 mod constant_memory;
 mod control_flow;
 mod declarations;
+mod default_arguments;
 mod device_helper_barriers;
 mod device_shared;
 mod dim3;
@@ -175,6 +176,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_DIRECT_AGGREGATE_INITIALIZATION,
         CUDA_DIRECT_BORROWED_INITIALIZATION,
         CUDA_DIRECT_INITIALIZATION,
+        CUDA_DEFAULT_ARGUMENTS,
         CUDA_DP2A,
         CUDA_DP4A,
         CUDA_DUAL_EXECUTION,
@@ -931,3 +933,6 @@ static CUDA_FNS: GpuTestConfiguration = configuration(fns::cases);
 #[apply(gpu_test!)]
 static CUDA_UNIFORM_MATH_BARRIERS: GpuTestConfiguration =
     configuration(uniform_math_barriers::cases);
+
+#[apply(gpu_test!)]
+static CUDA_DEFAULT_ARGUMENTS: GpuTestConfiguration = configuration(default_arguments::cases);

@@ -618,6 +618,7 @@ impl<'a> Parser<'a> {
                 let mut parameter_index = 0u32;
                 loop {
                     self.parameter(parameter_index)?;
+                    self.parameter_default()?;
                     if self.lexer.next_if(Token::Paren(')'))? {
                         break;
                     }
@@ -1005,6 +1006,9 @@ impl<'a> Parser<'a> {
                 return self.fail("incompatible instantiated function parameter types");
             }
         }
+        if header.operator.is_some() && !self.function.defaults.is_empty() {
+            return self.fail("operator default arguments are unsupported");
+        }
         if let Some(operator) = header.operator {
             self.check_operator_parameters(operator, header.name_span)?;
         }
@@ -1058,6 +1062,9 @@ impl<'a> Parser<'a> {
                             })
                 })
         });
+        if intrinsic.is_some() && !self.function.defaults.is_empty() {
+            return self.fail("intrinsic default arguments are unsupported");
+        }
         if let Some(candidate) = intrinsic {
             if !is_prototype {
                 return Err(ParseError {
@@ -1117,6 +1124,7 @@ impl<'a> Parser<'a> {
             }
             _ => None,
         });
+        self.merge_parameter_defaults(previous, header.name_span)?;
         if let Some(previous) = previous {
             let declaration = self.function_declarations.get_mut(&previous).unwrap();
             function_declarations::check_redeclaration(
@@ -1163,6 +1171,7 @@ impl<'a> Parser<'a> {
                     handle,
                     FunctionDeclaration {
                         parameters: core::mem::take(&mut self.function.parameters),
+                        defaults: core::mem::take(&mut self.function.defaults),
                         source_result: header.result,
                         result_qualifiers: header.result_qualifiers,
                         has_host: header.has_host,
@@ -1172,6 +1181,12 @@ impl<'a> Parser<'a> {
                         calls: Vec::new(),
                     },
                 );
+            }
+            if let Some(previous) = previous {
+                self.function_declarations
+                    .get_mut(&previous)
+                    .unwrap()
+                    .defaults = core::mem::take(&mut self.function.defaults);
             }
             self.lexer.expect_span(Token::Separator(';'))?;
             self.function = FunctionContext::new(FunctionKind::Kernel);
@@ -1213,6 +1228,7 @@ impl<'a> Parser<'a> {
             self.module.functions[previous] = function.ir;
             let declaration = self.function_declarations.get_mut(&previous).unwrap();
             declaration.parameters = function.parameters;
+            declaration.defaults = function.defaults;
             declaration.is_defined = true;
             declaration.calls = function.calls;
             if let Some(state) = parameter_state {
@@ -1225,6 +1241,7 @@ impl<'a> Parser<'a> {
                 handle,
                 FunctionDeclaration {
                     parameters: function.parameters,
+                    defaults: function.defaults,
                     source_result: header.result,
                     result_qualifiers: header.result_qualifiers,
                     has_host: header.has_host,
@@ -1501,6 +1518,8 @@ impl<'a> Parser<'a> {
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
         let candidate = self.resolve_overload(name, &arguments, name_span)?;
+        let mut arguments = arguments;
+        self.append_default_arguments(candidate, &mut arguments, span)?;
         self.lower_call(candidate, arguments, span)
     }
 
@@ -2605,40 +2624,47 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn resolve_overload(
-        &self,
+        &mut self,
         name: &str,
         arguments: &[impl CallArgument],
         span: Span,
     ) -> Result<FunctionCandidate, ParseError> {
-        let best_candidate = match self.select_overload(name, arguments) {
-            OverloadResolution::Selected(candidate) => candidate,
-            OverloadResolution::NoViable => {
-                let argument_span = self
-                    .function_candidates(name)
-                    .filter(|&candidate| self.candidate_arity(candidate) == arguments.len())
-                    .find_map(|candidate| {
-                        arguments.iter().enumerate().find_map(|(index, argument)| {
-                            (matches!(
-                                self.candidate_mode(candidate, index),
-                                ParameterMode::Pointer { .. }
-                            ) && self
-                                .candidate_conversion(candidate, index, argument)
-                                .is_none())
-                            .then(|| argument.span())
+        let best_candidate =
+            match self.select_overload(name, arguments, self.lexer.position(), span)? {
+                OverloadResolution::Selected(candidate) => candidate,
+                OverloadResolution::NoViable => {
+                    let argument_span = self
+                        .function_candidates(name)
+                        .filter(|&candidate| {
+                            self.candidate_accepts_arity(
+                                candidate,
+                                arguments.len(),
+                                self.lexer.position(),
+                            )
                         })
+                        .find_map(|candidate| {
+                            arguments.iter().enumerate().find_map(|(index, argument)| {
+                                (matches!(
+                                    self.candidate_mode(candidate, index),
+                                    ParameterMode::Pointer { .. }
+                                ) && self
+                                    .candidate_conversion(candidate, index, argument)
+                                    .is_none())
+                                .then(|| argument.span())
+                            })
+                        });
+                    return Err(ParseError {
+                        message: format!("no matching device helper overload `{name}`"),
+                        span: argument_span.unwrap_or(span),
                     });
-                return Err(ParseError {
-                    message: format!("no matching device helper overload `{name}`"),
-                    span: argument_span.unwrap_or(span),
-                });
-            }
-            OverloadResolution::Ambiguous => {
-                return Err(ParseError {
-                    message: format!("ambiguous device helper overload `{name}`"),
-                    span,
-                })
-            }
-        };
+                }
+                OverloadResolution::Ambiguous => {
+                    return Err(ParseError {
+                        message: format!("ambiguous device helper overload `{name}`"),
+                        span,
+                    })
+                }
+            };
         match best_candidate {
             FunctionCandidate::Current => Err(ParseError {
                 message: String::from("recursive device helper calls are unsupported"),
@@ -2653,24 +2679,41 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn select_overload(
-        &self,
+        &mut self,
         name: &str,
         arguments: &[impl CallArgument],
-    ) -> OverloadResolution {
+        position: super::super::lexer::LexerPosition,
+        span: Span,
+    ) -> Result<OverloadResolution, ParseError> {
+        let mut work = 0usize;
+        for candidate in self.function_candidates(name) {
+            work = work
+                .checked_add(
+                    self.candidate_arity(candidate)
+                        .saturating_sub(arguments.len()),
+                )
+                .ok_or_else(|| ParseError {
+                    message: String::from("CUDA helper parameter expansion limit exceeded"),
+                    span,
+                })?;
+        }
+        self.parameter_expansion_budget.charge_work(work, span)?;
         let integral_double = self.integral_double_candidate(name, arguments);
-        self.select_candidates(
+        Ok(self.select_candidates(
             self.function_candidates(name).chain(integral_double),
             arguments,
-        )
+            position,
+        ))
     }
 
     pub(super) fn select_candidates(
         &self,
         candidates: impl Iterator<Item = FunctionCandidate> + Clone,
         arguments: &[impl CallArgument],
+        position: super::super::lexer::LexerPosition,
     ) -> OverloadResolution {
         let viable_candidates = candidates.filter(|&candidate| {
-            self.candidate_arity(candidate) == arguments.len()
+            self.candidate_accepts_arity(candidate, arguments.len(), position)
                 && arguments.iter().enumerate().all(|(index, argument)| {
                     self.candidate_conversion(candidate, index, argument)
                         .is_some()
@@ -2717,7 +2760,7 @@ impl<'a> Parser<'a> {
             matches!(
                 candidate,
                 FunctionCandidate::Defined(_) | FunctionCandidate::Current
-            ) && self.candidate_arity(candidate) == 1
+            ) && self.candidate_accepts_arity(candidate, 1, self.lexer.position())
                 && self
                     .candidate_type(candidate, 0)
                     .is_some_and(|target| self.source_types_equal(&target, argument_type))

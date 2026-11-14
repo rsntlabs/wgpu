@@ -25,6 +25,7 @@ mod constant_memory;
 mod control_flow;
 mod conversions;
 mod declarations;
+mod default_arguments;
 mod device_functions;
 mod device_helper_barriers;
 mod device_shared;

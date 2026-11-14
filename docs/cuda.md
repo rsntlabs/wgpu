@@ -454,6 +454,25 @@ retain their referent's constness. The definition determines its
 parameter names and constness. Conflicting result types and duplicate definitions
 produce errors. These rules follow C++ [function declarations](https://eel.is/c++draft/dcl.fct).
 
+Ordinary helpers accept trailing scalar constant default arguments:
+
+```cuda
+__device__ float scale(float value, float factor = 2.0f);
+__device__ float scale(float value, float factor) { return value * factor; }
+```
+
+`scale(value)` uses the default, while `scale(value, factor)` supplies both
+arguments. Defaults are checked and converted to the parameter type where they
+are declared. Calls use only defaults visible at their source position, including
+calls in template bodies. Compatible declarations may add defaults, but cannot
+repeat an existing default. After combining visible declarations, every parameter
+following one with a default must also have a default. Overload ranking compares
+only supplied arguments; `f(int)` and `f(int, int = 0)` make `f(1)` ambiguous.
+These rules follow C++ [default arguments](https://eel.is/c++draft/dcl.fct.default).
+Defaults on kernels, templates, predefined intrinsic signatures, and nonscalar
+or reference parameters remain unsupported. Default expressions must be supported
+scalar constant expressions; runtime calls and parameter value reads are rejected.
+
 Each called helper needs a definition in the same source. An unused prototype
 does not emit a function. Missing definitions and direct or indirect recursion
 are rejected even in unused helpers or discarded source statements. A prototype

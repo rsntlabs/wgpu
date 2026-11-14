@@ -34,6 +34,16 @@ pub(super) struct LexerPosition {
     prepared_index: usize,
 }
 
+impl LexerPosition {
+    pub(super) const fn precedes(self, other: Self) -> bool {
+        if self.prepared_index != 0 || other.prepared_index != 0 {
+            self.prepared_index <= other.prepared_index
+        } else {
+            self.offset <= other.offset
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 struct ScannedToken<'a> {
     token: TokenSpan<'a>,
