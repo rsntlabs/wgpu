@@ -239,12 +239,137 @@ pub(super) fn pointer_declarator(
     Ok(Some(qualifiers))
 }
 
+struct TypeContext<'context, 'source> {
+    types: &'context crate::arena::UniqueArena<Type>,
+    function: &'context FunctionContext<'source>,
+    long_types: &'context [Option<Handle<Type>>; 2],
+    dim3_type: Option<Handle<Type>>,
+    structures: &'context FastHashMap<Handle<Type>, structures::Structure>,
+}
+
+impl TypeContext<'_, '_> {
+    fn object_type(&self, ty: &TypeResolution, span: Span) -> Result<TypeSpecifier, ParseError> {
+        let invalid = || ParseError {
+            message: String::from("decltype requires a supported non-reference value object"),
+            span,
+        };
+        match *ty.inner_with(self.types) {
+            TypeInner::Scalar(scalar) => {
+                if ty
+                    .handle()
+                    .is_some_and(|handle| self.long_types.contains(&Some(handle)))
+                {
+                    Ok(TypeSpecifier::Long { kind: scalar.kind })
+                } else {
+                    Ok(TypeSpecifier::Scalar(scalar))
+                }
+            }
+            TypeInner::Vector { size, scalar } => Ok(TypeSpecifier::Vector {
+                component_count: u8::from(size),
+                scalar,
+            }),
+            TypeInner::Struct { .. } => {
+                let handle = ty.handle().ok_or_else(invalid)?;
+                if Some(handle) == self.dim3_type {
+                    return Ok(TypeSpecifier::Dim3);
+                }
+                if self.structures.contains_key(&handle) {
+                    return Ok(TypeSpecifier::Structure(handle));
+                }
+                let name = self.types[handle].name.as_deref();
+                VECTOR_TYPES
+                    .iter()
+                    .find_map(|&(vector_name, _, component_count, scalar)| {
+                        (Some(vector_name) == name).then_some(TypeSpecifier::Vector {
+                            component_count,
+                            scalar,
+                        })
+                    })
+                    .ok_or_else(invalid)
+            }
+            _ => Err(invalid()),
+        }
+    }
+}
+
+fn decltype_operand_type(
+    lexer: &mut Lexer<'_>,
+    symbols: &SymbolTable<&str, Symbol>,
+    globals: &FastHashMap<&str, GlobalDeclaration>,
+    context: &TypeContext<'_, '_>,
+) -> Result<(QualifiedType, Span), ParseError> {
+    lexer.expect_span(Token::Paren('('))?;
+    let (operand, span) = lexer.next()?;
+    let invalid = || ParseError {
+        message: String::from(
+            "decltype requires nullptr or an unparenthesized non-reference value object",
+        ),
+        span,
+    };
+    let Token::Word(name) = operand else {
+        return Err(invalid());
+    };
+    let end = lexer.expect_span(Token::Paren(')'))?;
+    if name == "nullptr" {
+        return Ok((
+            QualifiedType {
+                ty: TypeSpecifier::NullPointer,
+                qualifiers: Qualifiers::NONE,
+            },
+            end,
+        ));
+    }
+    let (ty, qualifiers) = match symbols.lookup(name) {
+        Some(&Symbol::Variable {
+            pointer,
+            ref ty,
+            qualifiers,
+        }) => {
+            if let Expression::FunctionArgument(index) = context.function.ir.expressions[pointer] {
+                if matches!(
+                    context.function.parameter_mode(index),
+                    Some(ParameterMode::Reference { .. })
+                ) {
+                    return Err(invalid());
+                }
+            }
+            (ty, qualifiers)
+        }
+        Some(&Symbol::Constant { ref ty, .. }) => (
+            ty,
+            Qualifiers {
+                is_const: true,
+                is_volatile: false,
+            },
+        ),
+        Some(_) => return Err(invalid()),
+        None => match globals.get(name) {
+            Some(&GlobalDeclaration::Constant { ref ty, .. }) => (
+                ty,
+                Qualifiers {
+                    is_const: true,
+                    is_volatile: false,
+                },
+            ),
+            _ => return Err(invalid()),
+        },
+    };
+    Ok((
+        QualifiedType {
+            ty: context.object_type(ty, span)?,
+            qualifiers,
+        },
+        end,
+    ))
+}
+
 fn parse_type(
     lexer: &mut Lexer<'_>,
     symbols: &SymbolTable<&str, Symbol>,
     globals: &FastHashMap<&str, GlobalDeclaration>,
+    context: &TypeContext<'_, '_>,
 ) -> Result<QualifiedType, ParseError> {
-    declaration_type(lexer, symbols, globals, false).map(|(ty, _)| match ty {
+    declaration_type(lexer, symbols, globals, context, false).map(|(ty, _)| match ty {
         DeclarationType::Explicit(ty) => ty,
         DeclarationType::Inferred { .. } => unreachable!(),
     })
@@ -254,6 +379,7 @@ fn declaration_type(
     lexer: &mut Lexer<'_>,
     symbols: &SymbolTable<&str, Symbol>,
     globals: &FastHashMap<&str, GlobalDeclaration>,
+    context: &TypeContext<'_, '_>,
     is_variable_declaration: bool,
 ) -> Result<(DeclarationType, bool), ParseError> {
     let mut ty: Option<QualifiedType> = None;
@@ -283,13 +409,7 @@ fn declaration_type(
         match token.0 {
             Token::Word("decltype") if ty.is_none() && !inferred => {
                 lexer.next()?;
-                lexer.expect_span(Token::Paren('('))?;
-                lexer.expect_span(Token::Word("nullptr"))?;
-                lexer.expect_span(Token::Paren(')'))?;
-                ty = Some(QualifiedType {
-                    ty: TypeSpecifier::NullPointer,
-                    qualifiers: Qualifiers::NONE,
-                });
+                ty = Some(decltype_operand_type(lexer, symbols, globals, context)?.0);
                 continue;
             }
             Token::Word("struct") => {
@@ -733,6 +853,13 @@ impl<'a> Parser<'a> {
             &mut self.lexer,
             &self.function.symbol_table,
             &self.global_declarations,
+            &TypeContext {
+                types: &self.module.types,
+                function: &self.function,
+                long_types: &self.long_types,
+                dim3_type: self.dim3_type,
+                structures: &self.structures,
+            },
         )
     }
 
@@ -744,6 +871,13 @@ impl<'a> Parser<'a> {
             lexer,
             &self.function.symbol_table,
             &self.global_declarations,
+            &TypeContext {
+                types: &self.module.types,
+                function: &self.function,
+                long_types: &self.long_types,
+                dim3_type: self.dim3_type,
+                structures: &self.structures,
+            },
         )
     }
 
@@ -752,7 +886,47 @@ impl<'a> Parser<'a> {
             &mut self.lexer,
             &self.function.symbol_table,
             &self.global_declarations,
+            &TypeContext {
+                types: &self.module.types,
+                function: &self.function,
+                long_types: &self.long_types,
+                dim3_type: self.dim3_type,
+                structures: &self.structures,
+            },
             true,
+        )
+    }
+
+    pub(super) fn decltype_operand_type(&mut self) -> Result<(QualifiedType, Span), ParseError> {
+        decltype_operand_type(
+            &mut self.lexer,
+            &self.function.symbol_table,
+            &self.global_declarations,
+            &TypeContext {
+                types: &self.module.types,
+                function: &self.function,
+                long_types: &self.long_types,
+                dim3_type: self.dim3_type,
+                structures: &self.structures,
+            },
+        )
+    }
+
+    pub(super) fn decltype_operand_type_from(
+        &self,
+        lexer: &mut Lexer<'_>,
+    ) -> Result<(QualifiedType, Span), ParseError> {
+        decltype_operand_type(
+            lexer,
+            &self.function.symbol_table,
+            &self.global_declarations,
+            &TypeContext {
+                types: &self.module.types,
+                function: &self.function,
+                long_types: &self.long_types,
+                dim3_type: self.dim3_type,
+                structures: &self.structures,
+            },
         )
     }
 

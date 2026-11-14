@@ -30,6 +30,7 @@ mod constant_expressions;
 mod constant_memory;
 mod control_flow;
 mod declarations;
+mod decltype_objects;
 mod default_arguments;
 mod device_helper_barriers;
 mod device_shared;
@@ -194,6 +195,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_DIRECT_BORROWED_INITIALIZATION,
         CUDA_DIRECT_INITIALIZATION,
         CUDA_DEFAULT_ARGUMENTS,
+        CUDA_DECLTYPE_OBJECTS,
         CUDA_DP2A,
         CUDA_DP4A,
         CUDA_DUAL_EXECUTION,
@@ -1026,3 +1028,6 @@ static CUDA_PACKED_GREATER_THAN: GpuTestConfiguration = configuration(packed_gre
 
 #[apply(gpu_test!)]
 static CUDA_PACKED_GREATER_EQUAL: GpuTestConfiguration = configuration(packed_greater_equal::cases);
+
+#[apply(gpu_test!)]
+static CUDA_DECLTYPE_OBJECTS: GpuTestConfiguration = configuration(decltype_objects::cases);

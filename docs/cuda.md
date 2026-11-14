@@ -317,6 +317,35 @@ needed. The struct's alignment is its greatest field alignment, and its size
 rounds up to that alignment. Arrays of structs use that rounded size as their
 stride. Copies preserve field values; padding bytes are unspecified.
 
+`decltype(name)` accepts a direct, unqualified name of a supported scalar,
+CUDA vector, record, or `dim3` value object. It works with local and shared
+value objects, by-value function parameters, and scalar `constexpr` constants.
+The result preserves the declared type and its `const`/`volatile` qualifiers,
+including the distinction between `long` and `long long` and the identities of
+CUDA vector types. The operand is unevaluated: querying an object adds no read
+or initializer evaluation. This follows the named-entity rule for
+[`decltype`](https://eel.is/c++draft/dcl.type.decltype).
+
+Queried types can be used in aliases, declarations, supported casts and value
+construction, and helper return types where the object name is visible:
+
+```cuda
+__device__ unsigned copy_value(unsigned value) {
+    using Value = decltype(value);
+    Value copy = decltype(value){value};
+    return copy;
+}
+```
+
+`decltype(nullptr)` remains supported. Queries of references (including
+reference parameters), pointers, arrays, named `nullptr_t` or `thread_block`
+objects, constant-memory storage objects, and template parameter names are
+unsupported. Parenthesized lvalues such as `decltype((value))`, member access,
+calls, and other expression operands are also unsupported. Ordinary value
+parameters in instantiated template bodies can be queried once their types are
+known. Existing restrictions on the resulting type's use still apply, including
+volatile automatic storage and backend support for 64-bit values.
+
 `sizeof(type)` and `alignof(type)` produce integral constant expressions of
 the built-in `size_t` type, preserving `unsigned long` overload and template
 identity. `alignof` requires a parenthesized type-id. Operands can use

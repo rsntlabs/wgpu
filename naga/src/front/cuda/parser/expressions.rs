@@ -420,10 +420,8 @@ impl Parser<'_> {
             return Ok(ExpressionValue::NullPointer(NullPointerValue::literal(span)).into());
         }
         if name == "decltype" {
-            self.lexer.expect_span(Token::Paren('('))?;
-            self.expect_ident("nullptr")?;
-            self.lexer.expect_span(Token::Paren(')'))?;
-            return self.null_pointer_constructor(span);
+            let (target, _) = self.decltype_operand_type()?;
+            return self.named_type_expression(target, span);
         }
         if matches!(self.lookup_symbol(name), Some(Symbol::Member(_))) {
             return Err(ParseError {
@@ -439,18 +437,7 @@ impl Parser<'_> {
             return self.static_cast_expression(span);
         }
         if let Some(target) = self.type_name(name) {
-            if target.qualifiers.is_volatile
-                && !matches!(
-                    target.ty,
-                    TypeSpecifier::Scalar(_)
-                        | TypeSpecifier::Long { .. }
-                        | TypeSpecifier::Pointer { .. }
-                        | TypeSpecifier::Array(_)
-                )
-            {
-                return self.fail("volatile class value construction is unsupported");
-            }
-            return self.type_expression(target, span);
+            return self.named_type_expression(target, span);
         }
         if matches!(name, "true" | "false") {
             let handle = self.append(Expression::Literal(Literal::Bool(name == "true")), span)?;
@@ -686,6 +673,25 @@ impl Parser<'_> {
                 constant,
             },
         )))
+    }
+
+    fn named_type_expression(
+        &mut self,
+        target: QualifiedType,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        if target.qualifiers.is_volatile
+            && !matches!(
+                target.ty,
+                TypeSpecifier::Scalar(_)
+                    | TypeSpecifier::Long { .. }
+                    | TypeSpecifier::Pointer { .. }
+                    | TypeSpecifier::Array(_)
+            )
+        {
+            return self.fail("volatile class value construction is unsupported");
+        }
+        self.type_expression(target, span)
     }
 
     pub(super) fn type_expression(

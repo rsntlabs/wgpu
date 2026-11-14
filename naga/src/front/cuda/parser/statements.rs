@@ -243,9 +243,7 @@ impl<'a> Parser<'a> {
             .is_none()
             {
                 if lookahead.next()?.0 == Token::Word("decltype") {
-                    lookahead.expect_span(Token::Paren('('))?;
-                    lookahead.expect_span(Token::Word("nullptr"))?;
-                    lookahead.expect_span(Token::Paren(')'))?;
+                    self.decltype_operand_type_from(&mut lookahead)?;
                 }
             }
         }

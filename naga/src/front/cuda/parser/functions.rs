@@ -1382,10 +1382,10 @@ impl<'a> Parser<'a> {
             if result.is_none() {
                 if token.0 == Token::Word("decltype") {
                     self.lexer.next()?;
-                    self.lexer.expect_span(Token::Paren('('))?;
-                    self.lexer.expect_span(Token::Word("nullptr"))?;
-                    let end = self.lexer.expect_span(Token::Paren(')'))?;
-                    result = Some(ReturnType::Value(TypeSpecifier::NullPointer));
+                    let (ty, end) = self.decltype_operand_type()?;
+                    volatile_result = ty.qualifiers.is_volatile;
+                    const_result = ty.qualifiers.is_const;
+                    result = Some(ReturnType::Value(ty.ty));
                     result_span.get_or_insert(token.1.until(&end));
                     continue;
                 }
