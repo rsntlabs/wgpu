@@ -38,6 +38,7 @@ mod dual_execution;
 mod dynamic_shared;
 mod empty_scalar_construction;
 mod fabs;
+mod ffsll;
 mod float_division;
 mod float_math;
 mod float_separators;
@@ -162,6 +163,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_DYNAMIC_SHARED,
         CUDA_EMPTY_SCALAR_CONSTRUCTION,
         CUDA_FABS,
+        CUDA_FFSLL,
         CUDA_FLOAT_DIVISION,
         CUDA_FLOAT_MATH,
         CUDA_FLOAT_SEPARATORS,
@@ -809,6 +811,10 @@ static CUDA_BREVLL: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_CLZLL: GpuTestConfiguration =
     configuration_with_features(clzll::cases, wgpu::Features::SHADER_INT64);
+
+#[apply(gpu_test!)]
+static CUDA_FFSLL: GpuTestConfiguration =
+    configuration_with_features(ffsll::cases, wgpu::Features::SHADER_INT64);
 
 #[apply(gpu_test!)]
 static CUDA_POPCLL: GpuTestConfiguration =

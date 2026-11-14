@@ -885,6 +885,7 @@ These predefined functions operate on integer representations:
 | `__clz` | `int` | `int` | Count leading zero bits; zero returns 32. |
 | `__clzll` | `long long` | `int` | Count leading zero bits across all 64 bits; zero returns 64. |
 | `__ffs` | `int` | `int` | Return the first set bit's position, starting at 1; zero returns 0. |
+| `__ffsll` | `long long` | `int` | Return the first set bit's position across all 64 bits, starting at 1; zero returns 0. |
 | `__popc` | `unsigned int` | `int` | Count set bits. |
 | `__popcll` | `unsigned long long` | `int` | Count set bits across all 64 bits. |
 | `__brev` | `unsigned int` | `unsigned int` | Reverse all 32 bits. |
@@ -918,12 +919,16 @@ so it does not require native 64-bit population-count operations from a backend.
 For example, `__clzll(-1)` is 0 and `__clzll(0xffffffffu)` is 32. It counts the
 leading zeros of the high 32-bit word, or adds 32 to the low word's count when
 the high word is zero. Its signed `int` result ranges from zero through 64.
+`__ffsll` also converts its argument to `long long`. It counts trailing zeros
+in two 32-bit words and returns the first nonzero word's bit position, starting
+at one. For example, `__ffsll(-2)` is 2, `__ffsll(0x100000000LL)` is 33, and
+`__ffsll(0LL)` is 0. Its signed `int` result ranges from zero through 64.
 `__brevll` also converts its argument to `unsigned long long` first, so
 `__brevll(-1)` is `0xffffffffffffffffULL`, while `__brevll(0xffffffffu)` is
 `0xffffffff00000000ULL`. Its result retains type `unsigned long long`,
 distinct from LP64 `unsigned long`. It reverses two 32-bit words and exchanges
 their positions, avoiding native 64-bit bit-reversal operations.
-The other 64-bit `ll` variants and other integer intrinsics remain unsupported.
+Other integer intrinsics remain unsupported.
 Metal output for `__brev` and `__brevll` requires MSL version 1.2 or newer.
 
 ## Integer atomics

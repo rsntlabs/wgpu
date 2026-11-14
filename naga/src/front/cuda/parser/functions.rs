@@ -126,7 +126,7 @@ const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 5] = [
     ("roundf", FloatMathFunction::Round),
 ];
 
-const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 11] = [
+const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 12] = [
     (
         "__clz",
         MathFunction::CountLeadingZeros,
@@ -143,6 +143,12 @@ const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 11] = [
         "__ffs",
         MathFunction::FirstTrailingBit,
         Scalar::I32,
+        Scalar::I32,
+    ),
+    (
+        "__ffsll",
+        MathFunction::FirstTrailingBit,
+        Scalar::I64,
         Scalar::I32,
     ),
     (
@@ -1481,6 +1487,9 @@ impl<'a> Parser<'a> {
                 }
                 (MathFunction::CountLeadingZeros, Scalar::I64) => {
                     Some(self.count_leading_zeros64(argument.handle, span)?)
+                }
+                (MathFunction::FirstTrailingBit, Scalar::I64) => {
+                    Some(self.first_set_bit64(argument.handle, span)?)
                 }
                 _ => None,
             };

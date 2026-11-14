@@ -180,4 +180,75 @@ impl Parser<'_> {
             span,
         )
     }
+
+    pub(super) fn first_set_bit64(
+        &mut self,
+        value: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        let (low, high) = self.split_integer64(value, span)?;
+        let mut positions = [low, high];
+        for (word, offset) in positions.iter_mut().zip([1, 33]) {
+            let count = self.append(
+                Expression::Math {
+                    fun: MathFunction::CountTrailingZeros,
+                    arg: *word,
+                    arg1: None,
+                    arg2: None,
+                    arg3: None,
+                },
+                span,
+            )?;
+            let offset = self.append(Expression::Literal(Literal::U32(offset)), span)?;
+            *word = self.append(
+                Expression::Binary {
+                    op: BinaryOperator::Add,
+                    left: count,
+                    right: offset,
+                },
+                span,
+            )?;
+        }
+        let [low_position, high_position] = positions;
+        let zero = self.append(Expression::Literal(Literal::U32(0)), span)?;
+        let high_nonzero = self.append(
+            Expression::Binary {
+                op: BinaryOperator::NotEqual,
+                left: high,
+                right: zero,
+            },
+            span,
+        )?;
+        let high_position = self.append(
+            Expression::Select {
+                condition: high_nonzero,
+                accept: high_position,
+                reject: zero,
+            },
+            span,
+        )?;
+        let low_nonzero = self.append(
+            Expression::Binary {
+                op: BinaryOperator::NotEqual,
+                left: low,
+                right: zero,
+            },
+            span,
+        )?;
+        let position = self.append(
+            Expression::Select {
+                condition: low_nonzero,
+                accept: low_position,
+                reject: high_position,
+            },
+            span,
+        )?;
+        self.append(
+            Expression::As {
+                expr: position,
+                target: Scalar::I32,
+            },
+            span,
+        )
+    }
 }
