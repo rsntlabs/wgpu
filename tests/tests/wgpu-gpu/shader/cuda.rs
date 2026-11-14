@@ -46,6 +46,7 @@ mod float_truthiness;
 mod floorf;
 mod fmodf;
 mod function_macros;
+mod funnel_shifts;
 mod helper_builtins;
 mod helper_parameters;
 mod hex_float_literals;
@@ -167,6 +168,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_EMPTY_SCALAR_CONSTRUCTION,
         CUDA_FABS,
         CUDA_FFSLL,
+        CUDA_FUNNEL_SHIFTS,
         CUDA_FLOAT_DIVISION,
         CUDA_FLOAT_MATH,
         CUDA_FLOAT_SEPARATORS,
@@ -874,3 +876,6 @@ static CUDA_PARENTHESIZED_INTEGER16_ARRAYS: GpuTestConfiguration = configuration
     parenthesized_arrays::integer16_cases,
     wgpu::Features::SHADER_I16,
 );
+
+#[apply(gpu_test!)]
+static CUDA_FUNNEL_SHIFTS: GpuTestConfiguration = configuration(funnel_shifts::cases);

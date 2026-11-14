@@ -3,6 +3,7 @@ use super::*;
 use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
 use super::float_helpers::FloatMathFunction;
 use super::function_declarations::Inlining;
+use super::integer_intrinsics::FunnelShiftDirection;
 use super::launch_bounds::LaunchBounds;
 use super::types::{IntegerSpecifiers, VECTOR_TYPES};
 use crate::MathFunction;
@@ -230,6 +231,11 @@ fn vector_constructor(name: &str) -> Option<(u8, Scalar)> {
         })
 }
 
+const FUNNEL_SHIFT_BUILTINS: [(&str, FunnelShiftDirection); 2] = [
+    ("__funnelshift_l", FunnelShiftDirection::Left),
+    ("__funnelshift_r", FunnelShiftDirection::Right),
+];
+
 pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclaration> {
     MATH_BUILTINS
         .into_iter()
@@ -240,6 +246,12 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             )
         })
         .chain(MULTIPLY24_BUILTINS.into_iter().map(|(name, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
+        .chain(FUNNEL_SHIFT_BUILTINS.into_iter().map(|(name, _)| {
             (
                 name,
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
@@ -365,6 +377,7 @@ pub(super) enum FunctionCandidate {
     Current,
     Builtin(MathBuiltin),
     Multiply24(Scalar),
+    FunnelShift(FunnelShiftDirection),
     Atomic {
         function: crate::AtomicFunction,
         scalar: Scalar,
@@ -897,6 +910,7 @@ impl<'a> Parser<'a> {
                     candidate,
                     FunctionCandidate::Builtin(_)
                         | FunctionCandidate::Multiply24(_)
+                        | FunctionCandidate::FunnelShift(_)
                         | FunctionCandidate::Atomic { .. }
                         | FunctionCandidate::AtomicCompareExchange(_)
                         | FunctionCandidate::WrappingAtomic(_)
@@ -1138,7 +1152,9 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::AtomicCompareExchange(result)
             | FunctionCandidate::Bitcast { result, .. }
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
-            FunctionCandidate::WrappingAtomic(_) => TypeSpecifier::Scalar(Scalar::U32),
+            FunctionCandidate::WrappingAtomic(_) | FunctionCandidate::FunnelShift(_) => {
+                TypeSpecifier::Scalar(Scalar::U32)
+            }
             FunctionCandidate::IntegralDouble { .. } => unreachable!(),
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::Sqrt
@@ -1550,6 +1566,23 @@ impl<'a> Parser<'a> {
             }
             return Ok(self.convert_scalar(value.into(), result)?.into());
         }
+        if let FunctionCandidate::FunnelShift(direction) = candidate {
+            let mut arguments = arguments.into_iter();
+            let low = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
+            let high = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
+            let shift = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
+            let handle =
+                self.funnel_shift(direction, low.handle, high.handle, shift.handle, span)?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: ConstantValue::default(),
+                handle,
+                ty: scalar_resolution(Scalar::U32),
+                span,
+            }
+            .into());
+        }
         if let FunctionCandidate::Multiply24(scalar) = candidate {
             let mut arguments = arguments.into_iter();
             let left = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
@@ -1854,6 +1887,13 @@ impl<'a> Parser<'a> {
                     .map(|(_, scalar)| FunctionCandidate::Multiply24(scalar)),
             )
             .chain(
+                FUNNEL_SHIFT_BUILTINS
+                    .into_iter()
+                    .find(|&(candidate, _)| candidate == name)
+                    .filter(move |_| builtin_visible)
+                    .map(|(_, direction)| FunctionCandidate::FunnelShift(direction)),
+            )
+            .chain(
                 BITCAST_BUILTINS
                     .into_iter()
                     .find(|&(candidate, _, _)| candidate == name)
@@ -1922,7 +1962,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Atomic { .. }
             | FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::Fmodf => 2,
-            FunctionCandidate::AtomicCompareExchange(_) => 3,
+            FunctionCandidate::AtomicCompareExchange(_) | FunctionCandidate::FunnelShift(_) => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::FloatMath(_)
@@ -1973,6 +2013,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf => return Some(scalar_resolution(Scalar::F32)),
+            FunctionCandidate::FunnelShift(_) => return Some(scalar_resolution(Scalar::U32)),
             FunctionCandidate::Constructor { scalar, .. } => {
                 return Some(scalar_resolution(scalar))
             }

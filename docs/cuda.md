@@ -911,6 +911,8 @@ These predefined functions operate on integer representations:
 | `__brevll` | `unsigned long long` | `unsigned long long` | Reverse all 64 bits. |
 | `__mul24` | `int, int` | `int` | Multiply signed 24-bit operands and return the low 32 product bits. |
 | `__umul24` | `unsigned int, unsigned int` | `unsigned int` | Multiply unsigned 24-bit operands and return the low 32 product bits. |
+| `__funnelshift_l` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` left and return its high word. |
+| `__funnelshift_r` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` right and return its low word. |
 
 Negative `int` arguments use their two's-complement representation. For example,
 `__clz(-1)` is 0, `__ffs(-2)` is 2, and `__brev(1u)` is `0x80000000u`.
@@ -927,6 +929,12 @@ product exceeds 32 bits. For example, `__mul24(0x00800000, 1)` is -8388608, whil
 [24-bit multiply intrinsics](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__INT.html).
 Calls do not provide source constant expressions, including calls with literal
 arguments.
+
+Funnel shifts convert all three arguments to `unsigned int` and reduce the shift
+count modulo 32. A zero count returns `hi` for `__funnelshift_l` and `lo` for
+`__funnelshift_r`. Both use 32-bit operations with masked shift amounts, including
+the complementary shift. The clamped-count variants `__funnelshift_lc` and
+`__funnelshift_rc` remain unsupported.
 
 These names use the same argument evaluation, overload selection, name hiding,
 and predefined-signature restrictions as the bit reinterpretation functions

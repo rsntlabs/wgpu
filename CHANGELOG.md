@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support portable CUDA `__funnelshift_l` and `__funnelshift_r` with modulo-32 shift counts.
 - Support CUDA cv-qualified void casts and functional void expressions with declaration disambiguation.
 - Support CUDA C-style and `static_cast<void>` void conversions, preserving discarded reads and constant-expression sequencing.
 - Support CUDA record-scope `static_assert`, including `sizeof` queries on earlier members.
