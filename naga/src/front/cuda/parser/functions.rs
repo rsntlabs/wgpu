@@ -630,6 +630,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+        self.function.replay_default_header = None;
         Ok(())
     }
 

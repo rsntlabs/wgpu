@@ -94,6 +94,25 @@ ordering of the supported template parameter patterns. An explicit `<...>` or
 `<>` selects only templates. Equal normalized template arguments reuse one
 helper instance regardless of whether arguments were explicit or deduced.
 
+Device function templates accept constant defaults on fixed scalar parameters:
+
+```cuda
+template<class Value>
+__device__ Value adjusted(Value value, int bias = 3) {
+    return value + Value(bias);
+}
+```
+
+`adjusted(2)` deduces `Value` from the supplied argument and uses the default
+bias. Defaults do not contribute to deduction, conversion ranking, or call-context
+partial ordering. Defaults must appear on the initial template declaration;
+later declarations and definitions inherit them and cannot add or repeat them.
+Their names and converted values bind at that initial declaration, even if the
+definition or caller uses different names. The default parameter's type and
+expression must not mention template parameters. Defaults that query function
+parameters, dependent defaults such as `Value extra = Value(1)`, and defaults on
+kernel templates remain unsupported.
+
 Class-valued function results and qualified constructors retain source
 qualification. Members of temporary class values retain that qualification when
 binding references; creating a scalar value removes its top-level qualification.
@@ -469,7 +488,7 @@ repeat an existing default. After combining visible declarations, every paramete
 following one with a default must also have a default. Overload ranking compares
 only supplied arguments; `f(int)` and `f(int, int = 0)` make `f(1)` ambiguous.
 These rules follow C++ [default arguments](https://eel.is/c++draft/dcl.fct.default).
-Defaults on kernels, templates, predefined intrinsic signatures, and nonscalar
+Defaults on kernels, predefined intrinsic signatures, and nonscalar
 or reference parameters remain unsupported. Default expressions must be supported
 scalar constant expressions; runtime calls and parameter value reads are rejected.
 

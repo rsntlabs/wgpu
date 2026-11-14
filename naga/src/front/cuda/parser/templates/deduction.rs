@@ -10,7 +10,13 @@ impl Parser<'_> {
     ) -> Result<Option<Vec<TemplateValue>>, ParseError> {
         let declaration = &self.templates.declarations[template];
         let parameter_count = declaration.parameters.len();
-        if explicit.len() > parameter_count || declaration.signature.len() != arguments.len() {
+        self.parameter_expansion_budget.charge_work(
+            declaration.signature.len().saturating_sub(arguments.len()),
+            span,
+        )?;
+        if explicit.len() > parameter_count
+            || !self.template_accepts_arity(template, arguments.len(), self.lexer.position())
+        {
             return Ok(None);
         }
         self.parameter_expansion_budget
@@ -195,6 +201,7 @@ impl Parser<'_> {
         {
             return false;
         }
+        let supplied = left.conversions.len();
         match (&left.origin, &right.origin) {
             (&CandidateOrigin::Ordinary(_), &CandidateOrigin::Template { .. }) => true,
             (
@@ -203,8 +210,8 @@ impl Parser<'_> {
                     template: right, ..
                 },
             ) => {
-                self.pattern_deducible_from(right, left, right_bindings)
-                    && !self.pattern_deducible_from(left, right, left_bindings)
+                self.pattern_deducible_from(right, left, right_bindings, supplied)
+                    && !self.pattern_deducible_from(left, right, left_bindings, supplied)
             }
             _ => false,
         }
@@ -215,10 +222,11 @@ impl Parser<'_> {
         formal: usize,
         actual: usize,
         bindings: &mut [Option<PatternTerm>],
+        supplied: usize,
     ) -> bool {
         bindings.fill(None);
-        let formal = &self.templates.declarations[formal].signature;
-        let actual = &self.templates.declarations[actual].signature;
+        let formal = &self.templates.declarations[formal].signature[..supplied];
+        let actual = &self.templates.declarations[actual].signature[..supplied];
         formal.len() == actual.len()
             && formal.iter().zip(actual).all(|(&formal, &actual)| {
                 let both_references = matches!(

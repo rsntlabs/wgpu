@@ -143,6 +143,7 @@ struct FunctionTemplate<'a> {
     header: FunctionHeader<'a>,
     parameters: Vec<TemplateParameter<'a>>,
     signature: Vec<ParameterPattern>,
+    defaults: Vec<Option<ScalarDefault>>,
     result: ReturnType,
     source: SignatureSource<'a>,
     globals: FastHashMap<&'a str, GlobalDeclaration>,
@@ -211,6 +212,124 @@ pub(super) struct Templates<'a> {
 }
 
 impl<'a> Parser<'a> {
+    pub(super) fn skip_template_default(
+        &mut self,
+        template: usize,
+        index: usize,
+    ) -> Result<(), ParseError> {
+        let Some(default) = self.templates.declarations[template]
+            .defaults
+            .get(index)
+            .and_then(|value| *value)
+        else {
+            return self.fail("unexpected function template default argument");
+        };
+        while self.lexer.position() != default.position {
+            let (token, span) = self.lexer.peek()?;
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            if token == Token::End || !self.lexer.position().precedes(default.position) {
+                return self.fail("invalid function template default argument source");
+            }
+            self.lexer.next()?;
+        }
+        Ok(())
+    }
+
+    fn clone_template_defaults(
+        &mut self,
+        template: usize,
+        span: Span,
+    ) -> Result<Vec<Option<ScalarDefault>>, ParseError> {
+        let defaults = &self.templates.declarations[template].defaults;
+        self.parameter_expansion_budget
+            .charge_slice::<Option<ScalarDefault>>(defaults.len(), span)?;
+        self.parameter_expansion_budget
+            .charge_work(defaults.len(), span)?;
+        Ok(defaults.clone())
+    }
+
+    fn template_accepts_arity(
+        &self,
+        template: usize,
+        supplied: usize,
+        position: LexerPosition,
+    ) -> bool {
+        let declaration = &self.templates.declarations[template];
+        supplied <= declaration.signature.len()
+            && (supplied..declaration.signature.len()).all(|index| {
+                declaration
+                    .defaults
+                    .get(index)
+                    .and_then(|value| *value)
+                    .is_some_and(|default| default.position.precedes(position))
+            })
+    }
+
+    fn template_parameter_default(
+        &mut self,
+        pattern: ParameterPattern,
+        index: usize,
+    ) -> Result<(), ParseError> {
+        let (token, span) = self.lexer.peek()?;
+        let has_default = token == Token::Operation('=');
+        if !has_default && self.function.defaults.is_empty() {
+            return Ok(());
+        }
+        if !has_default {
+            return self.fail("default arguments must be trailing");
+        }
+        let ParameterPattern::Shader {
+            ty: PatternType::Concrete(ty),
+            mode: ParameterMode::Value,
+        } = pattern
+        else {
+            return self.fail("default arguments require nondependent scalar value parameters");
+        };
+        if !matches!(self.module.types[ty].inner, TypeInner::Scalar(_)) {
+            return self.fail("default arguments require nondependent scalar value parameters");
+        }
+        let mut source = self.lexer.clone();
+        self.prepare_parameter_bindings(span)?;
+        self.function.parsing_default = true;
+        let parsed = self.constant_initializer(&TypeResolution::Handle(ty));
+        self.function.parsing_default = false;
+        let literal = parsed?;
+        let position = self.lexer.position();
+        source = source.bounded(position);
+        loop {
+            let (token, token_span) = source.next()?;
+            self.parameter_expansion_budget.charge_work(1, token_span)?;
+            if token == Token::End {
+                break;
+            }
+            if let Token::Word(name) = token {
+                if matches!(
+                    self.function.symbol_table.lookup(name),
+                    Some(Symbol::TemplateParameter { .. } | Symbol::TemplateTypeParameter { .. })
+                ) {
+                    return Err(ParseError {
+                        message: String::from(
+                            "dependent default argument expressions are unsupported",
+                        ),
+                        span: token_span,
+                    });
+                }
+            }
+        }
+        let count = index + 1 - self.function.defaults.len();
+        self.parameter_expansion_budget
+            .charge_slice::<Option<ScalarDefault>>(count, span)?;
+        self.parameter_expansion_budget.charge_work(count, span)?;
+        self.function.defaults.resize(index + 1, None);
+        self.function.defaults[index] = Some(ScalarDefault {
+            literal,
+            ty,
+            position,
+            span,
+        });
+        Ok(())
+    }
+
     pub(super) fn template_parameter_value(
         &mut self,
         scalar: SourceScalar,
@@ -325,6 +444,7 @@ impl<'a> Parser<'a> {
             mut header,
             parameters,
             signature,
+            defaults,
             result,
             source,
             ..
@@ -377,6 +497,11 @@ impl<'a> Parser<'a> {
             None => None,
         };
         let id = if let Some(id) = previous {
+            if !defaults.is_empty() {
+                return self.fail(
+                    "default arguments must appear on the initial function template declaration",
+                );
+            }
             let previous = &mut self.templates.declarations[id];
             if previous.header.kind != header.kind || previous.result != result {
                 return Err(ParseError {
@@ -430,6 +555,7 @@ impl<'a> Parser<'a> {
                 header: header.clone(),
                 parameters: Vec::new(),
                 signature,
+                defaults,
                 result,
                 source: source.take().unwrap(),
                 globals: FastHashMap::default(),
@@ -534,6 +660,10 @@ impl<'a> Parser<'a> {
         self.check_dynamic_shared_linkage(header.name, header.name_span)?;
         self.function.symbol_table.push_scope();
         let signature = self.template_parameter_patterns()?;
+        let defaults = core::mem::take(&mut self.function.defaults);
+        if header.kind == FunctionKind::Kernel && !defaults.is_empty() {
+            return self.fail("kernel template default arguments are unsupported");
+        }
         self.trailing_launch_bounds(&mut header.launch_bounds)?;
         let end = self.lexer.position();
         Ok(FunctionTemplate {
@@ -541,6 +671,7 @@ impl<'a> Parser<'a> {
             header,
             parameters,
             signature,
+            defaults,
             source: SignatureSource { start: source, end },
             globals: FastHashMap::default(),
             definition: None,
@@ -581,10 +712,8 @@ impl<'a> Parser<'a> {
                     return self.fail("multidimensional array parameters are unsupported");
                 }
             }
-            if self.lexer.peek()?.0 == Token::Operation('=') {
-                return self.fail("default arguments on function templates are unsupported");
-            }
             let pattern = self.parameter_pattern(declaration, is_array)?;
+            self.template_parameter_default(pattern, parameters.len())?;
             self.parameter_expansion_budget
                 .charge_slice::<ParameterPattern>(1, self.lexer.peek()?.1)?;
             parameters.push(pattern);
@@ -1124,6 +1253,7 @@ impl<'a> Parser<'a> {
             self.parameter_expansion_budget
                 .charge_bytes(header.name.len(), span)?;
             self.initialize_function_header(&header)?;
+            self.function.replay_default_header = Some(template);
             self.parameters_with_launch_bounds(&mut header.launch_bounds)?;
             self.lexer.expect_span(Token::End)?;
             let result = self.function.ir.result.as_ref().map(|result| result.ty);
@@ -1206,6 +1336,7 @@ impl<'a> Parser<'a> {
                     });
                 }
             }
+            let defaults = self.clone_template_defaults(template, span)?;
             let function = self.module.functions.append(
                 Function {
                     name: Some(name),
@@ -1219,7 +1350,7 @@ impl<'a> Parser<'a> {
                 function,
                 FunctionDeclaration {
                     parameters: signature,
-                    defaults: Vec::new(),
+                    defaults,
                     source_result,
                     result_qualifiers,
                     has_host,
@@ -1289,12 +1420,12 @@ impl<'a> Parser<'a> {
         let parameter_count = self.templates.declarations[template].signature.len();
         self.parameter_expansion_budget
             .charge_work(parameter_count, span)?;
-        if parameter_count != arguments.len() {
+        if !self.template_accepts_arity(template, arguments.len(), self.lexer.position()) {
             return Ok(None);
         }
         self.parameter_expansion_budget
-            .charge_slice::<ArgumentConversion>(parameter_count, span)?;
-        let mut conversions = Vec::with_capacity(parameter_count);
+            .charge_slice::<ArgumentConversion>(arguments.len(), span)?;
+        let mut conversions = Vec::with_capacity(arguments.len());
         for (index, argument) in arguments.iter().enumerate() {
             let pattern = self.templates.declarations[template].signature[index];
             let Some(conversion) =
@@ -1780,7 +1911,8 @@ impl<'a> Parser<'a> {
         self.check_template_launch_bounds(instance)?;
         let instance = &self.templates.instances[instance];
         let span = instance.span;
-        let declaration = &self.templates.declarations[instance.key.template];
+        let template = instance.key.template;
+        let declaration = &self.templates.declarations[template];
         let end = declaration.definition.ok_or_else(|| ParseError {
             message: format!(
                 "function template `{}` has no definition",
@@ -1816,6 +1948,7 @@ impl<'a> Parser<'a> {
             header.inlining = metadata.inlining;
             self.parameter_expansion_budget
                 .charge_bytes(header.name.len(), span)?;
+            self.function.replay_default_header = Some(template);
             match target {
                 InstanceTarget::Device(function) => {
                     self.device_function_with_target(header, Some(function))?

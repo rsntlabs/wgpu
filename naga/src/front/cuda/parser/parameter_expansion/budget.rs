@@ -125,6 +125,45 @@ mod tests {
     use super::*;
 
     #[test]
+    fn template_default_replay_checks_work_before_consuming_source() {
+        let source = "template<class T> __device__ int helper(T value, int bias = (1 + 2));";
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        let mut initializer = parser.lexer.clone();
+        while initializer.peek().unwrap().0 != Token::Operation('=') {
+            initializer.next().unwrap();
+        }
+        parser.template_declaration().unwrap();
+        parser.lexer = initializer;
+        let start = parser.lexer.position();
+        parser.parameter_expansion_budget.work = WORK_LIMIT;
+        let error = parser.skip_template_default(0, 1).unwrap_err();
+        assert_eq!(error.message, limit_error(error.span).message);
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+        assert_eq!(parser.lexer.position(), start);
+    }
+
+    #[test]
+    fn default_declarations_check_node_budget_before_building_initializer() {
+        let source = "= 3";
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        let span = parser.lexer.peek().unwrap().1;
+        parser.function = FunctionContext::new(FunctionKind::Device);
+        let ty = parser.scalar_handle(Scalar::I32, span);
+        parser.function.parameters.push(SourceParameter::Shader {
+            ty,
+            mode: ParameterMode::Value,
+        });
+        parser.activate_parameter_expansion(span).unwrap();
+        parser.parameter_expansion_budget.nodes = NODE_LIMIT;
+        let error = parser.parameter_default().unwrap_err();
+        assert_eq!(error.message, limit_error(span).message);
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+        assert!(parser.function.ir.expressions.is_empty());
+        assert!(parser.function.ir.local_variables.is_empty());
+        assert!(parser.function.ir.body.is_empty());
+    }
+
+    #[test]
     fn default_arguments_check_budgets_before_materializing_omitted_values() {
         for captured in [false, true] {
             for exhausted in 0..3 {

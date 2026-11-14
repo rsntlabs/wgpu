@@ -123,6 +123,7 @@ mod static_assertions;
 mod streaming;
 mod structures;
 mod switches;
+mod template_default_arguments;
 mod thread_block;
 mod thread_block_dimensions;
 mod thread_block_parameters;

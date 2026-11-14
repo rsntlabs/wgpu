@@ -397,7 +397,16 @@ impl Parser<'_> {
         if self.function.parsing_default && self.function.symbol_table.lookup(name).is_some() {
             return Err(ParseError {
                 message: String::from(
-                    "function parameters cannot appear in evaluated default arguments",
+                    if matches!(
+                        self.function.symbol_table.lookup(name),
+                        Some(
+                            Symbol::TemplateParameter { .. } | Symbol::TemplateTypeParameter { .. }
+                        )
+                    ) {
+                        "dependent default argument expressions are unsupported"
+                    } else {
+                        "function parameters cannot appear in evaluated default arguments"
+                    },
                 ),
                 span,
             });

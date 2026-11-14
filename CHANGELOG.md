@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support fixed scalar constant defaults on CUDA device function templates, preserving deduction and overload ordering.
 - Support scalar constant default arguments on CUDA device helpers, including compatible declarations and overload selection.
 - Accept CUDA barriers controlled by uniform predefined arithmetic results, including cached math helpers.
 - Support CUDA `__fns` inclusive nth-set-bit searches with a bounded portable helper.

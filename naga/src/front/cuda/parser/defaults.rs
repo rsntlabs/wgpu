@@ -4,6 +4,12 @@ impl Parser<'_> {
     pub(super) fn parameter_default(&mut self) -> Result<(), ParseError> {
         let span = self.lexer.peek()?.1;
         let has_default = self.lexer.peek()?.0 == Token::Operation('=');
+        if let Some(template) = self.function.replay_default_header {
+            if has_default {
+                self.skip_template_default(template, self.function.parameters.len() - 1)?;
+            }
+            return Ok(());
+        }
         if self.function.kind == FunctionKind::Kernel {
             if has_default {
                 return self.fail("kernel default arguments are unsupported");
@@ -36,6 +42,7 @@ impl Parser<'_> {
         if !matches!(self.module.types[ty].inner, TypeInner::Scalar(_)) {
             return self.fail("default arguments require scalar value parameters");
         }
+        self.prepare_parameter_bindings(span)?;
         self.function.parsing_default = true;
         let result = self.constant_initializer(&TypeResolution::Handle(ty));
         self.function.parsing_default = false;
