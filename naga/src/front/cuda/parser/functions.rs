@@ -126,11 +126,17 @@ const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 5] = [
     ("roundf", FloatMathFunction::Round),
 ];
 
-const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 10] = [
+const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 11] = [
     (
         "__clz",
         MathFunction::CountLeadingZeros,
         Scalar::I32,
+        Scalar::I32,
+    ),
+    (
+        "__clzll",
+        MathFunction::CountLeadingZeros,
+        Scalar::I64,
         Scalar::I32,
     ),
     (
@@ -1469,8 +1475,16 @@ impl<'a> Parser<'a> {
         {
             let argument =
                 self.convert_scalar(arguments.into_iter().next().unwrap().into(), source)?;
-            if function == MathFunction::CountOneBits && source == Scalar::U64 {
-                let handle = self.population_count64(argument.handle, span)?;
+            let count = match (function, source) {
+                (MathFunction::CountOneBits, Scalar::U64) => {
+                    Some(self.population_count64(argument.handle, span)?)
+                }
+                (MathFunction::CountLeadingZeros, Scalar::I64) => {
+                    Some(self.count_leading_zeros64(argument.handle, span)?)
+                }
+                _ => None,
+            };
+            if let Some(handle) = count {
                 return Ok(Value {
                     category: ValueCategory::Prvalue,
                     qualifiers: Qualifiers::NONE,

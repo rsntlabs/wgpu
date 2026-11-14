@@ -386,7 +386,7 @@ fn cuda_integer_intrinsics_produce_prvalues_and_validate_dead_calls() {
 }
 
 #[test]
-fn cuda_integer_intrinsics_count_ffs_adjustment_in_graph_depth_and_reject_other_64bit_names() {
+fn cuda_integer_intrinsics_count_ffs_adjustment_in_graph_depth_and_reject_ffsll() {
     let mut value = String::from("value");
     for _ in 0..40 {
         value = format!("__ffs({value})");
@@ -394,10 +394,11 @@ fn cuda_integer_intrinsics_count_ffs_adjustment_in_graph_depth_and_reject_other_
     let source = format!("__global__ void kernel(int *out, int value) {{ out[0] = {value}; }}");
     assert!(rejected(&source).message.contains("graph depth"));
     validate("__global__ void kernel(int *out) { out[0] = __ffs(__clz(0)); }");
-    for name in ["__clzll", "__ffsll"] {
-        let source = format!("__global__ void kernel() {{ {name}(1); }}");
-        assert_eq!(&source[rejected(&source).span.to_range().unwrap()], name);
-    }
+    let source = "__global__ void kernel() { __ffsll(1); }";
+    assert_eq!(
+        &source[rejected(source).span.to_range().unwrap()],
+        "__ffsll"
+    );
 }
 
 #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]

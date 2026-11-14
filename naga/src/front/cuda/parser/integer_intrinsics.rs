@@ -2,7 +2,7 @@ use super::*;
 use crate::MathFunction;
 
 impl Parser<'_> {
-    fn split_u64(
+    fn split_integer64(
         &mut self,
         value: Handle<Expression>,
         span: Span,
@@ -17,6 +17,7 @@ impl Parser<'_> {
             span,
         )?;
         let shift = self.append(Expression::Literal(Literal::U32(32)), span)?;
+        // Truncation preserves the high word after either signed or unsigned shifts.
         let upper = self.append(
             Expression::Binary {
                 op: BinaryOperator::ShiftRight,
@@ -41,7 +42,7 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
         // Some backends only provide population count for 32-bit inputs.
-        let (low, high) = self.split_u64(value, span)?;
+        let (low, high) = self.split_integer64(value, span)?;
         let low_count = self.append(
             Expression::Math {
                 fun: MathFunction::CountOneBits,
@@ -84,7 +85,7 @@ impl Parser<'_> {
         value: Handle<Expression>,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
-        let (low, high) = self.split_u64(value, span)?;
+        let (low, high) = self.split_integer64(value, span)?;
         let mut reversed = [low, high];
         for word in &mut reversed {
             let bits = self.append(
@@ -120,6 +121,61 @@ impl Parser<'_> {
                 op: BinaryOperator::InclusiveOr,
                 left: upper,
                 right: high,
+            },
+            span,
+        )
+    }
+
+    pub(super) fn count_leading_zeros64(
+        &mut self,
+        value: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        let (low, high) = self.split_integer64(value, span)?;
+        let mut counts = [low, high];
+        for word in &mut counts {
+            *word = self.append(
+                Expression::Math {
+                    fun: MathFunction::CountLeadingZeros,
+                    arg: *word,
+                    arg1: None,
+                    arg2: None,
+                    arg3: None,
+                },
+                span,
+            )?;
+        }
+        let [low_count, high_count] = counts;
+        let width = self.append(Expression::Literal(Literal::U32(32)), span)?;
+        let low_count = self.append(
+            Expression::Binary {
+                op: BinaryOperator::Add,
+                left: width,
+                right: low_count,
+            },
+            span,
+        )?;
+        let zero = self.append(Expression::Literal(Literal::U32(0)), span)?;
+        let nonzero = self.append(
+            Expression::Binary {
+                op: BinaryOperator::NotEqual,
+                left: high,
+                right: zero,
+            },
+            span,
+        )?;
+        let count = self.append(
+            Expression::Select {
+                condition: nonzero,
+                accept: high_count,
+                reject: low_count,
+            },
+            span,
+        )?;
+        self.append(
+            Expression::As {
+                expr: count,
+                target: Scalar::I32,
             },
             span,
         )

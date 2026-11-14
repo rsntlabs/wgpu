@@ -15,6 +15,7 @@ mod brevll;
 mod cached_math;
 mod ceilf;
 mod class_values;
+mod clzll;
 mod comma;
 mod conditionals;
 mod constant_expressions;

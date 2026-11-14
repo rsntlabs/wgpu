@@ -883,6 +883,7 @@ These predefined functions operate on integer representations:
 | Function | Parameters | Result | Operation |
 | --- | --- | --- | --- |
 | `__clz` | `int` | `int` | Count leading zero bits; zero returns 32. |
+| `__clzll` | `long long` | `int` | Count leading zero bits across all 64 bits; zero returns 64. |
 | `__ffs` | `int` | `int` | Return the first set bit's position, starting at 1; zero returns 0. |
 | `__popc` | `unsigned int` | `int` | Count set bits. |
 | `__popcll` | `unsigned long long` | `int` | Count set bits across all 64 bits. |
@@ -913,6 +914,10 @@ above. `__popcll` converts its argument to `unsigned long long` before counting,
 so `__popcll(-1)` is 64 while `__popcll(0xffffffffu)` is 32. Its signed `int`
 result ranges from zero through 64. The implementation counts two 32-bit words,
 so it does not require native 64-bit population-count operations from a backend.
+`__clzll` converts its argument to `long long` before examining its representation.
+For example, `__clzll(-1)` is 0 and `__clzll(0xffffffffu)` is 32. It counts the
+leading zeros of the high 32-bit word, or adds 32 to the low word's count when
+the high word is zero. Its signed `int` result ranges from zero through 64.
 `__brevll` also converts its argument to `unsigned long long` first, so
 `__brevll(-1)` is `0xffffffffffffffffULL`, while `__brevll(0xffffffffu)` is
 `0xffffffff00000000ULL`. Its result retains type `unsigned long long`,

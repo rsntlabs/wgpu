@@ -21,6 +21,7 @@ mod brevll;
 mod cached_math;
 mod ceilf;
 mod class_values;
+mod clzll;
 mod comma;
 mod conditionals;
 mod constant_expressions;
@@ -144,6 +145,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_CACHED_MATH,
         CUDA_CEILF,
         CUDA_CLASS_VALUES,
+        CUDA_CLZLL,
         CUDA_COMMA,
         CUDA_CONDITIONALS,
         CUDA_CONSTANT_EXPRESSIONS,
@@ -803,6 +805,10 @@ static CUDA_LONG_TYPES_STORAGE: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_BREVLL: GpuTestConfiguration =
     configuration_with_features(brevll::cases, wgpu::Features::SHADER_INT64);
+
+#[apply(gpu_test!)]
+static CUDA_CLZLL: GpuTestConfiguration =
+    configuration_with_features(clzll::cases, wgpu::Features::SHADER_INT64);
 
 #[apply(gpu_test!)]
 static CUDA_POPCLL: GpuTestConfiguration =
