@@ -17,6 +17,7 @@ mod atomic_wrap;
 mod auto_declarations;
 mod bitcasts;
 mod boolean_parameters;
+mod brevll;
 mod cached_math;
 mod ceilf;
 mod class_values;
@@ -139,6 +140,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_AUTO_DECLARATIONS,
         CUDA_BITCASTS,
         CUDA_BOOLEAN_PARAMETERS,
+        CUDA_BREVLL,
         CUDA_CACHED_MATH,
         CUDA_CEILF,
         CUDA_CLASS_VALUES,
@@ -797,6 +799,10 @@ static CUDA_LONG_TYPES: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_LONG_TYPES_STORAGE: GpuTestConfiguration =
     configuration_with_features(long_types::storage_cases, wgpu::Features::SHADER_INT64);
+
+#[apply(gpu_test!)]
+static CUDA_BREVLL: GpuTestConfiguration =
+    configuration_with_features(brevll::cases, wgpu::Features::SHADER_INT64);
 
 #[apply(gpu_test!)]
 static CUDA_POPCLL: GpuTestConfiguration =

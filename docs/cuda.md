@@ -887,6 +887,7 @@ These predefined functions operate on integer representations:
 | `__popc` | `unsigned int` | `int` | Count set bits. |
 | `__popcll` | `unsigned long long` | `int` | Count set bits across all 64 bits. |
 | `__brev` | `unsigned int` | `unsigned int` | Reverse all 32 bits. |
+| `__brevll` | `unsigned long long` | `unsigned long long` | Reverse all 64 bits. |
 | `__mul24` | `int, int` | `int` | Multiply signed 24-bit operands and return the low 32 product bits. |
 | `__umul24` | `unsigned int, unsigned int` | `unsigned int` | Multiply unsigned 24-bit operands and return the low 32 product bits. |
 
@@ -912,8 +913,13 @@ above. `__popcll` converts its argument to `unsigned long long` before counting,
 so `__popcll(-1)` is 64 while `__popcll(0xffffffffu)` is 32. Its signed `int`
 result ranges from zero through 64. The implementation counts two 32-bit words,
 so it does not require native 64-bit population-count operations from a backend.
+`__brevll` also converts its argument to `unsigned long long` first, so
+`__brevll(-1)` is `0xffffffffffffffffULL`, while `__brevll(0xffffffffu)` is
+`0xffffffff00000000ULL`. Its result retains type `unsigned long long`,
+distinct from LP64 `unsigned long`. It reverses two 32-bit words and exchanges
+their positions, avoiding native 64-bit bit-reversal operations.
 The other 64-bit `ll` variants and other integer intrinsics remain unsupported.
-Metal output for `__brev` requires MSL version 1.2 or newer.
+Metal output for `__brev` and `__brevll` requires MSL version 1.2 or newer.
 
 ## Integer atomics
 

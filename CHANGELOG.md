@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support portable CUDA `__brevll` with the declared `unsigned long long` result type.
 - Support CUDA Boolean kernel value parameters with padded uniform storage and invocation-local mutation.
 - Support CUDA `__popcll` with portable 64-bit population counts and the declared signed result type.
 - Support CUDA `static_assert` declarations at global and function scope, including instantiated templates.

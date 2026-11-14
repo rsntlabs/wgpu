@@ -126,7 +126,7 @@ const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 5] = [
     ("roundf", FloatMathFunction::Round),
 ];
 
-const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 9] = [
+const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 10] = [
     (
         "__clz",
         MathFunction::CountLeadingZeros,
@@ -150,6 +150,12 @@ const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 9] = [
         MathFunction::ReverseBits,
         Scalar::U32,
         Scalar::U32,
+    ),
+    (
+        "__brevll",
+        MathFunction::ReverseBits,
+        Scalar::U64,
+        Scalar::U64,
     ),
     (
         "__popcll",
@@ -1476,6 +1482,9 @@ impl<'a> Parser<'a> {
                 .into());
             }
             let handle = match function {
+                MathFunction::ReverseBits if source == Scalar::U64 => {
+                    self.reverse_bits64(argument.handle, span)?
+                }
                 MathFunction::Saturate => self.saturate(argument.handle, span)?,
                 MathFunction::Sin | MathFunction::Cos => {
                     self.trigonometry(argument.handle, function == MathFunction::Cos, span)?
