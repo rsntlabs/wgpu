@@ -126,39 +126,42 @@ mod tests {
 
     #[test]
     fn packed_arithmetic_checks_node_and_byte_budgets_before_generating_ir() {
-        for lane_width in [8, 16] {
-            for subtract in [false, true] {
-                for prepared in [false, true] {
-                    for exhaust_bytes in [false, true] {
-                        let mut parser =
-                            Parser::new(Lexer::new("1u 2u").unwrap(), &Options::default());
-                        let span = parser.lexer.peek().unwrap().1;
-                        let [left, right] =
-                            ["1u", "2u"].map(|text| parser.number(text, span).unwrap().handle);
-                        parser.activate_parameter_expansion(span).unwrap();
-                        if prepared {
-                            parser.prepare_parameter_bindings(span).unwrap();
+        for saturating in [false, true] {
+            for lane_width in [8, 16] {
+                for subtract in [false, true] {
+                    for prepared in [false, true] {
+                        for exhaust_bytes in [false, true] {
+                            let mut parser =
+                                Parser::new(Lexer::new("1u 2u").unwrap(), &Options::default());
+                            let span = parser.lexer.peek().unwrap().1;
+                            let [left, right] =
+                                ["1u", "2u"].map(|text| parser.number(text, span).unwrap().handle);
+                            parser.activate_parameter_expansion(span).unwrap();
+                            if prepared {
+                                parser.prepare_parameter_bindings(span).unwrap();
+                            }
+                            let before = format!("{:?}", parser.function.ir);
+                            if exhaust_bytes {
+                                parser.parameter_expansion_budget.bytes = BYTE_LIMIT;
+                            } else {
+                                parser.parameter_expansion_budget.nodes = NODE_LIMIT;
+                            }
+                            let error = parser
+                                .packed_arithmetic(
+                                    integer_intrinsics::PackedArithmeticBuiltin {
+                                        lane_width,
+                                        subtract,
+                                        saturating,
+                                    },
+                                    left,
+                                    right,
+                                    span,
+                                )
+                                .unwrap_err();
+                            assert_eq!(error.message, limit_error(span).message);
+                            assert!(parser.parameter_expansion_budget.is_exhausted());
+                            assert_eq!(format!("{:?}", parser.function.ir), before);
                         }
-                        let before = format!("{:?}", parser.function.ir);
-                        if exhaust_bytes {
-                            parser.parameter_expansion_budget.bytes = BYTE_LIMIT;
-                        } else {
-                            parser.parameter_expansion_budget.nodes = NODE_LIMIT;
-                        }
-                        let error = parser
-                            .packed_arithmetic(
-                                integer_intrinsics::PackedArithmeticBuiltin {
-                                    lane_width,
-                                    subtract,
-                                },
-                                left,
-                                right,
-                                span,
-                            )
-                            .unwrap_err();
-                        assert_eq!(error.message, limit_error(span).message);
-                        assert!(parser.parameter_expansion_budget.is_exhausted());
-                        assert_eq!(format!("{:?}", parser.function.ir), before);
                     }
                 }
             }
@@ -167,31 +170,35 @@ mod tests {
 
     #[test]
     fn packed_arithmetic_checks_budgets_before_implicit_operand_conversions() {
-        for lane_width in [8, 16] {
-            for subtract in [false, true] {
-                for exhaust_bytes in [false, true] {
-                    let mut parser = Parser::new(Lexer::new("1 2").unwrap(), &Options::default());
-                    let span = parser.lexer.peek().unwrap().1;
-                    let arguments = ["1", "2"]
-                        .map(|text| parser.number(text, span).unwrap())
-                        .to_vec();
-                    parser.activate_parameter_expansion(span).unwrap();
-                    let before = format!("{:?}", parser.function.ir);
-                    if exhaust_bytes {
-                        parser.parameter_expansion_budget.bytes = BYTE_LIMIT;
-                    } else {
-                        parser.parameter_expansion_budget.nodes = NODE_LIMIT;
+        for saturating in [false, true] {
+            for lane_width in [8, 16] {
+                for subtract in [false, true] {
+                    for exhaust_bytes in [false, true] {
+                        let mut parser =
+                            Parser::new(Lexer::new("1 2").unwrap(), &Options::default());
+                        let span = parser.lexer.peek().unwrap().1;
+                        let arguments = ["1", "2"]
+                            .map(|text| parser.number(text, span).unwrap())
+                            .to_vec();
+                        parser.activate_parameter_expansion(span).unwrap();
+                        let before = format!("{:?}", parser.function.ir);
+                        if exhaust_bytes {
+                            parser.parameter_expansion_budget.bytes = BYTE_LIMIT;
+                        } else {
+                            parser.parameter_expansion_budget.nodes = NODE_LIMIT;
+                        }
+                        let candidate = functions::FunctionCandidate::PackedArithmetic(
+                            integer_intrinsics::PackedArithmeticBuiltin {
+                                lane_width,
+                                subtract,
+                                saturating,
+                            },
+                        );
+                        let error = parser.lower_call(candidate, arguments, span).unwrap_err();
+                        assert_eq!(error.message, limit_error(span).message);
+                        assert!(parser.parameter_expansion_budget.is_exhausted());
+                        assert_eq!(format!("{:?}", parser.function.ir), before);
                     }
-                    let candidate = functions::FunctionCandidate::PackedArithmetic(
-                        integer_intrinsics::PackedArithmeticBuiltin {
-                            lane_width,
-                            subtract,
-                        },
-                    );
-                    let error = parser.lower_call(candidate, arguments, span).unwrap_err();
-                    assert_eq!(error.message, limit_error(span).message);
-                    assert!(parser.parameter_expansion_budget.is_exhausted());
-                    assert_eq!(format!("{:?}", parser.function.ir), before);
                 }
             }
         }

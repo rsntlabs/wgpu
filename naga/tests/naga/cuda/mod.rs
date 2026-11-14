@@ -140,6 +140,7 @@ mod uniform_loop_barriers;
 mod uniform_math_barriers;
 mod uninitialized;
 mod uninitialized_pointers;
+mod unsigned_saturating_arithmetic;
 mod updates;
 mod vector_resources;
 mod vector_values;

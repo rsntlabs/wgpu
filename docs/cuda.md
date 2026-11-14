@@ -967,6 +967,10 @@ These predefined functions operate on integer representations:
 | `__vadd4` | `unsigned int, unsigned int` | `unsigned int` | Add four packed 8-bit lanes independently, wrapping each lane. |
 | `__vsub2` | `unsigned int, unsigned int` | `unsigned int` | Subtract two packed 16-bit lanes independently, wrapping each lane. |
 | `__vsub4` | `unsigned int, unsigned int` | `unsigned int` | Subtract four packed 8-bit lanes independently, wrapping each lane. |
+| `__vaddus2` | `unsigned int, unsigned int` | `unsigned int` | Add two packed unsigned 16-bit lanes, saturating each sum at `0xffff`. |
+| `__vaddus4` | `unsigned int, unsigned int` | `unsigned int` | Add four packed unsigned 8-bit lanes, saturating each sum at `0xff`. |
+| `__vsubus2` | `unsigned int, unsigned int` | `unsigned int` | Subtract two packed unsigned 16-bit lanes, saturating each difference at zero. |
+| `__vsubus4` | `unsigned int, unsigned int` | `unsigned int` | Subtract four packed unsigned 8-bit lanes, saturating each difference at zero. |
 | `__sad` | `int, int, unsigned int` | `unsigned int` | Add the absolute signed difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__usad` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Add the absolute unsigned difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__byte_perm` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Select four output bytes from eight input bytes using four selector nibbles. |
@@ -995,6 +999,13 @@ lanes: `__vadd2(0x0000ffffu, 1u)` is zero, and `__vsub4(0u, 1u)` is
 [SIMD intrinsics](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SIMD.html).
 The lowering uses bounded 32-bit arithmetic, masks, and shifts, without requiring
 64-bit shader support or a newer Metal language version.
+
+The unsigned saturating variants clamp each lane separately. For example,
+`__vaddus2(0x0000ffffu, 1u)` is `0x0000ffffu`, and
+`__vsubus4(0u, 1u)` is zero. Arguments convert to `unsigned int` before lane
+extraction, so signed source arguments still supply unsigned lane values.
+These variants also use only bounded 32-bit operations and support the default
+Metal language version.
 
 Nth-set-bit searches convert the mask and base to `unsigned int` and the offset
 to `int`. `__fns` searches upward for positive offsets and downward for negative

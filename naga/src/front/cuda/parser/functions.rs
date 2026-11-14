@@ -119,12 +119,13 @@ const MULTIPLY_HIGH_BUILTINS: [(&str, Scalar); 2] =
 
 const SAD_BUILTINS: [(&str, Scalar); 2] = [("__sad", Scalar::I32), ("__usad", Scalar::U32)];
 
-const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 4] = [
+const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 8] = [
     (
         "__vadd2",
         PackedArithmeticBuiltin {
             lane_width: 16,
             subtract: false,
+            saturating: false,
         },
     ),
     (
@@ -132,6 +133,7 @@ const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 4] = [
         PackedArithmeticBuiltin {
             lane_width: 8,
             subtract: false,
+            saturating: false,
         },
     ),
     (
@@ -139,6 +141,7 @@ const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 4] = [
         PackedArithmeticBuiltin {
             lane_width: 16,
             subtract: true,
+            saturating: false,
         },
     ),
     (
@@ -146,6 +149,39 @@ const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 4] = [
         PackedArithmeticBuiltin {
             lane_width: 8,
             subtract: true,
+            saturating: false,
+        },
+    ),
+    (
+        "__vaddus2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            subtract: false,
+            saturating: true,
+        },
+    ),
+    (
+        "__vaddus4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            subtract: false,
+            saturating: true,
+        },
+    ),
+    (
+        "__vsubus2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            subtract: true,
+            saturating: true,
+        },
+    ),
+    (
+        "__vsubus4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            subtract: true,
+            saturating: true,
         },
     ),
 ];
@@ -482,7 +518,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
                 },
             ))
             .collect::<FastHashMap<_, _>>();
-    declarations.extend(PACKED_ARITHMETIC_BUILTINS.into_iter().map(|(name, _)| {
+    declarations.extend(PACKED_ARITHMETIC_BUILTINS.iter().map(|&(name, _)| {
         (
             name,
             GlobalDeclaration::Functions(FunctionOverloads::default()),
@@ -2245,10 +2281,10 @@ impl<'a> Parser<'a> {
             )
             .chain(
                 PACKED_ARITHMETIC_BUILTINS
-                    .into_iter()
-                    .find(|&(candidate, _)| candidate == name)
+                    .iter()
+                    .find(|&&(candidate, _)| candidate == name)
                     .filter(move |_| builtin_visible)
-                    .map(|(_, builtin)| FunctionCandidate::PackedArithmetic(builtin)),
+                    .map(|&(_, builtin)| FunctionCandidate::PackedArithmetic(builtin)),
             )
             .chain(
                 HALF_ADD_BUILTINS

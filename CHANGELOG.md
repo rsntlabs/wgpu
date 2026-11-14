@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA `__vaddus2`, `__vaddus4`, `__vsubus2`, and `__vsubus4` unsigned saturating packed arithmetic.
 - Support portable CUDA `__vadd2`, `__vadd4`, `__vsub2`, and `__vsub4` packed wrapping arithmetic.
 - Accept `sizeof` queries of known function parameter types in CUDA template defaults.
 - Support fixed scalar constant defaults on CUDA device function templates, preserving deduction and overload ordering.

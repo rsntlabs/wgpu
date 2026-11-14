@@ -139,6 +139,7 @@ mod uniform_loop_barriers;
 mod uniform_math_barriers;
 mod uninitialized;
 mod uninitialized_pointers;
+mod unsigned_saturating_arithmetic;
 mod updates;
 mod vector_resources;
 mod vector_values;
@@ -232,6 +233,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_MULTIPLY24,
         CUDA_MULTIPLY_HIGH,
         CUDA_PACKED_ARITHMETIC,
+        CUDA_UNSIGNED_SATURATING_ARITHMETIC,
         CUDA_NONFINITE_CONSTANTS,
         CUDA_NULL_POINTERS,
         CUDA_NULLPTR,
@@ -953,3 +955,7 @@ static CUDA_TEMPLATE_DEFAULT_TYPE_QUERIES: GpuTestConfiguration =
 
 #[apply(gpu_test!)]
 static CUDA_PACKED_ARITHMETIC: GpuTestConfiguration = configuration(packed_arithmetic::cases);
+
+#[apply(gpu_test!)]
+static CUDA_UNSIGNED_SATURATING_ARITHMETIC: GpuTestConfiguration =
+    configuration(unsigned_saturating_arithmetic::cases);

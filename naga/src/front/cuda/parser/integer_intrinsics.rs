@@ -23,6 +23,7 @@ pub(super) struct HalfAddBuiltin {
 pub(super) struct PackedArithmeticBuiltin {
     pub(super) lane_width: u32,
     pub(super) subtract: bool,
+    pub(super) saturating: bool,
 }
 
 impl Parser<'_> {
@@ -37,7 +38,7 @@ impl Parser<'_> {
         self.prepare_parameter_bindings(span)?;
         let radix = 1u32 << builtin.lane_width;
         let mask = self.append(Expression::Literal(Literal::U32(radix - 1)), span)?;
-        let radix = if builtin.subtract {
+        let radix = if builtin.subtract && !builtin.saturating {
             Some(self.append(Expression::Literal(Literal::U32(radix)), span)?)
         } else {
             None
@@ -63,7 +64,33 @@ impl Parser<'_> {
             };
             let left = self.integer_binary(BinaryOperator::And, left, mask, span)?;
             let right = self.integer_binary(BinaryOperator::And, right, mask, span)?;
-            let value = if let Some(radix) = radix {
+            let value = if builtin.saturating {
+                if builtin.subtract {
+                    let left = self.append(
+                        Expression::Math {
+                            fun: MathFunction::Max,
+                            arg: left,
+                            arg1: Some(right),
+                            arg2: None,
+                            arg3: None,
+                        },
+                        span,
+                    )?;
+                    self.integer_binary(BinaryOperator::Subtract, left, right, span)?
+                } else {
+                    let sum = self.integer_binary(BinaryOperator::Add, left, right, span)?;
+                    self.append(
+                        Expression::Math {
+                            fun: MathFunction::Min,
+                            arg: sum,
+                            arg1: Some(mask),
+                            arg2: None,
+                            arg3: None,
+                        },
+                        span,
+                    )?
+                }
+            } else if let Some(radix) = radix {
                 let left = self.integer_binary(BinaryOperator::Add, left, radix, span)?;
                 self.integer_binary(BinaryOperator::Subtract, left, right, span)?
             } else {
