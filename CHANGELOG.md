@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA Boolean kernel value parameters with padded uniform storage and invocation-local mutation.
 - Support CUDA `__popcll` with portable 64-bit population counts and the declared signed result type.
 - Support CUDA `static_assert` declarations at global and function scope, including instantiated templates.
 - Support unevaluated CUDA `sizeof` subscripts with integral indices, including commuted subscripts and multidimensional arrays.

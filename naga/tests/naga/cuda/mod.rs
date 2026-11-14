@@ -10,6 +10,7 @@ mod atomic_wrap;
 mod auto_declarations;
 mod barriers;
 mod bitcasts;
+mod boolean_parameters;
 mod cached_math;
 mod ceilf;
 mod class_values;

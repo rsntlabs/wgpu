@@ -489,13 +489,6 @@ impl<'a> Parser<'a> {
             _ => (self.lower_type(specifier, type_span)?, qualifiers, None),
         };
         let is_const = qualifiers.is_const;
-        if self.function.kind == FunctionKind::Kernel
-            && self
-                .module
-                .compare_types(&ty, &scalar_resolution(Scalar::BOOL))
-        {
-            return self.fail("boolean kernel parameters are unsupported");
-        }
         let explicit_pointer = explicit_pointer_qualifiers.is_some();
         if explicit_pointer && aliased_pointer_qualifiers.is_some() {
             return self.fail("nested pointer parameters are unsupported");
@@ -706,7 +699,14 @@ impl<'a> Parser<'a> {
         parameter_ty: &TypeResolution,
         is_const: bool,
     ) -> Result<(), ParseError> {
-        let value_ty = self.type_handle(parameter_ty, span);
+        let is_bool = self
+            .module
+            .compare_types(parameter_ty, &scalar_resolution(Scalar::BOOL));
+        let value_ty = if is_bool {
+            self.type_handle(&scalar_resolution(Scalar::U32), span)
+        } else {
+            self.type_handle(parameter_ty, span)
+        };
         let ty = self.module.types.insert(
             Type {
                 name: None,
@@ -739,6 +739,28 @@ impl<'a> Parser<'a> {
         let base = self.append(Expression::GlobalVariable(global), span)?;
         let field = self.append(Expression::AccessIndex { base, index: 0 }, span)?;
         let value = self.append(Expression::Load { pointer: field }, span)?;
+        let value = if is_bool {
+            let mask = self.append(Expression::Literal(Literal::U32(0xff)), span)?;
+            let byte = self.append(
+                Expression::Binary {
+                    op: BinaryOperator::And,
+                    left: value,
+                    right: mask,
+                },
+                span,
+            )?;
+            let zero = self.append(Expression::Literal(Literal::U32(0)), span)?;
+            self.append(
+                Expression::Binary {
+                    op: BinaryOperator::NotEqual,
+                    left: byte,
+                    right: zero,
+                },
+                span,
+            )?
+        } else {
+            value
+        };
         self.initialize_parameter(name, span, parameter_ty, is_const, value)
     }
 

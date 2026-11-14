@@ -363,8 +363,12 @@ checked before CLI entry selection.
 Vector elements support whole-value copies and scalar field access, including
 assignments and updates to writable fields. Vector parameters require pointers.
 Scalar parameters use 16-byte uniform buffers containing the two-, four-, or eight-byte
-value at byte offset 0. Each invocation receives its own parameter value. Assigning
-to a non-`const` parameter changes only that invocation's copy.
+numeric value at byte offset 0. Boolean value parameters use a `u32` field at offset
+0: its low byte is decoded as false when zero and true otherwise; the upper three
+bytes are ignored. Hosts should write 0 or 1 in the low byte. The CUDA parameter
+retains type `bool`, including its one-byte source size and alignment. Each
+invocation receives its own parameter value. Assigning to a non-`const` parameter
+changes only that invocation's copy. Boolean kernel buffers remain unsupported.
 
 The frontend maps CUDA's built-in variables as follows:
 

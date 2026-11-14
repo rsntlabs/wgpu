@@ -345,7 +345,6 @@ fn cuda_block_and_function_aliases_do_not_leak() {
 #[test]
 fn cuda_aliases_preserve_bool_resource_and_shared_storage_restrictions() {
     for source in [
-        "using Flag = bool; __global__ void kernel(Flag value) {}",
         "typedef bool Flag; __global__ void kernel(Flag *out) {}",
         "using Flag = bool; __global__ void kernel() { __shared__ Flag flags[4]; }",
     ] {

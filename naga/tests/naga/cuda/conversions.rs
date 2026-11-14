@@ -256,7 +256,6 @@ fn cuda_conversions_preserve_unsupported_type_and_literal_errors() {
         "__global__ void bad(int *out) { out[0] = static_cast<int*>(out); }",
         "__global__ void bad(int *out) { out[0] = static_cast<int>(out); }",
         "__global__ void bad(float *out) { out[0] = 1.0; }",
-        "__global__ void bad(bool value) {}",
     ] {
         assert!(parse_str(source, &Options::default()).is_err(), "{source}");
     }

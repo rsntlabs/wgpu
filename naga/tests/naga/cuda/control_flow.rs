@@ -207,7 +207,6 @@ fn cuda_rejects_names_outside_their_block_scope() {
         "__global__ void bad(int *out) { else { out[0] = 1; } }",
         "__global__ void bad(int *out) { if (out[0]) { return 1; } }",
         "__global__ void bad(bool *out) {}",
-        "__global__ void bad(bool value) {}",
         "__global__ void bad(int *out) { if (true ? 1) out[0] = 1; }",
         "__global__ void bad(int *out) { if (true ? : true) out[0] = 1; }",
     ] {
