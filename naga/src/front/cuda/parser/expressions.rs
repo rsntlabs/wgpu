@@ -249,8 +249,22 @@ impl Parser<'_> {
         }
     }
 
+    fn take_void_cast_type(&mut self, closing: char) -> Result<bool, ParseError> {
+        let mut lookahead = self.lexer.clone();
+        let qualifiers = types::declaration_qualifiers(&mut lookahead, Qualifiers::NONE, false)?;
+        if !lookahead.next_if(Token::Word("void"))? {
+            return Ok(false);
+        }
+        types::declaration_qualifiers(&mut lookahead, qualifiers, false)?;
+        if lookahead.peek()?.0 != Token::Paren(closing) {
+            return Ok(false);
+        }
+        self.lexer = lookahead;
+        Ok(true)
+    }
+
     fn parenthesized_expression(&mut self, span: Span) -> Result<ExpressionResult, ParseError> {
-        if self.lexer.next_if(Token::Word("void"))? {
+        if self.take_void_cast_type(')')? {
             self.lexer.expect_span(Token::Paren(')'))?;
             let result = self.expression_result(UNARY_PRECEDENCE)?;
             let span = self.lexer.span_from(span.to_range().unwrap().start);
@@ -380,6 +394,9 @@ impl Parser<'_> {
         if matches!(name, "sizeof" | "alignof") {
             return self.type_query(name, span).map(Into::into);
         }
+        if name == "void" {
+            return self.void_value_expression(span);
+        }
         if name == "nullptr" {
             self.activate_parameter_expansion(span)?;
             self.parameter_expansion_budget.charge_nodes(1, span)?;
@@ -444,7 +461,7 @@ impl Parser<'_> {
 
     fn static_cast_expression(&mut self, span: Span) -> Result<ExpressionResult, ParseError> {
         self.lexer.expect_span(Token::Paren('<'))?;
-        if self.lexer.next_if(Token::Word("void"))? {
+        if self.take_void_cast_type('>')? {
             self.lexer.expect_span(Token::Paren('>'))?;
             self.lexer.expect_span(Token::Paren('('))?;
             let result = self.comma_expression_result()?;
@@ -458,6 +475,29 @@ impl Parser<'_> {
         let end = self.lexer.expect_span(Token::Paren(')'))?;
         self.cast_source_value(value, target, span.until(&end))
             .map(Into::into)
+    }
+
+    fn void_value_expression(&mut self, span: Span) -> Result<ExpressionResult, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.parameter_expansion_budget.charge_nodes(1, span)?;
+        let end = if self.lexer.next_if(Token::Paren('{'))? {
+            self.lexer.expect_span(Token::Paren('}'))?
+        } else {
+            self.lexer.expect_span(Token::Paren('('))?;
+            if self.lexer.peek()?.0 != Token::Paren(')') {
+                let result = self.expression_result(0)?;
+                let end = self.lexer.expect_span(Token::Paren(')'))?;
+                return self.cast_to_void(result, span.until(&end));
+            }
+            self.lexer.expect_span(Token::Paren(')'))?
+        };
+        Ok(ExpressionResult::Void(VoidValue {
+            span: span.until(&end),
+            constant: ConstantValue {
+                is_discardable: true,
+                ..ConstantValue::default()
+            },
+        }))
     }
 
     fn variable_expression(

@@ -125,6 +125,38 @@ mod tests {
     use super::*;
 
     #[test]
+    fn empty_void_values_charge_source_nodes_without_shader_allocations() {
+        for source in ["void()", "void{}"] {
+            for available_nodes in [0, 1] {
+                let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                let span = parser.lexer.peek().unwrap().1;
+                parser.activate_parameter_expansion(span).unwrap();
+                parser
+                    .parameter_expansion_budget
+                    .charge_nodes(NODE_LIMIT - available_nodes, span)
+                    .unwrap();
+                let type_count = parser.module.types.len();
+                let expression_count = parser.function.ir.expressions.len();
+                let result = parser.expression_result(0);
+                if available_nodes == 0 {
+                    let error = result.unwrap_err();
+                    assert_eq!(error.message, limit_error(span).message);
+                    assert!(parser.parameter_expansion_budget.is_exhausted());
+                } else {
+                    let ExpressionResult::Void(value) = result.unwrap() else {
+                        panic!("empty void construction must yield a source-only void value");
+                    };
+                    assert!(value.constant.is_discardable);
+                    assert!(value.constant.literal.is_none());
+                    assert_eq!(parser.parameter_expansion_budget.nodes, NODE_LIMIT);
+                }
+                assert_eq!(parser.module.types.len(), type_count);
+                assert_eq!(parser.function.ir.expressions.len(), expression_count);
+            }
+        }
+    }
+
+    #[test]
     fn static_assertions_activate_resource_accounting_for_simple_conditions() {
         for exhaust_bytes in [false, true] {
             let source = "static_assert(true, \"first\"); static_assert(true, \"second\");";

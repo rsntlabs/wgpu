@@ -230,21 +230,23 @@ impl<'a> Parser<'a> {
         {
             return Ok(true);
         }
-        if !self.starts_type()? {
-            return Ok(false);
-        }
         let mut lookahead = self.lexer.clone();
-        if cooperative_groups::try_qualified_name(
-            &mut lookahead,
-            &self.function.symbol_table,
-            &self.global_declarations,
-        )?
-        .is_none()
-        {
-            if lookahead.next()?.0 == Token::Word("decltype") {
-                lookahead.expect_span(Token::Paren('('))?;
-                lookahead.expect_span(Token::Word("nullptr"))?;
-                lookahead.expect_span(Token::Paren(')'))?;
+        if !lookahead.next_if(Token::Word("void"))? {
+            if !self.starts_type()? {
+                return Ok(false);
+            }
+            if cooperative_groups::try_qualified_name(
+                &mut lookahead,
+                &self.function.symbol_table,
+                &self.global_declarations,
+            )?
+            .is_none()
+            {
+                if lookahead.next()?.0 == Token::Word("decltype") {
+                    lookahead.expect_span(Token::Paren('('))?;
+                    lookahead.expect_span(Token::Word("nullptr"))?;
+                    lookahead.expect_span(Token::Paren(')'))?;
+                }
             }
         }
         let next = lookahead.peek()?;

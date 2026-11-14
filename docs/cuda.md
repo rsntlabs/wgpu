@@ -488,8 +488,15 @@ ordinary nonvolatile glvalues are discarded without reading their value. These
 casts work in comma expressions, both-void conditional arms, and void returns.
 Their constant-expression eligibility follows the discarded operand and the
 selected conditional arm. Discarding a value does not make runtime calls,
-updates, or volatile reads constant expressions. These forms accept bare `void`
-targets.
+updates, or volatile reads constant expressions. Cast targets may include `const`
+and `volatile`; these target qualifiers do not change operand-read behavior.
+Functional forms `void()`, `void(expression)`, and `void{}` are also accepted.
+Parenthesized functional forms accept a single expression, including a grouped
+comma expression such as `void((first, second))`. Nonempty braced forms and
+multiple functional arguments remain unsupported. At statement scope, forms such
+as `void(name);` and `void(function());` follow declaration parsing and retain the
+existing restrictions on parenthesized declarators; wrapping the whole expression
+as `(void(function()));` selects expression parsing.
 
 Helpers can share a name when their parameter types or counts differ.
 Calls prefer exact argument types, then promotion from `bool` to `int`, then

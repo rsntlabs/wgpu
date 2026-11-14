@@ -128,6 +128,7 @@ mod updates;
 mod vector_resources;
 mod vector_values;
 mod void_casts;
+mod void_forms;
 mod volatile;
 
 pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
@@ -262,6 +263,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_VECTOR_RESOURCES,
         CUDA_VECTOR_VALUES,
         CUDA_VOID_CASTS,
+        CUDA_VOID_FORMS,
         CUDA_VOLATILE_STORAGE,
         CUDA_VOLATILE_WORKGROUP,
     ]);
@@ -786,6 +788,9 @@ static CUDA_VECTOR_VALUES: GpuTestConfiguration = configuration(vector_values::c
 
 #[apply(gpu_test!)]
 static CUDA_VOID_CASTS: GpuTestConfiguration = configuration(void_casts::cases);
+
+#[apply(gpu_test!)]
+static CUDA_VOID_FORMS: GpuTestConfiguration = configuration(void_forms::cases);
 
 #[apply(gpu_test!)]
 static CUDA_INTEGER16: GpuTestConfiguration =
