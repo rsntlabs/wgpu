@@ -93,6 +93,7 @@ mod packed_absolute_differences;
 mod packed_arithmetic;
 mod packed_averages;
 mod packed_equality;
+mod packed_greater_than;
 mod packed_half_sums;
 mod packed_less_equal;
 mod packed_less_than;

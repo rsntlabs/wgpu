@@ -1003,6 +1003,14 @@ These predefined functions operate on integer representations:
 | `__vsetles4` | `unsigned int, unsigned int` | `unsigned int` | Return signed less-than-or-equal as 0 or 1 in each of four packed 8-bit lanes. |
 | `__vsetleu2` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned less-than-or-equal as 0 or 1 in each of two packed 16-bit lanes. |
 | `__vsetleu4` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned less-than-or-equal as 0 or 1 in each of four packed 8-bit lanes. |
+| `__vcmpgts2` | `unsigned int, unsigned int` | `unsigned int` | Return signed greater-than masks in two packed 16-bit lanes. |
+| `__vcmpgts4` | `unsigned int, unsigned int` | `unsigned int` | Return signed greater-than masks in four packed 8-bit lanes. |
+| `__vcmpgtu2` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned greater-than masks in two packed 16-bit lanes. |
+| `__vcmpgtu4` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned greater-than masks in four packed 8-bit lanes. |
+| `__vsetgts2` | `unsigned int, unsigned int` | `unsigned int` | Return signed greater-than as 0 or 1 in each of two packed 16-bit lanes. |
+| `__vsetgts4` | `unsigned int, unsigned int` | `unsigned int` | Return signed greater-than as 0 or 1 in each of four packed 8-bit lanes. |
+| `__vsetgtu2` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned greater-than as 0 or 1 in each of two packed 16-bit lanes. |
+| `__vsetgtu4` | `unsigned int, unsigned int` | `unsigned int` | Return unsigned greater-than as 0 or 1 in each of four packed 8-bit lanes. |
 | `__vneg2` | `unsigned int` | `unsigned int` | Negate two packed signed 16-bit lanes with lane-width wrapping. |
 | `__vneg4` | `unsigned int` | `unsigned int` | Negate four packed signed 8-bit lanes with lane-width wrapping. |
 | `__vnegss2` | `unsigned int` | `unsigned int` | Negate two packed signed 16-bit lanes with signed saturation. |
@@ -1139,6 +1147,15 @@ and `__vsetles4(0xffffffffu, 0xffffffffu)` is `0x01010101u`. Each lane is
 compared independently. All eight functions retain unsigned public parameter
 and result types and use bounded 32-bit operations compatible with the default
 Metal language version.
+
+Packed greater-than comparisons use signed or unsigned lane ordering and
+return full lane masks for `cmp` or per-lane `1` for `set`. Equal lanes
+return zero because the comparison is strict. For example,
+`__vcmpgts2(0x80007fffu, 0x7fff8000u)` is `0x0000ffffu`, while
+`__vcmpgtu2(0x80007fffu, 0x7fff8000u)` is `0xffff0000u`. The corresponding
+`set` results are `0x00000001u` and `0x00010000u`. All eight functions
+retain unsigned public parameter and result types and use bounded 32-bit
+operations compatible with the default Metal language version.
 
 Packed negation also interprets each lane as signed while keeping unsigned
 public parameter and result types. Wrapping negation leaves the most negative

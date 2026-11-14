@@ -643,6 +643,86 @@ const PACKED_ARITHMETIC_BUILTINS: &[(&str, PackedArithmeticBuiltin)] = &[
             },
         },
     ),
+    (
+        "__vcmpgts2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::GreaterThan {
+                signed: true,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vcmpgts4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::GreaterThan {
+                signed: true,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vcmpgtu2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::GreaterThan {
+                signed: false,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vcmpgtu4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::GreaterThan {
+                signed: false,
+                mask: true,
+            },
+        },
+    ),
+    (
+        "__vsetgts2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::GreaterThan {
+                signed: true,
+                mask: false,
+            },
+        },
+    ),
+    (
+        "__vsetgts4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::GreaterThan {
+                signed: true,
+                mask: false,
+            },
+        },
+    ),
+    (
+        "__vsetgtu2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::GreaterThan {
+                signed: false,
+                mask: false,
+            },
+        },
+    ),
+    (
+        "__vsetgtu4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::GreaterThan {
+                signed: false,
+                mask: false,
+            },
+        },
+    ),
 ];
 
 const HALF_ADD_BUILTINS: [(&str, HalfAddBuiltin); 4] = [

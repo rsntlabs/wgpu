@@ -1,0 +1,60 @@
+__device__ unsigned greater_than_word(unsigned &value) { return 0x40404040u - (value++ * 0x01010101u); }
+extern "C" __global__ void packed_greater_than(unsigned *output, const unsigned *input) {
+    unsigned lane = threadIdx.x;
+    unsigned count = input[0];
+    for (unsigned row = lane; row < count; row += 64u) {
+        unsigned a = input[1u + row * 2u];
+        unsigned b = input[2u + row * 2u];
+        unsigned base = 4u + row * 8u;
+        output[base + 0u] = __vcmpgts2(a, b);
+        output[base + 1u] = __vcmpgts4(a, b);
+        output[base + 2u] = __vcmpgtu2(a, b);
+        output[base + 3u] = __vcmpgtu4(a, b);
+        output[base + 4u] = __vsetgts2(a, b);
+        output[base + 5u] = __vsetgts4(a, b);
+        output[base + 6u] = __vsetgtu2(a, b);
+        output[base + 7u] = __vsetgtu4(a, b);
+    }
+    unsigned base = 4u + count * 8u + lane * 35u;
+    unsigned value = 1u;
+    output[base + 0u] = __vcmpgts2(greater_than_word(value), greater_than_word(value));
+    output[base + 1u] = __vcmpgts4(greater_than_word(value), greater_than_word(value));
+    output[base + 2u] = __vcmpgtu2(greater_than_word(value), greater_than_word(value));
+    output[base + 3u] = __vcmpgtu4(greater_than_word(value), greater_than_word(value));
+    output[base + 4u] = __vsetgts2(greater_than_word(value), greater_than_word(value));
+    output[base + 5u] = __vsetgts4(greater_than_word(value), greater_than_word(value));
+    output[base + 6u] = __vsetgtu2(greater_than_word(value), greater_than_word(value));
+    output[base + 7u] = __vsetgtu4(greater_than_word(value), greater_than_word(value));
+    output[base + 8u] = __vcmpgts2(__vcmpgts2(value++, 0xffffffffu), 0xffffffffu);
+    (lane & 1u) == 0u ? __vsetgtu2(value++, value++) : 0u;
+    output[base + 9u] = value;
+    false && __vcmpgts4(value++, value++);
+    true || __vsetgts4(value++, value++);
+    __vcmpgtu4(value++, value++);
+    output[base + 10u] = value;
+    unsigned index = 1u;
+    output[base + 11u] = __vsetgts4(input[index++], input[index++]);
+    output[base + 12u] = index;
+    output[base + 13u] = __vcmpgts2(0x00010001u, 0u);
+    output[base + 14u] = __vcmpgts4(0x01010101u, 0u);
+    output[base + 15u] = __vcmpgtu2(0x00010001u, 0u);
+    output[base + 16u] = __vcmpgtu4(0x01010101u, 0u);
+    output[base + 17u] = __vsetgts2(0x00010001u, 0u);
+    output[base + 18u] = __vsetgts4(0x01010101u, 0u);
+    output[base + 19u] = __vsetgtu2(0x00010001u, 0u);
+    output[base + 20u] = __vsetgtu4(0x01010101u, 0u);
+    output[base + 21u] = __vcmpgts2(0x80008000u, 0x7fff7fffu);
+    output[base + 22u] = __vcmpgtu2(0x80008000u, 0x7fff7fffu);
+    output[base + 23u] = __vsetgts4(0x80808080u, 0x7f7f7f7fu);
+    output[base + 24u] = __vsetgtu4(0x80808080u, 0x7f7f7f7fu);
+    output[base + 25u] = __vcmpgts2(0x80ff017fu, 0x80ff017fu);
+    output[base + 26u] = __vsetgtu4(0x80ff017fu, 0x80ff017fu);
+    output[base + 27u] = __vcmpgts2(0x80ff017fu, 0x80ff017fu);
+    output[base + 28u] = __vcmpgts4(0x80ff017fu, 0x80ff017fu);
+    output[base + 29u] = __vcmpgtu2(0x80ff017fu, 0x80ff017fu);
+    output[base + 30u] = __vcmpgtu4(0x80ff017fu, 0x80ff017fu);
+    output[base + 31u] = __vsetgts2(0x80ff017fu, 0x80ff017fu);
+    output[base + 32u] = __vsetgts4(0x80ff017fu, 0x80ff017fu);
+    output[base + 33u] = __vsetgtu2(0x80ff017fu, 0x80ff017fu);
+    output[base + 34u] = __vsetgtu4(0x80ff017fu, 0x80ff017fu);
+}

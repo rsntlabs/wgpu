@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA packed signed and unsigned strict greater-than comparisons with lane masks or per-lane 0/1 results.
 - Support CUDA packed signed and unsigned less-than-or-equal comparisons with lane masks or per-lane 0/1 results.
 - Support CUDA packed signed and unsigned strict less-than comparisons with lane masks or per-lane 0/1 results.
 - Support CUDA packed equality and inequality comparisons with lane masks or per-lane 0/1 results.
