@@ -32,6 +32,7 @@ mod direct_aggregate_initialization;
 mod direct_borrowed_initialization;
 mod direct_initialization;
 mod division;
+mod dp4a;
 mod dual_execution;
 mod dynamic_shared;
 mod empty_scalar_construction;

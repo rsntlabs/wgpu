@@ -20,6 +20,50 @@ pub(super) struct HalfAddBuiltin {
 }
 
 impl Parser<'_> {
+    pub(super) fn dot4_accumulate(
+        &mut self,
+        scalar: Scalar,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        accumulator: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let mut packed = [left, right];
+        if scalar == Scalar::I32 {
+            for word in &mut packed {
+                *word = self.bitcast_scalar(*word, Scalar::U32, span)?;
+            }
+        }
+        let mut dot = self.append(
+            Expression::Math {
+                fun: if scalar == Scalar::I32 {
+                    MathFunction::Dot4I8Packed
+                } else {
+                    MathFunction::Dot4U8Packed
+                },
+                arg: packed[0],
+                arg1: Some(packed[1]),
+                arg2: None,
+                arg3: None,
+            },
+            span,
+        )?;
+        let accumulator = if scalar == Scalar::I32 {
+            dot = self.bitcast_scalar(dot, Scalar::U32, span)?;
+            self.bitcast_scalar(accumulator, Scalar::U32, span)?
+        } else {
+            accumulator
+        };
+        let result = self.wrapping_add32(dot, accumulator, span)?;
+        if scalar == Scalar::I32 {
+            self.bitcast_scalar(result, Scalar::I32, span)
+        } else {
+            Ok(result)
+        }
+    }
+
     pub(super) fn byte_permutation(
         &mut self,
         left: Handle<Expression>,
@@ -90,7 +134,7 @@ impl Parser<'_> {
             // Biasing signed words preserves their order and mathematical differences.
             for key in &mut keys {
                 let bits = self.bitcast_scalar(*key, Scalar::U32, span)?;
-                *key = self.sad_binary(BinaryOperator::ExclusiveOr, bits, sign, span)?;
+                *key = self.integer_binary(BinaryOperator::ExclusiveOr, bits, sign, span)?;
             }
         }
         let [left, right] = keys;
@@ -114,26 +158,36 @@ impl Parser<'_> {
             },
             span,
         )?;
-        let difference = self.sad_binary(BinaryOperator::Subtract, maximum, minimum, span)?;
+        let difference = self.integer_binary(BinaryOperator::Subtract, maximum, minimum, span)?;
+        self.wrapping_add32(difference, accumulator, span)
+    }
+
+    fn wrapping_add32(
+        &mut self,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
         let mask = self.append(Expression::Literal(Literal::U32(0xffff)), span)?;
         let width = self.append(Expression::Literal(Literal::U32(16)), span)?;
         // Limb sums stay in range even when a backend evaluates literal arguments.
-        let low = self.sad_binary(BinaryOperator::And, difference, mask, span)?;
-        let low_accumulator = self.sad_binary(BinaryOperator::And, accumulator, mask, span)?;
-        let low_sum = self.sad_binary(BinaryOperator::Add, low, low_accumulator, span)?;
-        let carry = self.sad_binary(BinaryOperator::ShiftRight, low_sum, width, span)?;
-        let high = self.sad_binary(BinaryOperator::ShiftRight, difference, width, span)?;
-        let high_accumulator =
-            self.sad_binary(BinaryOperator::ShiftRight, accumulator, width, span)?;
-        let high_sum = self.sad_binary(BinaryOperator::Add, high, high_accumulator, span)?;
-        let high_sum = self.sad_binary(BinaryOperator::Add, high_sum, carry, span)?;
-        let high_word = self.sad_binary(BinaryOperator::And, high_sum, mask, span)?;
-        let high_word = self.sad_binary(BinaryOperator::ShiftLeft, high_word, width, span)?;
-        let low_word = self.sad_binary(BinaryOperator::And, low_sum, mask, span)?;
-        self.sad_binary(BinaryOperator::InclusiveOr, high_word, low_word, span)
+        let low = self.integer_binary(BinaryOperator::And, left, mask, span)?;
+        let right_low = self.integer_binary(BinaryOperator::And, right, mask, span)?;
+        let low_sum = self.integer_binary(BinaryOperator::Add, low, right_low, span)?;
+        let carry = self.integer_binary(BinaryOperator::ShiftRight, low_sum, width, span)?;
+        let high = self.integer_binary(BinaryOperator::ShiftRight, left, width, span)?;
+        let right_high = self.integer_binary(BinaryOperator::ShiftRight, right, width, span)?;
+        let high_sum = self.integer_binary(BinaryOperator::Add, high, right_high, span)?;
+        let high_sum = self.integer_binary(BinaryOperator::Add, high_sum, carry, span)?;
+        let high_word = self.integer_binary(BinaryOperator::And, high_sum, mask, span)?;
+        let high_word = self.integer_binary(BinaryOperator::ShiftLeft, high_word, width, span)?;
+        let low_word = self.integer_binary(BinaryOperator::And, low_sum, mask, span)?;
+        self.integer_binary(BinaryOperator::InclusiveOr, high_word, low_word, span)
     }
 
-    fn sad_binary(
+    fn integer_binary(
         &mut self,
         op: BinaryOperator,
         left: Handle<Expression>,

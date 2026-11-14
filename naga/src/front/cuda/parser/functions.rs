@@ -369,6 +369,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             "__byte_perm",
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         )))
+        .chain(core::iter::once((
+            "__dp4a",
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        )))
         .chain(INTEGER_ATOMICS.into_iter().map(|(name, _)| {
             (
                 name,
@@ -465,6 +469,7 @@ pub(super) enum FunctionCandidate {
     HalfAdd(HalfAddBuiltin),
     Sad(Scalar),
     BytePerm,
+    Dot4(Scalar),
     FunnelShift(FunnelShiftBuiltin),
     Atomic {
         function: crate::AtomicFunction,
@@ -1002,6 +1007,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::HalfAdd(_)
                         | FunctionCandidate::Sad(_)
                         | FunctionCandidate::BytePerm
+                        | FunctionCandidate::Dot4(_)
                         | FunctionCandidate::FunnelShift(_)
                         | FunctionCandidate::Atomic { .. }
                         | FunctionCandidate::AtomicCompareExchange(_)
@@ -1241,6 +1247,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Builtin(builtin) => TypeSpecifier::from_scalar(builtin.result),
             FunctionCandidate::Multiply24(result)
             | FunctionCandidate::MultiplyHigh(result)
+            | FunctionCandidate::Dot4(result)
             | FunctionCandidate::HalfAdd(HalfAddBuiltin { scalar: result, .. })
             | FunctionCandidate::Atomic { scalar: result, .. }
             | FunctionCandidate::AtomicCompareExchange(result)
@@ -1677,6 +1684,23 @@ impl<'a> Parser<'a> {
             }
             .into());
         }
+        if let FunctionCandidate::Dot4(scalar) = candidate {
+            let mut arguments = arguments.into_iter();
+            let left = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
+            let right = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
+            let accumulator = self.convert_scalar(arguments.next().unwrap().into(), scalar)?;
+            let handle =
+                self.dot4_accumulate(scalar, left.handle, right.handle, accumulator.handle, span)?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: ConstantValue::default(),
+                handle,
+                ty: scalar_resolution(scalar),
+                span,
+            }
+            .into());
+        }
         if candidate == FunctionCandidate::BytePerm {
             let mut arguments = arguments.into_iter();
             let left = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
@@ -2030,6 +2054,7 @@ impl<'a> Parser<'a> {
                 (builtin_visible && name == candidate).then_some(function)
             });
         let compare_exchange_visible = builtin_visible && name == "atomicCAS";
+        let dot4_visible = builtin_visible && name == "__dp4a";
         functions
             .iter()
             .copied()
@@ -2109,6 +2134,12 @@ impl<'a> Parser<'a> {
             .chain(
                 (builtin_visible && name == "__byte_perm").then_some(FunctionCandidate::BytePerm),
             )
+            .chain(
+                [Scalar::I32, Scalar::U32]
+                    .into_iter()
+                    .filter(move |_| dot4_visible)
+                    .map(FunctionCandidate::Dot4),
+            )
             .chain(atomic_function.into_iter().flat_map(|function| {
                 [Scalar::I32, Scalar::U32]
                     .map(|scalar| FunctionCandidate::Atomic { function, scalar })
@@ -2153,7 +2184,8 @@ impl<'a> Parser<'a> {
             FunctionCandidate::AtomicCompareExchange(_)
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
-            | FunctionCandidate::BytePerm => 3,
+            | FunctionCandidate::BytePerm
+            | FunctionCandidate::Dot4(_) => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::FloatMath(_)
@@ -2199,6 +2231,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Unary { source, .. }
             | FunctionCandidate::Multiply24(source)
             | FunctionCandidate::MultiplyHigh(source)
+            | FunctionCandidate::Dot4(source)
             | FunctionCandidate::HalfAdd(HalfAddBuiltin { scalar: source, .. })
             | FunctionCandidate::IntegralDouble { source } => {
                 return Some(scalar_resolution(source))

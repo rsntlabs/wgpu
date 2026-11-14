@@ -920,6 +920,8 @@ These predefined functions operate on integer representations:
 | `__sad` | `int, int, unsigned int` | `unsigned int` | Add the absolute signed difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__usad` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Add the absolute unsigned difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__byte_perm` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Select four output bytes from eight input bytes using four selector nibbles. |
+| `__dp4a` | `int, int, int` | `int` | Sum four signed packed-byte products and a signed accumulator, wrapping to 32 bits. |
+| `__dp4a` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Sum four unsigned packed-byte products and an unsigned accumulator, wrapping to 32 bits. |
 | `__funnelshift_l` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` left and return its high word. |
 | `__funnelshift_r` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` right and return its low word. |
 | `__funnelshift_lc` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift `hi:lo` left by a count clamped to 32 and return its high word. |
@@ -972,6 +974,15 @@ fields are numbered from least significant to most significant. Nibble bit 3
 and selector bits 16–31 are ignored; bytes are copied without sign extension.
 For example, `__byte_perm(0x33221100u, 0x77665544u, 0x7531u)` is
 `0x77553311u`. The lowering uses 32-bit operations with bounded shift counts.
+
+Packed four-way dot products convert all three arguments to the selected
+signature's type. The first two words each contain four byte lanes; matching
+lanes are multiplied and summed with the accumulator. The signed overload
+interprets each byte as a two's-complement signed value. For example,
+`__dp4a(0x01020304, 0x01010101, 0)` is 10. Accumulation wraps modulo 2^32,
+including signed overflow. Both overloads use Naga's packed-dot operations
+and bounded 32-bit accumulation, preserving backend compatibility without
+64-bit shader support. Vector-argument overloads remain unsupported.
 
 Funnel shifts convert all three arguments to `unsigned int` first. The
 `__funnelshift_l` and `__funnelshift_r` variants reduce the count modulo 32;

@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support signed and unsigned packed-integer CUDA `__dp4a` overloads with wrapping accumulation.
 - Support portable CUDA `__byte_perm` with masked nibble selectors.
 - Support CUDA `__sad` and `__usad` with portable full-range differences and wrapping accumulators.
 - Support CUDA `__hadd`, `__rhadd`, `__uhadd`, and `__urhadd` with portable, overflow-safe integer averaging.
