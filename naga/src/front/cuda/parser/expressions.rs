@@ -11,25 +11,46 @@ impl Parser<'_> {
     pub(super) fn comma_expression_result(&mut self) -> Result<ExpressionResult, ParseError> {
         let mut result = self.expression_result(0)?;
         while self.lexer.next_if(Token::Separator(','))? {
-            let earlier = match result {
-                ExpressionResult::Value(ExpressionValue::Reference(ref reference))
-                    if self.has_discarded_volatile_read(reference) =>
-                {
-                    ConstantValue::default()
-                }
-                ExpressionResult::Value(ref value) => value.constant(),
-                ExpressionResult::ThreadBlock(ref value) => value.constant,
-                ExpressionResult::Void(_) => ConstantValue::default(),
-            };
+            let earlier = self.discarded_constant(&result);
             self.discard_result(result)?;
             result = self.expression_result(0)?;
-            if let ExpressionResult::Value(ref mut value) = result {
-                self.sequence_value(value, earlier)?;
-            } else if let ExpressionResult::ThreadBlock(ref mut value) = result {
-                value.constant = value.constant.after(earlier);
+            match result {
+                ExpressionResult::Value(ref mut value) => self.sequence_value(value, earlier)?,
+                ExpressionResult::ThreadBlock(ref mut value) => {
+                    value.constant = value.constant.after(earlier);
+                }
+                ExpressionResult::Void(ref mut value) => {
+                    value.constant = value.constant.after(earlier);
+                }
             }
         }
         Ok(result)
+    }
+
+    fn discarded_constant(&self, result: &ExpressionResult) -> ConstantValue {
+        match *result {
+            ExpressionResult::Value(ExpressionValue::Reference(ref reference))
+                if self.has_discarded_volatile_read(reference) =>
+            {
+                ConstantValue::default()
+            }
+            ExpressionResult::Value(ref value) => value.constant(),
+            ExpressionResult::ThreadBlock(ref value) => value.constant,
+            ExpressionResult::Void(ref value) => value.constant,
+        }
+    }
+
+    fn cast_to_void(
+        &mut self,
+        result: ExpressionResult,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        let constant = ConstantValue {
+            is_discardable: self.discarded_constant(&result).is_discardable,
+            ..ConstantValue::default()
+        };
+        self.discard_result(result)?;
+        Ok(ExpressionResult::Void(VoidValue { span, constant }))
     }
 
     pub(super) fn expression(
@@ -229,6 +250,12 @@ impl Parser<'_> {
     }
 
     fn parenthesized_expression(&mut self, span: Span) -> Result<ExpressionResult, ParseError> {
+        if self.lexer.next_if(Token::Word("void"))? {
+            self.lexer.expect_span(Token::Paren(')'))?;
+            let result = self.expression_result(UNARY_PRECEDENCE)?;
+            let span = self.lexer.span_from(span.to_range().unwrap().start);
+            return self.cast_to_void(result, span);
+        }
         if self.starts_type()? {
             let mut lookahead = self.lexer.clone();
             let target = self.parse_type_from(&mut lookahead)?;
@@ -417,6 +444,13 @@ impl Parser<'_> {
 
     fn static_cast_expression(&mut self, span: Span) -> Result<ExpressionResult, ParseError> {
         self.lexer.expect_span(Token::Paren('<'))?;
+        if self.lexer.next_if(Token::Word("void"))? {
+            self.lexer.expect_span(Token::Paren('>'))?;
+            self.lexer.expect_span(Token::Paren('('))?;
+            let result = self.comma_expression_result()?;
+            let end = self.lexer.expect_span(Token::Paren(')'))?;
+            return self.cast_to_void(result, span.until(&end));
+        }
         let target = self.cast_type()?;
         self.lexer.expect_span(Token::Paren('>'))?;
         self.lexer.expect_span(Token::Paren('('))?;

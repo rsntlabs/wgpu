@@ -161,7 +161,7 @@ impl CallArgument for CapturedArgument {
         match self.value {
             ExpressionResult::Value(ref value) => value.span(),
             ExpressionResult::ThreadBlock(ref value) => value.span,
-            ExpressionResult::Void(span) => span,
+            ExpressionResult::Void(ref value) => value.span,
         }
     }
     fn reference_qualifiers(&self) -> Option<Qualifiers> {
@@ -304,10 +304,10 @@ impl Parser<'_> {
         self.parameter_expansion_budget
             .charge_slice::<CapturedArgument>(1, span)?;
         let (value, body) = self.capture_block(|parser| parser.expression_result(0))?;
-        if let ExpressionResult::Void(span) = value {
+        if let ExpressionResult::Void(value) = value {
             return Err(ParseError {
                 message: String::from("void expression cannot be used as an argument"),
-                span,
+                span: value.span,
             });
         }
         Ok(CapturedArgument { value, body })

@@ -61,7 +61,13 @@ impl Parser<'_> {
             return Ok(ExpressionValue::NullPointer(value).into());
         }
         match (accept, reject) {
-            (ExpressionResult::Void(_), ExpressionResult::Void(_)) => {
+            (ExpressionResult::Void(accept), ExpressionResult::Void(reject)) => {
+                let constant = match condition.constant.literal {
+                    Some(Literal::Bool(true)) => accept.constant,
+                    Some(Literal::Bool(false)) => reject.constant,
+                    _ => ConstantValue::default(),
+                }
+                .after(condition.constant);
                 self.push_statement(
                     Statement::If {
                         condition: condition.handle,
@@ -70,7 +76,7 @@ impl Parser<'_> {
                     },
                     span,
                 );
-                Ok(ExpressionResult::Void(span))
+                Ok(ExpressionResult::Void(VoidValue { span, constant }))
             }
             (
                 ExpressionResult::Value(ExpressionValue::Reference(accept)),

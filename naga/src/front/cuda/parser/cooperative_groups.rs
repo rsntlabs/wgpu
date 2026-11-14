@@ -314,7 +314,7 @@ impl<'a> Parser<'a> {
                 let end = self.lexer.expect_span(Token::Paren(')'))?;
                 let span = name.span.until(&end);
                 self.emit_workgroup_barrier(span)?;
-                Ok(ExpressionResult::Void(span))
+                Ok(ExpressionResult::Void(VoidValue::runtime(span)))
             }
             QualifiedItem::Function(GroupFunction::Static(method)) => {
                 self.thread_block_method(method, name.span)
@@ -336,9 +336,9 @@ impl<'a> Parser<'a> {
                 message: String::from("expected a thread_block handle"),
                 span: value.span(),
             }),
-            ExpressionResult::Void(span) => Err(ParseError {
+            ExpressionResult::Void(value) => Err(ParseError {
                 message: String::from("expected a thread_block handle"),
-                span,
+                span: value.span,
             }),
         }
     }
@@ -423,7 +423,7 @@ impl<'a> Parser<'a> {
         let span = span.until(&end);
         if matches!(method, GroupMethod::Sync) {
             self.emit_workgroup_barrier(span)?;
-            return Ok(ExpressionResult::Void(span));
+            return Ok(ExpressionResult::Void(VoidValue::runtime(span)));
         }
         if matches!(
             method,

@@ -301,7 +301,22 @@ impl From<Value> for ExpressionValue {
 enum ExpressionResult {
     Value(ExpressionValue),
     ThreadBlock(ThreadBlockValue),
-    Void(Span),
+    Void(VoidValue),
+}
+
+#[derive(Clone, Copy, Debug)]
+struct VoidValue {
+    span: Span,
+    constant: ConstantValue,
+}
+
+impl VoidValue {
+    fn runtime(span: Span) -> Self {
+        Self {
+            span,
+            constant: ConstantValue::default(),
+        }
+    }
 }
 
 impl From<Value> for ExpressionResult {
@@ -324,9 +339,9 @@ impl ExpressionResult {
                 message: String::from("thread_block handles cannot be used as shader values"),
                 span: value.span,
             }),
-            Self::Void(span) => Err(ParseError {
+            Self::Void(value) => Err(ParseError {
                 message: String::from("void expression cannot be used as a value"),
-                span,
+                span: value.span,
             }),
         }
     }

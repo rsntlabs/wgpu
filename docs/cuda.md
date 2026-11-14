@@ -482,6 +482,15 @@ Void helpers support bare `return;`, implicit fallthrough, and
 expressions, including parenthesized calls and `for` initializer/update clauses.
 Using a void call where a value is required produces a parse error.
 
+`(void)expression` and `static_cast<void>(expression)` discard supported values
+or void expressions. They preserve calls, updates, and required volatile reads;
+ordinary nonvolatile glvalues are discarded without reading their value. These
+casts work in comma expressions, both-void conditional arms, and void returns.
+Their constant-expression eligibility follows the discarded operand and the
+selected conditional arm. Discarding a value does not make runtime calls,
+updates, or volatile reads constant expressions. These forms accept bare `void`
+targets.
+
 Helpers can share a name when their parameter types or counts differ.
 Calls prefer exact argument types, then promotion from `bool` to `int`, then
 other scalar conversions. The selected overload must be no worse for every

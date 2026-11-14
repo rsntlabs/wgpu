@@ -128,6 +128,7 @@ mod uninitialized_pointers;
 mod updates;
 mod vector_resources;
 mod vector_values;
+mod void_casts;
 mod void_functions;
 mod volatile;
 

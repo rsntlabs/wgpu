@@ -127,6 +127,7 @@ mod uninitialized_pointers;
 mod updates;
 mod vector_resources;
 mod vector_values;
+mod void_casts;
 mod volatile;
 
 pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
@@ -260,6 +261,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_UPDATES,
         CUDA_VECTOR_RESOURCES,
         CUDA_VECTOR_VALUES,
+        CUDA_VOID_CASTS,
         CUDA_VOLATILE_STORAGE,
         CUDA_VOLATILE_WORKGROUP,
     ]);
@@ -781,6 +783,9 @@ static CUDA_VECTOR_RESOURCES: GpuTestConfiguration = configuration(vector_resour
 
 #[apply(gpu_test!)]
 static CUDA_VECTOR_VALUES: GpuTestConfiguration = configuration(vector_values::cases);
+
+#[apply(gpu_test!)]
+static CUDA_VOID_CASTS: GpuTestConfiguration = configuration(void_casts::cases);
 
 #[apply(gpu_test!)]
 static CUDA_INTEGER16: GpuTestConfiguration =

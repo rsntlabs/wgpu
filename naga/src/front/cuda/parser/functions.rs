@@ -1685,7 +1685,7 @@ impl<'a> Parser<'a> {
             value.constant = ConstantValue::default();
             ExpressionValue::NullPointer(value).into()
         } else {
-            ExpressionResult::Void(span)
+            ExpressionResult::Void(VoidValue::runtime(span))
         }
     }
 
