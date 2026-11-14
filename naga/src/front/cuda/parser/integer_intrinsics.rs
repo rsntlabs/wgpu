@@ -27,10 +27,38 @@ pub(super) enum PackedArithmeticSaturation {
 }
 
 #[derive(Clone, Copy, PartialEq)]
+pub(super) enum PackedArithmeticOperation {
+    Add(PackedArithmeticSaturation),
+    Subtract(PackedArithmeticSaturation),
+    Average { signed: bool },
+}
+
+#[derive(Clone, Copy)]
+enum PackedSignedRounding {
+    Saturate {
+        minimum: Handle<Expression>,
+        maximum: Handle<Expression>,
+    },
+    Average {
+        zero: Handle<Expression>,
+        negative_one: Handle<Expression>,
+        one: Handle<Expression>,
+        two: Handle<Expression>,
+    },
+}
+
+#[derive(Clone, Copy)]
+struct PackedSignedConstants {
+    sign_bit: Handle<Expression>,
+    bias: Handle<Expression>,
+    radix: Handle<Expression>,
+    rounding: PackedSignedRounding,
+}
+
+#[derive(Clone, Copy, PartialEq)]
 pub(super) struct PackedArithmeticBuiltin {
     pub(super) lane_width: u32,
-    pub(super) subtract: bool,
-    pub(super) saturation: PackedArithmeticSaturation,
+    pub(super) operation: PackedArithmeticOperation,
 }
 
 impl Parser<'_> {
@@ -45,21 +73,49 @@ impl Parser<'_> {
         self.prepare_parameter_bindings(span)?;
         let lane_radix = 1u32 << builtin.lane_width;
         let mask = self.append(Expression::Literal(Literal::U32(lane_radix - 1)), span)?;
-        let radix =
-            if builtin.subtract && builtin.saturation == PackedArithmeticSaturation::Wrapping {
-                Some(self.append(Expression::Literal(Literal::U32(lane_radix)), span)?)
+        let subtract = matches!(builtin.operation, PackedArithmeticOperation::Subtract(_));
+        let radix = if builtin.operation
+            == PackedArithmeticOperation::Subtract(PackedArithmeticSaturation::Wrapping)
+        {
+            Some(self.append(Expression::Literal(Literal::U32(lane_radix)), span)?)
+        } else {
+            None
+        };
+        let unsigned_average =
+            if builtin.operation == (PackedArithmeticOperation::Average { signed: false }) {
+                Some(self.append(Expression::Literal(Literal::U32(1)), span)?)
             } else {
                 None
             };
-        let signed_constants = if builtin.saturation == PackedArithmeticSaturation::Signed {
+        let signed_constants = if matches!(
+            builtin.operation,
+            PackedArithmeticOperation::Add(PackedArithmeticSaturation::Signed)
+                | PackedArithmeticOperation::Subtract(PackedArithmeticSaturation::Signed)
+                | PackedArithmeticOperation::Average { signed: true }
+        ) {
             let bias = (lane_radix / 2) as i32;
-            Some([
-                self.append(Expression::Literal(Literal::U32(lane_radix / 2)), span)?,
-                self.append(Expression::Literal(Literal::I32(bias)), span)?,
-                self.append(Expression::Literal(Literal::I32(-bias)), span)?,
-                self.append(Expression::Literal(Literal::I32(bias - 1)), span)?,
-                self.append(Expression::Literal(Literal::I32(lane_radix as i32)), span)?,
-            ])
+            let sign_bit = self.append(Expression::Literal(Literal::U32(lane_radix / 2)), span)?;
+            let bias_handle = self.append(Expression::Literal(Literal::I32(bias)), span)?;
+            let rounding = if matches!(builtin.operation, PackedArithmeticOperation::Average { .. })
+            {
+                PackedSignedRounding::Average {
+                    zero: self.append(Expression::Literal(Literal::I32(0)), span)?,
+                    negative_one: self.append(Expression::Literal(Literal::I32(-1)), span)?,
+                    one: self.append(Expression::Literal(Literal::I32(1)), span)?,
+                    two: self.append(Expression::Literal(Literal::I32(2)), span)?,
+                }
+            } else {
+                PackedSignedRounding::Saturate {
+                    minimum: self.append(Expression::Literal(Literal::I32(-bias)), span)?,
+                    maximum: self.append(Expression::Literal(Literal::I32(bias - 1)), span)?,
+                }
+            };
+            Some(PackedSignedConstants {
+                sign_bit,
+                bias: bias_handle,
+                radix: self.append(Expression::Literal(Literal::I32(lane_radix as i32)), span)?,
+                rounding,
+            })
         } else {
             None
         };
@@ -85,9 +141,17 @@ impl Parser<'_> {
             let left = self.integer_binary(BinaryOperator::And, left, mask, span)?;
             let right = self.integer_binary(BinaryOperator::And, right, mask, span)?;
             let value = if let Some(constants) = signed_constants {
-                self.packed_signed_arithmetic(builtin.subtract, left, right, constants, span)?
-            } else if builtin.saturation == PackedArithmeticSaturation::Unsigned {
-                if builtin.subtract {
+                self.packed_signed_arithmetic(subtract, left, right, constants, span)?
+            } else if let Some(one) = unsigned_average {
+                let sum = self.integer_binary(BinaryOperator::Add, left, right, span)?;
+                let sum = self.integer_binary(BinaryOperator::Add, sum, one, span)?;
+                self.integer_binary(BinaryOperator::ShiftRight, sum, one, span)?
+            } else if matches!(
+                builtin.operation,
+                PackedArithmeticOperation::Add(PackedArithmeticSaturation::Unsigned)
+                    | PackedArithmeticOperation::Subtract(PackedArithmeticSaturation::Unsigned)
+            ) {
+                if subtract {
                     let left = self.append(
                         Expression::Math {
                             fun: MathFunction::Max,
@@ -138,10 +202,15 @@ impl Parser<'_> {
         subtract: bool,
         left: Handle<Expression>,
         right: Handle<Expression>,
-        constants: [Handle<Expression>; 5],
+        constants: PackedSignedConstants,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
-        let [sign_bit, bias, minimum, maximum, radix] = constants;
+        let PackedSignedConstants {
+            sign_bit,
+            bias,
+            radix,
+            rounding,
+        } = constants;
         let left = self.integer_binary(BinaryOperator::ExclusiveOr, left, sign_bit, span)?;
         let right = self.integer_binary(BinaryOperator::ExclusiveOr, right, sign_bit, span)?;
         let left = self.append(
@@ -170,16 +239,36 @@ impl Parser<'_> {
             right,
             span,
         )?;
-        let value = self.append(
-            Expression::Math {
-                fun: MathFunction::Clamp,
-                arg: value,
-                arg1: Some(minimum),
-                arg2: Some(maximum),
-                arg3: None,
-            },
-            span,
-        )?;
+        let value = match rounding {
+            PackedSignedRounding::Saturate { minimum, maximum } => self.append(
+                Expression::Math {
+                    fun: MathFunction::Clamp,
+                    arg: value,
+                    arg1: Some(minimum),
+                    arg2: Some(maximum),
+                    arg3: None,
+                },
+                span,
+            )?,
+            PackedSignedRounding::Average {
+                zero,
+                negative_one,
+                one,
+                two,
+            } => {
+                let negative = self.integer_binary(BinaryOperator::Less, value, zero, span)?;
+                let bias = self.append(
+                    Expression::Select {
+                        condition: negative,
+                        accept: negative_one,
+                        reject: one,
+                    },
+                    span,
+                )?;
+                let biased = self.integer_binary(BinaryOperator::Add, value, bias, span)?;
+                self.integer_binary(BinaryOperator::Divide, biased, two, span)?
+            }
+        };
         // Add the radix so constant evaluation converts only nonnegative values.
         let value = self.integer_binary(BinaryOperator::Add, value, radix, span)?;
         self.append(

@@ -89,6 +89,7 @@ mod operator_functions;
 mod operator_null_constants;
 mod overloads;
 mod packed_arithmetic;
+mod packed_averages;
 mod parameters;
 mod parenthesized_aggregates;
 mod parenthesized_arrays;

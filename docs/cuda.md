@@ -975,6 +975,10 @@ These predefined functions operate on integer representations:
 | `__vaddss4` | `unsigned int, unsigned int` | `unsigned int` | Add four packed signed 8-bit lanes, saturating each sum to the signed lane range. |
 | `__vsubss2` | `unsigned int, unsigned int` | `unsigned int` | Subtract two packed signed 16-bit lanes, saturating each difference to the signed lane range. |
 | `__vsubss4` | `unsigned int, unsigned int` | `unsigned int` | Subtract four packed signed 8-bit lanes, saturating each difference to the signed lane range. |
+| `__vavgs2` | `unsigned int, unsigned int` | `unsigned int` | Average two packed signed 16-bit lanes, rounding ties away from zero. |
+| `__vavgs4` | `unsigned int, unsigned int` | `unsigned int` | Average four packed signed 8-bit lanes, rounding ties away from zero. |
+| `__vavgu2` | `unsigned int, unsigned int` | `unsigned int` | Average two packed unsigned 16-bit lanes, rounding upward. |
+| `__vavgu4` | `unsigned int, unsigned int` | `unsigned int` | Average four packed unsigned 8-bit lanes, rounding upward. |
 | `__sad` | `int, int, unsigned int` | `unsigned int` | Add the absolute signed difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__usad` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Add the absolute unsigned difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__byte_perm` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Select four output bytes from eight input bytes using four selector nibbles. |
@@ -1018,6 +1022,14 @@ and result types remain `unsigned int`. For example,
 `__vsubss4(0x80808080u, 0x01010101u)` is `0x80808080u`. The implementation
 decodes, clamps, and repacks lanes using bounded 32-bit operations, including
 for negative results; it supports the default Metal language version.
+
+Packed averages preserve each lane independently and retain unsigned public
+parameter and result types. Signed half-integer averages round away from zero;
+unsigned half-integer averages round upward. For example,
+`__vavgs4(0xffffffffu, 0u)` is `0xffffffffu`, while
+`__vavgu4(0xffffffffu, 0u)` is `0x80808080u`. Exact integer averages remain
+unchanged. These operations use bounded 32-bit intermediates and support the
+default Metal language version.
 
 Nth-set-bit searches convert the mask and base to `unsigned int` and the offset
 to `int`. `__fns` searches upward for positive offsets and downward for negative

@@ -5,7 +5,7 @@ use super::float_helpers::FloatMathFunction;
 use super::function_declarations::Inlining;
 use super::integer_intrinsics::{
     FunnelShiftBuiltin, FunnelShiftDirection, HalfAddBuiltin, PackedArithmeticBuiltin,
-    PackedArithmeticSaturation,
+    PackedArithmeticOperation, PackedArithmeticSaturation,
 };
 use super::launch_bounds::LaunchBounds;
 use super::types::{IntegerSpecifiers, VECTOR_TYPES};
@@ -120,101 +120,117 @@ const MULTIPLY_HIGH_BUILTINS: [(&str, Scalar); 2] =
 
 const SAD_BUILTINS: [(&str, Scalar); 2] = [("__sad", Scalar::I32), ("__usad", Scalar::U32)];
 
-const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 12] = [
+const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 16] = [
     (
         "__vadd2",
         PackedArithmeticBuiltin {
             lane_width: 16,
-            subtract: false,
-            saturation: PackedArithmeticSaturation::Wrapping,
+            operation: PackedArithmeticOperation::Add(PackedArithmeticSaturation::Wrapping),
         },
     ),
     (
         "__vadd4",
         PackedArithmeticBuiltin {
             lane_width: 8,
-            subtract: false,
-            saturation: PackedArithmeticSaturation::Wrapping,
+            operation: PackedArithmeticOperation::Add(PackedArithmeticSaturation::Wrapping),
         },
     ),
     (
         "__vsub2",
         PackedArithmeticBuiltin {
             lane_width: 16,
-            subtract: true,
-            saturation: PackedArithmeticSaturation::Wrapping,
+            operation: PackedArithmeticOperation::Subtract(PackedArithmeticSaturation::Wrapping),
         },
     ),
     (
         "__vsub4",
         PackedArithmeticBuiltin {
             lane_width: 8,
-            subtract: true,
-            saturation: PackedArithmeticSaturation::Wrapping,
+            operation: PackedArithmeticOperation::Subtract(PackedArithmeticSaturation::Wrapping),
         },
     ),
     (
         "__vaddus2",
         PackedArithmeticBuiltin {
             lane_width: 16,
-            subtract: false,
-            saturation: PackedArithmeticSaturation::Unsigned,
+            operation: PackedArithmeticOperation::Add(PackedArithmeticSaturation::Unsigned),
         },
     ),
     (
         "__vaddus4",
         PackedArithmeticBuiltin {
             lane_width: 8,
-            subtract: false,
-            saturation: PackedArithmeticSaturation::Unsigned,
+            operation: PackedArithmeticOperation::Add(PackedArithmeticSaturation::Unsigned),
         },
     ),
     (
         "__vsubus2",
         PackedArithmeticBuiltin {
             lane_width: 16,
-            subtract: true,
-            saturation: PackedArithmeticSaturation::Unsigned,
+            operation: PackedArithmeticOperation::Subtract(PackedArithmeticSaturation::Unsigned),
         },
     ),
     (
         "__vsubus4",
         PackedArithmeticBuiltin {
             lane_width: 8,
-            subtract: true,
-            saturation: PackedArithmeticSaturation::Unsigned,
+            operation: PackedArithmeticOperation::Subtract(PackedArithmeticSaturation::Unsigned),
         },
     ),
     (
         "__vaddss2",
         PackedArithmeticBuiltin {
             lane_width: 16,
-            subtract: false,
-            saturation: PackedArithmeticSaturation::Signed,
+            operation: PackedArithmeticOperation::Add(PackedArithmeticSaturation::Signed),
         },
     ),
     (
         "__vaddss4",
         PackedArithmeticBuiltin {
             lane_width: 8,
-            subtract: false,
-            saturation: PackedArithmeticSaturation::Signed,
+            operation: PackedArithmeticOperation::Add(PackedArithmeticSaturation::Signed),
         },
     ),
     (
         "__vsubss2",
         PackedArithmeticBuiltin {
             lane_width: 16,
-            subtract: true,
-            saturation: PackedArithmeticSaturation::Signed,
+            operation: PackedArithmeticOperation::Subtract(PackedArithmeticSaturation::Signed),
         },
     ),
     (
         "__vsubss4",
         PackedArithmeticBuiltin {
             lane_width: 8,
-            subtract: true,
-            saturation: PackedArithmeticSaturation::Signed,
+            operation: PackedArithmeticOperation::Subtract(PackedArithmeticSaturation::Signed),
+        },
+    ),
+    (
+        "__vavgs2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::Average { signed: true },
+        },
+    ),
+    (
+        "__vavgs4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::Average { signed: true },
+        },
+    ),
+    (
+        "__vavgu2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::Average { signed: false },
+        },
+    ),
+    (
+        "__vavgu4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::Average { signed: false },
         },
     ),
 ];
