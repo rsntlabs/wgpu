@@ -963,6 +963,10 @@ These predefined functions operate on integer representations:
 | `__rhadd` | `int, int` | `int` | Compute the exact signed average, rounded up, without overflowing the sum. |
 | `__uhadd` | `unsigned int, unsigned int` | `unsigned int` | Compute the exact unsigned average, rounded down, without overflowing the sum. |
 | `__urhadd` | `unsigned int, unsigned int` | `unsigned int` | Compute the exact unsigned average, rounded up, without overflowing the sum. |
+| `__vadd2` | `unsigned int, unsigned int` | `unsigned int` | Add two packed 16-bit lanes independently, wrapping each lane. |
+| `__vadd4` | `unsigned int, unsigned int` | `unsigned int` | Add four packed 8-bit lanes independently, wrapping each lane. |
+| `__vsub2` | `unsigned int, unsigned int` | `unsigned int` | Subtract two packed 16-bit lanes independently, wrapping each lane. |
+| `__vsub4` | `unsigned int, unsigned int` | `unsigned int` | Subtract four packed 8-bit lanes independently, wrapping each lane. |
 | `__sad` | `int, int, unsigned int` | `unsigned int` | Add the absolute signed difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__usad` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Add the absolute unsigned difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__byte_perm` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Select four output bytes from eight input bytes using four selector nibbles. |
@@ -983,6 +987,14 @@ Arguments convert to the declared parameter type before the operation, so
 `__popc(3.75f)` is 2. The signed result of `__popc` is preserved: `__popc(3u) - 3`
 is -1. These signatures and results follow NVIDIA's
 [integer intrinsics](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__INT.html).
+
+Packed addition and subtraction convert both arguments to `unsigned int`, then
+operate independently on matching lanes. Carries and borrows stay within their
+lanes: `__vadd2(0x0000ffffu, 1u)` is zero, and `__vsub4(0u, 1u)` is
+`0x000000ffu`. These operations follow NVIDIA's
+[SIMD intrinsics](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SIMD.html).
+The lowering uses bounded 32-bit arithmetic, masks, and shifts, without requiring
+64-bit shader support or a newer Metal language version.
 
 Nth-set-bit searches convert the mask and base to `unsigned int` and the offset
 to `int`. `__fns` searches upward for positive offsets and downward for negative

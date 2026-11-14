@@ -3,7 +3,9 @@ use super::*;
 use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
 use super::float_helpers::FloatMathFunction;
 use super::function_declarations::Inlining;
-use super::integer_intrinsics::{FunnelShiftBuiltin, FunnelShiftDirection, HalfAddBuiltin};
+use super::integer_intrinsics::{
+    FunnelShiftBuiltin, FunnelShiftDirection, HalfAddBuiltin, PackedArithmeticBuiltin,
+};
 use super::launch_bounds::LaunchBounds;
 use super::types::{IntegerSpecifiers, VECTOR_TYPES};
 use crate::MathFunction;
@@ -116,6 +118,37 @@ const MULTIPLY_HIGH_BUILTINS: [(&str, Scalar); 2] =
     [("__mulhi", Scalar::I32), ("__umulhi", Scalar::U32)];
 
 const SAD_BUILTINS: [(&str, Scalar); 2] = [("__sad", Scalar::I32), ("__usad", Scalar::U32)];
+
+const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 4] = [
+    (
+        "__vadd2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            subtract: false,
+        },
+    ),
+    (
+        "__vadd4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            subtract: false,
+        },
+    ),
+    (
+        "__vsub2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            subtract: true,
+        },
+    ),
+    (
+        "__vsub4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            subtract: true,
+        },
+    ),
+];
 
 const HALF_ADD_BUILTINS: [(&str, HalfAddBuiltin); 4] = [
     (
@@ -299,138 +332,137 @@ const FUNNEL_SHIFT_BUILTINS: [(&str, FunnelShiftBuiltin); 4] = [
 ];
 
 pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclaration> {
-    MATH_BUILTINS
-        .into_iter()
-        .map(|(name, _)| {
-            (
-                name,
+    let mut declarations =
+        MATH_BUILTINS
+            .into_iter()
+            .map(|(name, _)| {
+                (
+                    name,
+                    GlobalDeclaration::Functions(FunctionOverloads::default()),
+                )
+            })
+            .chain(MULTIPLY24_BUILTINS.into_iter().map(|(name, _)| {
+                (
+                    name,
+                    GlobalDeclaration::Functions(FunctionOverloads::default()),
+                )
+            }))
+            .chain(MULTIPLY_HIGH_BUILTINS.into_iter().map(|(name, _)| {
+                (
+                    name,
+                    GlobalDeclaration::Functions(FunctionOverloads::default()),
+                )
+            }))
+            .chain(HALF_ADD_BUILTINS.into_iter().map(|(name, _)| {
+                (
+                    name,
+                    GlobalDeclaration::Functions(FunctionOverloads::default()),
+                )
+            }))
+            .chain(SAD_BUILTINS.into_iter().map(|(name, _)| {
+                (
+                    name,
+                    GlobalDeclaration::Functions(FunctionOverloads::default()),
+                )
+            }))
+            .chain(FUNNEL_SHIFT_BUILTINS.into_iter().map(|(name, _)| {
+                (
+                    name,
+                    GlobalDeclaration::Functions(FunctionOverloads::default()),
+                )
+            }))
+            .chain(BITCAST_BUILTINS.into_iter().map(|(name, _, _)| {
+                (
+                    name,
+                    GlobalDeclaration::Functions(FunctionOverloads::default()),
+                )
+            }))
+            .chain(UNARY_BUILTINS.into_iter().map(|(name, _, _, _)| {
+                (
+                    name,
+                    GlobalDeclaration::Functions(FunctionOverloads::default()),
+                )
+            }))
+            .chain(FLOAT_MATH_BUILTINS.into_iter().map(|(name, _)| {
+                (
+                    name,
+                    GlobalDeclaration::Functions(FunctionOverloads::default()),
+                )
+            }))
+            .chain(SQRT_BUILTINS.into_iter().map(|name| {
+                (
+                    name,
+                    GlobalDeclaration::Functions(FunctionOverloads::default()),
+                )
+            }))
+            .chain(core::iter::once((
+                "fmodf",
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )
-        })
-        .chain(MULTIPLY24_BUILTINS.into_iter().map(|(name, _)| {
-            (
-                name,
+            )))
+            .chain(core::iter::once((
+                "__byte_perm",
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )
-        }))
-        .chain(MULTIPLY_HIGH_BUILTINS.into_iter().map(|(name, _)| {
-            (
-                name,
+            )))
+            .chain(core::iter::once((
+                "__nv_bswap32",
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )
-        }))
-        .chain(HALF_ADD_BUILTINS.into_iter().map(|(name, _)| {
-            (
-                name,
+            )))
+            .chain(core::iter::once((
+                "__fns",
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )
-        }))
-        .chain(SAD_BUILTINS.into_iter().map(|(name, _)| {
-            (
-                name,
+            )))
+            .chain(core::iter::once((
+                "__dp4a",
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )
-        }))
-        .chain(FUNNEL_SHIFT_BUILTINS.into_iter().map(|(name, _)| {
-            (
-                name,
+            )))
+            .chain(["__dp2a_lo", "__dp2a_hi"].into_iter().map(|name| {
+                (
+                    name,
+                    GlobalDeclaration::Functions(FunctionOverloads::default()),
+                )
+            }))
+            .chain(INTEGER_ATOMICS.into_iter().map(|(name, _)| {
+                (
+                    name,
+                    GlobalDeclaration::Functions(FunctionOverloads::default()),
+                )
+            }))
+            .chain(core::iter::once((
+                "atomicCAS",
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )
-        }))
-        .chain(BITCAST_BUILTINS.into_iter().map(|(name, _, _)| {
-            (
-                name,
-                GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )
-        }))
-        .chain(UNARY_BUILTINS.into_iter().map(|(name, _, _, _)| {
-            (
-                name,
-                GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )
-        }))
-        .chain(FLOAT_MATH_BUILTINS.into_iter().map(|(name, _)| {
-            (
-                name,
-                GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )
-        }))
-        .chain(SQRT_BUILTINS.into_iter().map(|name| {
-            (
-                name,
-                GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )
-        }))
-        .chain(core::iter::once((
-            "fmodf",
-            GlobalDeclaration::Functions(FunctionOverloads::default()),
-        )))
-        .chain(core::iter::once((
-            "__byte_perm",
-            GlobalDeclaration::Functions(FunctionOverloads::default()),
-        )))
-        .chain(core::iter::once((
-            "__nv_bswap32",
-            GlobalDeclaration::Functions(FunctionOverloads::default()),
-        )))
-        .chain(core::iter::once((
-            "__fns",
-            GlobalDeclaration::Functions(FunctionOverloads::default()),
-        )))
-        .chain(core::iter::once((
-            "__dp4a",
-            GlobalDeclaration::Functions(FunctionOverloads::default()),
-        )))
-        .chain(["__dp2a_lo", "__dp2a_hi"].into_iter().map(|name| {
-            (
-                name,
-                GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )
-        }))
-        .chain(INTEGER_ATOMICS.into_iter().map(|(name, _)| {
-            (
-                name,
-                GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )
-        }))
-        .chain(core::iter::once((
-            "atomicCAS",
-            GlobalDeclaration::Functions(FunctionOverloads::default()),
-        )))
-        .chain(WRAPPING_ATOMICS.into_iter().map(|(name, _)| {
-            (
-                name,
-                GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )
-        }))
-        .chain(core::iter::once((
-            "cooperative_groups",
-            GlobalDeclaration::Namespace(Namespace::CooperativeGroups),
-        )))
-        .chain(core::iter::once((
-            "std",
-            GlobalDeclaration::Namespace(Namespace::Standard),
-        )))
-        .chain(core::iter::once((
-            "dim3",
-            GlobalDeclaration::Type(QualifiedType {
-                ty: TypeSpecifier::Dim3,
-                qualifiers: Qualifiers::NONE,
-            }),
-        )))
-        .chain(core::iter::once((
-            "size_t",
-            GlobalDeclaration::Type(QualifiedType {
-                ty: TypeSpecifier::Long {
-                    kind: ScalarKind::Uint,
-                },
-                qualifiers: Qualifiers::NONE,
-            }),
-        )))
-        .chain(
-            VECTOR_TYPES
-                .into_iter()
-                .flat_map(|(name, constructor, component_count, scalar)| {
+            )))
+            .chain(WRAPPING_ATOMICS.into_iter().map(|(name, _)| {
+                (
+                    name,
+                    GlobalDeclaration::Functions(FunctionOverloads::default()),
+                )
+            }))
+            .chain(core::iter::once((
+                "cooperative_groups",
+                GlobalDeclaration::Namespace(Namespace::CooperativeGroups),
+            )))
+            .chain(core::iter::once((
+                "std",
+                GlobalDeclaration::Namespace(Namespace::Standard),
+            )))
+            .chain(core::iter::once((
+                "dim3",
+                GlobalDeclaration::Type(QualifiedType {
+                    ty: TypeSpecifier::Dim3,
+                    qualifiers: Qualifiers::NONE,
+                }),
+            )))
+            .chain(core::iter::once((
+                "size_t",
+                GlobalDeclaration::Type(QualifiedType {
+                    ty: TypeSpecifier::Long {
+                        kind: ScalarKind::Uint,
+                    },
+                    qualifiers: Qualifiers::NONE,
+                }),
+            )))
+            .chain(VECTOR_TYPES.into_iter().flat_map(
+                |(name, constructor, component_count, scalar)| {
                     [
                         (
                             name,
@@ -447,9 +479,16 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
                             GlobalDeclaration::Functions(FunctionOverloads::default()),
                         ),
                     ]
-                }),
+                },
+            ))
+            .collect::<FastHashMap<_, _>>();
+    declarations.extend(PACKED_ARITHMETIC_BUILTINS.into_iter().map(|(name, _)| {
+        (
+            name,
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
         )
-        .collect()
+    }));
+    declarations
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -481,6 +520,7 @@ pub(super) enum FunctionCandidate {
     Multiply24(Scalar),
     MultiplyHigh(Scalar),
     HalfAdd(HalfAddBuiltin),
+    PackedArithmetic(PackedArithmeticBuiltin),
     Sad(Scalar),
     BytePerm,
     ByteSwap32,
@@ -1030,6 +1070,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Multiply24(_)
                         | FunctionCandidate::MultiplyHigh(_)
                         | FunctionCandidate::HalfAdd(_)
+                        | FunctionCandidate::PackedArithmetic(_)
                         | FunctionCandidate::Sad(_)
                         | FunctionCandidate::BytePerm
                         | FunctionCandidate::ByteSwap32
@@ -1300,7 +1341,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Sad(_)
             | FunctionCandidate::BytePerm
             | FunctionCandidate::ByteSwap32
-            | FunctionCandidate::Fns => TypeSpecifier::Scalar(Scalar::U32),
+            | FunctionCandidate::Fns
+            | FunctionCandidate::PackedArithmetic(_) => TypeSpecifier::Scalar(Scalar::U32),
             FunctionCandidate::IntegralDouble { .. } => unreachable!(),
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::Sqrt
@@ -1838,6 +1880,23 @@ impl<'a> Parser<'a> {
             }
             .into());
         }
+        if let FunctionCandidate::PackedArithmetic(builtin) = candidate {
+            self.activate_parameter_expansion(span)?;
+            self.prepare_parameter_bindings(span)?;
+            let mut arguments = arguments.into_iter();
+            let left = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
+            let right = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
+            let handle = self.packed_arithmetic(builtin, left.handle, right.handle, span)?;
+            return Ok(Value {
+                category: ValueCategory::Prvalue,
+                qualifiers: Qualifiers::NONE,
+                constant: ConstantValue::default(),
+                handle,
+                ty: scalar_resolution(Scalar::U32),
+                span,
+            }
+            .into());
+        }
         if let FunctionCandidate::HalfAdd(builtin) = candidate {
             let mut arguments = arguments.into_iter();
             let left = self.convert_scalar(arguments.next().unwrap().into(), builtin.scalar)?;
@@ -2185,6 +2244,13 @@ impl<'a> Parser<'a> {
                     .map(|(_, scalar)| FunctionCandidate::MultiplyHigh(scalar)),
             )
             .chain(
+                PACKED_ARITHMETIC_BUILTINS
+                    .into_iter()
+                    .find(|&(candidate, _)| candidate == name)
+                    .filter(move |_| builtin_visible)
+                    .map(|(_, builtin)| FunctionCandidate::PackedArithmetic(builtin)),
+            )
+            .chain(
                 HALF_ADD_BUILTINS
                     .into_iter()
                     .find(|&(candidate, _)| candidate == name)
@@ -2290,6 +2356,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Multiply24(_)
             | FunctionCandidate::MultiplyHigh(_)
             | FunctionCandidate::HalfAdd(_)
+            | FunctionCandidate::PackedArithmetic(_)
             | FunctionCandidate::Atomic { .. }
             | FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::Fmodf => 2,
@@ -2357,7 +2424,10 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Fmodf => return Some(scalar_resolution(Scalar::F32)),
             FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::BytePerm
-            | FunctionCandidate::ByteSwap32 => return Some(scalar_resolution(Scalar::U32)),
+            | FunctionCandidate::ByteSwap32
+            | FunctionCandidate::PackedArithmetic(_) => {
+                return Some(scalar_resolution(Scalar::U32))
+            }
             FunctionCandidate::Sad(scalar) => {
                 return Some(scalar_resolution(if logical_index < 2 {
                     scalar

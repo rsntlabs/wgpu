@@ -19,7 +19,71 @@ pub(super) struct HalfAddBuiltin {
     pub(super) rounded: bool,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub(super) struct PackedArithmeticBuiltin {
+    pub(super) lane_width: u32,
+    pub(super) subtract: bool,
+}
+
 impl Parser<'_> {
+    pub(super) fn packed_arithmetic(
+        &mut self,
+        builtin: PackedArithmeticBuiltin,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let radix = 1u32 << builtin.lane_width;
+        let mask = self.append(Expression::Literal(Literal::U32(radix - 1)), span)?;
+        let radix = if builtin.subtract {
+            Some(self.append(Expression::Literal(Literal::U32(radix)), span)?)
+        } else {
+            None
+        };
+        let mut result = None;
+        for lane in 0..32 / builtin.lane_width {
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            let shift = if lane == 0 {
+                None
+            } else {
+                Some(self.append(
+                    Expression::Literal(Literal::U32(lane * builtin.lane_width)),
+                    span,
+                )?)
+            };
+            let (left, right) = if let Some(shift) = shift {
+                (
+                    self.integer_binary(BinaryOperator::ShiftRight, left, shift, span)?,
+                    self.integer_binary(BinaryOperator::ShiftRight, right, shift, span)?,
+                )
+            } else {
+                (left, right)
+            };
+            let left = self.integer_binary(BinaryOperator::And, left, mask, span)?;
+            let right = self.integer_binary(BinaryOperator::And, right, mask, span)?;
+            let value = if let Some(radix) = radix {
+                let left = self.integer_binary(BinaryOperator::Add, left, radix, span)?;
+                self.integer_binary(BinaryOperator::Subtract, left, right, span)?
+            } else {
+                self.integer_binary(BinaryOperator::Add, left, right, span)?
+            };
+            let value = self.integer_binary(BinaryOperator::And, value, mask, span)?;
+            let value = if let Some(shift) = shift {
+                self.integer_binary(BinaryOperator::ShiftLeft, value, shift, span)?
+            } else {
+                value
+            };
+            result = Some(if let Some(result) = result {
+                self.integer_binary(BinaryOperator::InclusiveOr, result, value, span)?
+            } else {
+                value
+            });
+        }
+        Ok(result.unwrap())
+    }
+
     pub(super) fn byte_swap32(
         &mut self,
         value: Handle<Expression>,

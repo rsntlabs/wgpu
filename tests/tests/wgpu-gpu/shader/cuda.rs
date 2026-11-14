@@ -89,6 +89,7 @@ mod operator_addition;
 mod operator_compound_assignments;
 mod operator_functions;
 mod operator_null_constants;
+mod packed_arithmetic;
 mod parenthesized_aggregates;
 mod parenthesized_arrays;
 mod particles;
@@ -230,6 +231,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_MULTIPLE_KERNELS,
         CUDA_MULTIPLY24,
         CUDA_MULTIPLY_HIGH,
+        CUDA_PACKED_ARITHMETIC,
         CUDA_NONFINITE_CONSTANTS,
         CUDA_NULL_POINTERS,
         CUDA_NULLPTR,
@@ -948,3 +950,6 @@ static CUDA_TEMPLATE_DEFAULT_ARGUMENTS: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_TEMPLATE_DEFAULT_TYPE_QUERIES: GpuTestConfiguration =
     configuration(template_default_type_queries::cases);
+
+#[apply(gpu_test!)]
+static CUDA_PACKED_ARITHMETIC: GpuTestConfiguration = configuration(packed_arithmetic::cases);
