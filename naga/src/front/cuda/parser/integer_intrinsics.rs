@@ -42,6 +42,8 @@ pub(super) enum PackedArithmeticOperation {
     SumAbsoluteDifferences { signed: bool },
     Minimum { signed: bool },
     Maximum { signed: bool },
+    Equal { mask: bool },
+    NotEqual { mask: bool },
 }
 
 #[derive(Clone, Copy)]
@@ -234,6 +236,19 @@ impl Parser<'_> {
         } else {
             None
         };
+        let comparison_constants = match builtin.operation {
+            PackedArithmeticOperation::Equal { mask: output_mask }
+            | PackedArithmeticOperation::NotEqual { mask: output_mask } => {
+                let zero = self.append(Expression::Literal(Literal::U32(0)), span)?;
+                let true_value = if output_mask {
+                    mask
+                } else {
+                    self.append(Expression::Literal(Literal::U32(1)), span)?
+                };
+                Some((zero, true_value))
+            }
+            _ => None,
+        };
         let ordered_sign_bit = if matches!(
             builtin.operation,
             PackedArithmeticOperation::AbsoluteDifference { signed: true }
@@ -297,7 +312,26 @@ impl Parser<'_> {
             };
             let left = self.integer_binary(BinaryOperator::And, left, mask, span)?;
             let right = self.integer_binary(BinaryOperator::And, right, mask, span)?;
-            let value = if matches!(
+            let value = if let Some((zero, true_value)) = comparison_constants {
+                let condition = self.integer_binary(
+                    if matches!(builtin.operation, PackedArithmeticOperation::Equal { .. }) {
+                        BinaryOperator::Equal
+                    } else {
+                        BinaryOperator::NotEqual
+                    },
+                    left,
+                    right,
+                    span,
+                )?;
+                self.append(
+                    Expression::Select {
+                        condition,
+                        accept: true_value,
+                        reject: zero,
+                    },
+                    span,
+                )?
+            } else if matches!(
                 builtin.operation,
                 PackedArithmeticOperation::AbsoluteDifference { .. }
                     | PackedArithmeticOperation::SumAbsoluteDifferences { .. }

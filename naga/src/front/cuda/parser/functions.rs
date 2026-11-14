@@ -427,6 +427,62 @@ const PACKED_ARITHMETIC_BUILTINS: &[(&str, PackedArithmeticBuiltin)] = &[
             operation: PackedArithmeticOperation::SumAbsoluteDifferences { signed: false },
         },
     ),
+    (
+        "__vcmpeq2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::Equal { mask: true },
+        },
+    ),
+    (
+        "__vcmpeq4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::Equal { mask: true },
+        },
+    ),
+    (
+        "__vcmpne2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::NotEqual { mask: true },
+        },
+    ),
+    (
+        "__vcmpne4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::NotEqual { mask: true },
+        },
+    ),
+    (
+        "__vseteq2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::Equal { mask: false },
+        },
+    ),
+    (
+        "__vseteq4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::Equal { mask: false },
+        },
+    ),
+    (
+        "__vsetne2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::NotEqual { mask: false },
+        },
+    ),
+    (
+        "__vsetne4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::NotEqual { mask: false },
+        },
+    ),
 ];
 
 const HALF_ADD_BUILTINS: [(&str, HalfAddBuiltin); 4] = [

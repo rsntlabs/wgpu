@@ -979,6 +979,14 @@ These predefined functions operate on integer representations:
 | `__vmaxs4` | `unsigned int, unsigned int` | `unsigned int` | Select signed maxima in four packed 8-bit lanes. |
 | `__vmaxu2` | `unsigned int, unsigned int` | `unsigned int` | Select unsigned maxima in two packed 16-bit lanes. |
 | `__vmaxu4` | `unsigned int, unsigned int` | `unsigned int` | Select unsigned maxima in four packed 8-bit lanes. |
+| `__vcmpeq2` | `unsigned int, unsigned int` | `unsigned int` | Return equality masks in two packed 16-bit lanes. |
+| `__vcmpeq4` | `unsigned int, unsigned int` | `unsigned int` | Return equality masks in four packed 8-bit lanes. |
+| `__vcmpne2` | `unsigned int, unsigned int` | `unsigned int` | Return inequality masks in two packed 16-bit lanes. |
+| `__vcmpne4` | `unsigned int, unsigned int` | `unsigned int` | Return inequality masks in four packed 8-bit lanes. |
+| `__vseteq2` | `unsigned int, unsigned int` | `unsigned int` | Return equality as 0 or 1 in each of two packed 16-bit lanes. |
+| `__vseteq4` | `unsigned int, unsigned int` | `unsigned int` | Return equality as 0 or 1 in each of four packed 8-bit lanes. |
+| `__vsetne2` | `unsigned int, unsigned int` | `unsigned int` | Return inequality as 0 or 1 in each of two packed 16-bit lanes. |
+| `__vsetne4` | `unsigned int, unsigned int` | `unsigned int` | Return inequality as 0 or 1 in each of four packed 8-bit lanes. |
 | `__vneg2` | `unsigned int` | `unsigned int` | Negate two packed signed 16-bit lanes with lane-width wrapping. |
 | `__vneg4` | `unsigned int` | `unsigned int` | Negate four packed signed 8-bit lanes with lane-width wrapping. |
 | `__vnegss2` | `unsigned int` | `unsigned int` | Negate two packed signed 16-bit lanes with signed saturation. |
@@ -1087,6 +1095,16 @@ values, while retaining unsigned public parameter and result types. For example,
 signed and unsigned maxima select `0x7f7f7f7fu` and `0x80808080u`, respectively.
 All eight functions use bounded 32-bit operations compatible with the default
 Metal language version.
+
+Packed equality and inequality compare the raw bits of each corresponding
+lane independently. The `cmp` forms return `0xffff` or `0xff` in each true
+lane and zero in each false lane. The `set` forms place `1` in each true
+lane and zero in each false lane. For example,
+`__vcmpeq2(0x12345678u, 0x1234abcdu)` is `0xffff0000u`, while
+`__vseteq2(0x12345678u, 0x1234abcdu)` is `0x00010000u`.
+`__vseteq4(0u, 0u)` is `0x01010101u`. Public parameters and results remain
+`unsigned int`; all eight functions use bounded 32-bit operations compatible
+with the default Metal language version.
 
 Packed negation also interprets each lane as signed while keeping unsigned
 public parameter and result types. Wrapping negation leaves the most negative
