@@ -95,6 +95,7 @@ mod packed_averages;
 mod packed_half_sums;
 mod packed_min_max;
 mod packed_negation;
+mod packed_sad;
 mod parameters;
 mod parenthesized_aggregates;
 mod parenthesized_arrays;

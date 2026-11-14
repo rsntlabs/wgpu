@@ -188,7 +188,7 @@ const PACKED_UNARY_BUILTINS: [(&str, PackedUnaryBuiltin); 8] = [
     ),
 ];
 
-const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 30] = [
+const PACKED_ARITHMETIC_BUILTINS: &[(&str, PackedArithmeticBuiltin)] = &[
     (
         "__vadd2",
         PackedArithmeticBuiltin {
@@ -397,6 +397,34 @@ const PACKED_ARITHMETIC_BUILTINS: [(&str, PackedArithmeticBuiltin); 30] = [
         PackedArithmeticBuiltin {
             lane_width: 8,
             operation: PackedArithmeticOperation::Maximum { signed: false },
+        },
+    ),
+    (
+        "__vsads2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::SumAbsoluteDifferences { signed: true },
+        },
+    ),
+    (
+        "__vsads4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::SumAbsoluteDifferences { signed: true },
+        },
+    ),
+    (
+        "__vsadu2",
+        PackedArithmeticBuiltin {
+            lane_width: 16,
+            operation: PackedArithmeticOperation::SumAbsoluteDifferences { signed: false },
+        },
+    ),
+    (
+        "__vsadu4",
+        PackedArithmeticBuiltin {
+            lane_width: 8,
+            operation: PackedArithmeticOperation::SumAbsoluteDifferences { signed: false },
         },
     ),
 ];

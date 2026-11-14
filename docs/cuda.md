@@ -1001,6 +1001,10 @@ These predefined functions operate on integer representations:
 | `__vavgu4` | `unsigned int, unsigned int` | `unsigned int` | Average four packed unsigned 8-bit lanes, rounding upward. |
 | `__vhaddu2` | `unsigned int, unsigned int` | `unsigned int` | Average two packed unsigned 16-bit lanes, rounding downward. |
 | `__vhaddu4` | `unsigned int, unsigned int` | `unsigned int` | Average four packed unsigned 8-bit lanes, rounding downward. |
+| `__vsads2` | `unsigned int, unsigned int` | `unsigned int` | Sum absolute differences in two packed signed 16-bit lanes into a scalar. |
+| `__vsads4` | `unsigned int, unsigned int` | `unsigned int` | Sum absolute differences in four packed signed 8-bit lanes into a scalar. |
+| `__vsadu2` | `unsigned int, unsigned int` | `unsigned int` | Sum absolute differences in two packed unsigned 16-bit lanes into a scalar. |
+| `__vsadu4` | `unsigned int, unsigned int` | `unsigned int` | Sum absolute differences in four packed unsigned 8-bit lanes into a scalar. |
 | `__sad` | `int, int, unsigned int` | `unsigned int` | Add the absolute signed difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__usad` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Add the absolute unsigned difference to an unsigned accumulator, wrapping to 32 bits. |
 | `__byte_perm` | `unsigned int, unsigned int, unsigned int` | `unsigned int` | Select four output bytes from eight input bytes using four selector nibbles. |
@@ -1063,6 +1067,16 @@ unsigned input lanes. For example,
 produce zero. All four functions retain unsigned public parameter and result
 types, use bounded 32-bit operations, and support the default Metal language
 version.
+
+Packed sums of absolute differences add the full lane magnitudes into one
+unsigned scalar result. The `s` variants interpret input lanes as signed; the
+`u` variants use unsigned lanes. For example,
+`__vsads2(0x80008000u, 0x7fff7fffu)` is `131070u`, while
+`__vsadu2(0x80008000u, 0x7fff7fffu)` is `2u`. The maximum sum is `131070u`
+for two 16-bit lanes or `1020u` for four 8-bit lanes, with no lane-width
+truncation of the result. All four functions have two unsigned parameters
+and an unsigned result, using bounded 32-bit operations compatible with the
+default Metal language version.
 
 Packed minimum and maximum select each lane independently using signed
 ordering for the `s` variants and unsigned ordering for the `u` variants.

@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA `__vsads2`, `__vsads4`, `__vsadu2`, and `__vsadu4` scalar sums of packed absolute differences.
 - Support CUDA packed signed and unsigned 8-bit and 16-bit minimum and maximum intrinsics.
 - Support CUDA `__vabsdiffs2`, `__vabsdiffs4`, `__vabsdiffu2`, and `__vabsdiffu4` packed absolute differences.
 - Support CUDA `__vhaddu2` and `__vhaddu4` packed unsigned averages rounded toward zero.

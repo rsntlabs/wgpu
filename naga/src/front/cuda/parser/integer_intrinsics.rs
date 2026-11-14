@@ -39,6 +39,7 @@ pub(super) enum PackedArithmeticOperation {
     Subtract(PackedArithmeticSaturation),
     Average(PackedAverageMode),
     AbsoluteDifference { signed: bool },
+    SumAbsoluteDifferences { signed: bool },
     Minimum { signed: bool },
     Maximum { signed: bool },
 }
@@ -236,6 +237,7 @@ impl Parser<'_> {
         let ordered_sign_bit = if matches!(
             builtin.operation,
             PackedArithmeticOperation::AbsoluteDifference { signed: true }
+                | PackedArithmeticOperation::SumAbsoluteDifferences { signed: true }
                 | PackedArithmeticOperation::Minimum { signed: true }
                 | PackedArithmeticOperation::Maximum { signed: true }
         ) {
@@ -298,6 +300,7 @@ impl Parser<'_> {
             let value = if matches!(
                 builtin.operation,
                 PackedArithmeticOperation::AbsoluteDifference { .. }
+                    | PackedArithmeticOperation::SumAbsoluteDifferences { .. }
             ) {
                 let (left, right) = if let Some(sign_bit) = ordered_sign_bit {
                     // Flipping the sign bit biases signed lanes without changing distances.
@@ -413,6 +416,17 @@ impl Parser<'_> {
                 self.integer_binary(BinaryOperator::Add, left, right, span)?
             };
             let value = self.integer_binary(BinaryOperator::And, value, mask, span)?;
+            if matches!(
+                builtin.operation,
+                PackedArithmeticOperation::SumAbsoluteDifferences { .. }
+            ) {
+                result = Some(if let Some(result) = result {
+                    self.integer_binary(BinaryOperator::Add, result, value, span)?
+                } else {
+                    value
+                });
+                continue;
+            }
             let value = if let Some(shift) = shift {
                 self.integer_binary(BinaryOperator::ShiftLeft, value, shift, span)?
             } else {

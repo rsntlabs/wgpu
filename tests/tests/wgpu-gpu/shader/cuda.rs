@@ -96,6 +96,7 @@ mod packed_averages;
 mod packed_half_sums;
 mod packed_min_max;
 mod packed_negation;
+mod packed_sad;
 mod parenthesized_aggregates;
 mod parenthesized_arrays;
 mod particles;
@@ -243,6 +244,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_PACKED_ABSOLUTE_DIFFERENCES,
         CUDA_PACKED_NEGATION,
         CUDA_PACKED_MIN_MAX,
+        CUDA_PACKED_SAD,
         CUDA_PACKED_ARITHMETIC,
         CUDA_PACKED_AVERAGES,
         CUDA_PACKED_HALF_SUMS,
@@ -996,3 +998,6 @@ static CUDA_PACKED_ABSOLUTE_DIFFERENCES: GpuTestConfiguration =
 
 #[apply(gpu_test!)]
 static CUDA_PACKED_MIN_MAX: GpuTestConfiguration = configuration(packed_min_max::cases);
+
+#[apply(gpu_test!)]
+static CUDA_PACKED_SAD: GpuTestConfiguration = configuration(packed_sad::cases);
