@@ -185,9 +185,4 @@ fn cuda_funnel_shifts_reject_invalid_signatures_arguments_and_constant_contexts(
             ")".repeat(70)
         ));
     }
-    for name in ["__funnelshift_lc", "__funnelshift_rc"] {
-        reject(&format!(
-            "__global__ void kernel() {{ {name}(1u, 2u, 3u); }}"
-        ));
-    }
 }

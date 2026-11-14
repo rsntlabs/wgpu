@@ -913,6 +913,8 @@ These predefined functions operate on integer representations:
 | `__umul24` | `unsigned int, unsigned int` | `unsigned int` | Multiply unsigned 24-bit operands and return the low 32 product bits. |
 | `__funnelshift_l` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` left and return its high word. |
 | `__funnelshift_r` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift the concatenation `hi:lo` right and return its low word. |
+| `__funnelshift_lc` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift `hi:lo` left by a count clamped to 32 and return its high word. |
+| `__funnelshift_rc` | `unsigned int lo, unsigned int hi, unsigned int shift` | `unsigned int` | Shift `hi:lo` right by a count clamped to 32 and return its low word. |
 
 Negative `int` arguments use their two's-complement representation. For example,
 `__clz(-1)` is 0, `__ffs(-2)` is 2, and `__brev(1u)` is `0x80000000u`.
@@ -930,11 +932,14 @@ product exceeds 32 bits. For example, `__mul24(0x00800000, 1)` is -8388608, whil
 Calls do not provide source constant expressions, including calls with literal
 arguments.
 
-Funnel shifts convert all three arguments to `unsigned int` and reduce the shift
-count modulo 32. A zero count returns `hi` for `__funnelshift_l` and `lo` for
-`__funnelshift_r`. Both use 32-bit operations with masked shift amounts, including
-the complementary shift. The clamped-count variants `__funnelshift_lc` and
-`__funnelshift_rc` remain unsupported.
+Funnel shifts convert all three arguments to `unsigned int` first. The
+`__funnelshift_l` and `__funnelshift_r` variants reduce the count modulo 32;
+`__funnelshift_lc` and `__funnelshift_rc` clamp it to 32. At zero, left shifts
+return `hi` and right shifts return `lo`. At counts of 32 or more, the clamped
+left shift returns `lo` and the clamped right shift returns `hi`. Conversion
+precedes clamping, so a count of `0x100000000ULL` converts to zero. All four
+variants use only 32-bit operations, masking both emitted shift amounts even
+when the clamped result selects a whole word.
 
 These names use the same argument evaluation, overload selection, name hiding,
 and predefined-signature restrictions as the bit reinterpretation functions

@@ -43,6 +43,7 @@ mod floorf;
 mod fmodf;
 mod function_macros;
 mod funnel_shifts;
+mod funnel_shifts_clamped;
 mod helper_builtins;
 mod helper_parameters;
 mod helpers;

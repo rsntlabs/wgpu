@@ -164,8 +164,6 @@ fn cuda_funnel_shifts_cli_rejects_invalid_calls_and_reserved_signatures() {
         "__global__ void kernel() { __funnelshift_l(1u, 2u); }",
         "__global__ void kernel(unsigned *pointer) { __funnelshift_r(pointer, 2u, 3u); }",
         "__global__ void kernel() { __funnelshift_l(uint2(1u), 2u, 3u); }",
-        "__global__ void kernel() { __funnelshift_lc(1u, 2u, 3u); }",
-        "__global__ void kernel() { __funnelshift_rc(1u, 2u, 3u); }",
     ] {
         let files = TestFiles::new("cu", source);
         let result = files.translate(&[]);

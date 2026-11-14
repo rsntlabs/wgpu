@@ -7,10 +7,16 @@ pub(super) enum FunnelShiftDirection {
     Right,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub(super) struct FunnelShiftBuiltin {
+    pub(super) direction: FunnelShiftDirection,
+    pub(super) clamped: bool,
+}
+
 impl Parser<'_> {
     pub(super) fn funnel_shift(
         &mut self,
-        direction: FunnelShiftDirection,
+        builtin: FunnelShiftBuiltin,
         low: Handle<Expression>,
         high: Handle<Expression>,
         shift: Handle<Expression>,
@@ -44,7 +50,7 @@ impl Parser<'_> {
             },
             span,
         )?;
-        let (base, incoming, primary_op, incoming_op) = match direction {
+        let (base, incoming, primary_op, incoming_op) = match builtin.direction {
             FunnelShiftDirection::Left => (
                 high,
                 low,
@@ -91,11 +97,30 @@ impl Parser<'_> {
             },
             span,
         )?;
-        self.append(
+        let shifted = self.append(
             Expression::Select {
                 condition: nonzero,
                 accept: combined,
                 reject: base,
+            },
+            span,
+        )?;
+        if !builtin.clamped {
+            return Ok(shifted);
+        }
+        let at_limit = self.append(
+            Expression::Binary {
+                op: BinaryOperator::GreaterEqual,
+                left: shift,
+                right: width,
+            },
+            span,
+        )?;
+        self.append(
+            Expression::Select {
+                condition: at_limit,
+                accept: incoming,
+                reject: shifted,
             },
             span,
         )

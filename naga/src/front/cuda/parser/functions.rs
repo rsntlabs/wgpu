@@ -3,7 +3,7 @@ use super::*;
 use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
 use super::float_helpers::FloatMathFunction;
 use super::function_declarations::Inlining;
-use super::integer_intrinsics::FunnelShiftDirection;
+use super::integer_intrinsics::{FunnelShiftBuiltin, FunnelShiftDirection};
 use super::launch_bounds::LaunchBounds;
 use super::types::{IntegerSpecifiers, VECTOR_TYPES};
 use crate::MathFunction;
@@ -231,9 +231,35 @@ fn vector_constructor(name: &str) -> Option<(u8, Scalar)> {
         })
 }
 
-const FUNNEL_SHIFT_BUILTINS: [(&str, FunnelShiftDirection); 2] = [
-    ("__funnelshift_l", FunnelShiftDirection::Left),
-    ("__funnelshift_r", FunnelShiftDirection::Right),
+const FUNNEL_SHIFT_BUILTINS: [(&str, FunnelShiftBuiltin); 4] = [
+    (
+        "__funnelshift_l",
+        FunnelShiftBuiltin {
+            direction: FunnelShiftDirection::Left,
+            clamped: false,
+        },
+    ),
+    (
+        "__funnelshift_r",
+        FunnelShiftBuiltin {
+            direction: FunnelShiftDirection::Right,
+            clamped: false,
+        },
+    ),
+    (
+        "__funnelshift_lc",
+        FunnelShiftBuiltin {
+            direction: FunnelShiftDirection::Left,
+            clamped: true,
+        },
+    ),
+    (
+        "__funnelshift_rc",
+        FunnelShiftBuiltin {
+            direction: FunnelShiftDirection::Right,
+            clamped: true,
+        },
+    ),
 ];
 
 pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclaration> {
@@ -377,7 +403,7 @@ pub(super) enum FunctionCandidate {
     Current,
     Builtin(MathBuiltin),
     Multiply24(Scalar),
-    FunnelShift(FunnelShiftDirection),
+    FunnelShift(FunnelShiftBuiltin),
     Atomic {
         function: crate::AtomicFunction,
         scalar: Scalar,
@@ -1566,13 +1592,12 @@ impl<'a> Parser<'a> {
             }
             return Ok(self.convert_scalar(value.into(), result)?.into());
         }
-        if let FunctionCandidate::FunnelShift(direction) = candidate {
+        if let FunctionCandidate::FunnelShift(builtin) = candidate {
             let mut arguments = arguments.into_iter();
             let low = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
             let high = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
             let shift = self.convert_scalar(arguments.next().unwrap().into(), Scalar::U32)?;
-            let handle =
-                self.funnel_shift(direction, low.handle, high.handle, shift.handle, span)?;
+            let handle = self.funnel_shift(builtin, low.handle, high.handle, shift.handle, span)?;
             return Ok(Value {
                 category: ValueCategory::Prvalue,
                 qualifiers: Qualifiers::NONE,
@@ -1891,7 +1916,7 @@ impl<'a> Parser<'a> {
                     .into_iter()
                     .find(|&(candidate, _)| candidate == name)
                     .filter(move |_| builtin_visible)
-                    .map(|(_, direction)| FunctionCandidate::FunnelShift(direction)),
+                    .map(|(_, builtin)| FunctionCandidate::FunnelShift(builtin)),
             )
             .chain(
                 BITCAST_BUILTINS

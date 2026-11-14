@@ -47,6 +47,7 @@ mod floorf;
 mod fmodf;
 mod function_macros;
 mod funnel_shifts;
+mod funnel_shifts_clamped;
 mod helper_builtins;
 mod helper_parameters;
 mod hex_float_literals;
@@ -169,6 +170,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FABS,
         CUDA_FFSLL,
         CUDA_FUNNEL_SHIFTS,
+        CUDA_FUNNEL_SHIFTS_CLAMPED,
         CUDA_FLOAT_DIVISION,
         CUDA_FLOAT_MATH,
         CUDA_FLOAT_SEPARATORS,
@@ -879,3 +881,7 @@ static CUDA_PARENTHESIZED_INTEGER16_ARRAYS: GpuTestConfiguration = configuration
 
 #[apply(gpu_test!)]
 static CUDA_FUNNEL_SHIFTS: GpuTestConfiguration = configuration(funnel_shifts::cases);
+
+#[apply(gpu_test!)]
+static CUDA_FUNNEL_SHIFTS_CLAMPED: GpuTestConfiguration =
+    configuration(funnel_shifts_clamped::cases);
