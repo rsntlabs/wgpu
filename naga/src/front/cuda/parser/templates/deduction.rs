@@ -6,6 +6,7 @@ impl Parser<'_> {
         template: usize,
         explicit: &[TemplateArgument],
         arguments: &[CapturedArgument],
+        position: LexerPosition,
         span: Span,
     ) -> Result<Option<Vec<TemplateValue>>, ParseError> {
         let declaration = &self.templates.declarations[template];
@@ -15,7 +16,7 @@ impl Parser<'_> {
             span,
         )?;
         if explicit.len() > parameter_count
-            || !self.template_accepts_arity(template, arguments.len(), self.lexer.position())
+            || !self.template_accepts_arity(template, arguments.len(), position)
         {
             return Ok(None);
         }
@@ -63,8 +64,13 @@ impl Parser<'_> {
             }
             values[parameter] = Some(value);
         }
-        if values.iter().any(Option::is_none) {
-            return Ok(None);
+        for (index, value) in values.iter_mut().enumerate() {
+            if value.is_none() {
+                *value = self.template_default_value(template, index, position);
+                if value.is_none() {
+                    return Ok(None);
+                }
+            }
         }
         self.parameter_expansion_budget
             .charge_slice::<TemplateValue>(parameter_count, span)?;

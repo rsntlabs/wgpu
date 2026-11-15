@@ -32,6 +32,7 @@ mod control_flow;
 mod declarations;
 mod decltype_objects;
 mod default_arguments;
+mod default_template_arguments;
 mod device_helper_barriers;
 mod device_shared;
 mod dim3;
@@ -312,6 +313,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_TRIGONOMETRY,
         CUDA_TYPE_ALIASES,
         CUDA_TYPE_QUERIES,
+        CUDA_DEFAULT_TEMPLATE_ARGUMENTS,
         CUDA_TEMPLATE_DEFAULT_ARGUMENTS,
         CUDA_TEMPLATE_DEFAULT_TYPE_QUERIES,
         CUDA_TYPE_TEMPLATES,
@@ -1036,3 +1038,7 @@ static CUDA_DECLTYPE_OBJECTS: GpuTestConfiguration = configuration(decltype_obje
 
 #[apply(gpu_test!)]
 static CUDA_NOEXCEPT: GpuTestConfiguration = configuration(noexcept::cases);
+
+#[apply(gpu_test!)]
+static CUDA_DEFAULT_TEMPLATE_ARGUMENTS: GpuTestConfiguration =
+    configuration(default_template_arguments::cases);

@@ -139,9 +139,17 @@ enum ParameterPattern {
     ThreadBlock,
 }
 
+#[derive(Clone, Copy)]
+struct TemplateTypeDefault {
+    value: TemplateValue,
+    position: LexerPosition,
+    span: Span,
+}
+
 struct FunctionTemplate<'a> {
     header: FunctionHeader<'a>,
     parameters: Vec<TemplateParameter<'a>>,
+    template_defaults: Vec<Option<TemplateTypeDefault>>,
     signature: Vec<ParameterPattern>,
     defaults: Vec<Option<ScalarDefault>>,
     result: ReturnType,
@@ -443,6 +451,7 @@ impl<'a> Parser<'a> {
         let FunctionTemplate {
             mut header,
             parameters,
+            template_defaults,
             signature,
             defaults,
             result,
@@ -497,6 +506,14 @@ impl<'a> Parser<'a> {
             None => None,
         };
         let id = if let Some(id) = previous {
+            if let Some(default) = template_defaults.iter().flatten().next() {
+                return Err(ParseError {
+                    message: String::from(
+                        "default template arguments must appear on the initial declaration",
+                    ),
+                    span: default.span,
+                });
+            }
             if !defaults.is_empty() {
                 return self.fail(
                     "default arguments must appear on the initial function template declaration",
@@ -554,6 +571,7 @@ impl<'a> Parser<'a> {
             self.templates.declarations.push(FunctionTemplate {
                 header: header.clone(),
                 parameters: Vec::new(),
+                template_defaults,
                 signature,
                 defaults,
                 result,
@@ -603,12 +621,53 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    fn template_type_default(
+        &mut self,
+        kind: TemplateParameterKind,
+        span: Span,
+    ) -> Result<TemplateTypeDefault, ParseError> {
+        if kind != TemplateParameterKind::Type {
+            return self.fail("non-type template parameter defaults are unsupported");
+        }
+        let ty = self.parse_type()?;
+        if matches!(ty.ty, TypeSpecifier::TemplateParameter(_)) {
+            return self.fail("dependent template type defaults are unsupported");
+        }
+        let ty = self.alias_declarator(ty)?;
+        if matches!(ty.ty, TypeSpecifier::Array(_)) {
+            return self.fail("array template type defaults are unsupported");
+        }
+        Ok(TemplateTypeDefault {
+            value: TemplateValue::Type {
+                ty: ty.ty,
+                qualifiers: ty.qualifiers,
+            },
+            position: self.lexer.position(),
+            span,
+        })
+    }
+
+    fn template_default_value(
+        &self,
+        template: usize,
+        index: usize,
+        position: LexerPosition,
+    ) -> Option<TemplateValue> {
+        self.templates.declarations[template]
+            .template_defaults
+            .get(index)
+            .and_then(|default| *default)
+            .filter(|default| default.position.precedes(position))
+            .map(|default| default.value)
+    }
+
     fn template_signature(&mut self, span: Span) -> Result<FunctionTemplate<'a>, ParseError> {
         self.prepare_parameter_bindings(span)?;
         if self.lexer.peek()?.0 == Token::Paren('>') {
             return self.fail("explicit template specializations are unsupported");
         }
         let mut parameters = Vec::new();
+        let mut template_defaults = Vec::new();
         loop {
             let parameter_span = self.lexer.peek()?.1;
             let kind = if self.lexer.next_if(Token::Word("typename"))?
@@ -644,6 +703,21 @@ impl<'a> Parser<'a> {
                 kind,
                 span: name_span,
             };
+            let default = if self.lexer.peek()?.0 == Token::Operation('=') {
+                let span = self.lexer.next()?.1;
+                Some(self.template_type_default(kind, span)?)
+            } else {
+                None
+            };
+            if default.is_some() || !template_defaults.is_empty() {
+                let count = parameters.len() + 1 - template_defaults.len();
+                self.parameter_expansion_budget
+                    .charge_slice::<Option<TemplateTypeDefault>>(count, name_span)?;
+                self.parameter_expansion_budget
+                    .charge_work(count, name_span)?;
+                template_defaults.resize(parameters.len() + 1, None);
+                template_defaults[parameters.len()] = default;
+            }
             self.bind_template_parameters(core::slice::from_ref(&parameter), None)?;
             parameters.push(parameter);
             if self.lexer.next_if(Token::Paren('>'))? {
@@ -671,6 +745,7 @@ impl<'a> Parser<'a> {
             result: header.result,
             header,
             parameters,
+            template_defaults,
             signature,
             defaults,
             source: SignatureSource { start: source, end },
@@ -1056,12 +1131,12 @@ impl<'a> Parser<'a> {
         let parameters = &self.templates.declarations[template].parameters;
         self.parameter_expansion_budget
             .charge_work(parameters.len(), span)?;
-        if parameters.len() != arguments.len() {
+        if arguments.len() > parameters.len() {
             return Ok(None);
         }
         self.parameter_expansion_budget
-            .charge_slice::<TemplateValue>(arguments.len(), span)?;
-        let mut converted = Vec::with_capacity(arguments.len());
+            .charge_slice::<TemplateValue>(parameters.len(), span)?;
+        let mut converted = Vec::with_capacity(parameters.len());
         for (parameter, argument) in parameters.iter().zip(arguments) {
             let value = match (parameter.kind, argument) {
                 (TemplateParameterKind::Type, &TemplateArgument::Type(ref ty)) => {
@@ -1085,6 +1160,13 @@ impl<'a> Parser<'a> {
                     value
                 }
                 _ => return Ok(None),
+            };
+            converted.push(value);
+        }
+        for index in converted.len()..parameters.len() {
+            let Some(value) = self.template_default_value(template, index, self.lexer.position())
+            else {
+                return Ok(None);
             };
             converted.push(value);
         }
@@ -1715,6 +1797,7 @@ impl<'a> Parser<'a> {
                 id,
                 explicit.as_deref().unwrap_or(&[]),
                 &arguments,
+                call_position,
                 span,
             )?
             else {

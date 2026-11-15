@@ -88,6 +88,30 @@ the applicable source qualifiers. Repeated deductions must agree on the type;
 `sum(1, 2u)` cannot deduce a common arithmetic type for two `Value` parameters.
 Explicitly supplied parameters use the ordinary argument conversion rules.
 
+Device and kernel templates accept fixed, nondependent type defaults on their
+initial declaration:
+
+```cuda
+template<class Result = unsigned, class Input>
+__device__ Result converted_default(Input value) {
+    return Result(value);
+}
+```
+
+`converted_default(3)` deduces `Input` as `int` and uses `unsigned` for `Result`.
+Supplied function arguments are deduced before defaults fill unresolved template
+parameters. A deduced type overrides its default; conflicting deductions remain
+errors. Explicit arguments, deduction, and defaults normalize to the same
+specialization key. Defaults do not affect overload ranking.
+
+Default type names bind where the initial declaration appears. The parameter's
+own name becomes visible after its default, while earlier parameters can shadow
+outer names. Later declarations and definitions inherit defaults and cannot add
+or repeat them. Dependent defaults and defaults for non-type parameters remain
+unsupported. Existing restrictions on explicit type arguments also apply to
+defaults. These forms use C++
+[template parameters](https://eel.is/c++draft/temp.param) within this subset.
+
 Templates participate alongside ordinary helper overloads. Better argument
 conversions take precedence, followed by ordinary overloads on ties and partial
 ordering of the supported template parameter patterns. An explicit `<...>` or
@@ -173,11 +197,12 @@ backend entry names.
 
 Type and integral parameters can appear in the same template. Integral arguments
 must be supplied explicitly; kernel instantiation definitions require every
-template argument. Typed kernel selectors use canonical source type names, such
-as `copy_typed<unsigned>`, even when the instantiation uses a type alias.
-Class templates, dependent non-type parameter types, default template arguments,
-parameter packs, explicit specializations, `if constexpr`, and overloaded kernel
-templates are unsupported.
+template argument without a type default. Typed kernel selectors use canonical
+source type names, such as `copy_typed<unsigned>`, even when the instantiation
+uses a type alias.
+Class templates, dependent non-type parameter types, dependent template defaults,
+defaults for non-type parameters, parameter packs, explicit specializations,
+`if constexpr`, and overloaded kernel templates are unsupported.
 Selected array-reference and pointer-reference instances remain unsupported.
 Unrequested template bodies receive structural checks; full semantic checking
 happens when an instance is requested. This does not yet implement all C++

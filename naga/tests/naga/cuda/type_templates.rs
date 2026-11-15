@@ -264,7 +264,7 @@ fn cuda_type_templates_reject_invalid_substitutions_and_bound_source_replay() {
         "template<class Value> __device__ Value identity(Value value) { return value; } __global__ void kernel(int runtime) { identity<runtime>(1); }",
         "template<class Value> __device__ Value identity(Value); __global__ void kernel() { identity<int>(1); }",
         "template<class Value> __device__ Value malformed(Value value) { return (value; } __global__ void kernel() {}",
-        "template<class Value = int> __device__ Value value() { return Value(1); } __global__ void kernel() {}",
+        "template<class Value, class Other = Value> __device__ Value value() { return Value(1); } __global__ void kernel() {}",
         "template<class... Values> __device__ int value() { return 1; } __global__ void kernel() {}",
         "template<class Value> struct Record { Value value; }; __global__ void kernel() {}",
         "template<class Value> __device__ Value value(Value &&input) { return input; } __global__ void kernel() { value<int>(1); }",
