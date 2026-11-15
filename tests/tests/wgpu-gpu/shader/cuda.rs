@@ -80,6 +80,7 @@ mod half_add;
 mod helper_builtins;
 mod helper_parameters;
 mod hex_float_literals;
+mod if_initializers;
 mod immutable_pointers;
 mod incomplete_array_aliases;
 mod incomplete_array_pointers;
@@ -278,6 +279,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_INTEGER_INTRINSICS,
         CUDA_INTEGER_MATH,
         CUDA_INTEGRAL_TEMPLATE_DEFAULTS,
+        CUDA_IF_INITIALIZERS,
         CUDA_INTEGRAL_TEMPLATES,
         CUDA_LAUNCH_BOUNDS,
         CUDA_LIST_INITIALIZATION,
@@ -1161,3 +1163,6 @@ static CUDA_FSQRT_RZ: GpuTestConfiguration = configuration(fsqrt_rz::cases);
 
 #[apply(gpu_test!)]
 static CUDA_FMAF_RZ: GpuTestConfiguration = configuration(fmaf_rz::cases);
+
+#[apply(gpu_test!)]
+static CUDA_IF_INITIALIZERS: GpuTestConfiguration = configuration(if_initializers::cases);

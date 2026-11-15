@@ -236,6 +236,11 @@ pub struct SymbolTable<Name, Var> {
 }
 
 impl<Name, Var> SymbolTable<Name, Var> {
+    #[cfg(feature = "cuda-in")]
+    pub(crate) const fn scope_depth(&self) -> usize {
+        self.cursor
+    }
+
     /// Adds a new lexical scope.
     ///
     /// All variables declared after this point will be added to this scope
@@ -341,6 +346,18 @@ where
         }
 
         None
+    }
+
+    #[cfg(feature = "cuda-in")]
+    pub(crate) fn lookup_in_scope<Q>(&self, depth: usize, name: &Q) -> Option<&Var>
+    where
+        Name: core::borrow::Borrow<Q>,
+        Q: core::hash::Hash + Eq + ?Sized,
+    {
+        if depth == 0 || depth > self.cursor {
+            return None;
+        }
+        self.scopes[depth - 1].get(name)
     }
 
     /// Adds a new variable to the current scope.

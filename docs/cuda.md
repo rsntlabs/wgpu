@@ -2306,6 +2306,19 @@ expressions or void returns; mixing void and value arms is unsupported.
 
 Statements include local declarations, expression statements, scoped blocks,
 `if`/`else`, `switch`, `for`, `while`, `do`/`while`, `break`, `continue`, and `return`.
+
+C++17 `if (init; condition)` accepts an empty initializer, an expression
+including a void call, or a supported local simple declaration, including
+`auto`, references, `typedef`, and record definitions. The initializer executes
+once before the condition, even when the condition is false. Its names are
+visible in the condition and both branches, then leave scope after the entire
+`if`/`else`. They cannot be redeclared in an outermost branch block; a nested
+block or a new `else if` initializer may shadow them. These rules follow C++17
+[if statements](https://timsong-cpp.github.io/cppwp/n4659/stmt.if) and
+[block scope](https://timsong-cpp.github.io/cppwp/n4659/basic.scope.block).
+Conditions remain scalar expressions. Declaration conditions, `if constexpr`,
+and C++23 `using` alias initializers remain unsupported.
+
 At statement start, C++ parses `int(value);` as a declaration. Parenthesized
 declarators are unsupported; use `int value = ...;` for a local declaration or
 `(int(value));` for a discarded cast expression.

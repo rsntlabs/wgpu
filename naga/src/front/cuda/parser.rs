@@ -1170,8 +1170,22 @@ impl<'a> Parser<'a> {
         handle
     }
 
+    fn protected_if_header_name(&self, name: &str) -> bool {
+        self.function
+            .protected_if_header_scope
+            .is_some_and(|header| {
+                self.function.symbol_table.scope_depth() == header + 1
+                    && self
+                        .function
+                        .symbol_table
+                        .lookup_in_scope(header, name)
+                        .is_some()
+            })
+    }
+
     fn check_name(&self, name: &str, span: Span) -> Result<(), ParseError> {
-        if Self::reserved_name(name)
+        if self.protected_if_header_name(name)
+            || Self::reserved_name(name)
             || matches!(
                 self.function.symbol_table.lookup(name),
                 Some(Symbol::TemplateParameter { .. } | Symbol::TemplateTypeParameter { .. })
@@ -1310,6 +1324,12 @@ impl<'a> Parser<'a> {
         symbol: Symbol,
         span: Span,
     ) -> Result<(), ParseError> {
+        if self.protected_if_header_name(name) {
+            return Err(ParseError {
+                message: format!("duplicate or reserved name `{name}`"),
+                span,
+            });
+        }
         if self.function.symbol_table.add(name, symbol).is_some() {
             Err(ParseError {
                 message: format!("duplicate or reserved name `{name}`"),

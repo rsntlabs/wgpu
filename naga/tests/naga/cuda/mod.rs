@@ -77,6 +77,7 @@ mod helper_builtins;
 mod helper_parameters;
 mod helpers;
 mod hex_float_literals;
+mod if_initializers;
 mod immutable_pointers;
 mod incomplete_array_aliases;
 mod incomplete_array_pointers;

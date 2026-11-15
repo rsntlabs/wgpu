@@ -41,9 +41,87 @@ impl<'a> Parser<'a> {
         result.map(|(terminated, body)| (body, terminated))
     }
 
+    fn if_header_has_initializer(&mut self, span: Span) -> Result<bool, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        let mut lookahead = self.lexer.clone();
+        let mut depth = 0u32;
+        loop {
+            let (token, span) = lookahead.next()?;
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            match token {
+                Token::Separator(';') if depth == 0 => return Ok(true),
+                Token::Paren(')') if depth == 0 => return Ok(false),
+                Token::Paren('(' | '[' | '{') => {
+                    depth += 1;
+                    if depth > 64 {
+                        return Err(ParseError {
+                            message: String::from("CUDA if header nesting limit exceeded"),
+                            span,
+                        });
+                    }
+                }
+                Token::Paren(')' | ']' | '}') if depth != 0 => depth -= 1,
+                Token::End => return Ok(false),
+                _ => {}
+            }
+        }
+    }
+
+    fn if_statement(&mut self, start: Span) -> Result<bool, ParseError> {
+        let initialization_start = self.function.push_scope();
+        let previous_guard = self.function.protected_if_header_scope.take();
+        let result = (|| {
+            self.lexer.expect_span(Token::Paren('('))?;
+            if matches!(
+                self.lexer.peek()?.0,
+                Token::Word("using" | "namespace" | "static_assert")
+            ) {
+                return self.fail("unsupported declaration in C++17 if initializer");
+            }
+            let has_initializer = self.if_header_has_initializer(start)?;
+            let condition = if self.lexer.next_if(Token::Separator(';'))? {
+                self.comma_expression()?
+            } else if has_initializer && self.starts_declaration()? {
+                self.local_declaration()?;
+                self.comma_expression()?
+            } else {
+                let first = self.comma_expression_result()?;
+                if self.lexer.next_if(Token::Separator(';'))? {
+                    self.discard_result(first)?;
+                    self.comma_expression()?
+                } else {
+                    first.require_value()?
+                }
+            };
+            let condition = self.truthy(condition)?;
+            self.lexer.expect_span(Token::Paren(')'))?;
+            self.function.protected_if_header_scope =
+                Some(self.function.symbol_table.scope_depth());
+            let (accept, accept_terminated) = self.scoped_statement()?;
+            let (reject, reject_terminated) = if self.take_ident("else")? {
+                self.scoped_statement()?
+            } else {
+                (crate::Block::new(), false)
+            };
+            self.push_statement(
+                Statement::If {
+                    condition: condition.handle,
+                    accept,
+                    reject,
+                },
+                start,
+            );
+            Ok(accept_terminated && reject_terminated)
+        })();
+        self.function.protected_if_header_scope = previous_guard;
+        self.function.pop_scope(initialization_start);
+        result
+    }
+
     pub(super) fn statement(&mut self) -> Result<bool, ParseError> {
         self.function.statement_depth += 1;
         if self.function.statement_depth > 64 {
+            self.function.statement_depth -= 1;
             return self.fail("CUDA statement nesting limit exceeded");
         }
         let result = self.statement_inner();
@@ -72,25 +150,7 @@ impl<'a> Parser<'a> {
             return Ok(false);
         }
         if self.take_ident("if")? {
-            self.lexer.expect_span(Token::Paren('('))?;
-            let value = self.comma_expression()?;
-            let condition = self.truthy(value)?;
-            self.lexer.expect_span(Token::Paren(')'))?;
-            let (accept, accept_terminated) = self.scoped_statement()?;
-            let (reject, reject_terminated) = if self.take_ident("else")? {
-                self.scoped_statement()?
-            } else {
-                (crate::Block::new(), false)
-            };
-            self.push_statement(
-                Statement::If {
-                    condition: condition.handle,
-                    accept,
-                    reject,
-                },
-                start,
-            );
-            return Ok(accept_terminated && reject_terminated);
+            return self.if_statement(start);
         }
         if self.take_ident("switch")? {
             return self.switch_statement(start);
@@ -722,5 +782,128 @@ impl<'a> Parser<'a> {
         };
         let size = NonZeroU32::new(size).ok_or_else(invalid)?;
         Ok((size, value.span))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn statement_depth_limit_restores_depth_after_error() {
+        let mut parser = Parser::new(Lexer::new(";").unwrap(), &Options::default());
+        parser.function.statement_depth = 64;
+        let error = parser.statement().unwrap_err();
+        assert_eq!(error.message, "CUDA statement nesting limit exceeded");
+        assert_eq!(parser.function.statement_depth, 64);
+    }
+
+    fn assert_if_scope_restored(parser: &Parser<'_>, depth: usize, marker: Span) {
+        assert_eq!(parser.function.symbol_table.scope_depth(), depth);
+        assert_eq!(parser.function.protected_if_header_scope, Some(depth));
+        assert_eq!(parser.function.initialized_declarations, [marker]);
+        assert!(parser.function.symbol_table.lookup("header").is_none());
+        assert!(parser.function.symbol_table.lookup("branch").is_none());
+        assert!(parser.function.symbol_table.lookup("inner").is_none());
+        assert!(parser.function.symbol_table.lookup("outer").is_some());
+        assert_eq!(parser.function.statement_depth, 0);
+    }
+
+    #[test]
+    fn if_initializer_errors_restore_scope_guard_and_initialized_declarations() {
+        for source in [
+            "if (int header = 1; ) {}",
+            "if (int header = 1; header) { int branch = 2;",
+            "if (int header = 1; header) { int header = 2; }",
+            "if (int header = 1; header) {} else if (int inner = 2; ) {}",
+        ] {
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            let marker = Span::new(0, 1);
+            let depth = parser.function.symbol_table.scope_depth();
+            parser.function.protected_if_header_scope = Some(depth);
+            parser.function.initialized_declarations.push(marker);
+            parser
+                .function
+                .symbol_table
+                .add("outer", Symbol::PendingAuto);
+            parser.statement().unwrap_err();
+            assert_if_scope_restored(&parser, depth, marker);
+        }
+    }
+
+    #[test]
+    fn if_header_lookahead_preserves_lexer_and_tracks_nested_delimiters() {
+        for (source, expected) in [
+            ("f(a[0], {1, 2}); ready)", true),
+            ("struct Header { int member; }; ready)", true),
+            ("int(value), ready)", false),
+            ("f(a[0], {1, 2}))", false),
+            ("unterminated", false),
+        ] {
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            let position = parser.lexer.position();
+            assert_eq!(
+                parser.if_header_has_initializer(Span::new(0, 1)).unwrap(),
+                expected
+            );
+            assert_eq!(parser.lexer.position(), position);
+        }
+    }
+
+    #[test]
+    fn if_header_work_exhaustion_restores_scope_and_guard() {
+        let source = "if (int header = 1; header) {}";
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        let marker = Span::new(0, 1);
+        parser.parameter_expansion_budget.activate();
+        parser.prepare_parameter_bindings(marker).unwrap();
+        let depth = parser.function.symbol_table.scope_depth();
+        parser.function.protected_if_header_scope = Some(depth);
+        parser.function.initialized_declarations.push(marker);
+        parser
+            .function
+            .symbol_table
+            .add("outer", Symbol::PendingAuto);
+        for bit in (0..usize::BITS).rev() {
+            let _ = parser
+                .parameter_expansion_budget
+                .charge_work(1usize << bit, marker);
+        }
+        parser.statement().unwrap_err();
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+        assert_if_scope_restored(&parser, depth, marker);
+    }
+
+    #[test]
+    fn if_initializer_resource_errors_restore_scope_and_header_guard() {
+        for exhaust_bytes in [false, true] {
+            let source = "if (int header = 1; header) {}";
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            let marker = Span::new(0, 1);
+            parser.parameter_expansion_budget.activate();
+            parser.prepare_parameter_bindings(marker).unwrap();
+            let depth = parser.function.symbol_table.scope_depth();
+            parser.function.protected_if_header_scope = Some(depth);
+            parser.function.initialized_declarations.push(marker);
+            parser
+                .function
+                .symbol_table
+                .add("outer", Symbol::PendingAuto);
+            for bit in (0..usize::BITS).rev() {
+                let count = 1usize << bit;
+                let _ = if exhaust_bytes {
+                    parser
+                        .parameter_expansion_budget
+                        .charge_bytes(count, marker)
+                } else {
+                    parser
+                        .parameter_expansion_budget
+                        .charge_nodes(count, marker)
+                };
+            }
+            parser.statement().unwrap_err();
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_if_scope_restored(&parser, depth, marker);
+        }
     }
 }
