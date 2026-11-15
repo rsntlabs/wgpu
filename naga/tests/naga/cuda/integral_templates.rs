@@ -275,7 +275,7 @@ fn cuda_integral_templates_reject_invalid_arguments_and_unsupported_template_for
         "template<int Width> __global__ void kernel(unsigned *output) { output[0] = unsigned(Width); } template __global__ void kernel<4>(float *);",
         "template<int Count> __device__ int value() { return Count; } template<int Count> __device__ int value() { return Count + 1; } __global__ void kernel() { value<1>(); }",
         "template<int Count> __device__ int value() { int local[Count - 1]; return local[0]; } __global__ void kernel() { value<1>(); }",
-        "template<int Count = 1> __device__ int value() { return Count; } __global__ void kernel() {}",
+        "template<int Count = 1.0f> __device__ int value() { return Count; } __global__ void kernel() {}",
         "template<int... Counts> __device__ int value() { return 1; } __global__ void kernel() {}",
         "template<> __device__ int value<1>() { return 1; } __global__ void kernel() {}",
         "template<float Count> __device__ float value() { return Count; } __global__ void kernel() {}",

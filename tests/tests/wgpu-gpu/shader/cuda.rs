@@ -70,6 +70,7 @@ mod integer16_vectors;
 mod integer64;
 mod integer_intrinsics;
 mod integer_math;
+mod integral_template_defaults;
 mod integral_templates;
 mod kernels;
 mod launch_bounds;
@@ -235,6 +236,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_INTEGER64_STORAGE,
         CUDA_INTEGER_INTRINSICS,
         CUDA_INTEGER_MATH,
+        CUDA_INTEGRAL_TEMPLATE_DEFAULTS,
         CUDA_INTEGRAL_TEMPLATES,
         CUDA_LAUNCH_BOUNDS,
         CUDA_LIST_INITIALIZATION,
@@ -1042,3 +1044,7 @@ static CUDA_NOEXCEPT: GpuTestConfiguration = configuration(noexcept::cases);
 #[apply(gpu_test!)]
 static CUDA_DEFAULT_TEMPLATE_ARGUMENTS: GpuTestConfiguration =
     configuration(default_template_arguments::cases);
+
+#[apply(gpu_test!)]
+static CUDA_INTEGRAL_TEMPLATE_DEFAULTS: GpuTestConfiguration =
+    configuration(integral_template_defaults::cases);

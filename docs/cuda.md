@@ -107,10 +107,33 @@ specialization key. Defaults do not affect overload ranking.
 Default type names bind where the initial declaration appears. The parameter's
 own name becomes visible after its default, while earlier parameters can shadow
 outer names. Later declarations and definitions inherit defaults and cannot add
-or repeat them. Dependent defaults and defaults for non-type parameters remain
-unsupported. Existing restrictions on explicit type arguments also apply to
-defaults. These forms use C++
+or repeat them. Dependent defaults remain unsupported. Existing restrictions on
+explicit type arguments also apply to defaults. These forms use C++
 [template parameters](https://eel.is/c++draft/temp.param) within this subset.
+
+Integral template parameters also accept fixed constant defaults on the initial
+declaration:
+
+```cuda
+constexpr int DefaultCount = 4;
+template<int Count = DefaultCount>
+__device__ unsigned count() { return unsigned(Count); }
+```
+
+`count()`, `count<>()`, and `count<4>()` reuse the same specialization. Default
+names and converted values bind at the initial declaration; later definitions
+can rename parameters and inherit their defaults. Conversion must preserve the
+value in the declared integral type. Boolean defaults require zero or one;
+floating values require an explicit integral or Boolean cast. These checks run
+when the default is declared.
+
+Type and integral defaults can be mixed, including before parameters that are
+deduced from function arguments. Defaults cannot mention earlier template
+parameters, including inside unevaluated or discarded expressions. Shifts,
+greater-than comparisons, and comma expressions require parentheses, as with
+explicit template arguments. Selected calls to function templates in default
+expressions remain unsupported. Runtime builtins are not constants; discarded
+operands can form a constant default without adding runtime inputs or bindings.
 
 Templates participate alongside ordinary helper overloads. Better argument
 conversions take precedence, followed by ordinary overloads on ties and partial
@@ -196,13 +219,13 @@ change the emitted entry name, so library callers should inspect the generated
 backend entry names.
 
 Type and integral parameters can appear in the same template. Integral arguments
-must be supplied explicitly; kernel instantiation definitions require every
-template argument without a type default. Typed kernel selectors use canonical
-source type names, such as `copy_typed<unsigned>`, even when the instantiation
-uses a type alias.
+without defaults must be supplied explicitly. Kernel instantiation definitions
+require every template argument without a default. Typed kernel selectors use
+canonical source type names, such as `copy_typed<unsigned>`, even when the
+instantiation uses a type alias.
 Class templates, dependent non-type parameter types, dependent template defaults,
-defaults for non-type parameters, parameter packs, explicit specializations,
-`if constexpr`, and overloaded kernel templates are unsupported.
+parameter packs, explicit specializations, `if constexpr`, and overloaded kernel
+templates are unsupported.
 Selected array-reference and pointer-reference instances remain unsupported.
 Unrequested template bodies receive structural checks; full semantic checking
 happens when an instance is requested. This does not yet implement all C++

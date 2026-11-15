@@ -125,7 +125,7 @@ fn cuda_default_template_arguments_reject_later_additions_redefaults_and_depende
         "template<class T> __device__ T f(); template<class U = unsigned> __device__ U f() { return U(1); } __global__ void kernel() {}",
         "using A = unsigned; template<class A, class B = A> __device__ B f(A value) { return B(value); } __global__ void kernel() {}",
         "template<class A = unsigned, class B = A> __device__ B f(A value) { return B(value); } __global__ void kernel() {}",
-        "template<int N = 4> __device__ int f() { return N; } __global__ void kernel() {}",
+        "template<int N, int M = N> __device__ int f() { return M; } __global__ void kernel() {}",
         "template<class T = void> __device__ int f() { return 1; } __global__ void kernel() {}",
         "using Row = int[3]; template<class T = Row> __device__ int f() { return 1; } __global__ void kernel() {}",
         "template<class T = int &> __device__ int f() { return 1; } __global__ void kernel() {}",

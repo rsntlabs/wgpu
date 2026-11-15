@@ -68,6 +68,7 @@ mod integer64;
 mod integer_intrinsics;
 mod integer_math;
 mod integer_operators;
+mod integral_template_defaults;
 mod integral_templates;
 mod launch_bounds;
 mod list_initialization;

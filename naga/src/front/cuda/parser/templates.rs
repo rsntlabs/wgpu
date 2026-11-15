@@ -140,7 +140,7 @@ enum ParameterPattern {
 }
 
 #[derive(Clone, Copy)]
-struct TemplateTypeDefault {
+struct TemplateParameterDefault {
     value: TemplateValue,
     position: LexerPosition,
     span: Span,
@@ -149,7 +149,7 @@ struct TemplateTypeDefault {
 struct FunctionTemplate<'a> {
     header: FunctionHeader<'a>,
     parameters: Vec<TemplateParameter<'a>>,
-    template_defaults: Vec<Option<TemplateTypeDefault>>,
+    template_defaults: Vec<Option<TemplateParameterDefault>>,
     signature: Vec<ParameterPattern>,
     defaults: Vec<Option<ScalarDefault>>,
     result: ReturnType,
@@ -621,27 +621,51 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn template_type_default(
+    fn parse_template_argument_default(
         &mut self,
         kind: TemplateParameterKind,
         span: Span,
-    ) -> Result<TemplateTypeDefault, ParseError> {
-        if kind != TemplateParameterKind::Type {
-            return self.fail("non-type template parameter defaults are unsupported");
-        }
-        let ty = self.parse_type()?;
-        if matches!(ty.ty, TypeSpecifier::TemplateParameter(_)) {
-            return self.fail("dependent template type defaults are unsupported");
-        }
-        let ty = self.alias_declarator(ty)?;
-        if matches!(ty.ty, TypeSpecifier::Array(_)) {
-            return self.fail("array template type defaults are unsupported");
-        }
-        Ok(TemplateTypeDefault {
-            value: TemplateValue::Type {
-                ty: ty.ty,
-                qualifiers: ty.qualifiers,
-            },
+    ) -> Result<TemplateParameterDefault, ParseError> {
+        let value = match kind {
+            TemplateParameterKind::Type => {
+                let ty = self.parse_type()?;
+                if matches!(ty.ty, TypeSpecifier::TemplateParameter(_)) {
+                    return self.fail("dependent template type defaults are unsupported");
+                }
+                let ty = self.alias_declarator(ty)?;
+                if matches!(ty.ty, TypeSpecifier::Array(_)) {
+                    return self.fail("array template type defaults are unsupported");
+                }
+                TemplateValue::Type {
+                    ty: ty.ty,
+                    qualifiers: ty.qualifiers,
+                }
+            }
+            TemplateParameterKind::Value(scalar) => {
+                self.activate_parameter_expansion(span)?;
+                self.prepare_parameter_bindings(span)?;
+                let start = self.lexer.clone();
+                let end = self.template_argument_end(&start, true)?;
+                self.lexer = start.bounded(end.position());
+                let previous =
+                    core::mem::replace(&mut self.function.parsing_template_argument_default, true);
+                let parsed = self.capture_block(|parser| {
+                    let expression = parser.conditional_expression()?;
+                    let value = parser.rvalue(expression)?;
+                    let literal = Self::required_constant(&value)?;
+                    parser.lexer.expect_span(Token::End)?;
+                    TemplateValue::converted(literal, scalar).ok_or_else(|| ParseError {
+                        message: String::from("default template argument is not representable in its integral parameter type"),
+                        span: value.span,
+                    })
+                });
+                self.function.parsing_template_argument_default = previous;
+                self.lexer = end;
+                parsed?.0
+            }
+        };
+        Ok(TemplateParameterDefault {
+            value,
             position: self.lexer.position(),
             span,
         })
@@ -705,14 +729,14 @@ impl<'a> Parser<'a> {
             };
             let default = if self.lexer.peek()?.0 == Token::Operation('=') {
                 let span = self.lexer.next()?.1;
-                Some(self.template_type_default(kind, span)?)
+                Some(self.parse_template_argument_default(kind, span)?)
             } else {
                 None
             };
             if default.is_some() || !template_defaults.is_empty() {
                 let count = parameters.len() + 1 - template_defaults.len();
                 self.parameter_expansion_budget
-                    .charge_slice::<Option<TemplateTypeDefault>>(count, name_span)?;
+                    .charge_slice::<Option<TemplateParameterDefault>>(count, name_span)?;
                 self.parameter_expansion_budget
                     .charge_work(count, name_span)?;
                 template_defaults.resize(parameters.len() + 1, None);
@@ -1008,6 +1032,105 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn template_argument_end(
+        &mut self,
+        start: &Lexer<'a>,
+        reject_dependent: bool,
+    ) -> Result<Lexer<'a>, ParseError> {
+        let mut end = start.clone();
+        let mut delimiters = Vec::new();
+        let mut cast_angle = false;
+        let mut qualified_word = false;
+        loop {
+            let (token, span) = end.peek()?;
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            if delimiters.is_empty() && matches!(token, Token::Separator(',') | Token::Paren('>')) {
+                break;
+            }
+            if delimiters.is_empty() && token == Token::ShiftOperation('>') {
+                return Err(ParseError {
+                    message: String::from("right shifts in template arguments require parentheses"),
+                    span,
+                });
+            }
+            if reject_dependent && !qualified_word {
+                if let Token::Word(name) = token {
+                    let dependent = match self.function.symbol_table.lookup(name) {
+                        Some(&Symbol::TemplateTypeParameter { .. }) => true,
+                        Some(&Symbol::TemplateParameter { .. }) => {
+                            self.parameter_expansion_budget.charge_work(1, span)?;
+                            let mut next = end.clone();
+                            next.next()?;
+                            next.peek()?.0 != Token::ScopeResolution
+                        }
+                        _ => false,
+                    };
+                    if dependent {
+                        return Err(ParseError {
+                            message: String::from(
+                                "dependent template argument defaults are unsupported",
+                            ),
+                            span,
+                        });
+                    }
+                }
+            }
+            match token {
+                Token::Word("static_cast") => cast_angle = true,
+                Token::Paren('<') if cast_angle => {
+                    if delimiters.len() >= 64 {
+                        return Err(ParseError {
+                            message: String::from("CUDA template argument nesting limit exceeded"),
+                            span,
+                        });
+                    }
+                    self.parameter_expansion_budget
+                        .charge_slice::<char>(1, span)?;
+                    delimiters.push('>');
+                    cast_angle = false;
+                }
+                Token::Paren(open @ ('(' | '[' | '{')) => {
+                    if delimiters.len() >= 64 {
+                        return Err(ParseError {
+                            message: String::from("CUDA template argument nesting limit exceeded"),
+                            span,
+                        });
+                    }
+                    self.parameter_expansion_budget
+                        .charge_slice::<char>(1, span)?;
+                    delimiters.push(match open {
+                        '(' => ')',
+                        '[' => ']',
+                        _ => '}',
+                    });
+                }
+                Token::Paren(close @ (')' | ']' | '}' | '>')) => {
+                    if delimiters.last() == Some(&close) {
+                        delimiters.pop();
+                    } else if close != '>' {
+                        return Err(ParseError {
+                            message: String::from("mismatched template argument delimiter"),
+                            span,
+                        });
+                    }
+                }
+                Token::End | Token::Separator(';') => {
+                    return Err(ParseError {
+                        message: String::from("unterminated template argument list"),
+                        span,
+                    })
+                }
+                _ => {}
+            }
+            qualified_word = matches!(
+                token,
+                Token::Separator('.') | Token::Arrow | Token::ScopeResolution
+            );
+            end.next()?;
+        }
+        Ok(end)
+    }
+
     fn template_arguments(&mut self) -> Result<Vec<TemplateArgument>, ParseError> {
         self.lexer.expect_span(Token::Paren('<'))?;
         let mut arguments = Vec::new();
@@ -1016,70 +1139,7 @@ impl<'a> Parser<'a> {
         }
         loop {
             let start = self.lexer.clone();
-            let mut end = start.clone();
-            let mut delimiters = Vec::new();
-            let mut cast_angle = false;
-            loop {
-                let (token, span) = end.peek()?;
-                self.parameter_expansion_budget.charge_work(1, span)?;
-                if delimiters.is_empty()
-                    && matches!(token, Token::Separator(',') | Token::Paren('>'))
-                {
-                    break;
-                }
-                if delimiters.is_empty() && token == Token::ShiftOperation('>') {
-                    return Err(ParseError {
-                        message: String::from(
-                            "right shifts in template arguments require parentheses",
-                        ),
-                        span,
-                    });
-                }
-                match token {
-                    Token::Word("static_cast") => cast_angle = true,
-                    Token::Paren('<') if cast_angle => {
-                        self.parameter_expansion_budget
-                            .charge_slice::<char>(1, span)?;
-                        delimiters.push('>');
-                        cast_angle = false;
-                    }
-                    Token::Paren(open @ ('(' | '[' | '{')) => {
-                        if delimiters.len() >= 64 {
-                            return Err(ParseError {
-                                message: String::from(
-                                    "CUDA template argument nesting limit exceeded",
-                                ),
-                                span,
-                            });
-                        }
-                        self.parameter_expansion_budget
-                            .charge_slice::<char>(1, span)?;
-                        delimiters.push(match open {
-                            '(' => ')',
-                            '[' => ']',
-                            _ => '}',
-                        });
-                    }
-                    Token::Paren(close @ (')' | ']' | '}' | '>')) => {
-                        if delimiters.last() == Some(&close) {
-                            delimiters.pop();
-                        } else if close != '>' {
-                            return Err(ParseError {
-                                message: String::from("mismatched template argument delimiter"),
-                                span,
-                            });
-                        }
-                    }
-                    Token::End | Token::Separator(';') => {
-                        return Err(ParseError {
-                            message: String::from("unterminated template argument list"),
-                            span,
-                        })
-                    }
-                    _ => {}
-                }
-                end.next()?;
-            }
+            let end = self.template_argument_end(&start, false)?;
             self.lexer = start.bounded(end.position());
             let parsed = self.capture_block(|parser| {
                 if let Some(ty) = parser.template_type_argument()? {
@@ -1883,11 +1943,16 @@ impl<'a> Parser<'a> {
                 template,
                 arguments,
             } => {
-                if self.function.parsing_exception_specification {
+                if self.function.parsing_exception_specification
+                    || self.function.parsing_template_argument_default
+                {
+                    let context = if self.function.parsing_exception_specification {
+                        "noexcept specifications"
+                    } else {
+                        "template parameter defaults"
+                    };
                     return Err(ParseError {
-                        message: String::from(
-                            "function template calls in noexcept specifications are unsupported",
-                        ),
+                        message: format!("function template calls in {context} are unsupported"),
                         span,
                     });
                 }
