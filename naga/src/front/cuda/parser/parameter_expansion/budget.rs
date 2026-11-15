@@ -1536,6 +1536,226 @@ mod tests {
     }
 
     #[test]
+    fn fdiv_rz_checks_budgets_before_converting_with_cold_and_warm_shared_cache() {
+        for cached in [false, true] {
+            for prepared in [false, true] {
+                for exhaust_bytes in [false, true] {
+                    let source = "1 2";
+                    let span = Span::new(0, source.len() as u32);
+                    let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                    if cached {
+                        let left = parser.number("1u", span).unwrap().handle;
+                        let right = parser.number("0u", span).unwrap().handle;
+                        parser.divide_f32_rz(left, right, span).unwrap();
+                        parser.function = FunctionContext::new(FunctionKind::Kernel);
+                    }
+                    parser.function.ir.name = Some(String::from("division_caller"));
+                    parser.function.loop_depth = 1;
+                    let arguments = alloc::vec![
+                        parser.number("1", span).unwrap(),
+                        parser.number("2", span).unwrap()
+                    ];
+                    parser.parameter_expansion_budget.activate();
+                    if prepared {
+                        parser.prepare_parameter_bindings(span).unwrap();
+                    }
+                    let caller = format!("{:?}", parser.function.ir);
+                    let depths = parser.function.expression_graph_depths.clone();
+                    let types = format!("{:?}", parser.module.types);
+                    let functions = format!("{:?}", parser.module.functions);
+                    let cache = parser.division_rz_function;
+                    assert_eq!(cache.is_some(), cached);
+                    if exhaust_bytes {
+                        let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                        parser
+                            .parameter_expansion_budget
+                            .charge_bytes(remaining, span)
+                            .unwrap();
+                    } else {
+                        let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                        parser
+                            .parameter_expansion_budget
+                            .charge_nodes(remaining, span)
+                            .unwrap();
+                    }
+                    let error = parser
+                        .lower_call(
+                            functions::FunctionCandidate::DivideRoundZero,
+                            arguments,
+                            span,
+                        )
+                        .unwrap_err();
+                    assert_eq!(error.message, limit_error(span).message);
+                    assert_eq!(error.span, span);
+                    assert!(parser.parameter_expansion_budget.is_exhausted());
+                    assert_eq!(parser.function.loop_depth, 1);
+                    assert_eq!(format!("{:?}", parser.function.ir), caller);
+                    assert_eq!(parser.function.expression_graph_depths, depths);
+                    assert_eq!(format!("{:?}", parser.module.types), types);
+                    assert_eq!(format!("{:?}", parser.module.functions), functions);
+                    assert_eq!(parser.division_rz_function, cache);
+                    assert!(parser.module.global_variables.is_empty());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn fdiv_rz_first_call_exhaustion_preserves_prepared_and_unprepared_callers() {
+        for prepared in [false, true] {
+            for exhaust_bytes in [false, true] {
+                let (mut parser, [left, right, _], span) = fns_budget_parser();
+                parser.parameter_expansion_budget.activate();
+                if prepared {
+                    parser.prepare_parameter_bindings(span).unwrap();
+                }
+                let caller = format!("{:?}", parser.function.ir);
+                let depths = parser.function.expression_graph_depths.clone();
+                let type_count = parser.module.types.len();
+                if exhaust_bytes {
+                    let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                    parser
+                        .parameter_expansion_budget
+                        .charge_bytes(remaining, span)
+                        .unwrap();
+                } else {
+                    let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                    parser
+                        .parameter_expansion_budget
+                        .charge_nodes(remaining, span)
+                        .unwrap();
+                }
+                let error = parser.divide_f32_rz(left, right, span).unwrap_err();
+                assert_eq!(error.message, limit_error(span).message);
+                assert_eq!(error.span, span);
+                assert!(parser.parameter_expansion_budget.is_exhausted());
+                assert_fns_budget_caller(&parser, left);
+                assert_eq!(format!("{:?}", parser.function.ir), caller);
+                assert_eq!(parser.function.expression_graph_depths, depths);
+                assert_eq!(parser.module.types.len(), type_count);
+                assert!(parser.module.global_variables.is_empty());
+                assert!(parser.module.functions.is_empty());
+                assert_eq!(parser.division_rz_function, None);
+            }
+        }
+    }
+
+    #[test]
+    fn fdiv_rz_partial_helper_failure_restores_caller_and_keeps_cache_unpublished() {
+        for available_nodes in [3, 6, 12, 32, 96] {
+            let (mut parser, [left, right, _], span) = fns_budget_parser();
+            parser.parameter_expansion_budget.activate();
+            parser.prepare_parameter_bindings(span).unwrap();
+            let caller = format!("{:?}", parser.function.ir);
+            let depths = parser.function.expression_graph_depths.clone();
+            let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+            parser
+                .parameter_expansion_budget
+                .charge_nodes(remaining - available_nodes, span)
+                .unwrap();
+            let error = parser.call_division_rz_bits(left, right, span).unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert_eq!(error.span, span);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_fns_budget_caller(&parser, left);
+            assert_eq!(format!("{:?}", parser.function.ir), caller);
+            assert_eq!(parser.function.expression_graph_depths, depths);
+            assert!(parser.module.global_variables.is_empty());
+            assert!(parser.module.functions.is_empty());
+            assert_eq!(parser.division_rz_function, None);
+        }
+    }
+
+    #[test]
+    fn fdiv_rz_cached_call_exhaustion_preserves_helper_and_pending_caller_expressions() {
+        for exhaust_bytes in [false, true] {
+            let (mut parser, [left, right, _], span) = fns_budget_parser();
+            let result = parser.divide_f32_rz(left, right, span).unwrap();
+            let cached = parser.division_rz_function.unwrap();
+            assert_eq!(parser.module.functions.len(), 1);
+            assert_eq!(
+                parser.module.functions[cached].name.as_deref(),
+                Some("_naga_divide_f32_rz")
+            );
+            parser
+                .append(
+                    Expression::Binary {
+                        op: BinaryOperator::Add,
+                        left: result,
+                        right: result,
+                    },
+                    span,
+                )
+                .unwrap();
+            let caller = format!("{:?}", parser.function.ir);
+            let helper = format!("{:?}", parser.module.functions[cached]);
+            let depths = parser.function.expression_graph_depths.clone();
+            let type_count = parser.module.types.len();
+            if exhaust_bytes {
+                let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                parser
+                    .parameter_expansion_budget
+                    .charge_bytes(remaining, span)
+                    .unwrap();
+            } else {
+                let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                parser
+                    .parameter_expansion_budget
+                    .charge_nodes(remaining, span)
+                    .unwrap();
+            }
+            let error = parser.divide_f32_rz(left, right, span).unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert_eq!(error.span, span);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_fns_budget_caller(&parser, left);
+            assert_eq!(format!("{:?}", parser.function.ir), caller);
+            assert_eq!(parser.function.expression_graph_depths, depths);
+            assert_eq!(parser.module.types.len(), type_count);
+            assert!(parser.module.global_variables.is_empty());
+            assert_eq!(parser.module.functions.len(), 1);
+            assert_eq!(parser.division_rz_function, Some(cached));
+            assert_eq!(format!("{:?}", parser.module.functions[cached]), helper);
+        }
+    }
+
+    #[test]
+    fn fdiv_rz_partial_build_preserves_existing_nearest_even_cache_and_caller() {
+        let (mut parser, [left, right, _], span) = fns_budget_parser();
+        let result = parser.divide_f32(left, right, span).unwrap();
+        let nearest = parser.division_function.unwrap();
+        parser
+            .append(
+                Expression::Binary {
+                    op: BinaryOperator::Add,
+                    left: result,
+                    right: result,
+                },
+                span,
+            )
+            .unwrap();
+        let caller = format!("{:?}", parser.function.ir);
+        let depths = parser.function.expression_graph_depths.clone();
+        let helpers = format!("{:?}", parser.module.functions);
+        let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+        parser
+            .parameter_expansion_budget
+            .charge_nodes(remaining - 32, span)
+            .unwrap();
+        let error = parser.call_division_rz_bits(left, right, span).unwrap_err();
+        assert_eq!(error.message, limit_error(span).message);
+        assert_eq!(error.span, span);
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+        assert_fns_budget_caller(&parser, left);
+        assert_eq!(format!("{:?}", parser.function.ir), caller);
+        assert_eq!(parser.function.expression_graph_depths, depths);
+        assert_eq!(format!("{:?}", parser.module.functions), helpers);
+        assert_eq!(parser.module.functions.len(), 1);
+        assert_eq!(parser.division_function, Some(nearest));
+        assert_eq!(parser.division_rz_function, None);
+    }
+
+    #[test]
     fn fmul_rz_checks_budgets_before_converting_with_cold_and_warm_shared_cache() {
         for cached in [false, true] {
             for prepared in [false, true] {

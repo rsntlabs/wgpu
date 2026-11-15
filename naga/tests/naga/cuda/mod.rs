@@ -48,6 +48,7 @@ mod fabs;
 mod fadd_rn;
 mod fadd_rz;
 mod fdiv_rn;
+mod fdiv_rz;
 mod ffsll;
 mod float_classification;
 mod float_math;
