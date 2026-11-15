@@ -62,6 +62,7 @@ mod fmul_rn;
 mod fmul_rz;
 mod fns;
 mod frcp_rn;
+mod frcp_rz;
 mod frsqrt_rn;
 mod fsqrt_rn;
 mod fsub_rn;

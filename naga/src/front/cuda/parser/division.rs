@@ -58,12 +58,32 @@ impl Parser<'_> {
         arguments: Vec<Value>,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
+        self.lower_frcp_call(arguments, DivisionRounding::NearestEven, span)
+    }
+
+    pub(super) fn lower_frcp_rz_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lower_frcp_call(arguments, DivisionRounding::TowardZero, span)
+    }
+
+    fn lower_frcp_call(
+        &mut self,
+        arguments: Vec<Value>,
+        rounding: DivisionRounding,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         let argument =
             self.convert_scalar(arguments.into_iter().next().unwrap().into(), Scalar::F32)?;
         let one = self.append(Expression::Literal(Literal::F32(1.0)), span)?;
-        let handle = self.divide_f32(one, argument.handle, span)?;
+        let handle = match rounding {
+            DivisionRounding::NearestEven => self.divide_f32(one, argument.handle, span)?,
+            DivisionRounding::TowardZero => self.divide_f32_rz(one, argument.handle, span)?,
+        };
         Ok(Value {
             category: ValueCategory::Prvalue,
             qualifiers: Qualifiers::NONE,

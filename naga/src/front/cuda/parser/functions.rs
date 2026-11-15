@@ -1203,6 +1203,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__frcp_rn",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
+    declarations.insert(
+        "__frcp_rz",
+        GlobalDeclaration::Functions(FunctionOverloads::default()),
+    );
     declarations.extend(FMA_BUILTINS.into_iter().map(|name| {
         (
             name,
@@ -1290,6 +1294,7 @@ pub(super) enum FunctionCandidate {
     DivideRoundNearest,
     DivideRoundZero,
     ReciprocalRoundNearest,
+    ReciprocalRoundZero,
     ReciprocalSqrtRoundNearest,
     Constructor {
         component_count: u8,
@@ -1894,6 +1899,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::DivideRoundZero
                         | FunctionCandidate::DivideRoundNearest
                         | FunctionCandidate::ReciprocalRoundNearest
+                        | FunctionCandidate::ReciprocalRoundZero
                         | FunctionCandidate::ReciprocalSqrtRoundNearest
                         | FunctionCandidate::Constructor { .. }
                 )
@@ -2182,6 +2188,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::DivideRoundZero
             | FunctionCandidate::DivideRoundNearest
             | FunctionCandidate::ReciprocalRoundNearest
+            | FunctionCandidate::ReciprocalRoundZero
             | FunctionCandidate::ReciprocalSqrtRoundNearest => TypeSpecifier::Scalar(Scalar::F32),
             FunctionCandidate::Constructor {
                 component_count,
@@ -2484,6 +2491,9 @@ impl<'a> Parser<'a> {
         }
         if candidate == FunctionCandidate::ReciprocalRoundNearest {
             return self.lower_frcp_rn_call(arguments, span);
+        }
+        if candidate == FunctionCandidate::ReciprocalRoundZero {
+            return self.lower_frcp_rz_call(arguments, span);
         }
         if candidate == FunctionCandidate::ReciprocalSqrtRoundNearest {
             return self.lower_frsqrt_rn_call(arguments, span);
@@ -3223,6 +3233,10 @@ impl<'a> Parser<'a> {
                     .then_some(FunctionCandidate::ReciprocalRoundNearest),
             )
             .chain(
+                (builtin_visible && name == "__frcp_rz")
+                    .then_some(FunctionCandidate::ReciprocalRoundZero),
+            )
+            .chain(
                 (builtin_visible && FMA_BUILTINS.contains(&name))
                     .then_some(FunctionCandidate::FusedMultiplyAddRoundNearest),
             )
@@ -3322,6 +3336,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::IntegralDouble { .. }
             | FunctionCandidate::Sqrt
             | FunctionCandidate::ReciprocalRoundNearest
+            | FunctionCandidate::ReciprocalRoundZero
             | FunctionCandidate::ReciprocalSqrtRoundNearest => 1,
             FunctionCandidate::Constructor {
                 component_count, ..
@@ -3384,6 +3399,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::DivideRoundZero
             | FunctionCandidate::DivideRoundNearest
             | FunctionCandidate::ReciprocalRoundNearest
+            | FunctionCandidate::ReciprocalRoundZero
             | FunctionCandidate::ReciprocalSqrtRoundNearest => {
                 return Some(scalar_resolution(Scalar::F32))
             }

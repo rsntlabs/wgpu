@@ -192,6 +192,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA `__fsub_rz` through the portable addition helper rounded toward zero.
 - Support CUDA `__fmul_rz` with portable multiplication rounded toward zero.
 - Support CUDA `__fdiv_rz` with portable division rounded toward zero.
+- Support CUDA `__frcp_rz` through the portable division helper rounded toward zero.
 - Support CUDA `copysignf` with bit-preserving magnitude and sign copying.
 - Support CUDA float `isfinite`, `isinf`, `isnan`, and `signbit` classification with integer results.
 - Support CUDA integral template defaults that directly reference earlier integral parameters.
