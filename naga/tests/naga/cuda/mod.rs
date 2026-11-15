@@ -57,6 +57,7 @@ mod float_truthiness;
 mod floorf;
 mod fmaf;
 mod fmaf_rn;
+mod fmaf_rz;
 mod fmodf;
 mod fmul_rn;
 mod fmul_rz;

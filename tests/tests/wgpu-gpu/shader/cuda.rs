@@ -61,6 +61,7 @@ mod float_truthiness;
 mod floorf;
 mod fmaf;
 mod fmaf_rn;
+mod fmaf_rz;
 mod fmodf;
 mod fmul_rn;
 mod fmul_rz;
@@ -247,6 +248,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FDIV_RZ,
         CUDA_FDIV_RN,
         CUDA_FMAF,
+        CUDA_FMAF_RZ,
         CUDA_FMAF_RN,
         CUDA_FMUL_RZ,
         CUDA_FMUL_RN,
@@ -1156,3 +1158,6 @@ static CUDA_FRCP_RZ: GpuTestConfiguration = configuration(frcp_rz::cases);
 
 #[apply(gpu_test!)]
 static CUDA_FSQRT_RZ: GpuTestConfiguration = configuration(fsqrt_rz::cases);
+
+#[apply(gpu_test!)]
+static CUDA_FMAF_RZ: GpuTestConfiguration = configuration(fmaf_rz::cases);

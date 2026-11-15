@@ -1,6 +1,12 @@
 use super::*;
 
 #[derive(Clone, Copy)]
+enum FmaRounding {
+    NearestEven,
+    TowardZero,
+}
+
+#[derive(Clone, Copy)]
 struct FmaPair {
     low: Handle<Expression>,
     high: Handle<Expression>,
@@ -12,6 +18,23 @@ impl Parser<'_> {
         arguments: Vec<Value>,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
+        self.lower_fmaf_call(arguments, FmaRounding::NearestEven, span)
+    }
+
+    pub(super) fn lower_fmaf_rz_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lower_fmaf_call(arguments, FmaRounding::TowardZero, span)
+    }
+
+    fn lower_fmaf_call(
+        &mut self,
+        arguments: Vec<Value>,
+        rounding: FmaRounding,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         let mut arguments = arguments.into_iter();
@@ -21,7 +44,10 @@ impl Parser<'_> {
         let left = self.bitcast_scalar(left.handle, Scalar::U32, span)?;
         let right = self.bitcast_scalar(right.handle, Scalar::U32, span)?;
         let addend = self.bitcast_scalar(addend.handle, Scalar::U32, span)?;
-        let bits = self.call_fmaf_rn_bits(left, right, addend, span)?;
+        let bits = match rounding {
+            FmaRounding::NearestEven => self.call_fmaf_rn_bits(left, right, addend, span)?,
+            FmaRounding::TowardZero => self.call_fmaf_rz_bits(left, right, addend, span)?,
+        };
         let handle = self.bitcast_scalar(bits, Scalar::F32, span)?;
         Ok(Value {
             category: ValueCategory::Prvalue,
@@ -41,6 +67,27 @@ impl Parser<'_> {
         addend: Handle<Expression>,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
+        self.call_fmaf_bits(left, right, addend, FmaRounding::NearestEven, span)
+    }
+
+    pub(super) fn call_fmaf_rz_bits(
+        &mut self,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        addend: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.call_fmaf_bits(left, right, addend, FmaRounding::TowardZero, span)
+    }
+
+    fn call_fmaf_bits(
+        &mut self,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        addend: Handle<Expression>,
+        rounding: FmaRounding,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         self.prepare_append(1, span)?;
@@ -49,7 +96,7 @@ impl Parser<'_> {
             .charge_slice::<Handle<Expression>>(3, span)?;
         self.parameter_expansion_budget
             .charge_slice::<(Statement, Span)>(1, span)?;
-        let function = self.cached_fmaf_rn_function(span)?;
+        let function = self.cached_fmaf_function(rounding, span)?;
         self.function
             .ir
             .body
@@ -67,8 +114,16 @@ impl Parser<'_> {
         Ok(result)
     }
 
-    fn cached_fmaf_rn_function(&mut self, span: Span) -> Result<Handle<Function>, ParseError> {
-        if let Some(function) = self.fmaf_rn_function {
+    fn cached_fmaf_function(
+        &mut self,
+        rounding: FmaRounding,
+        span: Span,
+    ) -> Result<Handle<Function>, ParseError> {
+        let cached = match rounding {
+            FmaRounding::NearestEven => self.fmaf_rn_function,
+            FmaRounding::TowardZero => self.fmaf_rz_function,
+        };
+        if let Some(function) = cached {
             return Ok(function);
         }
         self.parameter_expansion_budget.charge_nodes(1, span)?;
@@ -78,17 +133,20 @@ impl Parser<'_> {
             &mut self.function,
             FunctionContext::new(FunctionKind::Device),
         );
-        let result = self.build_fmaf_rn_function(span);
+        let result = self.build_fmaf_function(rounding, span);
         let helper = core::mem::replace(&mut self.function, caller);
         result?;
         self.parameter_expansion_budget
             .inventory_function(&helper.ir, span, 1)?;
         let function = self.module.functions.append(helper.ir, span);
-        self.fmaf_rn_function = Some(function);
+        match rounding {
+            FmaRounding::NearestEven => self.fmaf_rn_function = Some(function),
+            FmaRounding::TowardZero => self.fmaf_rz_function = Some(function),
+        }
         Ok(function)
     }
 
-    fn build_fmaf_rn_function(&mut self, span: Span) -> Result<(), ParseError> {
+    fn build_fmaf_function(&mut self, rounding: FmaRounding, span: Span) -> Result<(), ParseError> {
         self.prepare_parameter_bindings(span)?;
         let ty = Type {
             name: None,
@@ -103,7 +161,10 @@ impl Parser<'_> {
                 self.module.types.insert(ty, span)
             }
         };
-        let name = "_naga_fmaf_rn";
+        let name = match rounding {
+            FmaRounding::NearestEven => "_naga_fmaf_rn",
+            FmaRounding::TowardZero => "_naga_fmaf_rz",
+        };
         let argument_names = ["left_bits", "right_bits", "addend_bits"];
         self.parameter_expansion_budget.charge_nodes(3, span)?;
         self.parameter_expansion_budget
@@ -267,32 +328,51 @@ impl Parser<'_> {
         let grs = self.fmaf_shift_jam(total, distance, span)?;
         let grs = self.fmaf_materialize_pair(grs, unsigned, span)?;
         let three = self.fmaf_literal(3, span)?;
-        let seven = self.fmaf_literal(7, span)?;
-        let four = self.fmaf_literal(4, span)?;
-        let rounded = self.fmaf_binary(BinaryOperator::ShiftRight, grs.low, three, span)?;
-        let tail = self.fmaf_binary(BinaryOperator::And, grs.low, seven, span)?;
-        let odd = self.fmaf_binary(BinaryOperator::And, rounded, one, span)?;
-        let odd = self.fmaf_binary(BinaryOperator::NotEqual, odd, zero, span)?;
-        let tie = self.fmaf_binary(BinaryOperator::Equal, tail, four, span)?;
-        let tie_up = self.fmaf_binary(BinaryOperator::LogicalAnd, tie, odd, span)?;
-        let above_half = self.fmaf_binary(BinaryOperator::Greater, tail, four, span)?;
-        let increment = self.fmaf_binary(BinaryOperator::LogicalOr, above_half, tie_up, span)?;
-        let increment = self.fmaf_cast(increment, Scalar::U32, span)?;
-        let rounded = self.fmaf_binary(BinaryOperator::Add, rounded, increment, span)?;
-        let carry_bit = self.fmaf_literal(0x0100_0000, span)?;
-        let carry = self.fmaf_binary(BinaryOperator::GreaterEqual, rounded, carry_bit, span)?;
-        let shifted = self.fmaf_binary(BinaryOperator::ShiftRight, rounded, one, span)?;
-        let rounded = self.fmaf_select(carry, shifted, rounded, span)?;
-        let carry = self.fmaf_cast(carry, Scalar::I32, span)?;
-        let quantum = self.fmaf_binary(BinaryOperator::Add, quantum, carry, span)?;
+        let (rounded, quantum) = match rounding {
+            FmaRounding::NearestEven => {
+                let seven = self.fmaf_literal(7, span)?;
+                let four = self.fmaf_literal(4, span)?;
+                let rounded = self.fmaf_binary(BinaryOperator::ShiftRight, grs.low, three, span)?;
+                let tail = self.fmaf_binary(BinaryOperator::And, grs.low, seven, span)?;
+                let odd = self.fmaf_binary(BinaryOperator::And, rounded, one, span)?;
+                let odd = self.fmaf_binary(BinaryOperator::NotEqual, odd, zero, span)?;
+                let tie = self.fmaf_binary(BinaryOperator::Equal, tail, four, span)?;
+                let tie_up = self.fmaf_binary(BinaryOperator::LogicalAnd, tie, odd, span)?;
+                let above_half = self.fmaf_binary(BinaryOperator::Greater, tail, four, span)?;
+                let increment =
+                    self.fmaf_binary(BinaryOperator::LogicalOr, above_half, tie_up, span)?;
+                let increment = self.fmaf_cast(increment, Scalar::U32, span)?;
+                let rounded = self.fmaf_binary(BinaryOperator::Add, rounded, increment, span)?;
+                let carry_bit = self.fmaf_literal(0x0100_0000, span)?;
+                let carry =
+                    self.fmaf_binary(BinaryOperator::GreaterEqual, rounded, carry_bit, span)?;
+                let shifted = self.fmaf_binary(BinaryOperator::ShiftRight, rounded, one, span)?;
+                let rounded = self.fmaf_select(carry, shifted, rounded, span)?;
+                let carry = self.fmaf_cast(carry, Scalar::I32, span)?;
+                let quantum = self.fmaf_binary(BinaryOperator::Add, quantum, carry, span)?;
+                (rounded, quantum)
+            }
+            FmaRounding::TowardZero => {
+                let rounded = self.fmaf_binary(BinaryOperator::ShiftRight, grs.low, three, span)?;
+                (rounded, quantum)
+            }
+        };
         let exponent_bias = self.fmaf_signed_literal(150, span)?;
         let encoded_exp = self.fmaf_binary(BinaryOperator::Add, quantum, exponent_bias, span)?;
         let max_exp = self.fmaf_signed_literal(255, span)?;
         let overflow =
             self.fmaf_binary(BinaryOperator::GreaterEqual, encoded_exp, max_exp, span)?;
-        let signed_inf =
-            self.fmaf_binary(BinaryOperator::InclusiveOr, result_sign, infinity, span)?;
-        self.fmaf_return_if(overflow, signed_inf, span)?;
+        let overflow_magnitude = match rounding {
+            FmaRounding::NearestEven => infinity,
+            FmaRounding::TowardZero => self.fmaf_literal(0x7f7f_ffff, span)?,
+        };
+        let signed_overflow = self.fmaf_binary(
+            BinaryOperator::InclusiveOr,
+            result_sign,
+            overflow_magnitude,
+            span,
+        )?;
+        self.fmaf_return_if(overflow, signed_overflow, span)?;
         let normal = self.fmaf_binary(BinaryOperator::GreaterEqual, rounded, implicit, span)?;
         let signed_zero = self.fmaf_signed_literal(0, span)?;
         let encoded_exp =
