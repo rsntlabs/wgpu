@@ -913,6 +913,15 @@ canonical quiet NaN `0x7fc00000`. This matches CUDA's default
 Mixed scalar operands receive the usual arithmetic conversions before division.
 Source-defined vector operators can use the same scalar divisions componentwise.
 
+`__fdiv_rn(float, float)` exposes the same correctly rounded operation through
+CUDA's fixed single-precision intrinsic signature, following NVIDIA's
+[`__fdiv_rn` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SINGLE.html).
+Scalar arguments convert to `float` first, and the result is `float`. Calls share
+the existing integer division helper with `/` and `/=`, including its subnormal,
+signed-zero, infinity, and canonical-NaN behavior. Intrinsic calls execute at
+runtime and are not source constant expressions. Other explicit division rounding
+modes and the approximate `__fdividef` intrinsic remain unsupported.
+
 ## Mathematical functions
 
 The 32-bit `min` and `max` overloads accept `int` and `unsigned int` operands in
@@ -1124,7 +1133,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fsub_rn`, `__fmul_rn`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fsub_rn`, `__fmul_rn`, `__fdiv_rn`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 

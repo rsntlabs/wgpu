@@ -1,6 +1,28 @@
 use super::*;
 
 impl Parser<'_> {
+    pub(super) fn lower_fdiv_rn_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let mut arguments = arguments.into_iter();
+        let numerator = self.convert_scalar(arguments.next().unwrap().into(), Scalar::F32)?;
+        let denominator = self.convert_scalar(arguments.next().unwrap().into(), Scalar::F32)?;
+        let handle = self.divide_f32(numerator.handle, denominator.handle, span)?;
+        Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
+            constant: ConstantValue::default(),
+            handle,
+            ty: scalar_resolution(Scalar::F32),
+            span,
+        }
+        .into())
+    }
+
     pub(super) fn divide_f32(
         &mut self,
         numerator: Handle<Expression>,

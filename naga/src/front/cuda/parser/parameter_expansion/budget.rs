@@ -1536,6 +1536,71 @@ mod tests {
     }
 
     #[test]
+    fn fdiv_rn_checks_budgets_before_converting_with_cold_and_warm_shared_cache() {
+        for cached in [false, true] {
+            for prepared in [false, true] {
+                for exhaust_bytes in [false, true] {
+                    let source = "1 2";
+                    let span = Span::new(0, source.len() as u32);
+                    let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                    if cached {
+                        let left = parser.number("1.0f", span).unwrap().handle;
+                        let right = parser.number("2.0f", span).unwrap().handle;
+                        parser.divide_f32(left, right, span).unwrap();
+                        parser.function = FunctionContext::new(FunctionKind::Kernel);
+                    }
+                    parser.function.ir.name = Some(String::from("division_caller"));
+                    parser.function.loop_depth = 1;
+                    let arguments = alloc::vec![
+                        parser.number("1", span).unwrap(),
+                        parser.number("2", span).unwrap()
+                    ];
+                    parser.parameter_expansion_budget.activate();
+                    if prepared {
+                        parser.prepare_parameter_bindings(span).unwrap();
+                    }
+                    let caller = format!("{:?}", parser.function.ir);
+                    let depths = parser.function.expression_graph_depths.clone();
+                    let types = format!("{:?}", parser.module.types);
+                    let functions = format!("{:?}", parser.module.functions);
+                    let cache = parser.division_function;
+                    assert_eq!(cache.is_some(), cached);
+                    if exhaust_bytes {
+                        let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                        parser
+                            .parameter_expansion_budget
+                            .charge_bytes(remaining, span)
+                            .unwrap();
+                    } else {
+                        let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                        parser
+                            .parameter_expansion_budget
+                            .charge_nodes(remaining, span)
+                            .unwrap();
+                    }
+                    let error = parser
+                        .lower_call(
+                            functions::FunctionCandidate::DivideRoundNearest,
+                            arguments,
+                            span,
+                        )
+                        .unwrap_err();
+                    assert_eq!(error.message, limit_error(span).message);
+                    assert_eq!(error.span, span);
+                    assert!(parser.parameter_expansion_budget.is_exhausted());
+                    assert_eq!(parser.function.loop_depth, 1);
+                    assert_eq!(format!("{:?}", parser.function.ir), caller);
+                    assert_eq!(parser.function.expression_graph_depths, depths);
+                    assert_eq!(format!("{:?}", parser.module.types), types);
+                    assert_eq!(format!("{:?}", parser.module.functions), functions);
+                    assert_eq!(parser.division_function, cache);
+                    assert!(parser.module.global_variables.is_empty());
+                }
+            }
+        }
+    }
+
+    #[test]
     fn fmul_rn_checks_budgets_before_converting_with_cold_and_warm_shared_cache() {
         for cached in [false, true] {
             for prepared in [false, true] {

@@ -49,6 +49,7 @@ mod dynamic_shared;
 mod empty_scalar_construction;
 mod fabs;
 mod fadd_rn;
+mod fdiv_rn;
 mod ffsll;
 mod float_classification;
 mod float_division;
@@ -227,6 +228,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FLOAT_SEPARATORS,
         CUDA_FLOAT_TRUTHINESS,
         CUDA_FLOAT_CLASSIFICATION,
+        CUDA_FDIV_RN,
         CUDA_FMUL_RN,
         CUDA_FSUB_RN,
         CUDA_FADD_RN,
@@ -1096,3 +1098,6 @@ static CUDA_FSUB_RN: GpuTestConfiguration = configuration(fsub_rn::cases);
 
 #[apply(gpu_test!)]
 static CUDA_FMUL_RN: GpuTestConfiguration = configuration(fmul_rn::cases);
+
+#[apply(gpu_test!)]
+static CUDA_FDIV_RN: GpuTestConfiguration = configuration(fdiv_rn::cases);
