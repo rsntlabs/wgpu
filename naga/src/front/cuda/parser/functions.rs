@@ -995,156 +995,155 @@ const FUNNEL_SHIFT_BUILTINS: [(&str, FunnelShiftBuiltin); 4] = [
 ];
 
 pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclaration> {
-    let mut declarations =
-        MATH_BUILTINS
-            .into_iter()
-            .map(|(name, _)| {
-                (
-                    name,
-                    GlobalDeclaration::Functions(FunctionOverloads::default()),
-                )
-            })
-            .chain(MULTIPLY24_BUILTINS.into_iter().map(|(name, _)| {
-                (
-                    name,
-                    GlobalDeclaration::Functions(FunctionOverloads::default()),
-                )
-            }))
-            .chain(MULTIPLY_HIGH_BUILTINS.into_iter().map(|(name, _)| {
-                (
-                    name,
-                    GlobalDeclaration::Functions(FunctionOverloads::default()),
-                )
-            }))
-            .chain(HALF_ADD_BUILTINS.into_iter().map(|(name, _)| {
-                (
-                    name,
-                    GlobalDeclaration::Functions(FunctionOverloads::default()),
-                )
-            }))
-            .chain(SAD_BUILTINS.into_iter().map(|(name, _)| {
-                (
-                    name,
-                    GlobalDeclaration::Functions(FunctionOverloads::default()),
-                )
-            }))
-            .chain(FUNNEL_SHIFT_BUILTINS.into_iter().map(|(name, _)| {
-                (
-                    name,
-                    GlobalDeclaration::Functions(FunctionOverloads::default()),
-                )
-            }))
-            .chain(BITCAST_BUILTINS.into_iter().map(|(name, _, _)| {
-                (
-                    name,
-                    GlobalDeclaration::Functions(FunctionOverloads::default()),
-                )
-            }))
-            .chain(UNARY_BUILTINS.into_iter().map(|(name, _, _, _)| {
-                (
-                    name,
-                    GlobalDeclaration::Functions(FunctionOverloads::default()),
-                )
-            }))
-            .chain(FLOAT_MATH_BUILTINS.into_iter().map(|(name, _)| {
-                (
-                    name,
-                    GlobalDeclaration::Functions(FunctionOverloads::default()),
-                )
-            }))
-            .chain(SQRT_BUILTINS.into_iter().map(|name| {
-                (
-                    name,
-                    GlobalDeclaration::Functions(FunctionOverloads::default()),
-                )
-            }))
-            .chain(core::iter::once((
-                "fmodf",
+    let mut declarations = MATH_BUILTINS
+        .into_iter()
+        .map(|(name, _)| {
+            (
+                name,
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )))
-            .chain(core::iter::once((
-                "__byte_perm",
+            )
+        })
+        .chain(MULTIPLY24_BUILTINS.into_iter().map(|(name, _)| {
+            (
+                name,
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )))
-            .chain(core::iter::once((
-                "__nv_bswap32",
+            )
+        }))
+        .chain(MULTIPLY_HIGH_BUILTINS.into_iter().map(|(name, _)| {
+            (
+                name,
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )))
-            .chain(core::iter::once((
-                "__fns",
+            )
+        }))
+        .chain(HALF_ADD_BUILTINS.into_iter().map(|(name, _)| {
+            (
+                name,
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )))
-            .chain(core::iter::once((
-                "__dp4a",
+            )
+        }))
+        .chain(SAD_BUILTINS.into_iter().map(|(name, _)| {
+            (
+                name,
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )))
-            .chain(["__dp2a_lo", "__dp2a_hi"].into_iter().map(|name| {
-                (
-                    name,
-                    GlobalDeclaration::Functions(FunctionOverloads::default()),
-                )
-            }))
-            .chain(INTEGER_ATOMICS.into_iter().map(|(name, _)| {
-                (
-                    name,
-                    GlobalDeclaration::Functions(FunctionOverloads::default()),
-                )
-            }))
-            .chain(core::iter::once((
-                "atomicCAS",
+            )
+        }))
+        .chain(FUNNEL_SHIFT_BUILTINS.into_iter().map(|(name, _)| {
+            (
+                name,
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
-            )))
-            .chain(WRAPPING_ATOMICS.into_iter().map(|(name, _)| {
-                (
-                    name,
-                    GlobalDeclaration::Functions(FunctionOverloads::default()),
-                )
-            }))
-            .chain(core::iter::once((
-                "cooperative_groups",
-                GlobalDeclaration::Namespace(Namespace::CooperativeGroups),
-            )))
-            .chain(core::iter::once((
-                "std",
-                GlobalDeclaration::Namespace(Namespace::Standard),
-            )))
-            .chain(core::iter::once((
-                "dim3",
-                GlobalDeclaration::Type(QualifiedType {
-                    ty: TypeSpecifier::Dim3,
-                    qualifiers: Qualifiers::NONE,
-                }),
-            )))
-            .chain(core::iter::once((
-                "size_t",
-                GlobalDeclaration::Type(QualifiedType {
-                    ty: TypeSpecifier::Long {
-                        kind: ScalarKind::Uint,
-                    },
-                    qualifiers: Qualifiers::NONE,
-                }),
-            )))
-            .chain(VECTOR_TYPES.into_iter().flat_map(
-                |(name, constructor, component_count, scalar)| {
-                    [
-                        (
-                            name,
-                            GlobalDeclaration::Type(QualifiedType {
-                                ty: TypeSpecifier::Vector {
-                                    component_count,
-                                    scalar,
-                                },
-                                qualifiers: Qualifiers::NONE,
-                            }),
-                        ),
-                        (
-                            constructor,
-                            GlobalDeclaration::Functions(FunctionOverloads::default()),
-                        ),
-                    ]
+            )
+        }))
+        .chain(BITCAST_BUILTINS.into_iter().map(|(name, _, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
+        .chain(UNARY_BUILTINS.into_iter().map(|(name, _, _, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
+        .chain(FLOAT_MATH_BUILTINS.into_iter().map(|(name, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
+        .chain(SQRT_BUILTINS.into_iter().map(|name| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
+        .chain(core::iter::once((
+            "fmodf",
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        )))
+        .chain(core::iter::once((
+            "__byte_perm",
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        )))
+        .chain(core::iter::once((
+            "__nv_bswap32",
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        )))
+        .chain(core::iter::once((
+            "__fns",
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        )))
+        .chain(core::iter::once((
+            "__dp4a",
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        )))
+        .chain(["__dp2a_lo", "__dp2a_hi"].into_iter().map(|name| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
+        .chain(INTEGER_ATOMICS.into_iter().map(|(name, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
+        .chain(core::iter::once((
+            "atomicCAS",
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        )))
+        .chain(WRAPPING_ATOMICS.into_iter().map(|(name, _)| {
+            (
+                name,
+                GlobalDeclaration::Functions(FunctionOverloads::default()),
+            )
+        }))
+        .chain(core::iter::once((
+            "cooperative_groups",
+            GlobalDeclaration::Namespace(Namespace::CooperativeGroups),
+        )))
+        .chain(core::iter::once((
+            "std",
+            GlobalDeclaration::Namespace(Namespace::Standard),
+        )))
+        .chain(core::iter::once((
+            "dim3",
+            GlobalDeclaration::Type(QualifiedType {
+                ty: TypeSpecifier::Dim3,
+                qualifiers: Qualifiers::NONE,
+            }),
+        )))
+        .chain(core::iter::once((
+            "size_t",
+            GlobalDeclaration::Type(QualifiedType {
+                ty: TypeSpecifier::Long {
+                    kind: ScalarKind::Uint,
                 },
-            ))
-            .collect::<FastHashMap<_, _>>();
+                qualifiers: Qualifiers::NONE,
+            }),
+        )))
+        .collect::<FastHashMap<_, _>>();
+    declarations.extend(VECTOR_TYPES.into_iter().flat_map(
+        |(name, constructor, component_count, scalar)| {
+            [
+                (
+                    name,
+                    GlobalDeclaration::Type(QualifiedType {
+                        ty: TypeSpecifier::Vector {
+                            component_count,
+                            scalar,
+                        },
+                        qualifiers: Qualifiers::NONE,
+                    }),
+                ),
+                (
+                    constructor,
+                    GlobalDeclaration::Functions(FunctionOverloads::default()),
+                ),
+            ]
+        },
+    ));
     declarations.extend(PACKED_ARITHMETIC_BUILTINS.iter().map(|&(name, _)| {
         (
             name,
@@ -1173,6 +1172,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
     );
     declarations.insert(
         "__fsub_rn",
+        GlobalDeclaration::Functions(FunctionOverloads::default()),
+    );
+    declarations.insert(
+        "__fmul_rn",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
     declarations
@@ -1244,6 +1247,7 @@ pub(super) enum FunctionCandidate {
     CopySign,
     AddRoundNearest,
     SubtractRoundNearest,
+    MultiplyRoundNearest,
     Constructor {
         component_count: u8,
         scalar: Scalar,
@@ -1839,6 +1843,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::CopySign
                         | FunctionCandidate::AddRoundNearest
                         | FunctionCandidate::SubtractRoundNearest
+                        | FunctionCandidate::MultiplyRoundNearest
                         | FunctionCandidate::Constructor { .. }
                 )
                 && self.function.parameters.len() == self.candidate_arity(candidate)
@@ -2117,7 +2122,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Fmodf
             | FunctionCandidate::CopySign
             | FunctionCandidate::AddRoundNearest
-            | FunctionCandidate::SubtractRoundNearest => TypeSpecifier::Scalar(Scalar::F32),
+            | FunctionCandidate::SubtractRoundNearest
+            | FunctionCandidate::MultiplyRoundNearest => TypeSpecifier::Scalar(Scalar::F32),
             FunctionCandidate::Constructor {
                 component_count,
                 scalar,
@@ -2395,6 +2401,9 @@ impl<'a> Parser<'a> {
         }
         if candidate == FunctionCandidate::SubtractRoundNearest {
             return self.lower_fsub_rn_call(arguments, span);
+        }
+        if candidate == FunctionCandidate::MultiplyRoundNearest {
+            return self.lower_fmul_rn_call(arguments, span);
         }
         if let FunctionCandidate::Constructor {
             component_count,
@@ -3115,6 +3124,10 @@ impl<'a> Parser<'a> {
                     .then_some(FunctionCandidate::SubtractRoundNearest),
             )
             .chain(
+                (builtin_visible && name == "__fmul_rn")
+                    .then_some(FunctionCandidate::MultiplyRoundNearest),
+            )
+            .chain(
                 (builtin_visible && name == "__byte_perm").then_some(FunctionCandidate::BytePerm),
             )
             .chain(
@@ -3182,7 +3195,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Fmodf
             | FunctionCandidate::CopySign
             | FunctionCandidate::AddRoundNearest
-            | FunctionCandidate::SubtractRoundNearest => 2,
+            | FunctionCandidate::SubtractRoundNearest
+            | FunctionCandidate::MultiplyRoundNearest => 2,
             FunctionCandidate::AtomicCompareExchange(_)
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
@@ -3250,7 +3264,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Fmodf
             | FunctionCandidate::CopySign
             | FunctionCandidate::AddRoundNearest
-            | FunctionCandidate::SubtractRoundNearest => {
+            | FunctionCandidate::SubtractRoundNearest
+            | FunctionCandidate::MultiplyRoundNearest => {
                 return Some(scalar_resolution(Scalar::F32))
             }
             FunctionCandidate::FunnelShift(_)

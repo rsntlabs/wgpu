@@ -53,6 +53,7 @@ mod float_separators;
 mod float_truthiness;
 mod floorf;
 mod fmodf;
+mod fmul_rn;
 mod fns;
 mod fsub_rn;
 mod function_macros;
