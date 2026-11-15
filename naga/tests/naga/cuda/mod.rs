@@ -56,6 +56,7 @@ mod floorf;
 mod fmodf;
 mod fmul_rn;
 mod fns;
+mod frcp_rn;
 mod fsub_rn;
 mod function_macros;
 mod funnel_shifts;

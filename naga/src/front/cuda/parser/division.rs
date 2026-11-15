@@ -23,6 +23,28 @@ impl Parser<'_> {
         .into())
     }
 
+    pub(super) fn lower_frcp_rn_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let argument =
+            self.convert_scalar(arguments.into_iter().next().unwrap().into(), Scalar::F32)?;
+        let one = self.append(Expression::Literal(Literal::F32(1.0)), span)?;
+        let handle = self.divide_f32(one, argument.handle, span)?;
+        Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
+            constant: ConstantValue::default(),
+            handle,
+            ty: scalar_resolution(Scalar::F32),
+            span,
+        }
+        .into())
+    }
+
     pub(super) fn divide_f32(
         &mut self,
         numerator: Handle<Expression>,

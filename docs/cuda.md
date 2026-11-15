@@ -922,6 +922,17 @@ signed-zero, infinity, and canonical-NaN behavior. Intrinsic calls execute at
 runtime and are not source constant expressions. Other explicit division rounding
 modes and the approximate `__fdividef` intrinsic remain unsupported.
 
+`__frcp_rn(float)` computes the correctly rounded single-precision reciprocal,
+following NVIDIA's
+[`__frcp_rn` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SINGLE.html).
+Its scalar argument converts to `float`, then the existing division helper
+computes `1.0f / x` with round-to-nearest, ties-to-even results. Signed zeros
+produce signed infinities, signed infinities produce signed zeros, and NaNs
+produce the canonical quiet NaN `0x7fc00000`. Finite results preserve gradual
+underflow; overflow rounds to signed infinity. Calls execute at runtime and are
+not source constant expressions. Other explicit reciprocal rounding modes remain
+unsupported.
+
 ## Mathematical functions
 
 The 32-bit `min` and `max` overloads accept `int` and `unsigned int` operands in
@@ -1133,7 +1144,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fsub_rn`, `__fmul_rn`, `__fdiv_rn`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fsub_rn`, `__fmul_rn`, `__fdiv_rn`, `__frcp_rn`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 
