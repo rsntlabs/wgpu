@@ -45,6 +45,7 @@ mod dual_execution;
 mod dynamic_shared;
 mod empty_scalar_construction;
 mod fabs;
+mod fadd_rn;
 mod ffsll;
 mod float_classification;
 mod float_math;

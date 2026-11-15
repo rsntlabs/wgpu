@@ -18,6 +18,7 @@ mod dim3;
 mod division;
 mod dynamic_shared;
 mod expressions;
+mod fadd_rn;
 mod float_classification;
 mod float_helpers;
 mod fmodf;
@@ -378,6 +379,7 @@ pub(super) struct Parser<'a> {
     sqrtf_function: Option<Handle<Function>>,
     division_function: Option<Handle<Function>>,
     fmodf_function: Option<Handle<Function>>,
+    fadd_rn_function: Option<Handle<Function>>,
     fns_function: Option<Handle<Function>>,
     float_math_functions: [Option<Handle<Function>>; 4],
     trigonometry_function: Option<Handle<Function>>,
@@ -415,6 +417,7 @@ impl<'a> Parser<'a> {
             sqrtf_function: None,
             division_function: None,
             fmodf_function: None,
+            fadd_rn_function: None,
             fns_function: None,
             float_math_functions: [None; 4],
             trigonometry_function: None,

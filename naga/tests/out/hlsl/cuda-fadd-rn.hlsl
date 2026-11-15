@@ -1,0 +1,174 @@
+ByteAddressBuffer input : register(t0);
+RWByteAddressBuffer output : register(u1);
+
+uint _naga_fadd_rn(uint left_bits, uint right_bits)
+{
+    uint _e9 = (left_bits & 2147483647u);
+    uint _e10 = (right_bits & 2147483647u);
+    uint _e11 = (left_bits & 2147483648u);
+    uint _e12 = (right_bits & 2147483648u);
+    if (((_e9 > 2139095040u) || (_e10 > 2139095040u))) {
+        return 2143289344u;
+    }
+    bool _e16 = (_e9 == 2139095040u);
+    bool _e17 = (_e10 == 2139095040u);
+    if (((_e16 && _e17) && (_e11 != _e12))) {
+        return 2143289344u;
+    }
+    if (_e16) {
+        return left_bits;
+    }
+    if (_e17) {
+        return right_bits;
+    }
+    bool _e22 = (_e9 >= _e10);
+    uint _e23 = (_e22 ? _e9 : _e10);
+    uint _e24 = (_e22 ? _e10 : _e9);
+    uint _e25 = (_e22 ? _e11 : _e12);
+    uint _e29 = (_e23 >> 23u);
+    uint _e30 = (_e24 >> 23u);
+    bool _e31 = (_e29 != 0u);
+    bool _e32 = (_e30 != 0u);
+    uint _e39 = (((_e23 & 8388607u) | (_e31 ? 8388608u : 0u)) << 3u);
+    uint _e40 = (((_e24 & 8388607u) | (_e32 ? 8388608u : 0u)) << 3u);
+    uint _e41 = (_e31 ? _e29 : 1u);
+    uint _e43 = (_e41 - (_e32 ? _e30 : 1u));
+    uint _e48 = (_e43 & 31u);
+    uint _e59 = ((_e43 < 32u) ? ((_e40 >> _e48) | uint(((_e40 & ((1u << _e48) - 1u)) != 0u))) : uint((_e40 != 0u)));
+    uint _e62 = ((_e11 == _e12) ? (_e39 + _e59) : (_e39 - _e59));
+    if ((_e62 == 0u)) {
+        return (_e11 & _e12);
+    }
+    bool _e66 = (_e62 >= 134217728u);
+    uint _e71 = (1u & 31u);
+    uint _e83 = (_e66 ? ((1u < 32u) ? ((_e62 >> _e71) | uint(((_e62 & ((1u << _e71) - 1u)) != 0u))) : uint((_e62 != 0u))) : _e62);
+    uint _e85 = (_e41 + uint(_e66));
+    uint _e90 = min(((31u - firstbithigh(_e83)) - 5u), (_e85 - 1u));
+    uint _e91 = (_e83 << _e90);
+    uint _e95 = (_e91 & 7u);
+    uint _e96 = (_e91 >> 3u);
+    uint _e104 = (_e96 + uint(((_e95 > 4u) || ((_e95 == 4u) && ((_e96 & 1u) != 0u)))));
+    bool _e106 = (_e104 >= 16777216u);
+    uint _e108 = (_e106 ? (_e104 >> 1u) : _e104);
+    uint _e110 = ((_e85 - _e90) + uint(_e106));
+    if ((_e110 >= 255u)) {
+        return (_e25 | 2139095040u);
+    }
+    return (_e25 | ((((_e108 >= 8388608u) ? _e110 : 0u) << 23u) | (_e108 & 8388607u)));
+}
+
+float add_value(float first, float second)
+{
+    const uint _e4 = _naga_fadd_rn(asuint(first), asuint(second));
+    return asfloat(_e4);
+}
+
+int _fadd_rn(bool first_1, bool second_1)
+{
+    int local_13 = (int)0;
+
+    if (first_1) {
+        local_13 = int(7);
+    } else {
+        local_13 = int(9);
+    }
+    int _e6 = local_13;
+    return _e6;
+}
+
+uint _naga_fabsf(uint input_bits)
+{
+    uint _e2 = (input_bits & 2147483647u);
+    return ((_e2 > 2139095040u) ? 2143289344u : _e2);
+}
+
+[numthreads(32, 1, 1)]
+void add_round_nearest(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_GroupID)
+{
+    uint local = (uint)0;
+    uint local_1 = (uint)0;
+    uint local_2 = (uint)0;
+    int cursor = (int)0;
+    uint local_3 = (uint)0;
+    uint local_4 = (uint)0;
+    uint local_5 = (uint)0;
+    bool local_6 = (bool)0;
+    bool local_7 = (bool)0;
+    uint local_8 = (uint)0;
+    uint local_9 = (uint)0;
+    uint local_10 = (uint)0;
+    uint local_11 = (uint)0;
+    uint local_12 = (uint)0;
+
+    uint index = (threadIdx.x + (blockIdx.x * 32u));
+    if ((index >= 4096u)) {
+        return;
+    }
+    uint base = (4u + (index * 8u));
+    local = uint((index * 2u));
+    uint _e17 = local;
+    uint _e20 = asuint(input.Load(_e17*4));
+    float first_2 = asfloat(_e20);
+    local_1 = uint(((index * 2u) + 1u));
+    uint _e28 = local_1;
+    uint _e30 = asuint(input.Load(_e28*4));
+    float second_2 = asfloat(_e30);
+    const uint _e34 = _naga_fadd_rn(asuint(first_2), asuint(second_2));
+    output.Store(base*4, asuint(asuint(asfloat(_e34))));
+    const float _e39 = add_value(first_2, second_2);
+    local_2 = uint((base + 1u));
+    uint _e45 = local_2;
+    output.Store(_e45*4, asuint(asuint(_e39)));
+    cursor = int(0);
+    int _e51 = cursor;
+    cursor = asint(asuint(_e51) + asuint(int(1)));
+    local_4 = uint(((index * 2u) + uint(_e51)));
+    uint _e58 = local_4;
+    uint _e60 = asuint(input.Load(_e58*4));
+    int _e64 = cursor;
+    cursor = asint(asuint(_e64) + asuint(int(1)));
+    local_5 = uint(((index * 2u) + uint(_e64)));
+    uint _e71 = local_5;
+    uint _e73 = asuint(input.Load(_e71*4));
+    const float _e75 = add_value(asfloat(_e60), asfloat(_e73));
+    local_3 = uint((base + 2u));
+    uint _e81 = local_3;
+    output.Store(_e81*4, asuint(asuint(_e75)));
+    local_6 = false;
+    if (false) {
+        int _e85 = cursor;
+        cursor = asint(asuint(_e85) + asuint(int(1)));
+        const uint _e91 = _naga_fadd_rn(asuint(float(_e85)), asuint(first_2));
+        const uint _e94 = _naga_fabsf(asuint(asfloat(_e91)));
+        local_6 = (_e94 != 0u);
+    }
+    local_7 = true;
+    if (true) {
+    } else {
+        int _e99 = cursor;
+        cursor = asint(asuint(_e99) + asuint(int(1)));
+        const uint _e105 = _naga_fadd_rn(asuint(first_2), asuint(float(_e99)));
+        const uint _e108 = _naga_fabsf(asuint(asfloat(_e105)));
+        local_7 = (_e108 != 0u);
+    }
+    int _e111 = cursor;
+    local_8 = uint((base + 3u));
+    uint _e117 = local_8;
+    output.Store(_e117*4, asuint(uint(_e111)));
+    const uint _e125 = _naga_fadd_rn(asuint(-(0.0)), asuint(-(0.0)));
+    local_9 = uint((base + 4u));
+    uint _e132 = local_9;
+    output.Store(_e132*4, asuint(asuint(asfloat(_e125))));
+    const uint _e139 = _naga_fadd_rn(asuint(-(0.0)), asuint(0.0));
+    local_10 = uint((base + 5u));
+    uint _e146 = local_10;
+    output.Store(_e146*4, asuint(asuint(asfloat(_e139))));
+    const float _e152 = add_value(float(int(1)), float(2u));
+    local_11 = uint((base + 6u));
+    uint _e158 = local_11;
+    output.Store(_e158*4, asuint(asuint(_e152)));
+    const int _e162 = _fadd_rn(true, false);
+    local_12 = uint((base + 7u));
+    uint _e168 = local_12;
+    output.Store(_e168*4, asuint(uint(_e162)));
+}

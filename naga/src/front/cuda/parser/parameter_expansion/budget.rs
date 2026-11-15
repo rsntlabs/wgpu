@@ -1536,6 +1536,125 @@ mod tests {
     }
 
     #[test]
+    fn fadd_rn_first_call_exhaustion_preserves_prepared_and_unprepared_callers() {
+        for prepared in [false, true] {
+            for exhaust_bytes in [false, true] {
+                let (mut parser, [left, right, _], span) = fns_budget_parser();
+                parser.parameter_expansion_budget.activate();
+                if prepared {
+                    parser.prepare_parameter_bindings(span).unwrap();
+                }
+                let caller = format!("{:?}", parser.function.ir);
+                let depths = parser.function.expression_graph_depths.clone();
+                let type_count = parser.module.types.len();
+                if exhaust_bytes {
+                    let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                    parser
+                        .parameter_expansion_budget
+                        .charge_bytes(remaining, span)
+                        .unwrap();
+                } else {
+                    let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                    parser
+                        .parameter_expansion_budget
+                        .charge_nodes(remaining, span)
+                        .unwrap();
+                }
+                let error = parser.call_fadd_rn_bits(left, right, span).unwrap_err();
+                assert_eq!(error.message, limit_error(span).message);
+                assert_eq!(error.span, span);
+                assert!(parser.parameter_expansion_budget.is_exhausted());
+                assert_fns_budget_caller(&parser, left);
+                assert_eq!(format!("{:?}", parser.function.ir), caller);
+                assert_eq!(parser.function.expression_graph_depths, depths);
+                assert_eq!(parser.module.types.len(), type_count);
+                assert!(parser.module.global_variables.is_empty());
+                assert!(parser.module.functions.is_empty());
+                assert_eq!(parser.fadd_rn_function, None);
+            }
+        }
+    }
+
+    #[test]
+    fn fadd_rn_partial_helper_failure_restores_caller_and_keeps_cache_unpublished() {
+        for available_nodes in [3, 6, 12, 32, 96] {
+            let (mut parser, [left, right, _], span) = fns_budget_parser();
+            parser.parameter_expansion_budget.activate();
+            parser.prepare_parameter_bindings(span).unwrap();
+            let caller = format!("{:?}", parser.function.ir);
+            let depths = parser.function.expression_graph_depths.clone();
+            let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+            parser
+                .parameter_expansion_budget
+                .charge_nodes(remaining - available_nodes, span)
+                .unwrap();
+            let error = parser.call_fadd_rn_bits(left, right, span).unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert_eq!(error.span, span);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_fns_budget_caller(&parser, left);
+            assert_eq!(format!("{:?}", parser.function.ir), caller);
+            assert_eq!(parser.function.expression_graph_depths, depths);
+            assert!(parser.module.global_variables.is_empty());
+            assert!(parser.module.functions.is_empty());
+            assert_eq!(parser.fadd_rn_function, None);
+        }
+    }
+
+    #[test]
+    fn fadd_rn_cached_call_exhaustion_preserves_helper_and_pending_caller_expressions() {
+        for exhaust_bytes in [false, true] {
+            let (mut parser, [left, right, _], span) = fns_budget_parser();
+            let result = parser.call_fadd_rn_bits(left, right, span).unwrap();
+            let cached = parser.fadd_rn_function.unwrap();
+            assert_eq!(parser.module.functions.len(), 1);
+            assert_eq!(
+                parser.module.functions[cached].name.as_deref(),
+                Some("_naga_fadd_rn")
+            );
+            parser
+                .append(
+                    Expression::Binary {
+                        op: BinaryOperator::Add,
+                        left: result,
+                        right,
+                    },
+                    span,
+                )
+                .unwrap();
+            let caller = format!("{:?}", parser.function.ir);
+            let helper = format!("{:?}", parser.module.functions[cached]);
+            let depths = parser.function.expression_graph_depths.clone();
+            let type_count = parser.module.types.len();
+            if exhaust_bytes {
+                let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                parser
+                    .parameter_expansion_budget
+                    .charge_bytes(remaining, span)
+                    .unwrap();
+            } else {
+                let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                parser
+                    .parameter_expansion_budget
+                    .charge_nodes(remaining, span)
+                    .unwrap();
+            }
+            let error = parser.call_fadd_rn_bits(left, right, span).unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert_eq!(error.span, span);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_fns_budget_caller(&parser, left);
+            assert_eq!(format!("{:?}", parser.function.ir), caller);
+            assert_eq!(parser.function.expression_graph_depths, depths);
+            assert_eq!(parser.module.types.len(), type_count);
+            assert!(parser.module.global_variables.is_empty());
+            assert_eq!(parser.module.functions.len(), 1);
+            assert_eq!(parser.fadd_rn_function, Some(cached));
+            assert_eq!(format!("{:?}", parser.module.functions[cached]), helper);
+        }
+    }
+
+    #[test]
     fn fns_first_call_checks_node_and_byte_budget_before_allocating() {
         for exhaust_bytes in [false, true] {
             let (mut parser, [mask, base, offset], span) = fns_budget_parser();
