@@ -241,6 +241,7 @@ pub(super) fn pointer_declarator(
 
 struct TypeContext<'context, 'source> {
     types: &'context crate::arena::UniqueArena<Type>,
+    global_variables: &'context Arena<GlobalVariable>,
     function: &'context FunctionContext<'source>,
     long_types: &'context [Option<Handle<Type>>; 2],
     dim3_type: Option<Handle<Type>>,
@@ -320,6 +321,60 @@ fn decltype_operand_type(
         ));
     }
     let (ty, qualifiers) = match symbols.lookup(name) {
+        Some(&Symbol::Pointer(pointer)) => {
+            let pointer = &context.function.pointer_symbols[pointer];
+            let pointers::PointerValueCategory::Variable { writable, .. } = pointer.category else {
+                return Err(invalid());
+            };
+            let TypeInner::Pointer { base, .. } = *pointer.ty.inner_with(context.types) else {
+                return Err(invalid());
+            };
+            return Ok((
+                QualifiedType {
+                    ty: TypeSpecifier::Pointer {
+                        pointee: base,
+                        pointee_qualifiers: pointer.qualifiers,
+                    },
+                    qualifiers: Qualifiers {
+                        is_const: !writable,
+                        is_volatile: false,
+                    },
+                },
+                end,
+            ));
+        }
+        Some(&Symbol::Array {
+            pointer,
+            qualifiers,
+            ..
+        }) => {
+            let array = match context.function.ir.expressions[pointer] {
+                Expression::LocalVariable(local) => {
+                    if context.function.pending_array == Some(local) {
+                        return Err(invalid());
+                    }
+                    context.function.ir.local_variables[local].ty
+                }
+                Expression::GlobalVariable(global) => context.global_variables[global].ty,
+                _ => return Err(invalid()),
+            };
+            if !matches!(
+                context.types[array].inner,
+                TypeInner::Array {
+                    size: ArraySize::Constant(_),
+                    ..
+                }
+            ) {
+                return Err(invalid());
+            }
+            return Ok((
+                QualifiedType {
+                    ty: TypeSpecifier::Array(array),
+                    qualifiers,
+                },
+                end,
+            ));
+        }
         Some(&Symbol::Variable {
             pointer,
             ref ty,
@@ -855,6 +910,7 @@ impl<'a> Parser<'a> {
             &self.global_declarations,
             &TypeContext {
                 types: &self.module.types,
+                global_variables: &self.module.global_variables,
                 function: &self.function,
                 long_types: &self.long_types,
                 dim3_type: self.dim3_type,
@@ -873,6 +929,7 @@ impl<'a> Parser<'a> {
             &self.global_declarations,
             &TypeContext {
                 types: &self.module.types,
+                global_variables: &self.module.global_variables,
                 function: &self.function,
                 long_types: &self.long_types,
                 dim3_type: self.dim3_type,
@@ -888,6 +945,7 @@ impl<'a> Parser<'a> {
             &self.global_declarations,
             &TypeContext {
                 types: &self.module.types,
+                global_variables: &self.module.global_variables,
                 function: &self.function,
                 long_types: &self.long_types,
                 dim3_type: self.dim3_type,
@@ -904,6 +962,7 @@ impl<'a> Parser<'a> {
             &self.global_declarations,
             &TypeContext {
                 types: &self.module.types,
+                global_variables: &self.module.global_variables,
                 function: &self.function,
                 long_types: &self.long_types,
                 dim3_type: self.dim3_type,
@@ -922,6 +981,7 @@ impl<'a> Parser<'a> {
             &self.global_declarations,
             &TypeContext {
                 types: &self.module.types,
+                global_variables: &self.module.global_variables,
                 function: &self.function,
                 long_types: &self.long_types,
                 dim3_type: self.dim3_type,
@@ -1120,4 +1180,114 @@ impl<'a> Parser<'a> {
 
 pub(super) const fn scalar_resolution(scalar: Scalar) -> TypeResolution {
     TypeResolution::Value(TypeInner::Scalar(scalar))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn exhaust_budget(parser: &mut Parser<'_>, resource: u8, span: Span) {
+        parser.parameter_expansion_budget.activate();
+        parser.prepare_parameter_bindings(span).unwrap();
+        for bit in (0..usize::BITS).rev() {
+            let count = 1usize << bit;
+            let _ = match resource {
+                0 => parser.parameter_expansion_budget.charge_nodes(count, span),
+                1 => parser.parameter_expansion_budget.charge_bytes(count, span),
+                _ => parser.parameter_expansion_budget.charge_work(count, span),
+            };
+        }
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+    }
+
+    #[test]
+    fn decltype_pointer_and_array_queries_remain_pure_with_exhausted_budgets() {
+        for resource in 0..3 {
+            let source = "int value = 1; int *const pointer = &value; int array[3] = {}; __shared__ volatile int shared_array[2];";
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            for _ in 0..4 {
+                parser.local_declaration().unwrap();
+            }
+            exhaust_budget(&mut parser, resource, Span::new(0, 1));
+            let ir = format!("{:?}", parser.function.ir);
+            let types = format!("{:?}", parser.module.types);
+            let globals = format!("{:?}", parser.module.global_variables);
+            let symbols = format!("{:?}", parser.function.symbol_table);
+            let pointers = format!("{:?}", parser.function.pointer_symbols);
+            let pointer_expressions = format!("{:?}", parser.function.pointers.expressions);
+            let pointer_operations = parser.function.pointers.operations.len();
+            let depths = parser.function.expression_graph_depths.clone();
+            let pointer = parser
+                .parse_type_from(&mut Lexer::new("decltype(pointer)").unwrap())
+                .unwrap();
+            assert!(pointer.qualifiers.is_const);
+            assert!(matches!(
+                pointer.ty,
+                TypeSpecifier::Pointer {
+                    pointee_qualifiers: Qualifiers::NONE,
+                    ..
+                }
+            ));
+            for (query, count, is_volatile) in [
+                ("decltype(array)", 3, false),
+                ("decltype(shared_array)", 2, true),
+            ] {
+                let array = parser
+                    .parse_type_from(&mut Lexer::new(query).unwrap())
+                    .unwrap();
+                assert_eq!(array.qualifiers.is_volatile, is_volatile);
+                let TypeSpecifier::Array(handle) = array.ty else {
+                    panic!("expected full array type");
+                };
+                assert!(
+                    matches!(parser.module.types[handle].inner, TypeInner::Array { size: ArraySize::Constant(size), .. } if size.get() == count)
+                );
+            }
+            assert_eq!(format!("{:?}", parser.function.ir), ir);
+            assert_eq!(format!("{:?}", parser.module.types), types);
+            assert_eq!(format!("{:?}", parser.module.global_variables), globals);
+            assert_eq!(format!("{:?}", parser.function.symbol_table), symbols);
+            assert_eq!(format!("{:?}", parser.function.pointer_symbols), pointers);
+            assert_eq!(
+                format!("{:?}", parser.function.pointers.expressions),
+                pointer_expressions
+            );
+            assert_eq!(
+                parser.function.pointers.operations.len(),
+                pointer_operations
+            );
+            assert_eq!(parser.function.expression_graph_depths, depths);
+        }
+    }
+
+    #[test]
+    fn decltype_array_alias_insertion_and_extent_allocation_obey_budgets() {
+        for declare_object in [false, true] {
+            for resource in 0..2 {
+                let source =
+                    "int array[3] = {}; using Alias = decltype(array); Alias fresh[(1 + 2)];";
+                let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                parser.local_declaration().unwrap();
+                if declare_object {
+                    parser.local_declaration().unwrap();
+                }
+                exhaust_budget(&mut parser, resource, Span::new(0, 1));
+                let ir = format!("{:?}", parser.function.ir);
+                let types = format!("{:?}", parser.module.types);
+                let symbols = format!("{:?}", parser.function.symbol_table);
+                let depths = parser.function.expression_graph_depths.clone();
+                let error = parser.local_declaration().unwrap_err();
+                assert_eq!(
+                    error.message,
+                    "CUDA helper parameter expansion limit exceeded"
+                );
+                assert!(parser.parameter_expansion_budget.is_exhausted());
+                assert_eq!(format!("{:?}", parser.function.ir), ir);
+                assert_eq!(format!("{:?}", parser.module.types), types);
+                assert_eq!(format!("{:?}", parser.function.symbol_table), symbols);
+                assert_eq!(parser.function.expression_graph_depths, depths);
+                assert!(parser.function.symbol_table.lookup("fresh").is_none());
+            }
+        }
+    }
 }

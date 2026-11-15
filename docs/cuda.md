@@ -410,13 +410,20 @@ rounds up to that alignment. Arrays of structs use that rounded size as their
 stride. Copies preserve field values; padding bytes are unspecified.
 
 `decltype(name)` accepts a direct, unqualified name of a supported scalar,
-CUDA vector, record, or `dim3` value object. It works with local and shared
-value objects, by-value function parameters, and scalar `constexpr` constants.
+CUDA vector, record, `dim3`, pointer, or complete array value object. It works
+with local and shared value objects, by-value function parameters, and scalar
+`constexpr` constants.
 The result preserves the declared type and its `const`/`volatile` qualifiers,
 including the distinction between `long` and `long long` and the identities of
 CUDA vector types. The operand is unevaluated: querying an object adds no read
 or initializer evaluation. This follows the named-entity rule for
 [`decltype`](https://eel.is/c++draft/dcl.type.decltype).
+
+Pointer queries preserve pointee qualifiers separately from the pointer
+object's `const` qualifier. Array queries preserve every extent without decay,
+including arrays of vectors or records. Supported array parameters have already adjusted
+to pointers, so querying a parameter preserves that pointer type and any row
+extent. A query does not initialize or read an uninitialized pointer object.
 
 Queried types can be used in aliases, declarations, supported casts and value
 construction, and helper return types where the object name is visible:
@@ -430,9 +437,9 @@ __device__ unsigned copy_value(unsigned value) {
 ```
 
 `decltype(nullptr)` remains supported. Queries of references (including
-reference parameters), pointers, arrays, named `nullptr_t` or `thread_block`
-objects, constant-memory storage objects, and template parameter names are
-unsupported. Parenthesized lvalues such as `decltype((value))`, member access,
+reference parameters), incomplete or currently inferred arrays, named
+`nullptr_t` or `thread_block` objects, dynamic shared or constant-memory storage
+objects, and template parameter names remain unsupported. Parenthesized lvalues such as `decltype((value))`, member access,
 calls, and other expression operands are also unsupported. Ordinary value
 parameters in instantiated template bodies can be queried once their types are
 known. Existing restrictions on the resulting type's use still apply, including

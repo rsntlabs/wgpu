@@ -32,6 +32,7 @@ mod control_flow;
 mod copysignf;
 mod declarations;
 mod decltype_objects;
+mod decltype_pointer_arrays;
 mod default_arguments;
 mod default_template_arguments;
 mod dependent_integral_defaults;
@@ -223,6 +224,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_DIRECT_BORROWED_INITIALIZATION,
         CUDA_DIRECT_INITIALIZATION,
         CUDA_DEFAULT_ARGUMENTS,
+        CUDA_DECLTYPE_POINTER_ARRAYS,
         CUDA_DECLTYPE_OBJECTS,
         CUDA_DP2A,
         CUDA_DP4A,
@@ -1166,3 +1168,7 @@ static CUDA_FMAF_RZ: GpuTestConfiguration = configuration(fmaf_rz::cases);
 
 #[apply(gpu_test!)]
 static CUDA_IF_INITIALIZERS: GpuTestConfiguration = configuration(if_initializers::cases);
+
+#[apply(gpu_test!)]
+static CUDA_DECLTYPE_POINTER_ARRAYS: GpuTestConfiguration =
+    configuration(decltype_pointer_arrays::cases);

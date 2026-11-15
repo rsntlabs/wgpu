@@ -131,8 +131,8 @@ fn cuda_decltype_objects_cli_preserves_const_and_new_reference_bindings_without_
 fn cuda_decltype_objects_cli_rejects_unsupported_operands_without_output() {
     for source in [
         "__device__ void helper(unsigned &value) { using Type = decltype(value); } __global__ void kernel() {}",
-        "__global__ void kernel(unsigned *pointer) { using Type = decltype(pointer); }",
-        "__global__ void kernel() { unsigned array[2]; using Type = decltype(array); }",
+        "__global__ void kernel(unsigned *pointer) { using Type = decltype(*pointer); }",
+        "__global__ void kernel() { unsigned array[2]; using Type = decltype((array)); }",
         "__global__ void kernel() { decltype(nullptr) value = nullptr; using Type = decltype(value); }",
         "__global__ void kernel() { auto block = cooperative_groups::this_thread_block(); using Type = decltype(block); }",
         "template<class T> __device__ void helper(T value, decltype(value) other) {} __global__ void kernel() {}",

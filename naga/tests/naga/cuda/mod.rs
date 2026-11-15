@@ -27,6 +27,7 @@ mod conversions;
 mod copysign;
 mod declarations;
 mod decltype_objects;
+mod decltype_pointer_arrays;
 mod default_arguments;
 mod default_template_arguments;
 mod dependent_integral_defaults;

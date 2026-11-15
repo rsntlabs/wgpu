@@ -175,12 +175,10 @@ fn cuda_decltype_objects_preserve_lexical_shadowing_and_instantiated_template_bo
 }
 
 #[test]
-fn cuda_decltype_objects_reject_reference_pointer_array_and_source_only_operands() {
+fn cuda_decltype_objects_reject_reference_and_source_only_operands() {
     for body in [
         "int value = 1; int &ref = value; decltype(ref) copy = value;",
         "int value = 1; const int &ref = value; decltype(ref) copy = value;",
-        "int value = 1; int *pointer = &value; decltype(pointer) copy = pointer;",
-        "int values[2]{}; decltype(values) copy{};",
         "using Null = decltype(nullptr); Null value = nullptr; decltype(value) copy = nullptr;",
         "auto group = cooperative_groups::this_thread_block(); decltype(group) copy = group;",
     ] {
