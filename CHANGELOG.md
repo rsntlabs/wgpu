@@ -360,6 +360,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA scalar `rsqrtf` across the finite input range, including subnormals and exceptional values.
 - Support CUDA scalar `floorf`, including negative subnormals and large integral values.
 - Support CUDA scalar `ceilf`, including subnormal inputs and signed zero results.
+- Preserve CUDA `floorf`, `ceilf`, and small `sinf` signed-zero results across shader compiler optimizations.
 - Support CUDA scalar `roundf`, including halfway cases rounded away from zero.
 - Preserve CUDA round-to-nearest single-precision division, including subnormal results and exceptional values.
 - Support CUDA scalar `__saturatef`, including NaNs, signed zeros, and subnormal inputs.

@@ -482,42 +482,42 @@ fn gen__naga_trigonometry(input_bits_1: u32, cosine: u32) -> u32 {
     }
     let _e8 = (cosine != 0u);
     if (_e3 <= 956301312u) {
-        return select(input_bits_1, 1065353216u, _e8);
+        return ((cosine * 1065353216u) | ((1u - cosine) * input_bits_1));
     }
-    let _e16 = (470u - (_e3 >> 23u));
-    let _e20 = ((_e3 & 8388607u) | 8388608u);
-    let _e47 = gen__naga_trig_reduce_multiply(array<u32, 2>((_e20 & 65535u), (_e20 >> 16u)), array<u32, 20>(53984u, 16973u, 28218u, 46884u, 50529u, 57019u, 25515u, 65105u, 36929u, 15427u, 38297u, 56162u, 56768u, 62772u, 22481u, 64551u, 5417u, 20036u, 33646u, 41721u));
-    let _e50 = gen__naga_trig_extract_product(_e47, _e16);
-    quadrant = (_e50 & 3u);
+    let _e20 = (470u - (_e3 >> 23u));
+    let _e24 = ((_e3 & 8388607u) | 8388608u);
+    let _e51 = gen__naga_trig_reduce_multiply(array<u32, 2>((_e24 & 65535u), (_e24 >> 16u)), array<u32, 20>(53984u, 16973u, 28218u, 46884u, 50529u, 57019u, 25515u, 65105u, 36929u, 15427u, 38297u, 56162u, 56768u, 62772u, 22481u, 64551u, 5417u, 20036u, 33646u, 41721u));
+    let _e54 = gen__naga_trig_extract_product(_e51, _e20);
+    quadrant = (_e54 & 3u);
     fraction_index = 0u;
     loop {
-        let _e60 = fraction_index;
-        if (_e60 >= 11u) {
+        let _e64 = fraction_index;
+        if (_e64 >= 11u) {
             break;
         }
-        let _e66 = gen__naga_trig_extract_product(_e47, ((_e16 - 176u) + (_e60 * 16u)));
-        fraction[_e60] = _e66;
+        let _e70 = gen__naga_trig_extract_product(_e51, ((_e20 - 176u) + (_e64 * 16u)));
+        fraction[_e64] = _e70;
         continuing {
-            let _e68 = fraction_index;
-            fraction_index = (_e68 + 1u);
+            let _e72 = fraction_index;
+            fraction_index = (_e72 + 1u);
         }
     }
-    let _e73 = fraction[10u];
-    let _e75 = (_e73 >= 32768u);
-    if _e75 {
-        let _e89 = quadrant;
-        quadrant = ((_e89 + 1u) & 3u);
-        let _e94 = fraction;
-        let _e96 = gen__naga_trig_combine(array<u32, 12>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u), _e94, 1u);
-        fraction = _e96;
+    let _e77 = fraction[10u];
+    let _e79 = (_e77 >= 32768u);
+    if _e79 {
+        let _e93 = quadrant;
+        quadrant = ((_e93 + 1u) & 3u);
+        let _e98 = fraction;
+        let _e100 = gen__naga_trig_combine(array<u32, 12>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u), _e98, 1u);
+        fraction = _e100;
     }
-    let _e97 = fraction;
-    let _e111 = gen__naga_trig_multiply(_e97, array<u32, 12>(5327u, 39953u, 20996u, 14754u, 440u, 50455u, 35212u, 33897u, 17105u, 46404u, 37407u, 1u));
-    let _e112 = quadrant;
-    let _e115 = ((_e112 & 1u) == cosine);
-    let _e119 = gen__naga_trig_kernel(_e111, select(0u, 1u, _e115));
-    let _e120 = gen__naga_trig_round(_e119);
-    return (_e120 | ((select(0u, 2147483648u, (_e75 && _e115)) ^ ((select(_e112, (_e112 + 1u), _e8) & 2u) << 30u)) ^ select((input_bits_1 & 2147483648u), 0u, _e8)));
+    let _e101 = fraction;
+    let _e115 = gen__naga_trig_multiply(_e101, array<u32, 12>(5327u, 39953u, 20996u, 14754u, 440u, 50455u, 35212u, 33897u, 17105u, 46404u, 37407u, 1u));
+    let _e116 = quadrant;
+    let _e119 = ((_e116 & 1u) == cosine);
+    let _e123 = gen__naga_trig_kernel(_e115, select(0u, 1u, _e119));
+    let _e124 = gen__naga_trig_round(_e123);
+    return (_e124 | ((select(0u, 2147483648u, (_e79 && _e119)) ^ ((select(_e116, (_e116 + 1u), _e8) & 2u) << 30u)) ^ select((input_bits_1 & 2147483648u), 0u, _e8)));
 }
 
 fn generated(value_9: f32) -> f32 {

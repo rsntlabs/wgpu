@@ -590,7 +590,20 @@ impl Parser<'_> {
                 let cosine =
                     parser.trig_binary_literal(BinaryOperator::NotEqual, arguments[1], 0, span)?;
                 let one_bits = parser.trig_literal(0x3f80_0000, span)?;
-                let small_result = parser.trig_select(cosine, one_bits, arguments[0], span)?;
+                // The 0/1 mode avoids constant selects over signed zero bits.
+                let cosine_bits =
+                    parser.trig_binary(BinaryOperator::Multiply, arguments[1], one_bits, span)?;
+                let one = parser.trig_literal(1, span)?;
+                let sine_mode =
+                    parser.trig_binary(BinaryOperator::Subtract, one, arguments[1], span)?;
+                let sine_bits =
+                    parser.trig_binary(BinaryOperator::Multiply, sine_mode, arguments[0], span)?;
+                let small_result = parser.trig_binary(
+                    BinaryOperator::InclusiveOr,
+                    cosine_bits,
+                    sine_bits,
+                    span,
+                )?;
                 let small = parser.trig_binary_literal(
                     BinaryOperator::LessEqual,
                     magnitude,

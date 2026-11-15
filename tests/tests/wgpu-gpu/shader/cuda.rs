@@ -126,6 +126,7 @@ mod reference_bindings;
 mod reference_categories;
 mod restrict;
 mod roundf;
+mod rounding_zero_signs;
 mod rsqrtf;
 mod sad;
 mod saturate;
@@ -184,6 +185,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_BYTE_PERM,
         CUDA_BYTE_SWAP32,
         CUDA_CACHED_MATH,
+        CUDA_ROUNDING_ZERO_SIGNS,
         CUDA_CEILF,
         CUDA_CLASS_VALUES,
         CUDA_CLZLL,
@@ -1060,3 +1062,6 @@ static CUDA_TEMPLATE_DEFAULT_MERGING: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_DEPENDENT_TYPE_DEFAULTS: GpuTestConfiguration =
     configuration(dependent_type_defaults::cases);
+
+#[apply(gpu_test!)]
+static CUDA_ROUNDING_ZERO_SIGNS: GpuTestConfiguration = configuration(rounding_zero_signs::cases);

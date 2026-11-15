@@ -12,21 +12,21 @@ groupshared uint shared_values[4];
 uint _naga_floorf(uint input_bits)
 {
     uint _e5 = (input_bits & 2147483647u);
-    bool _e7 = ((input_bits & 2147483648u) != 0u);
+    uint _e6 = (input_bits & 2147483648u);
     uint _e14 = (1u << ((150u - (_e5 >> 23u)) & 31u));
     uint _e15 = (_e14 - 1u);
     uint _e19 = (input_bits & ~(_e15));
-    return ((_e5 > 2139095040u) ? 2143289344u : ((_e5 >= 1258291200u) ? input_bits : ((_e5 < 1065353216u) ? ((_e5 == 0u) ? input_bits : (_e7 ? 3212836864u : 0u)) : ((_e7 && ((input_bits & _e15) != 0u)) ? (_e19 + _e14) : _e19))));
+    return ((_e5 > 2139095040u) ? 2143289344u : ((_e5 >= 1258291200u) ? input_bits : ((_e5 < 1065353216u) ? ((_e5 == 0u) ? input_bits : (_e6 | ((_e6 >> 31u) * 1065353216u))) : (((_e6 != 0u) && ((input_bits & _e15) != 0u)) ? (_e19 + _e14) : _e19))));
 }
 
 uint _naga_ceilf(uint input_bits_1)
 {
     uint _e5 = (input_bits_1 & 2147483647u);
     uint _e6 = (input_bits_1 & 2147483648u);
-    uint _e14 = (1u << ((150u - (_e5 >> 23u)) & 31u));
-    uint _e15 = (_e14 - 1u);
-    uint _e19 = (input_bits_1 & ~(_e15));
-    return ((_e5 > 2139095040u) ? 2143289344u : ((_e5 >= 1258291200u) ? input_bits_1 : ((_e5 < 1065353216u) ? ((_e5 == 0u) ? input_bits_1 : ((_e6 != 0u) ? 2147483648u : 1065353216u)) : (((_e6 == 0u) && ((input_bits_1 & _e15) != 0u)) ? (_e19 + _e14) : _e19))));
+    uint _e13 = (1u << ((150u - (_e5 >> 23u)) & 31u));
+    uint _e14 = (_e13 - 1u);
+    uint _e18 = (input_bits_1 & ~(_e14));
+    return ((_e5 > 2139095040u) ? 2143289344u : ((_e5 >= 1258291200u) ? input_bits_1 : ((_e5 < 1065353216u) ? ((_e5 == 0u) ? input_bits_1 : (_e6 | ((1u - (_e6 >> 31u)) * 1065353216u))) : (((_e6 == 0u) && ((input_bits_1 & _e14) != 0u)) ? (_e18 + _e13) : _e18))));
 }
 
 uint _naga_roundf(uint input_bits_2)
@@ -743,13 +743,13 @@ uint _naga_trigonometry(uint input_bits_5, uint cosine)
     }
     bool _e8 = (cosine != 0u);
     if ((_e3 <= 956301312u)) {
-        return (_e8 ? 1065353216u : input_bits_5);
+        return ((cosine * 1065353216u) | ((1u - cosine) * input_bits_5));
     }
-    uint _e16 = (470u - (_e3 >> 23u));
-    uint _e20 = ((_e3 & 8388607u) | 8388608u);
-    const uint _e47[22] = _naga_trig_reduce_multiply(Constructarray2_uint_((_e20 & 65535u), (_e20 >> 16u)), Constructarray20_uint_(53984u, 16973u, 28218u, 46884u, 50529u, 57019u, 25515u, 65105u, 36929u, 15427u, 38297u, 56162u, 56768u, 62772u, 22481u, 64551u, 5417u, 20036u, 33646u, 41721u));
-    const uint _e50 = _naga_trig_extract_product(_e47, _e16);
-    quadrant = (_e50 & 3u);
+    uint _e20 = (470u - (_e3 >> 23u));
+    uint _e24 = ((_e3 & 8388607u) | 8388608u);
+    const uint _e51[22] = _naga_trig_reduce_multiply(Constructarray2_uint_((_e24 & 65535u), (_e24 >> 16u)), Constructarray20_uint_(53984u, 16973u, 28218u, 46884u, 50529u, 57019u, 25515u, 65105u, 36929u, 15427u, 38297u, 56162u, 56768u, 62772u, 22481u, 64551u, 5417u, 20036u, 33646u, 41721u));
+    const uint _e54 = _naga_trig_extract_product(_e51, _e20);
+    quadrant = (_e54 & 3u);
     fraction_index = 0u;
     uint2 loop_bound_14 = uint2(4294967295u, 4294967295u);
     bool loop_init_13 = true;
@@ -757,33 +757,33 @@ uint _naga_trigonometry(uint input_bits_5, uint cosine)
         if (all(loop_bound_14 == uint2(0u, 0u))) { break; }
         loop_bound_14 -= uint2(loop_bound_14.y == 0u, 1u);
         if (!loop_init_13) {
-            uint _e68 = fraction_index;
-            fraction_index = (_e68 + 1u);
+            uint _e72 = fraction_index;
+            fraction_index = (_e72 + 1u);
         }
         loop_init_13 = false;
-        uint _e60 = fraction_index;
-        if ((_e60 >= 11u)) {
+        uint _e64 = fraction_index;
+        if ((_e64 >= 11u)) {
             break;
         }
-        const uint _e66 = _naga_trig_extract_product(_e47, ((_e16 - 176u) + (_e60 * 16u)));
-        fraction[min(uint(_e60), 11u)] = _e66;
+        const uint _e70 = _naga_trig_extract_product(_e51, ((_e20 - 176u) + (_e64 * 16u)));
+        fraction[min(uint(_e64), 11u)] = _e70;
     }
-    uint _e73 = fraction[10u];
-    bool _e75 = (_e73 >= 32768u);
-    if (_e75) {
-        uint _e89 = quadrant;
-        quadrant = ((_e89 + 1u) & 3u);
-        uint _e94[12] = fraction;
-        const uint _e96[12] = _naga_trig_combine(Constructarray12_uint_(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u), _e94, 1u);
-        fraction = _e96;
+    uint _e77 = fraction[10u];
+    bool _e79 = (_e77 >= 32768u);
+    if (_e79) {
+        uint _e93 = quadrant;
+        quadrant = ((_e93 + 1u) & 3u);
+        uint _e98[12] = fraction;
+        const uint _e100[12] = _naga_trig_combine(Constructarray12_uint_(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u), _e98, 1u);
+        fraction = _e100;
     }
-    uint _e97[12] = fraction;
-    const uint _e111[12] = _naga_trig_multiply(_e97, Constructarray12_uint_(5327u, 39953u, 20996u, 14754u, 440u, 50455u, 35212u, 33897u, 17105u, 46404u, 37407u, 1u));
-    uint _e112 = quadrant;
-    bool _e115 = ((_e112 & 1u) == cosine);
-    const uint _e119[12] = _naga_trig_kernel(_e111, (_e115 ? 1u : 0u));
-    const uint _e120 = _naga_trig_round(_e119);
-    return (_e120 | ((((_e75 && _e115) ? 2147483648u : 0u) ^ (((_e8 ? (_e112 + 1u) : _e112) & 2u) << 30u)) ^ (_e8 ? 0u : (input_bits_5 & 2147483648u))));
+    uint _e101[12] = fraction;
+    const uint _e115[12] = _naga_trig_multiply(_e101, Constructarray12_uint_(5327u, 39953u, 20996u, 14754u, 440u, 50455u, 35212u, 33897u, 17105u, 46404u, 37407u, 1u));
+    uint _e116 = quadrant;
+    bool _e119 = ((_e116 & 1u) == cosine);
+    const uint _e123[12] = _naga_trig_kernel(_e115, (_e119 ? 1u : 0u));
+    const uint _e124 = _naga_trig_round(_e123);
+    return (_e124 | ((((_e79 && _e119) ? 2147483648u : 0u) ^ (((_e8 ? (_e116 + 1u) : _e116) & 2u) << 30u)) ^ (_e8 ? 0u : (input_bits_5 & 2147483648u))));
 }
 
 [numthreads(4, 1, 1)]

@@ -14,11 +14,11 @@ uint _naga_floorf(
     uint input_bits
 ) {
     uint _e5 = input_bits & 2147483647u;
-    bool _e7 = (input_bits & 2147483648u) != 0u;
+    uint _e6 = input_bits & 2147483648u;
     uint _e14 = 1u << ((150u - (_e5 >> 23u)) & 31u);
     uint _e15 = _e14 - 1u;
     uint _e19 = input_bits & ~(_e15);
-    return (_e5 > 2139095040u) ? 2143289344u : ((_e5 >= 1258291200u) ? input_bits : ((_e5 < 1065353216u) ? ((_e5 == 0u) ? input_bits : (_e7 ? 3212836864u : 0u)) : ((_e7 && ((input_bits & _e15) != 0u)) ? (_e19 + _e14) : _e19)));
+    return (_e5 > 2139095040u) ? 2143289344u : ((_e5 >= 1258291200u) ? input_bits : ((_e5 < 1065353216u) ? ((_e5 == 0u) ? input_bits : (_e6 | ((_e6 >> 31u) * 1065353216u))) : (((_e6 != 0u) && ((input_bits & _e15) != 0u)) ? (_e19 + _e14) : _e19)));
 }
 
 float floor_value(

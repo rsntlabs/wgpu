@@ -97,11 +97,11 @@ fn gen__naga_divide_f32_(numerator_bits: u32, denominator_bits: u32) -> u32 {
 
 fn gen__naga_floorf(input_bits: u32) -> u32 {
     let _e5 = (input_bits & 2147483647u);
-    let _e7 = ((input_bits & 2147483648u) != 0u);
+    let _e6 = (input_bits & 2147483648u);
     let _e14 = (1u << ((150u - (_e5 >> 23u)) & 31u));
     let _e15 = (_e14 - 1u);
     let _e19 = (input_bits & ~(_e15));
-    return select(select(select(select(_e19, (_e19 + _e14), (_e7 && ((input_bits & _e15) != 0u))), select(select(0u, 3212836864u, _e7), input_bits, (_e5 == 0u)), (_e5 < 1065353216u)), input_bits, (_e5 >= 1258291200u)), 2143289344u, (_e5 > 2139095040u));
+    return select(select(select(select(_e19, (_e19 + _e14), ((_e6 != 0u) && ((input_bits & _e15) != 0u))), select((_e6 | ((_e6 >> 31u) * 1065353216u)), input_bits, (_e5 == 0u)), (_e5 < 1065353216u)), input_bits, (_e5 >= 1258291200u)), 2143289344u, (_e5 > 2139095040u));
 }
 
 fn gen__naga_fabsf(input_bits_1: u32) -> u32 {

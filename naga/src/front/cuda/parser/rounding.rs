@@ -78,13 +78,23 @@ impl Parser<'_> {
         let integral_bits = self.rounding_select(adjust, adjusted_bits, truncated_bits, span)?;
 
         let small_bits = match rounding {
-            Rounding::Floor => {
-                let negative_one = self.rounding_literal(0xbf80_0000, span)?;
-                self.rounding_select(is_negative, negative_one, zero, span)?
-            }
-            Rounding::Ceil => {
+            Rounding::Floor | Rounding::Ceil => {
+                let negative =
+                    self.rounding_binary(BinaryOperator::ShiftRight, sign, shift_mask, span)?;
+                let rounds_to_one = if matches!(rounding, Rounding::Ceil) {
+                    self.rounding_binary(BinaryOperator::Subtract, one, negative, span)?
+                } else {
+                    negative
+                };
                 let positive_one = self.rounding_literal(0x3f80_0000, span)?;
-                self.rounding_select(is_negative, sign_mask, positive_one, span)?
+                let magnitude = self.rounding_binary(
+                    BinaryOperator::Multiply,
+                    rounds_to_one,
+                    positive_one,
+                    span,
+                )?;
+                // Keep zero signs out of constant selects in shader compilers.
+                self.rounding_binary(BinaryOperator::InclusiveOr, sign, magnitude, span)?
             }
             Rounding::NearestAway => {
                 let half_bits = self.rounding_literal(0x3f00_0000, span)?;

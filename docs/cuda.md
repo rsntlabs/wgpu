@@ -1025,6 +1025,9 @@ Infinities and NaNs produce the canonical quiet NaN `0x7fc00000`.
 Calls execute at runtime and are not constant expressions. Double-precision
 `sin` and `cos`, fast intrinsics, and `sincosf` remain unsupported.
 
+Small `floorf`, `ceilf`, `sinf`, and `cosf` results assemble their bit patterns
+with integer arithmetic to preserve zero signs through shader optimization.
+
 Target floating-point rules still apply. In particular, WGSL permits
 [finite-math assumptions, changes to zero signs, and flushing subnormals](https://gpuweb.github.io/gpuweb/wgsl/#floating-point-evaluation),
 so exceptional values are not guaranteed to retain these bits on every target.

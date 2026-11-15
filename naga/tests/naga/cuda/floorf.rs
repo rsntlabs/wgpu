@@ -419,3 +419,21 @@ fn cuda_floorf_fixture_roundtrips_through_the_shared_wgsl_helper() {
         naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
     );
 }
+
+#[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+#[test]
+fn cuda_rounding_zero_signs_fixture_roundtrips_through_wgsl() {
+    let (module, info) = super::helpers::validate_with_options(
+        include_str!("../../in/cuda/rounding-zero-signs.cu"),
+        &Options {
+            workgroup_size: [12, 1, 1],
+            ..Options::default()
+        },
+    );
+    assert_eq!(module.entry_points[0].workgroup_size, [12, 1, 1]);
+    super::helpers::wgsl_roundtrip(
+        &module,
+        &info,
+        naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+    );
+}

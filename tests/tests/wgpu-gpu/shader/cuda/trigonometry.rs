@@ -7,6 +7,7 @@ pub(super) fn cases() -> Vec<ShaderTest> {
     vec![
         finite_results(),
         special_results(),
+        tiny_exact_results(),
         conversions_and_side_effects(),
     ]
 }
@@ -247,4 +248,63 @@ fn conversions_and_side_effects() -> ShaderTest {
         0,
         [1, 1, 1],
     )
+}
+
+fn tiny_exact_results() -> ShaderTest {
+    const INPUT: [u32; 10] = [
+        0,
+        0x8000_0000,
+        1,
+        0x8000_0001,
+        0x007f_ffff,
+        0x807f_ffff,
+        0x0080_0000,
+        0x8080_0000,
+        0x3900_0000,
+        0xb900_0000,
+    ];
+    let mut expected = [SENTINEL; 128];
+    for (index, bits) in INPUT.into_iter().enumerate() {
+        expected[4 + index * 12..16 + index * 12].copy_from_slice(&[
+            bits,
+            0x3f80_0000,
+            bits,
+            0x3f80_0000,
+            0,
+            0x8000_0000,
+            0x3f80_0000,
+            0x3f80_0000,
+            bits,
+            0x3f80_0000,
+            1,
+            2,
+        ]);
+    }
+    module_case(
+        "tiny sinf and cosf preserve exact signed bits through direct wrapper literal and sequenced paths",
+        "__device__ float sine_value(float value) { return sinf(value); }
+        __device__ float cosine_value(float value) { return cosf(value); }
+        __global__ void tiny_trig(const unsigned *input, unsigned *output) {
+            unsigned index = threadIdx.x;
+            unsigned bits = input[index];
+            unsigned base = 4u + index * 12u;
+            output[base] = __float_as_uint(sinf(__uint_as_float(bits)));
+            output[base + 1u] = __float_as_uint(cosf(__uint_as_float(bits)));
+            output[base + 2u] = __float_as_uint(sine_value(__uint_as_float(bits)));
+            output[base + 3u] = __float_as_uint(cosine_value(__uint_as_float(bits)));
+            output[base + 4u] = __float_as_uint(sinf(0.0f));
+            output[base + 5u] = __float_as_uint(sinf(-0.0f));
+            output[base + 6u] = __float_as_uint(cosf(0.0f));
+            output[base + 7u] = __float_as_uint(cosf(-0.0f));
+            int cursor = 0;
+            output[base + 8u] = __float_as_uint(sine_value(__uint_as_float(input[index + unsigned(cursor++)])));
+            output[base + 9u] = __float_as_uint(cosine_value(float(cursor++ - 1)));
+            output[base + 10u] = unsigned(cursor - 1);
+            output[base + 11u] = unsigned(cursor);
+        }",
+        [10, 1, 1], &expected,
+    ).module_buffers(vec![
+        ShaderBuffer::new(0, wgpu::BufferBindingType::Storage { read_only: true }, &INPUT),
+        ShaderBuffer::new(1, wgpu::BufferBindingType::Storage { read_only: false }, &[SENTINEL; 128]),
+    ], 1, [1, 1, 1])
 }
