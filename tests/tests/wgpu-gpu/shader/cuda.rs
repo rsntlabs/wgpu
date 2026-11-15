@@ -49,6 +49,7 @@ mod dynamic_shared;
 mod empty_scalar_construction;
 mod fabs;
 mod fadd_rn;
+mod fadd_rz;
 mod fdiv_rn;
 mod ffsll;
 mod float_classification;
@@ -241,6 +242,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FMAF_RN,
         CUDA_FMUL_RN,
         CUDA_FSUB_RN,
+        CUDA_FADD_RZ,
         CUDA_FADD_RN,
         CUDA_FLOORF,
         CUDA_FMODF,
@@ -1126,3 +1128,6 @@ static CUDA_FMAF_RN: GpuTestConfiguration = configuration(fmaf_rn::cases);
 
 #[apply(gpu_test!)]
 static CUDA_FMAF: GpuTestConfiguration = configuration(fmaf::cases);
+
+#[apply(gpu_test!)]
+static CUDA_FADD_RZ: GpuTestConfiguration = configuration(fadd_rz::cases);

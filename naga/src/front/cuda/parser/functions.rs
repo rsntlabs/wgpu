@@ -1168,6 +1168,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
     declarations.insert(
+        "__fadd_rz",
+        GlobalDeclaration::Functions(Default::default()),
+    );
+    declarations.insert(
         "__fadd_rn",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
@@ -1265,6 +1269,7 @@ pub(super) enum FunctionCandidate {
     Fmodf,
     CopySign,
     AddRoundNearest,
+    AddRoundZero,
     SubtractRoundNearest,
     MultiplyRoundNearest,
     FusedMultiplyAddRoundNearest,
@@ -1864,6 +1869,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Sqrt
                         | FunctionCandidate::Fmodf
                         | FunctionCandidate::CopySign
+                        | FunctionCandidate::AddRoundZero
                         | FunctionCandidate::AddRoundNearest
                         | FunctionCandidate::SubtractRoundNearest
                         | FunctionCandidate::FusedMultiplyAddRoundNearest
@@ -2148,6 +2154,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf
             | FunctionCandidate::CopySign
+            | FunctionCandidate::AddRoundZero
             | FunctionCandidate::AddRoundNearest
             | FunctionCandidate::SubtractRoundNearest
             | FunctionCandidate::FusedMultiplyAddRoundNearest
@@ -2426,6 +2433,9 @@ impl<'a> Parser<'a> {
         }
         if candidate == FunctionCandidate::CopySign {
             return self.lower_copysign_call(arguments, span);
+        }
+        if candidate == FunctionCandidate::AddRoundZero {
+            return self.lower_fadd_rz_call(arguments, span);
         }
         if candidate == FunctionCandidate::AddRoundNearest {
             return self.lower_fadd_rn_call(arguments, span);
@@ -3148,6 +3158,9 @@ impl<'a> Parser<'a> {
             .chain((builtin_visible && name == "fmodf").then_some(FunctionCandidate::Fmodf))
             .chain((builtin_visible && name == "copysignf").then_some(FunctionCandidate::CopySign))
             .chain(
+                (builtin_visible && name == "__fadd_rz").then_some(FunctionCandidate::AddRoundZero),
+            )
+            .chain(
                 (builtin_visible && name == "__fadd_rn")
                     .then_some(FunctionCandidate::AddRoundNearest),
             )
@@ -3242,6 +3255,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::Fmodf
             | FunctionCandidate::CopySign
+            | FunctionCandidate::AddRoundZero
             | FunctionCandidate::AddRoundNearest
             | FunctionCandidate::SubtractRoundNearest
             | FunctionCandidate::MultiplyRoundNearest
@@ -3315,6 +3329,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf
             | FunctionCandidate::CopySign
+            | FunctionCandidate::AddRoundZero
             | FunctionCandidate::AddRoundNearest
             | FunctionCandidate::SubtractRoundNearest
             | FunctionCandidate::FusedMultiplyAddRoundNearest

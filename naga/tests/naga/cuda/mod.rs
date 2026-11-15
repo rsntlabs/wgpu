@@ -46,6 +46,7 @@ mod dynamic_shared;
 mod empty_scalar_construction;
 mod fabs;
 mod fadd_rn;
+mod fadd_rz;
 mod fdiv_rn;
 mod ffsll;
 mod float_classification;

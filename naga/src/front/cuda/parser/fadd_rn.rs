@@ -1,12 +1,18 @@
 use super::*;
 
+#[derive(Clone, Copy)]
+enum AddRounding {
+    NearestEven,
+    TowardZero,
+}
+
 impl Parser<'_> {
     pub(super) fn lower_fadd_rn_call(
         &mut self,
         arguments: Vec<Value>,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
-        self.lower_add_sub_rn_call(arguments, false, span)
+        self.lower_add_sub_call(arguments, false, AddRounding::NearestEven, span)
     }
 
     pub(super) fn lower_fsub_rn_call(
@@ -14,13 +20,22 @@ impl Parser<'_> {
         arguments: Vec<Value>,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
-        self.lower_add_sub_rn_call(arguments, true, span)
+        self.lower_add_sub_call(arguments, true, AddRounding::NearestEven, span)
     }
 
-    fn lower_add_sub_rn_call(
+    pub(super) fn lower_fadd_rz_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lower_add_sub_call(arguments, false, AddRounding::TowardZero, span)
+    }
+
+    fn lower_add_sub_call(
         &mut self,
         arguments: Vec<Value>,
         subtract: bool,
+        rounding: AddRounding,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
         self.activate_parameter_expansion(span)?;
@@ -43,7 +58,10 @@ impl Parser<'_> {
         } else {
             right
         };
-        let bits = self.call_fadd_rn_bits(left, right, span)?;
+        let bits = match rounding {
+            AddRounding::NearestEven => self.call_fadd_rn_bits(left, right, span)?,
+            AddRounding::TowardZero => self.call_fadd_rz_bits(left, right, span)?,
+        };
         let handle = self.bitcast_scalar(bits, Scalar::F32, span)?;
         Ok(Value {
             category: ValueCategory::Prvalue,
@@ -62,6 +80,25 @@ impl Parser<'_> {
         right: Handle<Expression>,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
+        self.call_fadd_bits(left, right, AddRounding::NearestEven, span)
+    }
+
+    pub(super) fn call_fadd_rz_bits(
+        &mut self,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.call_fadd_bits(left, right, AddRounding::TowardZero, span)
+    }
+
+    fn call_fadd_bits(
+        &mut self,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        rounding: AddRounding,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         self.prepare_append(1, span)?;
@@ -70,7 +107,7 @@ impl Parser<'_> {
             .charge_slice::<Handle<Expression>>(2, span)?;
         self.parameter_expansion_budget
             .charge_slice::<(Statement, Span)>(1, span)?;
-        let function = self.cached_fadd_rn_function(span)?;
+        let function = self.cached_fadd_function(rounding, span)?;
         self.function
             .ir
             .body
@@ -88,8 +125,16 @@ impl Parser<'_> {
         Ok(result)
     }
 
-    fn cached_fadd_rn_function(&mut self, span: Span) -> Result<Handle<Function>, ParseError> {
-        if let Some(function) = self.fadd_rn_function {
+    fn cached_fadd_function(
+        &mut self,
+        rounding: AddRounding,
+        span: Span,
+    ) -> Result<Handle<Function>, ParseError> {
+        let cached = match rounding {
+            AddRounding::NearestEven => self.fadd_rn_function,
+            AddRounding::TowardZero => self.fadd_rz_function,
+        };
+        if let Some(function) = cached {
             return Ok(function);
         }
         self.parameter_expansion_budget.charge_nodes(1, span)?;
@@ -99,17 +144,20 @@ impl Parser<'_> {
             &mut self.function,
             FunctionContext::new(FunctionKind::Device),
         );
-        let result = self.build_fadd_rn_function(span);
+        let result = self.build_fadd_function(rounding, span);
         let helper = core::mem::replace(&mut self.function, caller);
         result?;
         self.parameter_expansion_budget
             .inventory_function(&helper.ir, span, 1)?;
         let function = self.module.functions.append(helper.ir, span);
-        self.fadd_rn_function = Some(function);
+        match rounding {
+            AddRounding::NearestEven => self.fadd_rn_function = Some(function),
+            AddRounding::TowardZero => self.fadd_rz_function = Some(function),
+        }
         Ok(function)
     }
 
-    fn build_fadd_rn_function(&mut self, span: Span) -> Result<(), ParseError> {
+    fn build_fadd_function(&mut self, rounding: AddRounding, span: Span) -> Result<(), ParseError> {
         self.prepare_parameter_bindings(span)?;
         let ty = Type {
             name: None,
@@ -124,7 +172,10 @@ impl Parser<'_> {
                 self.module.types.insert(ty, span)
             }
         };
-        let name = "_naga_fadd_rn";
+        let name = match rounding {
+            AddRounding::NearestEven => "_naga_fadd_rn",
+            AddRounding::TowardZero => "_naga_fadd_rz",
+        };
         let argument_names = ["left_bits", "right_bits"];
         self.parameter_expansion_budget.charge_nodes(2, span)?;
         self.parameter_expansion_budget
@@ -277,29 +328,41 @@ impl Parser<'_> {
         let significand =
             self.fadd_binary(BinaryOperator::ShiftLeft, significand, normalization, span)?;
         let exponent = self.fadd_binary(BinaryOperator::Subtract, exponent, normalization, span)?;
-        let seven = self.fadd_literal(7, span)?;
-        let four = self.fadd_literal(4, span)?;
-        let tail = self.fadd_binary(BinaryOperator::And, significand, seven, span)?;
-        let rounded = self.fadd_binary(BinaryOperator::ShiftRight, significand, three, span)?;
-        let odd = self.fadd_binary(BinaryOperator::And, rounded, one, span)?;
-        let odd = self.fadd_binary(BinaryOperator::NotEqual, odd, zero, span)?;
-        let tie = self.fadd_binary(BinaryOperator::Equal, tail, four, span)?;
-        let tie_up = self.fadd_binary(BinaryOperator::LogicalAnd, tie, odd, span)?;
-        let above_half = self.fadd_binary(BinaryOperator::Greater, tail, four, span)?;
-        let increment = self.fadd_binary(BinaryOperator::LogicalOr, above_half, tie_up, span)?;
-        let increment = self.fadd_bool_as_uint(increment, span)?;
-        let rounded = self.fadd_binary(BinaryOperator::Add, rounded, increment, span)?;
-        let rounded_carry_bit = self.fadd_literal(0x0100_0000, span)?;
-        let carry = self.fadd_binary(
-            BinaryOperator::GreaterEqual,
-            rounded,
-            rounded_carry_bit,
-            span,
-        )?;
-        let shifted = self.fadd_binary(BinaryOperator::ShiftRight, rounded, one, span)?;
-        let rounded = self.fadd_select(carry, shifted, rounded, span)?;
-        let carry = self.fadd_bool_as_uint(carry, span)?;
-        let exponent = self.fadd_binary(BinaryOperator::Add, exponent, carry, span)?;
+        let (rounded, exponent) = match rounding {
+            AddRounding::NearestEven => {
+                let seven = self.fadd_literal(7, span)?;
+                let four = self.fadd_literal(4, span)?;
+                let tail = self.fadd_binary(BinaryOperator::And, significand, seven, span)?;
+                let rounded =
+                    self.fadd_binary(BinaryOperator::ShiftRight, significand, three, span)?;
+                let odd = self.fadd_binary(BinaryOperator::And, rounded, one, span)?;
+                let odd = self.fadd_binary(BinaryOperator::NotEqual, odd, zero, span)?;
+                let tie = self.fadd_binary(BinaryOperator::Equal, tail, four, span)?;
+                let tie_up = self.fadd_binary(BinaryOperator::LogicalAnd, tie, odd, span)?;
+                let above_half = self.fadd_binary(BinaryOperator::Greater, tail, four, span)?;
+                let increment =
+                    self.fadd_binary(BinaryOperator::LogicalOr, above_half, tie_up, span)?;
+                let increment = self.fadd_bool_as_uint(increment, span)?;
+                let rounded = self.fadd_binary(BinaryOperator::Add, rounded, increment, span)?;
+                let rounded_carry_bit = self.fadd_literal(0x0100_0000, span)?;
+                let carry = self.fadd_binary(
+                    BinaryOperator::GreaterEqual,
+                    rounded,
+                    rounded_carry_bit,
+                    span,
+                )?;
+                let shifted = self.fadd_binary(BinaryOperator::ShiftRight, rounded, one, span)?;
+                let rounded = self.fadd_select(carry, shifted, rounded, span)?;
+                let carry = self.fadd_bool_as_uint(carry, span)?;
+                let exponent = self.fadd_binary(BinaryOperator::Add, exponent, carry, span)?;
+                (rounded, exponent)
+            }
+            AddRounding::TowardZero => {
+                let rounded =
+                    self.fadd_binary(BinaryOperator::ShiftRight, significand, three, span)?;
+                (rounded, exponent)
+            }
+        };
         let maximum_exponent = self.fadd_literal(255, span)?;
         let overflow = self.fadd_binary(
             BinaryOperator::GreaterEqual,
@@ -307,9 +370,13 @@ impl Parser<'_> {
             maximum_exponent,
             span,
         )?;
-        let signed_infinity =
-            self.fadd_binary(BinaryOperator::InclusiveOr, sign, infinity, span)?;
-        self.fadd_return_if(overflow, signed_infinity, span)?;
+        let overflow_magnitude = match rounding {
+            AddRounding::NearestEven => infinity,
+            AddRounding::TowardZero => self.fadd_literal(0x7f7f_ffff, span)?,
+        };
+        let signed_overflow =
+            self.fadd_binary(BinaryOperator::InclusiveOr, sign, overflow_magnitude, span)?;
+        self.fadd_return_if(overflow, signed_overflow, span)?;
         let normal = self.fadd_binary(BinaryOperator::GreaterEqual, rounded, implicit, span)?;
         let exponent = self.fadd_select(normal, exponent, zero, span)?;
         let exponent_bits = self.fadd_binary(BinaryOperator::ShiftLeft, exponent, width, span)?;

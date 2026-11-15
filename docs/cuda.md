@@ -986,8 +986,20 @@ inputs and results. Overflow rounds to signed infinity. Equal signed infinities
 retain their sign; opposite infinities and NaN inputs produce the canonical quiet
 NaN `0x7fc00000`, whose payload is a frontend choice. Adding two negative zeros
 returns negative zero; mixed zeros and exact cancellation return positive zero.
-Calls execute at runtime and are not source constant expressions. Other explicit
-addition rounding modes remain unsupported.
+Calls execute at runtime and are not source constant expressions.
+
+`__fadd_rz(float, float)` adds single-precision operands and rounds toward zero,
+following NVIDIA's
+[`__fadd_rz` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SINGLE.html).
+Scalar arguments convert to `float` first. It shares the integer addition
+algorithm with `__fadd_rn` through a separate cached helper, preserving received
+subnormals and preventing contraction with preceding multiplication. Discarded
+bits still affect opposite-sign subtraction: `1.0f` plus a negative minimum
+subnormal rounds to the representable value immediately below `1.0f`.
+Finite overflow saturates to the largest finite value with the result's sign.
+Actual infinity inputs, NaNs, and signed-zero cases retain the same special
+behavior as `__fadd_rn`. Calls execute at runtime and are not source constant
+expressions. The `__fadd_rd` and `__fadd_ru` modes remain unsupported.
 
 `__fsub_rn(float, float)` computes a single-precision difference rounded once to
 nearest, with ties to even, following NVIDIA's
@@ -1192,7 +1204,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fsub_rn`, `__fmul_rn`, `__fdiv_rn`, `__frcp_rn`, `__fsqrt_rn`, `__frsqrt_rn`, `__fmaf_rn`, `fmaf`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fsub_rn`, `__fmul_rn`, `__fdiv_rn`, `__frcp_rn`, `__fsqrt_rn`, `__frsqrt_rn`, `__fmaf_rn`, `fmaf`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 
