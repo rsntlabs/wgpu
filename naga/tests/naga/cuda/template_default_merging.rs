@@ -97,7 +97,7 @@ fn cuda_template_default_merging_rejects_redefaults_and_preserves_function_defau
         "template<class T = int> __device__ T f(); template<class U = int> __device__ U f() { return U(1); } __global__ void kernel() {}",
         "template<int N = 1> __device__ int f(); template<int M = 2> __device__ int f() { return M; } __global__ void kernel() {}",
         "template<int N = 1> __device__ int f(); template<int M = 1> __device__ int f() { return M; } __global__ void kernel() {}",
-        "template<class T, class U> __device__ int f() { return 1; } template<class T, class U = T> __device__ int f(); __global__ void kernel() {}",
+        "template<class T, class U> __device__ int f() { return 1; } template<class T, class U = T *> __device__ int f(); __global__ void kernel() {}",
         "template<class T> __device__ int f(T value, int bias) { return bias; } template<class T> __device__ int f(T value, int bias = 3); __global__ void kernel() {}",
     ] { reject(source); }
 }

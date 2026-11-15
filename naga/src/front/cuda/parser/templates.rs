@@ -140,8 +140,14 @@ enum ParameterPattern {
 }
 
 #[derive(Clone, Copy)]
+enum TemplateDefaultValue {
+    Fixed(TemplateValue),
+    TypeParameter { index: u32, qualifiers: Qualifiers },
+}
+
+#[derive(Clone, Copy)]
 struct TemplateParameterDefault {
-    value: TemplateValue,
+    value: TemplateDefaultValue,
     position: LexerPosition,
     span: Span,
 }
@@ -661,17 +667,47 @@ impl<'a> Parser<'a> {
     ) -> Result<TemplateParameterDefault, ParseError> {
         let value = match kind {
             TemplateParameterKind::Type => {
+                let mut prefix = self.lexer.clone();
+                while matches!(prefix.peek()?.0, Token::Word("const" | "volatile")) {
+                    self.parameter_expansion_budget.charge_work(1, span)?;
+                    prefix.next()?;
+                }
+                let (token, token_span) = prefix.next()?;
+                if let Token::Word(name) = token {
+                    if matches!(
+                        self.function.symbol_table.lookup(name),
+                        Some(&Symbol::TemplateTypeParameter { .. })
+                    ) && prefix.peek()?.0 == Token::ScopeResolution
+                    {
+                        return Err(ParseError {
+                            message: String::from(
+                                "dependent qualified template type defaults are unsupported",
+                            ),
+                            span: token_span,
+                        });
+                    }
+                }
                 let ty = self.parse_type()?;
-                if matches!(ty.ty, TypeSpecifier::TemplateParameter(_)) {
-                    return self.fail("dependent template type defaults are unsupported");
-                }
-                let ty = self.alias_declarator(ty)?;
-                if matches!(ty.ty, TypeSpecifier::Array(_)) {
-                    return self.fail("array template type defaults are unsupported");
-                }
-                TemplateValue::Type {
-                    ty: ty.ty,
-                    qualifiers: ty.qualifiers,
+                if let TypeSpecifier::TemplateParameter(index) = ty.ty {
+                    if !matches!(
+                        self.lexer.peek()?.0,
+                        Token::Separator(',') | Token::Paren('>')
+                    ) {
+                        return self.fail("dependent template type declarators are unsupported");
+                    }
+                    TemplateDefaultValue::TypeParameter {
+                        index,
+                        qualifiers: ty.qualifiers,
+                    }
+                } else {
+                    let ty = self.alias_declarator(ty)?;
+                    if matches!(ty.ty, TypeSpecifier::Array(_)) {
+                        return self.fail("array template type defaults are unsupported");
+                    }
+                    TemplateDefaultValue::Fixed(TemplateValue::Type {
+                        ty: ty.ty,
+                        qualifiers: ty.qualifiers,
+                    })
                 }
             }
             TemplateParameterKind::Value(scalar) => {
@@ -694,7 +730,7 @@ impl<'a> Parser<'a> {
                 });
                 self.function.parsing_template_argument_default = previous;
                 self.lexer = end;
-                parsed?.0
+                TemplateDefaultValue::Fixed(parsed?.0)
             }
         };
         Ok(TemplateParameterDefault {
@@ -709,13 +745,42 @@ impl<'a> Parser<'a> {
         template: usize,
         index: usize,
         position: LexerPosition,
+        prior: impl FnOnce(usize) -> Option<TemplateValue>,
     ) -> Option<TemplateValue> {
-        self.templates.declarations[template]
+        let default = self.templates.declarations[template]
             .template_defaults
             .get(index)
             .and_then(|default| *default)
-            .filter(|default| default.position.precedes(position))
-            .map(|default| default.value)
+            .filter(|default| default.position.precedes(position))?;
+        match default.value {
+            TemplateDefaultValue::Fixed(value) => Some(value),
+            TemplateDefaultValue::TypeParameter {
+                index: parameter,
+                qualifiers,
+            } => {
+                let parameter = parameter as usize;
+                if parameter >= index {
+                    return None;
+                }
+                match prior(parameter)? {
+                    TemplateValue::Type {
+                        ty,
+                        qualifiers: existing,
+                    } => Some(TemplateValue::Type {
+                        ty,
+                        qualifiers: existing.union(qualifiers),
+                    }),
+                    TemplateValue::ArrayType {
+                        ty,
+                        qualifiers: existing,
+                    } => Some(TemplateValue::ArrayType {
+                        ty,
+                        qualifiers: existing.union(qualifiers),
+                    }),
+                    _ => None,
+                }
+            }
+        }
     }
 
     fn template_signature(&mut self, span: Span) -> Result<FunctionTemplate<'a>, ParseError> {
@@ -1257,7 +1322,10 @@ impl<'a> Parser<'a> {
             converted.push(value);
         }
         for index in converted.len()..parameters.len() {
-            let Some(value) = self.template_default_value(template, index, self.lexer.position())
+            let Some(value) =
+                self.template_default_value(template, index, self.lexer.position(), |prior| {
+                    converted.get(prior).copied()
+                })
             else {
                 return Ok(None);
             };

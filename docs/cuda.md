@@ -88,7 +88,7 @@ the applicable source qualifiers. Repeated deductions must agree on the type;
 `sum(1, 2u)` cannot deduce a common arithmetic type for two `Value` parameters.
 Explicitly supplied parameters use the ordinary argument conversion rules.
 
-Device and kernel templates accept fixed, nondependent type defaults:
+Device and kernel templates accept concrete type defaults:
 
 ```cuda
 template<class Result = unsigned, class Input>
@@ -102,6 +102,21 @@ Supplied function arguments are deduced before defaults fill unresolved template
 parameters. A deduced type overrides its default; conflicting deductions remain
 errors. Explicit arguments, deduction, and defaults normalize to the same
 specialization key. Defaults do not affect overload ranking.
+
+Type defaults can also directly name an earlier type parameter:
+
+```cuda
+template<class Value, class Copy = Value>
+__device__ Copy copied_default(Value value) { return Copy(value); }
+```
+
+`copied_default(3u)` deduces `Value` as `unsigned` and then uses that type for
+`Copy`. Explicit or deduced arguments take precedence over defaults. Direct
+defaults can form chains and add `const` or `volatile`, such as
+`class Last = const Copy`. They retain the earlier parameter's resolved source
+type and qualification. For a pointer type, added qualification applies to the
+pointer object and preserves its pointee qualification. A default does not deduce an
+earlier missing parameter from a later one.
 
 Each default type name binds where its default is declared. The parameter's own
 name becomes visible after its default, while earlier parameters can shadow
@@ -119,8 +134,9 @@ template<class Value, int Count = 4> __device__ Value seed();
 
 After these declarations, `seed<>()` and `seed<unsigned, 4>()` use the same
 specialization. Defaults can be added before or after a definition. Dependent
-defaults remain unsupported. Existing restrictions on explicit type arguments
-also apply to defaults. These forms use C++
+pointer, reference, array, and member declarators such as `Other = Value*` and
+`Other = Value::member` remain unsupported. Existing restrictions on explicit
+type arguments also apply to defaults. These forms use C++
 [template parameters](https://eel.is/c++draft/temp.param) within this subset.
 
 Integral template parameters also accept fixed constant defaults:
@@ -139,9 +155,9 @@ floating values require an explicit integral or Boolean cast. These checks run
 when the default is declared.
 
 Type and integral defaults can be mixed, including before parameters that are
-deduced from function arguments. Defaults cannot mention earlier template
-parameters, including inside unevaluated or discarded expressions. Shifts,
-greater-than comparisons, and comma expressions require parentheses, as with
+deduced from function arguments. Integral defaults cannot mention earlier
+template parameters, including inside unevaluated or discarded expressions.
+Shifts, greater-than comparisons, and comma expressions require parentheses, as with
 explicit template arguments. Selected calls to function templates in default
 expressions remain unsupported. Runtime builtins are not constants; discarded
 operands can form a constant default without adding runtime inputs or bindings.
@@ -235,9 +251,9 @@ without defaults must be supplied explicitly. Kernel instantiation definitions
 require every template argument without a default. Typed kernel selectors use
 canonical source type names, such as `copy_typed<unsigned>`, even when the
 instantiation uses a type alias.
-Class templates, dependent non-type parameter types, dependent template defaults,
-parameter packs, explicit specializations, `if constexpr`, and overloaded kernel
-templates are unsupported.
+Class templates, dependent non-type parameter types, other dependent template
+defaults, parameter packs, explicit specializations, `if constexpr`, and
+overloaded kernel templates are unsupported.
 Selected array-reference and pointer-reference instances remain unsupported.
 Unrequested template bodies receive structural checks; full semantic checking
 happens when an instance is requested. This does not yet implement all C++

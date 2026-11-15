@@ -64,10 +64,12 @@ impl Parser<'_> {
             }
             values[parameter] = Some(value);
         }
-        for (index, value) in values.iter_mut().enumerate() {
-            if value.is_none() {
-                *value = self.template_default_value(template, index, position);
-                if value.is_none() {
+        for index in 0..values.len() {
+            if values[index].is_none() {
+                values[index] = self.template_default_value(template, index, position, |prior| {
+                    values.get(prior).and_then(|value| *value)
+                });
+                if values[index].is_none() {
                     return Ok(None);
                 }
             }

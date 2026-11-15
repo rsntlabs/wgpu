@@ -137,7 +137,7 @@ fn cuda_template_type_defaults_cli_supports_overloads_and_supplied_pointer_refer
 fn cuda_template_type_defaults_cli_rejects_invalid_defaults_without_output() {
     for source in [
         "template<class T = 3> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
-        "using T = unsigned; template<class T, class U = T> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
+        "using T = unsigned; template<class T, class U = T*> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
         "template<class T = void> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
         "template<class T = unsigned&> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
         "using Array = unsigned[2]; template<class T = Array> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",

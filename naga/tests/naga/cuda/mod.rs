@@ -28,6 +28,7 @@ mod declarations;
 mod decltype_objects;
 mod default_arguments;
 mod default_template_arguments;
+mod dependent_type_defaults;
 mod device_functions;
 mod device_helper_barriers;
 mod device_shared;
