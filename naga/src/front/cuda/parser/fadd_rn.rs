@@ -31,6 +31,14 @@ impl Parser<'_> {
         self.lower_add_sub_call(arguments, false, AddRounding::TowardZero, span)
     }
 
+    pub(super) fn lower_fsub_rz_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lower_add_sub_call(arguments, true, AddRounding::TowardZero, span)
+    }
+
     fn lower_add_sub_call(
         &mut self,
         arguments: Vec<Value>,

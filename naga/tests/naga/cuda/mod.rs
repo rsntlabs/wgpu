@@ -63,6 +63,7 @@ mod frcp_rn;
 mod frsqrt_rn;
 mod fsqrt_rn;
 mod fsub_rn;
+mod fsub_rz;
 mod function_macros;
 mod funnel_shifts;
 mod funnel_shifts_clamped;

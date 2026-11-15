@@ -67,6 +67,7 @@ mod frcp_rn;
 mod frsqrt_rn;
 mod fsqrt_rn;
 mod fsub_rn;
+mod fsub_rz;
 mod function_macros;
 mod funnel_shifts;
 mod funnel_shifts_clamped;
@@ -242,6 +243,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FMAF_RN,
         CUDA_FMUL_RN,
         CUDA_FSUB_RN,
+        CUDA_FSUB_RZ,
         CUDA_FADD_RZ,
         CUDA_FADD_RN,
         CUDA_FLOORF,
@@ -1131,3 +1133,6 @@ static CUDA_FMAF: GpuTestConfiguration = configuration(fmaf::cases);
 
 #[apply(gpu_test!)]
 static CUDA_FADD_RZ: GpuTestConfiguration = configuration(fadd_rz::cases);
+
+#[apply(gpu_test!)]
+static CUDA_FSUB_RZ: GpuTestConfiguration = configuration(fsub_rz::cases);
