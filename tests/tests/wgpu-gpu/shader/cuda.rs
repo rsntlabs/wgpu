@@ -141,6 +141,7 @@ mod static_assertions;
 mod structures;
 mod switches;
 mod template_default_arguments;
+mod template_default_merging;
 mod template_default_type_queries;
 mod thread_block;
 mod thread_block_dimensions;
@@ -316,6 +317,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_TYPE_ALIASES,
         CUDA_TYPE_QUERIES,
         CUDA_DEFAULT_TEMPLATE_ARGUMENTS,
+        CUDA_TEMPLATE_DEFAULT_MERGING,
         CUDA_TEMPLATE_DEFAULT_ARGUMENTS,
         CUDA_TEMPLATE_DEFAULT_TYPE_QUERIES,
         CUDA_TYPE_TEMPLATES,
@@ -1048,3 +1050,7 @@ static CUDA_DEFAULT_TEMPLATE_ARGUMENTS: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_INTEGRAL_TEMPLATE_DEFAULTS: GpuTestConfiguration =
     configuration(integral_template_defaults::cases);
+
+#[apply(gpu_test!)]
+static CUDA_TEMPLATE_DEFAULT_MERGING: GpuTestConfiguration =
+    configuration(template_default_merging::cases);

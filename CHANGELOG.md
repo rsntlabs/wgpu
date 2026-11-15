@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Merge CUDA template parameter defaults across compatible declarations while preserving source visibility and frozen bindings.
 - Support fixed integral defaults on CUDA function template parameters, preserving declared conversions and specialization reuse.
 - Support fixed type defaults on CUDA function template parameters, applying defaults after argument deduction.
 - Support CUDA `noexcept` specifications on ordinary device helpers, with constant conditions and compatible redeclarations.

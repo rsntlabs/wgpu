@@ -88,8 +88,7 @@ the applicable source qualifiers. Repeated deductions must agree on the type;
 `sum(1, 2u)` cannot deduce a common arithmetic type for two `Value` parameters.
 Explicitly supplied parameters use the ordinary argument conversion rules.
 
-Device and kernel templates accept fixed, nondependent type defaults on their
-initial declaration:
+Device and kernel templates accept fixed, nondependent type defaults:
 
 ```cuda
 template<class Result = unsigned, class Input>
@@ -104,15 +103,27 @@ parameters. A deduced type overrides its default; conflicting deductions remain
 errors. Explicit arguments, deduction, and defaults normalize to the same
 specialization key. Defaults do not affect overload ranking.
 
-Default type names bind where the initial declaration appears. The parameter's
-own name becomes visible after its default, while earlier parameters can shadow
-outer names. Later declarations and definitions inherit defaults and cannot add
-or repeat them. Dependent defaults remain unsupported. Existing restrictions on
-explicit type arguments also apply to defaults. These forms use C++
+Each default type name binds where its default is declared. The parameter's own
+name becomes visible after its default, while earlier parameters can shadow
+outer names. Compatible declarations and definitions inherit defaults and may
+add defaults for parameters that do not yet have one. Repeating a default is an
+error, even with the same value or type. Calls use only defaults visible at their
+source position, including calls in template bodies. For example:
+
+```cuda
+template<class Value, int Count>
+__device__ Value seed() { return Value(Count); }
+template<class Value = unsigned, int Count> __device__ Value seed();
+template<class Value, int Count = 4> __device__ Value seed();
+```
+
+After these declarations, `seed<>()` and `seed<unsigned, 4>()` use the same
+specialization. Defaults can be added before or after a definition. Dependent
+defaults remain unsupported. Existing restrictions on explicit type arguments
+also apply to defaults. These forms use C++
 [template parameters](https://eel.is/c++draft/temp.param) within this subset.
 
-Integral template parameters also accept fixed constant defaults on the initial
-declaration:
+Integral template parameters also accept fixed constant defaults:
 
 ```cuda
 constexpr int DefaultCount = 4;
@@ -121,9 +132,9 @@ __device__ unsigned count() { return unsigned(Count); }
 ```
 
 `count()`, `count<>()`, and `count<4>()` reuse the same specialization. Default
-names and converted values bind at the initial declaration; later definitions
-can rename parameters and inherit their defaults. Conversion must preserve the
-value in the declared integral type. Boolean defaults require zero or one;
+names and converted values bind where each default is declared; later
+definitions can rename parameters and inherit their defaults. Conversion must
+preserve the value in the declared integral type. Boolean defaults require zero or one;
 floating values require an explicit integral or Boolean cast. These checks run
 when the default is declared.
 
@@ -152,8 +163,9 @@ __device__ Value adjusted(Value value, int bias = 3) {
 
 `adjusted(2)` deduces `Value` from the supplied argument and uses the default
 bias. Defaults do not contribute to deduction, conversion ranking, or call-context
-partial ordering. Defaults must appear on the initial template declaration;
-later declarations and definitions inherit them and cannot add or repeat them.
+partial ordering. Function-parameter defaults must appear on the initial
+template declaration; later declarations and definitions inherit them and
+cannot add or repeat them.
 Their names and converted values bind at that initial declaration, even if the
 definition or caller uses different names. The default parameter's type and
 expression must not mention template parameters. Defaults that query function

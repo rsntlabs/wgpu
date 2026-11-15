@@ -122,7 +122,7 @@ fn cuda_default_template_arguments_support_kernel_selector_defaults_and_explicit
 fn cuda_default_template_arguments_reject_later_additions_redefaults_and_dependent_types() {
     for source in [
         "template<class T = unsigned> __device__ T f(); template<class U = unsigned> __device__ U f() { return U(1); } __global__ void kernel() {}",
-        "template<class T> __device__ T f(); template<class U = unsigned> __device__ U f() { return U(1); } __global__ void kernel() {}",
+        "template<class T, class V> __device__ T f(); template<class U, class V = U> __device__ U f() { return U(1); } __global__ void kernel() {}",
         "using A = unsigned; template<class A, class B = A> __device__ B f(A value) { return B(value); } __global__ void kernel() {}",
         "template<class A = unsigned, class B = A> __device__ B f(A value) { return B(value); } __global__ void kernel() {}",
         "template<int N, int M = N> __device__ int f() { return M; } __global__ void kernel() {}",

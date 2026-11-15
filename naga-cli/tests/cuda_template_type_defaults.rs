@@ -141,7 +141,7 @@ fn cuda_template_type_defaults_cli_rejects_invalid_defaults_without_output() {
         "template<class T = void> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
         "template<class T = unsigned&> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
         "using Array = unsigned[2]; template<class T = Array> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
-        "template<class T> __device__ unsigned helper(); template<class T = unsigned> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
+        "template<class T = float> __device__ unsigned helper(); template<class T = unsigned> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
         "template<class T = unsigned> __device__ unsigned helper(); template<class T = unsigned> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
         "template<class T = unsigned> __device__ unsigned helper(int value) { return 1u; } template<class T = float> __device__ unsigned helper(float value) { return 2u; } __global__ void kernel() { helper<>(); }",
     ] {

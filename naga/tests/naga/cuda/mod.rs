@@ -142,6 +142,7 @@ mod streaming;
 mod structures;
 mod switches;
 mod template_default_arguments;
+mod template_default_merging;
 mod template_default_type_queries;
 mod thread_block;
 mod thread_block_dimensions;

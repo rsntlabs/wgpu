@@ -140,7 +140,7 @@ fn cuda_template_integral_defaults_cli_rejects_invalid_defaults_without_output()
         "template<short N = 32768> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
         "template<int Earlier, int N = (false ? Earlier : 3)> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
         "template<class Earlier, int N = sizeof(Earlier)> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
-        "template<int N> __device__ unsigned helper(); template<int N = 3> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
+        "template<int N = 2> __device__ unsigned helper(); template<int N = 3> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
         "template<int N = 3> __device__ unsigned helper(); template<int N = 3> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
         "template<int N = threadIdx.x> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",
         "template<class T> __device__ int runtime() { return 1; } template<int N = (true ? 3 : runtime<int>())> __device__ unsigned helper() { return 1u; } __global__ void kernel() {}",

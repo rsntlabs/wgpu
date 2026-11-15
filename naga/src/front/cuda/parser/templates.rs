@@ -506,14 +506,6 @@ impl<'a> Parser<'a> {
             None => None,
         };
         let id = if let Some(id) = previous {
-            if let Some(default) = template_defaults.iter().flatten().next() {
-                return Err(ParseError {
-                    message: String::from(
-                        "default template arguments must appear on the initial declaration",
-                    ),
-                    span: default.span,
-                });
-            }
             if !defaults.is_empty() {
                 return self.fail(
                     "default arguments must appear on the initial function template declaration",
@@ -544,6 +536,7 @@ impl<'a> Parser<'a> {
             header.is_static = previous.header.is_static;
             header.inlining = previous.header.inlining.or(header.inlining);
             previous.header.inlining = header.inlining;
+            self.merge_template_parameter_defaults(id, template_defaults, header.name_span)?;
             id
         } else {
             if let Some(&GlobalDeclaration::Functions(ref overloads)) =
@@ -617,6 +610,46 @@ impl<'a> Parser<'a> {
             let declaration = &mut self.templates.declarations[id];
             declaration.header = header;
             declaration.definition = Some(end);
+        }
+        Ok(())
+    }
+
+    fn merge_template_parameter_defaults(
+        &mut self,
+        template: usize,
+        incoming: Vec<Option<TemplateParameterDefault>>,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        if incoming.is_empty() {
+            return Ok(());
+        }
+        if self.templates.declarations[template]
+            .template_defaults
+            .is_empty()
+        {
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            self.templates.declarations[template].template_defaults = incoming;
+            return Ok(());
+        }
+        self.parameter_expansion_budget
+            .charge_work(incoming.len(), span)?;
+        self.parameter_expansion_budget
+            .charge_work(incoming.len(), span)?;
+        let stored = &mut self.templates.declarations[template].template_defaults;
+        for (old, new) in stored.iter().zip(&incoming) {
+            if old.is_some() {
+                if let Some(default) = *new {
+                    return Err(ParseError {
+                        message: String::from("repeated default template argument"),
+                        span: default.span,
+                    });
+                }
+            }
+        }
+        for (old, new) in stored.iter_mut().zip(incoming) {
+            if new.is_some() {
+                *old = new;
+            }
         }
         Ok(())
     }
