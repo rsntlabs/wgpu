@@ -1,9 +1,32 @@
 use super::*;
 
+#[derive(Clone, Copy)]
+enum MultiplyRounding {
+    NearestEven,
+    TowardZero,
+}
+
 impl Parser<'_> {
     pub(super) fn lower_fmul_rn_call(
         &mut self,
         arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lower_fmul_call(arguments, MultiplyRounding::NearestEven, span)
+    }
+
+    pub(super) fn lower_fmul_rz_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lower_fmul_call(arguments, MultiplyRounding::TowardZero, span)
+    }
+
+    fn lower_fmul_call(
+        &mut self,
+        arguments: Vec<Value>,
+        rounding: MultiplyRounding,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
         self.activate_parameter_expansion(span)?;
@@ -13,7 +36,10 @@ impl Parser<'_> {
         let right = self.convert_scalar(arguments.next().unwrap().into(), Scalar::F32)?;
         let left = self.bitcast_scalar(left.handle, Scalar::U32, span)?;
         let right = self.bitcast_scalar(right.handle, Scalar::U32, span)?;
-        let bits = self.call_fmul_rn_bits(left, right, span)?;
+        let bits = match rounding {
+            MultiplyRounding::NearestEven => self.call_fmul_rn_bits(left, right, span)?,
+            MultiplyRounding::TowardZero => self.call_fmul_rz_bits(left, right, span)?,
+        };
         let handle = self.bitcast_scalar(bits, Scalar::F32, span)?;
         Ok(Value {
             category: ValueCategory::Prvalue,
@@ -32,6 +58,25 @@ impl Parser<'_> {
         right: Handle<Expression>,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
+        self.call_fmul_bits(left, right, MultiplyRounding::NearestEven, span)
+    }
+
+    pub(super) fn call_fmul_rz_bits(
+        &mut self,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        self.call_fmul_bits(left, right, MultiplyRounding::TowardZero, span)
+    }
+
+    fn call_fmul_bits(
+        &mut self,
+        left: Handle<Expression>,
+        right: Handle<Expression>,
+        rounding: MultiplyRounding,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         self.prepare_append(1, span)?;
@@ -40,7 +85,7 @@ impl Parser<'_> {
             .charge_slice::<Handle<Expression>>(2, span)?;
         self.parameter_expansion_budget
             .charge_slice::<(Statement, Span)>(1, span)?;
-        let function = self.cached_fmul_rn_function(span)?;
+        let function = self.cached_fmul_function(rounding, span)?;
         self.function
             .ir
             .body
@@ -58,8 +103,16 @@ impl Parser<'_> {
         Ok(result)
     }
 
-    fn cached_fmul_rn_function(&mut self, span: Span) -> Result<Handle<Function>, ParseError> {
-        if let Some(function) = self.fmul_rn_function {
+    fn cached_fmul_function(
+        &mut self,
+        rounding: MultiplyRounding,
+        span: Span,
+    ) -> Result<Handle<Function>, ParseError> {
+        let cached = match rounding {
+            MultiplyRounding::NearestEven => self.fmul_rn_function,
+            MultiplyRounding::TowardZero => self.fmul_rz_function,
+        };
+        if let Some(function) = cached {
             return Ok(function);
         }
         self.parameter_expansion_budget.charge_nodes(1, span)?;
@@ -69,17 +122,24 @@ impl Parser<'_> {
             &mut self.function,
             FunctionContext::new(FunctionKind::Device),
         );
-        let result = self.build_fmul_rn_function(span);
+        let result = self.build_fmul_function(rounding, span);
         let helper = core::mem::replace(&mut self.function, caller);
         result?;
         self.parameter_expansion_budget
             .inventory_function(&helper.ir, span, 1)?;
         let function = self.module.functions.append(helper.ir, span);
-        self.fmul_rn_function = Some(function);
+        match rounding {
+            MultiplyRounding::NearestEven => self.fmul_rn_function = Some(function),
+            MultiplyRounding::TowardZero => self.fmul_rz_function = Some(function),
+        }
         Ok(function)
     }
 
-    fn build_fmul_rn_function(&mut self, span: Span) -> Result<(), ParseError> {
+    fn build_fmul_function(
+        &mut self,
+        rounding: MultiplyRounding,
+        span: Span,
+    ) -> Result<(), ParseError> {
         self.prepare_parameter_bindings(span)?;
         let ty = Type {
             name: None,
@@ -94,7 +154,10 @@ impl Parser<'_> {
                 self.module.types.insert(ty, span)
             }
         };
-        let name = "_naga_fmul_rn";
+        let name = match rounding {
+            MultiplyRounding::NearestEven => "_naga_fmul_rn",
+            MultiplyRounding::TowardZero => "_naga_fmul_rz",
+        };
         let argument_names = ["left_bits", "right_bits"];
         self.parameter_expansion_budget.charge_nodes(2, span)?;
         self.parameter_expansion_budget
@@ -236,25 +299,39 @@ impl Parser<'_> {
         let three_signed = self.fmul_signed_literal(3, span)?;
         let distance = self.fmul_binary(BinaryOperator::Subtract, shift, three_signed, span)?;
         let significand = self.fmul_shift_right_jam(high, low, distance, span)?;
-        let seven = self.fmul_literal(7, span)?;
-        let four = self.fmul_literal(4, span)?;
-        let three = self.fmul_literal(3, span)?;
-        let tail = self.fmul_binary(BinaryOperator::And, significand, seven, span)?;
-        let rounded = self.fmul_binary(BinaryOperator::ShiftRight, significand, three, span)?;
-        let odd = self.fmul_binary(BinaryOperator::And, rounded, one, span)?;
-        let odd = self.fmul_binary(BinaryOperator::NotEqual, odd, zero, span)?;
-        let tie = self.fmul_binary(BinaryOperator::Equal, tail, four, span)?;
-        let tie_up = self.fmul_binary(BinaryOperator::LogicalAnd, tie, odd, span)?;
-        let above_half = self.fmul_binary(BinaryOperator::Greater, tail, four, span)?;
-        let increment = self.fmul_binary(BinaryOperator::LogicalOr, above_half, tie_up, span)?;
-        let increment = self.fmul_bool_as_uint(increment, span)?;
-        let rounded = self.fmul_binary(BinaryOperator::Add, rounded, increment, span)?;
-        let carry_bit = self.fmul_literal(0x0100_0000, span)?;
-        let carry = self.fmul_binary(BinaryOperator::GreaterEqual, rounded, carry_bit, span)?;
-        let shifted = self.fmul_binary(BinaryOperator::ShiftRight, rounded, one, span)?;
-        let rounded = self.fmul_select(carry, shifted, rounded, span)?;
-        let carry = self.fmul_cast(carry, Scalar::I32, span)?;
-        let exponent = self.fmul_binary(BinaryOperator::Add, exponent, carry, span)?;
+        let (rounded, exponent) = match rounding {
+            MultiplyRounding::NearestEven => {
+                let seven = self.fmul_literal(7, span)?;
+                let four = self.fmul_literal(4, span)?;
+                let three = self.fmul_literal(3, span)?;
+                let tail = self.fmul_binary(BinaryOperator::And, significand, seven, span)?;
+                let rounded =
+                    self.fmul_binary(BinaryOperator::ShiftRight, significand, three, span)?;
+                let odd = self.fmul_binary(BinaryOperator::And, rounded, one, span)?;
+                let odd = self.fmul_binary(BinaryOperator::NotEqual, odd, zero, span)?;
+                let tie = self.fmul_binary(BinaryOperator::Equal, tail, four, span)?;
+                let tie_up = self.fmul_binary(BinaryOperator::LogicalAnd, tie, odd, span)?;
+                let above_half = self.fmul_binary(BinaryOperator::Greater, tail, four, span)?;
+                let increment =
+                    self.fmul_binary(BinaryOperator::LogicalOr, above_half, tie_up, span)?;
+                let increment = self.fmul_bool_as_uint(increment, span)?;
+                let rounded = self.fmul_binary(BinaryOperator::Add, rounded, increment, span)?;
+                let carry_bit = self.fmul_literal(0x0100_0000, span)?;
+                let carry =
+                    self.fmul_binary(BinaryOperator::GreaterEqual, rounded, carry_bit, span)?;
+                let shifted = self.fmul_binary(BinaryOperator::ShiftRight, rounded, one, span)?;
+                let rounded = self.fmul_select(carry, shifted, rounded, span)?;
+                let carry = self.fmul_cast(carry, Scalar::I32, span)?;
+                let exponent = self.fmul_binary(BinaryOperator::Add, exponent, carry, span)?;
+                (rounded, exponent)
+            }
+            MultiplyRounding::TowardZero => {
+                let three = self.fmul_literal(3, span)?;
+                let rounded =
+                    self.fmul_binary(BinaryOperator::ShiftRight, significand, three, span)?;
+                (rounded, exponent)
+            }
+        };
         let maximum_exponent = self.fmul_signed_literal(255, span)?;
         let overflow = self.fmul_binary(
             BinaryOperator::GreaterEqual,
@@ -262,7 +339,14 @@ impl Parser<'_> {
             maximum_exponent,
             span,
         )?;
-        self.fmul_return_if(overflow, signed_infinity, span)?;
+        let signed_overflow = match rounding {
+            MultiplyRounding::NearestEven => signed_infinity,
+            MultiplyRounding::TowardZero => {
+                let maximum = self.fmul_literal(0x7f7f_ffff, span)?;
+                self.fmul_binary(BinaryOperator::InclusiveOr, sign, maximum, span)?
+            }
+        };
+        self.fmul_return_if(overflow, signed_overflow, span)?;
         let normal = self.fmul_binary(BinaryOperator::GreaterEqual, rounded, implicit, span)?;
         let one_signed = self.fmul_signed_literal(1, span)?;
         let exponent = self.fmul_math(crate::MathFunction::Max, exponent, one_signed, span)?;

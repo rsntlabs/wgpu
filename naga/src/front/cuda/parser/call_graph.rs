@@ -291,7 +291,7 @@ impl Parser<'_> {
             span,
         )?;
         self.parameter_expansion_budget
-            .charge_work(self.float_math_functions.len() + 10, span)?;
+            .charge_work(self.float_math_functions.len() + 11, span)?;
         for function in self.float_math_functions.iter_mut().chain([
             &mut self.sqrtf_function,
             &mut self.division_function,
@@ -299,6 +299,7 @@ impl Parser<'_> {
             &mut self.fadd_rn_function,
             &mut self.fadd_rz_function,
             &mut self.fmul_rn_function,
+            &mut self.fmul_rz_function,
             &mut self.fmaf_rn_function,
             &mut self.frsqrt_rn_function,
             &mut self.trigonometry_function,

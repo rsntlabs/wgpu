@@ -1184,6 +1184,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
     declarations.insert(
+        "__fmul_rz",
+        GlobalDeclaration::Functions(Default::default()),
+    );
+    declarations.insert(
         "__fmul_rn",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
@@ -1277,6 +1281,7 @@ pub(super) enum FunctionCandidate {
     SubtractRoundNearest,
     SubtractRoundZero,
     MultiplyRoundNearest,
+    MultiplyRoundZero,
     FusedMultiplyAddRoundNearest,
     DivideRoundNearest,
     ReciprocalRoundNearest,
@@ -1879,6 +1884,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::SubtractRoundNearest
                         | FunctionCandidate::SubtractRoundZero
                         | FunctionCandidate::FusedMultiplyAddRoundNearest
+                        | FunctionCandidate::MultiplyRoundZero
                         | FunctionCandidate::MultiplyRoundNearest
                         | FunctionCandidate::DivideRoundNearest
                         | FunctionCandidate::ReciprocalRoundNearest
@@ -2165,6 +2171,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::SubtractRoundNearest
             | FunctionCandidate::SubtractRoundZero
             | FunctionCandidate::FusedMultiplyAddRoundNearest
+            | FunctionCandidate::MultiplyRoundZero
             | FunctionCandidate::MultiplyRoundNearest
             | FunctionCandidate::DivideRoundNearest
             | FunctionCandidate::ReciprocalRoundNearest
@@ -2455,6 +2462,9 @@ impl<'a> Parser<'a> {
         }
         if candidate == FunctionCandidate::FusedMultiplyAddRoundNearest {
             return self.lower_fmaf_rn_call(arguments, span);
+        }
+        if candidate == FunctionCandidate::MultiplyRoundZero {
+            return self.lower_fmul_rz_call(arguments, span);
         }
         if candidate == FunctionCandidate::MultiplyRoundNearest {
             return self.lower_fmul_rn_call(arguments, span);
@@ -3183,6 +3193,10 @@ impl<'a> Parser<'a> {
                     .then_some(FunctionCandidate::SubtractRoundZero),
             )
             .chain(
+                (builtin_visible && name == "__fmul_rz")
+                    .then_some(FunctionCandidate::MultiplyRoundZero),
+            )
+            .chain(
                 (builtin_visible && name == "__fmul_rn")
                     .then_some(FunctionCandidate::MultiplyRoundNearest),
             )
@@ -3273,6 +3287,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::AddRoundNearest
             | FunctionCandidate::SubtractRoundNearest
             | FunctionCandidate::SubtractRoundZero
+            | FunctionCandidate::MultiplyRoundZero
             | FunctionCandidate::MultiplyRoundNearest
             | FunctionCandidate::DivideRoundNearest => 2,
             FunctionCandidate::AtomicCompareExchange(_)
@@ -3349,6 +3364,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::SubtractRoundNearest
             | FunctionCandidate::SubtractRoundZero
             | FunctionCandidate::FusedMultiplyAddRoundNearest
+            | FunctionCandidate::MultiplyRoundZero
             | FunctionCandidate::MultiplyRoundNearest
             | FunctionCandidate::DivideRoundNearest
             | FunctionCandidate::ReciprocalRoundNearest

@@ -190,6 +190,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA `fmaf` through the existing correctly rounded fused multiply-add helper.
 - Support CUDA `__fadd_rz` with portable addition rounded toward zero.
 - Support CUDA `__fsub_rz` through the portable addition helper rounded toward zero.
+- Support CUDA `__fmul_rz` with portable multiplication rounded toward zero.
 - Support CUDA `copysignf` with bit-preserving magnitude and sign copying.
 - Support CUDA float `isfinite`, `isinf`, `isnan`, and `signbit` classification with integer results.
 - Support CUDA integral template defaults that directly reference earlier integral parameters.
