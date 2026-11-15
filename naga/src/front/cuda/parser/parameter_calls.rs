@@ -380,6 +380,7 @@ impl Parser<'_> {
         span: Span,
         order: ArgumentEvaluationOrder,
     ) -> Result<ExpressionResult, ParseError> {
+        self.check_float_classification_argument(candidate, &arguments, span)?;
         if matches!(
             candidate,
             functions::FunctionCandidate::Atomic { .. }

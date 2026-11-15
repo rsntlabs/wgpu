@@ -1,6 +1,7 @@
 use super::*;
 
 use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
+use super::float_classification::FloatClassification;
 use super::float_helpers::FloatMathFunction;
 use super::function_declarations::Inlining;
 use super::integer_intrinsics::{
@@ -851,6 +852,13 @@ const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 5] = [
     ("roundf", FloatMathFunction::Round),
 ];
 
+const FLOAT_CLASSIFICATION_BUILTINS: &[(&str, FloatClassification)] = &[
+    ("isfinite", FloatClassification::Finite),
+    ("isinf", FloatClassification::Infinite),
+    ("isnan", FloatClassification::NaN),
+    ("signbit", FloatClassification::SignBit),
+];
+
 const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 12] = [
     (
         "__clz",
@@ -1149,6 +1157,12 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         )
     }));
+    declarations.extend(FLOAT_CLASSIFICATION_BUILTINS.iter().map(|&(name, _)| {
+        (
+            name,
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        )
+    }));
     declarations
 }
 
@@ -1209,6 +1223,7 @@ pub(super) enum FunctionCandidate {
         result: Scalar,
     },
     FloatMath(FloatMathFunction),
+    FloatClassification(FloatClassification),
     IntegralDouble {
         source: Scalar,
     },
@@ -1803,6 +1818,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Bitcast { .. }
                         | FunctionCandidate::Unary { .. }
                         | FunctionCandidate::FloatMath(_)
+                        | FunctionCandidate::FloatClassification(_)
                         | FunctionCandidate::Sqrt
                         | FunctionCandidate::Fmodf
                         | FunctionCandidate::Constructor { .. }
@@ -2068,6 +2084,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::AtomicCompareExchange(result)
             | FunctionCandidate::Bitcast { result, .. }
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
+            FunctionCandidate::FloatClassification(_) => TypeSpecifier::Scalar(Scalar::I32),
             FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
@@ -2299,48 +2316,62 @@ impl<'a> Parser<'a> {
         self.lower_call(candidate, arguments, span)
     }
 
+    fn lower_vector_constructor_call(
+        &mut self,
+        component_count: u8,
+        scalar: Scalar,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        let components = arguments
+            .into_iter()
+            .map(|value| {
+                self.convert_scalar(value.into(), scalar)
+                    .map(|value| value.handle)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let ty = self.lower_type(
+            TypeSpecifier::Vector {
+                component_count,
+                scalar,
+            },
+            span,
+        )?;
+        let handle_ty = self.type_handle(&ty, span);
+        let handle = self.append(
+            Expression::Compose {
+                ty: handle_ty,
+                components,
+            },
+            span,
+        )?;
+        Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
+            constant: ConstantValue::default(),
+            handle,
+            ty,
+            span,
+        }
+        .into())
+    }
+
     pub(super) fn lower_call(
         &mut self,
         candidate: FunctionCandidate,
         arguments: Vec<Value>,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
+        self.check_float_classification_argument(candidate, &arguments, span)?;
+        if let FunctionCandidate::FloatClassification(classification) = candidate {
+            return self.lower_float_classification_call(classification, arguments, span);
+        }
         if let FunctionCandidate::Constructor {
             component_count,
             scalar,
         } = candidate
         {
-            let components = arguments
-                .into_iter()
-                .map(|value| {
-                    self.convert_scalar(value.into(), scalar)
-                        .map(|value| value.handle)
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            let ty = self.lower_type(
-                TypeSpecifier::Vector {
-                    component_count,
-                    scalar,
-                },
-                span,
-            )?;
-            let handle_ty = self.type_handle(&ty, span);
-            let handle = self.append(
-                Expression::Compose {
-                    ty: handle_ty,
-                    components,
-                },
-                span,
-            )?;
-            return Ok(Value {
-                category: ValueCategory::Prvalue,
-                qualifiers: Qualifiers::NONE,
-                constant: ConstantValue::default(),
-                handle,
-                ty,
-                span,
-            }
-            .into());
+            return self.lower_vector_constructor_call(component_count, scalar, arguments, span);
         }
         if let FunctionCandidate::Bitcast { source, result } = candidate {
             let argument =
@@ -3033,6 +3064,13 @@ impl<'a> Parser<'a> {
                     .map(|(_, operation)| FunctionCandidate::FloatMath(operation)),
             )
             .chain(
+                FLOAT_CLASSIFICATION_BUILTINS
+                    .iter()
+                    .find(|&&(candidate, _)| candidate == name)
+                    .filter(move |_| builtin_visible)
+                    .map(|&(_, operation)| FunctionCandidate::FloatClassification(operation)),
+            )
+            .chain(
                 (builtin_visible && SQRT_BUILTINS.contains(&name))
                     .then_some(FunctionCandidate::Sqrt),
             )
@@ -3115,6 +3153,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::PackedUnary(_)
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::FloatMath(_)
+            | FunctionCandidate::FloatClassification(_)
             | FunctionCandidate::IntegralDouble { .. }
             | FunctionCandidate::Sqrt => 1,
             FunctionCandidate::Constructor {
@@ -3164,6 +3203,7 @@ impl<'a> Parser<'a> {
                 return Some(scalar_resolution(source))
             }
             FunctionCandidate::FloatMath(_)
+            | FunctionCandidate::FloatClassification(_)
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf => return Some(scalar_resolution(Scalar::F32)),
             FunctionCandidate::FunnelShift(_)

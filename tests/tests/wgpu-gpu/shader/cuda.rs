@@ -48,6 +48,7 @@ mod dynamic_shared;
 mod empty_scalar_construction;
 mod fabs;
 mod ffsll;
+mod float_classification;
 mod float_division;
 mod float_math;
 mod float_separators;
@@ -220,6 +221,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FLOAT_MATH,
         CUDA_FLOAT_SEPARATORS,
         CUDA_FLOAT_TRUTHINESS,
+        CUDA_FLOAT_CLASSIFICATION,
         CUDA_FLOORF,
         CUDA_FMODF,
         CUDA_ROUNDF,
@@ -1071,3 +1073,6 @@ static CUDA_ROUNDING_ZERO_SIGNS: GpuTestConfiguration = configuration(rounding_z
 #[apply(gpu_test!)]
 static CUDA_DEPENDENT_INTEGRAL_DEFAULTS: GpuTestConfiguration =
     configuration(dependent_integral_defaults::cases);
+
+#[apply(gpu_test!)]
+static CUDA_FLOAT_CLASSIFICATION: GpuTestConfiguration = configuration(float_classification::cases);

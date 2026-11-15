@@ -1,0 +1,15 @@
+targets = "SPIRV | METAL | GLSL | HLSL | WGSL"
+
+[cuda-in]
+workgroup_size = [32, 1, 1]
+
+[msl]
+lang_version = [1, 0]
+fake_missing_bindings = false
+
+[msl.per_entry_point_map.float_classification]
+sizes_buffer = 2
+resources = [
+    { bind_target = { buffer = 0 }, resource_binding = { group = 0, binding = 0 } },
+    { bind_target = { buffer = 1, mutable = true }, resource_binding = { group = 0, binding = 1 } },
+]

@@ -45,6 +45,7 @@ mod dynamic_shared;
 mod empty_scalar_construction;
 mod fabs;
 mod ffsll;
+mod float_classification;
 mod float_math;
 mod float_separators;
 mod float_truthiness;

@@ -17,6 +17,7 @@ mod dim3;
 mod division;
 mod dynamic_shared;
 mod expressions;
+mod float_classification;
 mod float_helpers;
 mod fmodf;
 mod fns;

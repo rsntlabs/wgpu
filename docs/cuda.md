@@ -954,6 +954,24 @@ use `fabsf` or explicitly convert to `float`. Exact user-defined integral
 overloads still participate and take precedence over the library templates.
 Calls execute at runtime and are not constant expressions.
 
+`isfinite(float)`, `isinf(float)`, `isnan(float)`, and `signbit(float)` classify
+the received single-precision representation using integer bit operations.
+They return `int`, following NVIDIA's default
+[classification signatures](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__SINGLE.html),
+with zero for false and one for true.
+
+| Function | True condition |
+| --- | --- |
+| `isfinite` | Zero, subnormal, or normal finite value |
+| `isinf` | Positive or negative infinity |
+| `isnan` | Any quiet or signaling NaN, regardless of sign or payload |
+| `signbit` | Sign bit set, including negative zero, infinities, and NaNs |
+
+These builtins require `float` arguments. Explicitly cast integral values to
+`float` to classify them; winning user-defined overloads still participate in
+ordinary and template lookup. Calls execute at runtime and are not source
+constant expressions. Double-precision classification remains unsupported.
+
 `fmodf(float, float)` returns the remainder after dividing the first argument
 by the second with the quotient truncated toward zero. Scalar arguments convert
 to `float` first. Integer significand reduction computes exact finite remainders,
@@ -1054,7 +1072,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, or `cosf` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 
