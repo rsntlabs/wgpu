@@ -1071,6 +1071,15 @@ Calls execute at runtime and are not constant expressions, including calls with
 literal arguments. The double-precision `sqrt` and directed-rounding intrinsics
 remain unsupported.
 
+`__fsqrt_rn(float)` exposes the same correctly rounded square-root operation
+through CUDA's fixed single-precision intrinsic signature, following NVIDIA's
+[`__fsqrt_rn` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SINGLE.html).
+Scalar arguments, including integral arguments, convert to `float` first, and
+the result is `float`. Calls share the existing integer helper with `sqrtf` and
+`sqrt(float)`, preserving subnormal inputs, both zero signs, positive infinity,
+and the same canonical-NaN policy. Calls execute at runtime and are not source
+constant expressions. Other explicit square-root rounding modes remain unsupported.
+
 `rsqrtf(float)` returns the reciprocal square root and accepts scalar arguments
 that convert to `float`. Positive finite inputs use a correctly rounded square
 root followed by correctly rounded division of one by that root. This composition
@@ -1144,7 +1153,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fsub_rn`, `__fmul_rn`, `__fdiv_rn`, `__frcp_rn`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fsub_rn`, `__fmul_rn`, `__fdiv_rn`, `__frcp_rn`, `__fsqrt_rn`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 

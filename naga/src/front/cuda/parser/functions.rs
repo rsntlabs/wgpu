@@ -924,7 +924,7 @@ const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 12] = [
     ),
 ];
 
-const SQRT_BUILTINS: [&str; 2] = ["sqrtf", "sqrt"];
+const SQRT_BUILTINS: [&str; 3] = ["sqrtf", "sqrt", "__fsqrt_rn"];
 const INTEGRAL_DOUBLE_BUILTINS: [&str; 2] = ["fabs", "sqrt"];
 
 #[derive(Clone, Copy, PartialEq)]
@@ -2489,18 +2489,7 @@ impl<'a> Parser<'a> {
             .into());
         }
         if candidate == FunctionCandidate::Sqrt {
-            let argument =
-                self.convert_scalar(arguments.into_iter().next().unwrap().into(), Scalar::F32)?;
-            let handle = self.call_sqrtf(argument.handle, span)?;
-            return Ok(Value {
-                category: ValueCategory::Prvalue,
-                qualifiers: Qualifiers::NONE,
-                constant: ConstantValue::default(),
-                handle,
-                ty: scalar_resolution(Scalar::F32),
-                span,
-            }
-            .into());
+            return self.lower_sqrt_call(arguments, span);
         }
         if let FunctionCandidate::Unary {
             function,

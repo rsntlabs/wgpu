@@ -184,6 +184,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA `__fmul_rn` with portable round-to-nearest-even single-precision multiplication.
 - Support CUDA `__fdiv_rn` through the existing correctly rounded single-precision division helper.
 - Support CUDA `__frcp_rn` through the existing correctly rounded single-precision division helper.
+- Support CUDA `__fsqrt_rn` and check square-root conversion budgets before lowering arguments.
 - Support CUDA `copysignf` with bit-preserving magnitude and sign copying.
 - Support CUDA float `isfinite`, `isinf`, `isnan`, and `signbit` classification with integer results.
 - Support CUDA integral template defaults that directly reference earlier integral parameters.

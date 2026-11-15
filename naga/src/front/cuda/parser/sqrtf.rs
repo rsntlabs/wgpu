@@ -1,6 +1,27 @@
 use super::*;
 
 impl Parser<'_> {
+    pub(super) fn lower_sqrt_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let argument =
+            self.convert_scalar(arguments.into_iter().next().unwrap().into(), Scalar::F32)?;
+        let handle = self.call_sqrtf(argument.handle, span)?;
+        Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
+            constant: ConstantValue::default(),
+            handle,
+            ty: scalar_resolution(Scalar::F32),
+            span,
+        }
+        .into())
+    }
+
     pub(super) fn call_sqrtf(
         &mut self,
         value: Handle<Expression>,
