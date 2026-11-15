@@ -534,7 +534,9 @@ impl Parser<'_> {
                 value.span = span;
                 return Ok(ExpressionValue::NullPointer(value).into());
             }
-            Symbol::TemplateParameter { scalar, literal } => {
+            Symbol::TemplateParameter {
+                scalar, literal, ..
+            } => {
                 return self.template_parameter_value(scalar, literal, span);
             }
             Symbol::DynamicShared(_) | Symbol::ConstantMemory(_) => unreachable!(),

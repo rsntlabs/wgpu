@@ -108,7 +108,7 @@ fn cuda_dependent_type_defaults_reject_declarators_values_and_redefaults() {
         "template<class T, class U = T *> __device__ int f() { return 1; } __global__ void kernel() {}",
         "template<class T, class U = T &> __device__ int f() { return 1; } __global__ void kernel() {}",
         "template<class T, class U = T[3]> __device__ int f() { return 1; } __global__ void kernel() {}",
-        "template<int N, int M = N> __device__ int f() { return M; } __global__ void kernel() {}",
+        "template<int N, int M = (N)> __device__ int f() { return M; } __global__ void kernel() {}",
         "template<class T, class U = T> __device__ int f(); template<class A, class B = A> __device__ int f() { return 1; } __global__ void kernel() {}",
     ] { reject(source); }
 }

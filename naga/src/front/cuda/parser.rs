@@ -126,6 +126,7 @@ enum Symbol {
         literal: Option<Literal>,
     },
     TemplateParameter {
+        index: u32,
         scalar: SourceScalar,
         literal: Option<Literal>,
     },

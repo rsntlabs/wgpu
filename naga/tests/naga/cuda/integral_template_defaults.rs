@@ -123,8 +123,8 @@ fn cuda_integral_template_defaults_preserve_overload_ranking_and_reference_effec
 fn cuda_integral_template_defaults_reject_dependent_invalid_and_redeclared_defaults() {
     for source in [
         "template<int N = 1> __device__ int f(); template<int M = 1> __device__ int f() { return M; } __global__ void kernel() {}",
-        "template<int N, int M> __device__ int f(); template<int N, int M = N> __device__ int f() { return M; } __global__ void kernel() {}",
-        "template<int N, int M = N> __device__ int f() { return M; } __global__ void kernel() {}",
+        "template<int N, int M> __device__ int f(); template<int N, int M = (N)> __device__ int f() { return M; } __global__ void kernel() {}",
+        "template<int N, int M = (N)> __device__ int f() { return M; } __global__ void kernel() {}",
         "template<int N, int M = sizeof(N)> __device__ int f() { return M; } __global__ void kernel() {}",
         "template<int N, int M = (false ? N : 3)> __device__ int f() { return M; } __global__ void kernel() {}",
         "template<int N, int M = ((void)N, 3)> __device__ int f() { return M; } __global__ void kernel() {}",

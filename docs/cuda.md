@@ -154,9 +154,25 @@ preserve the value in the declared integral type. Boolean defaults require zero 
 floating values require an explicit integral or Boolean cast. These checks run
 when the default is declared.
 
+An integral default can directly name an earlier integral template parameter:
+
+```cuda
+template<int Count = 4, unsigned Copy = Count, int Last = Copy>
+__device__ unsigned copied_count() { return unsigned(Last); }
+```
+
+Omitted defaults resolve from left to right after deduction. Each reference uses
+the earlier parameter's value and checks conversion to its own declared type.
+For example, an omitted unsigned default cannot copy a negative value, and an
+omitted Boolean default can copy only zero or one. An invalid conversion removes
+that function-template candidate from overload selection. Explicit arguments
+bypass their defaults. Chained defaults and renamed declarations retain the
+same normalized specialization keys and source visibility rules as fixed defaults.
+
 Type and integral defaults can be mixed, including before parameters that are
-deduced from function arguments. Integral defaults cannot mention earlier
-template parameters, including inside unevaluated or discarded expressions.
+deduced from function arguments. Other dependent integral expressions remain
+unsupported, including parenthesized references, arithmetic, and references
+inside unevaluated or discarded expressions.
 Shifts, greater-than comparisons, and comma expressions require parentheses, as with
 explicit template arguments. Selected calls to function templates in default
 expressions remain unsupported. Runtime builtins are not constants; discarded

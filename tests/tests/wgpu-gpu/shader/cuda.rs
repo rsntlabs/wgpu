@@ -33,6 +33,7 @@ mod declarations;
 mod decltype_objects;
 mod default_arguments;
 mod default_template_arguments;
+mod dependent_integral_defaults;
 mod dependent_type_defaults;
 mod device_helper_barriers;
 mod device_shared;
@@ -319,6 +320,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_TRIGONOMETRY,
         CUDA_TYPE_ALIASES,
         CUDA_TYPE_QUERIES,
+        CUDA_DEPENDENT_INTEGRAL_DEFAULTS,
         CUDA_DEPENDENT_TYPE_DEFAULTS,
         CUDA_DEFAULT_TEMPLATE_ARGUMENTS,
         CUDA_TEMPLATE_DEFAULT_MERGING,
@@ -1065,3 +1067,7 @@ static CUDA_DEPENDENT_TYPE_DEFAULTS: GpuTestConfiguration =
 
 #[apply(gpu_test!)]
 static CUDA_ROUNDING_ZERO_SIGNS: GpuTestConfiguration = configuration(rounding_zero_signs::cases);
+
+#[apply(gpu_test!)]
+static CUDA_DEPENDENT_INTEGRAL_DEFAULTS: GpuTestConfiguration =
+    configuration(dependent_integral_defaults::cases);

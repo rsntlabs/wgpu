@@ -1500,6 +1500,7 @@ mod tests {
         parser.function.symbol_table.add(
             "marker",
             Symbol::TemplateParameter {
+                index: 0,
                 scalar: SourceScalar::Scalar(Scalar::U32),
                 literal: Some(Literal::U32(7)),
             },
@@ -1524,6 +1525,7 @@ mod tests {
         assert!(matches!(
             parser.function.symbol_table.lookup("marker"),
             Some(&Symbol::TemplateParameter {
+                index: 0,
                 scalar: SourceScalar::Scalar(Scalar::U32),
                 literal: Some(Literal::U32(7))
             })

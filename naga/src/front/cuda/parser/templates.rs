@@ -143,6 +143,7 @@ enum ParameterPattern {
 enum TemplateDefaultValue {
     Fixed(TemplateValue),
     TypeParameter { index: u32, qualifiers: Qualifiers },
+    ValueParameter { index: u32, scalar: SourceScalar },
 }
 
 #[derive(Clone, Copy)]
@@ -413,6 +414,7 @@ impl<'a> Parser<'a> {
                 .charge_map_entry::<&str, Symbol>(1, parameter.span)?;
             let symbol = match parameter.kind {
                 TemplateParameterKind::Value(scalar) => Symbol::TemplateParameter {
+                    index: parameter.index,
                     scalar,
                     literal: arguments.map(|arguments| arguments[index].literal()),
                 },
@@ -711,6 +713,30 @@ impl<'a> Parser<'a> {
                 }
             }
             TemplateParameterKind::Value(scalar) => {
+                self.parameter_expansion_budget.charge_work(1, span)?;
+                let mut end = self.lexer.clone();
+                let parameter = match end.next()?.0 {
+                    Token::Word(name) => match self.function.symbol_table.lookup(name) {
+                        Some(&Symbol::TemplateParameter { index, .. })
+                            if matches!(
+                                end.peek()?.0,
+                                Token::Separator(',') | Token::Paren('>')
+                            ) =>
+                        {
+                            Some(index)
+                        }
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                if let Some(index) = parameter {
+                    self.lexer = end;
+                    return Ok(TemplateParameterDefault {
+                        value: TemplateDefaultValue::ValueParameter { index, scalar },
+                        position: self.lexer.position(),
+                        span,
+                    });
+                }
                 self.activate_parameter_expansion(span)?;
                 self.prepare_parameter_bindings(span)?;
                 let start = self.lexer.clone();
@@ -754,6 +780,20 @@ impl<'a> Parser<'a> {
             .filter(|default| default.position.precedes(position))?;
         match default.value {
             TemplateDefaultValue::Fixed(value) => Some(value),
+            TemplateDefaultValue::ValueParameter {
+                index: parameter,
+                scalar,
+            } => {
+                let parameter = parameter as usize;
+                if parameter >= index {
+                    return None;
+                }
+                let value = prior(parameter)?;
+                match value {
+                    TemplateValue::Type { .. } | TemplateValue::ArrayType { .. } => None,
+                    _ => TemplateValue::converted(value.literal(), scalar),
+                }
+            }
             TemplateDefaultValue::TypeParameter {
                 index: parameter,
                 qualifiers,
