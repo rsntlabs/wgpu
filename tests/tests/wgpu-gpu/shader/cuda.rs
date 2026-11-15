@@ -58,6 +58,7 @@ mod float_truthiness;
 mod floorf;
 mod fmodf;
 mod fns;
+mod fsub_rn;
 mod function_macros;
 mod funnel_shifts;
 mod funnel_shifts_clamped;
@@ -225,6 +226,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FLOAT_SEPARATORS,
         CUDA_FLOAT_TRUTHINESS,
         CUDA_FLOAT_CLASSIFICATION,
+        CUDA_FSUB_RN,
         CUDA_FADD_RN,
         CUDA_FLOORF,
         CUDA_FMODF,
@@ -1086,3 +1088,6 @@ static CUDA_COPYSIGNF: GpuTestConfiguration = configuration(copysignf::cases);
 
 #[apply(gpu_test!)]
 static CUDA_FADD_RN: GpuTestConfiguration = configuration(fadd_rn::cases);
+
+#[apply(gpu_test!)]
+static CUDA_FSUB_RN: GpuTestConfiguration = configuration(fsub_rn::cases);

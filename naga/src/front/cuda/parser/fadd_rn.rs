@@ -6,6 +6,23 @@ impl Parser<'_> {
         arguments: Vec<Value>,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
+        self.lower_add_sub_rn_call(arguments, false, span)
+    }
+
+    pub(super) fn lower_fsub_rn_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lower_add_sub_rn_call(arguments, true, span)
+    }
+
+    fn lower_add_sub_rn_call(
+        &mut self,
+        arguments: Vec<Value>,
+        subtract: bool,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         let mut arguments = arguments.into_iter();
@@ -13,6 +30,19 @@ impl Parser<'_> {
         let right = self.convert_scalar(arguments.next().unwrap().into(), Scalar::F32)?;
         let left = self.bitcast_scalar(left.handle, Scalar::U32, span)?;
         let right = self.bitcast_scalar(right.handle, Scalar::U32, span)?;
+        let right = if subtract {
+            let sign = self.append(Expression::Literal(Literal::U32(0x8000_0000)), span)?;
+            self.append(
+                Expression::Binary {
+                    op: BinaryOperator::ExclusiveOr,
+                    left: right,
+                    right: sign,
+                },
+                span,
+            )?
+        } else {
+            right
+        };
         let bits = self.call_fadd_rn_bits(left, right, span)?;
         let handle = self.bitcast_scalar(bits, Scalar::F32, span)?;
         Ok(Value {

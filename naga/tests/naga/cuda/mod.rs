@@ -54,6 +54,7 @@ mod float_truthiness;
 mod floorf;
 mod fmodf;
 mod fns;
+mod fsub_rn;
 mod function_macros;
 mod funnel_shifts;
 mod funnel_shifts_clamped;

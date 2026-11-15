@@ -1171,6 +1171,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__fadd_rn",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
+    declarations.insert(
+        "__fsub_rn",
+        GlobalDeclaration::Functions(FunctionOverloads::default()),
+    );
     declarations
 }
 
@@ -1239,6 +1243,7 @@ pub(super) enum FunctionCandidate {
     Fmodf,
     CopySign,
     AddRoundNearest,
+    SubtractRoundNearest,
     Constructor {
         component_count: u8,
         scalar: Scalar,
@@ -1833,6 +1838,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Fmodf
                         | FunctionCandidate::CopySign
                         | FunctionCandidate::AddRoundNearest
+                        | FunctionCandidate::SubtractRoundNearest
                         | FunctionCandidate::Constructor { .. }
                 )
                 && self.function.parameters.len() == self.candidate_arity(candidate)
@@ -2110,7 +2116,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf
             | FunctionCandidate::CopySign
-            | FunctionCandidate::AddRoundNearest => TypeSpecifier::Scalar(Scalar::F32),
+            | FunctionCandidate::AddRoundNearest
+            | FunctionCandidate::SubtractRoundNearest => TypeSpecifier::Scalar(Scalar::F32),
             FunctionCandidate::Constructor {
                 component_count,
                 scalar,
@@ -2385,6 +2392,9 @@ impl<'a> Parser<'a> {
         }
         if candidate == FunctionCandidate::AddRoundNearest {
             return self.lower_fadd_rn_call(arguments, span);
+        }
+        if candidate == FunctionCandidate::SubtractRoundNearest {
+            return self.lower_fsub_rn_call(arguments, span);
         }
         if let FunctionCandidate::Constructor {
             component_count,
@@ -3101,6 +3111,10 @@ impl<'a> Parser<'a> {
                     .then_some(FunctionCandidate::AddRoundNearest),
             )
             .chain(
+                (builtin_visible && name == "__fsub_rn")
+                    .then_some(FunctionCandidate::SubtractRoundNearest),
+            )
+            .chain(
                 (builtin_visible && name == "__byte_perm").then_some(FunctionCandidate::BytePerm),
             )
             .chain(
@@ -3167,7 +3181,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::Fmodf
             | FunctionCandidate::CopySign
-            | FunctionCandidate::AddRoundNearest => 2,
+            | FunctionCandidate::AddRoundNearest
+            | FunctionCandidate::SubtractRoundNearest => 2,
             FunctionCandidate::AtomicCompareExchange(_)
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
@@ -3234,7 +3249,10 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf
             | FunctionCandidate::CopySign
-            | FunctionCandidate::AddRoundNearest => return Some(scalar_resolution(Scalar::F32)),
+            | FunctionCandidate::AddRoundNearest
+            | FunctionCandidate::SubtractRoundNearest => {
+                return Some(scalar_resolution(Scalar::F32))
+            }
             FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::BytePerm
             | FunctionCandidate::ByteSwap32
