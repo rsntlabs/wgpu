@@ -4,7 +4,7 @@ mod helpers;
 
 use helpers::CallUniformity;
 
-type PureIntrinsicFunctions = [Option<Handle<Function>>; 16];
+type PureIntrinsicFunctions = [Option<Handle<Function>>; 17];
 
 impl Parser<'_> {
     const fn pure_intrinsic_functions(&self) -> PureIntrinsicFunctions {
@@ -15,6 +15,7 @@ impl Parser<'_> {
             absolute,
             round,
             self.sqrtf_function,
+            self.sqrtf_rz_function,
             self.division_function,
             self.division_rz_function,
             self.fmodf_function,

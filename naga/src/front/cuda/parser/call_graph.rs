@@ -291,9 +291,10 @@ impl Parser<'_> {
             span,
         )?;
         self.parameter_expansion_budget
-            .charge_work(self.float_math_functions.len() + 12, span)?;
+            .charge_work(self.float_math_functions.len() + 13, span)?;
         for function in self.float_math_functions.iter_mut().chain([
             &mut self.sqrtf_function,
+            &mut self.sqrtf_rz_function,
             &mut self.division_function,
             &mut self.division_rz_function,
             &mut self.fmodf_function,

@@ -65,6 +65,7 @@ mod frcp_rn;
 mod frcp_rz;
 mod frsqrt_rn;
 mod fsqrt_rn;
+mod fsqrt_rz;
 mod fsub_rn;
 mod fsub_rz;
 mod function_macros;

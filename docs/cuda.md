@@ -1146,8 +1146,7 @@ The calculation uses integer operations on the input representation, including
 subnormal inputs. Both signed zeros and positive infinity retain their bits;
 negative nonzero inputs and NaNs produce the canonical quiet NaN `0x7fc00000`.
 Calls execute at runtime and are not constant expressions, including calls with
-literal arguments. The double-precision `sqrt` and directed-rounding intrinsics
-remain unsupported.
+literal arguments. The double-precision `sqrt` remains unsupported.
 
 `__fsqrt_rn(float)` exposes the same correctly rounded square-root operation
 through CUDA's fixed single-precision intrinsic signature, following NVIDIA's
@@ -1156,7 +1155,18 @@ Scalar arguments, including integral arguments, convert to `float` first, and
 the result is `float`. Calls share the existing integer helper with `sqrtf` and
 `sqrt(float)`, preserving subnormal inputs, both zero signs, positive infinity,
 and the same canonical-NaN policy. Calls execute at runtime and are not source
-constant expressions. Other explicit square-root rounding modes remain unsupported.
+constant expressions.
+
+`__fsqrt_rz(float)` computes a single-precision square root rounded toward zero,
+following NVIDIA's
+[`__fsqrt_rz` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SINGLE.html).
+Scalar arguments convert to `float` first. A separate cached helper shares the
+integer restoring-root algorithm, returning the representable value at or below
+the exact positive root. Received subnormal inputs are preserved. Both zero
+signs and positive infinity retain their bits; negative nonzero inputs and NaNs
+produce the canonical quiet NaN `0x7fc00000`. Calls execute at runtime and are
+not source constant expressions. The `__fsqrt_rd` and `__fsqrt_ru` modes remain
+unsupported.
 
 `rsqrtf(float)` returns the reciprocal square root and accepts scalar arguments
 that convert to `float`. Positive finite inputs use a correctly rounded square
@@ -1244,7 +1254,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fsub_rn`, `__fsub_rz`, `__fmul_rn`, `__fmul_rz`, `__fdiv_rn`, `__fdiv_rz`, `__frcp_rn`, `__frcp_rz`, `__fsqrt_rn`, `__frsqrt_rn`, `__fmaf_rn`, `fmaf`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fsub_rn`, `__fsub_rz`, `__fmul_rn`, `__fmul_rz`, `__fdiv_rn`, `__fdiv_rz`, `__frcp_rn`, `__frcp_rz`, `__fsqrt_rn`, `__fsqrt_rz`, `__frsqrt_rn`, `__fmaf_rn`, `fmaf`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 
