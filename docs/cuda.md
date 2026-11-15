@@ -860,11 +860,22 @@ caller's pointer or change buffer bindings. Copies and bound references retain
 their previously selected addresses. `constexpr` pointer declarations remain
 unsupported.
 
-Single-dimensional helper array parameters, `T values[]` and `T values[N]`,
-adjust to `T*`. A written bound must be a positive integral constant expression;
-it does not constrain the argument's length. Pointer parameters and adjusted
-array parameters share overload signatures. Top-level parameter `const`, as in
-`T* const`, does not distinguish signatures; pointee `const` does.
+Array parameters in ordinary helpers and kernels adjust to pointers. For
+example, `T values[]` adjusts to `T*`, and `T values[2][3]` adjusts to a
+pointer to `T[3]`. The first bound may be omitted; a written first bound must be
+a positive integral constant expression but does not constrain the argument's
+length or allocate an outer array. Retained inner bounds must be positive
+integral constant expressions. The retained row supports up to 64 dimensions,
+including dimensions supplied by an array alias, in addition to the ignored
+outer dimension.
+
+Pointer parameters and adjusted array parameters share overload signatures.
+Different first bounds do not distinguish signatures; different inner bounds
+do. Top-level parameter `const`, as in `T* const`, does not distinguish
+signatures; pointee `const` does. Kernel array parameters expose storage buffers
+whose elements are the retained rows, preserving their row stride and element
+qualifiers. Explicit multidimensional array declarators in template parameters,
+arrays of pointers, and whole-array references remain unsupported.
 
 Discarding a bare pointer parameter or local, as in `(pointer, 4)`, does not read
 its value. Reading an unknown formal pointer or a local pointer through

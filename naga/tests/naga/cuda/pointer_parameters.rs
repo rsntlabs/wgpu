@@ -482,6 +482,7 @@ fn cuda_pointer_parameters_reject_missing_definitions_and_call_cycles() {
 
 #[test]
 fn cuda_pointer_parameters_reject_escaping_and_unsupported_pointer_storage() {
+    validate("__device__ void read(int values[2][2]) {} __global__ void kernel() {}");
     validate("__device__ int read(const int *value) { return value[0]; } __global__ void kernel(int *out) { int value = 3; out[0] = read(&value); }");
     validate("__global__ void kernel() { int value = 3; int *local = &value; }");
     for source in [
@@ -491,7 +492,6 @@ fn cuda_pointer_parameters_reject_escaping_and_unsupported_pointer_storage() {
         "__device__ void read(int **value) {} __global__ void kernel() {}",
         "__device__ void read(int *&value) {} __global__ void kernel() {}",
         "__device__ void read(int (*value)[2]) {} __global__ void kernel() {}",
-        "__device__ void read(int values[2][2]) {} __global__ void kernel() {}",
         "__device__ int read(int *first, int *second) { return first == second; } __global__ void kernel() {}",
         "__device__ int read(int *first, int *second) { return first - second; } __global__ void kernel() {}",
         "__device__ void read(int *first, int *second) { first + second; } __global__ void kernel() {}",
@@ -510,7 +510,7 @@ fn cuda_pointer_parameters_report_malformed_declarators_and_original_spans() {
         "__device__ void write(int &&value) {}",
         "__device__ void write(int *value = 0) {}",
         "__device__ void write(int *const const value) {}",
-        "__device__ void write(int values[][2]) {}",
+        "__device__ void write(int values[][]) {}",
     ] {
         rejected(&format!(
             "/* café 漢 */ {declaration} __global__ void kernel() {{}}"

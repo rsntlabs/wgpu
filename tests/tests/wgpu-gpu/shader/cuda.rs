@@ -104,6 +104,7 @@ mod local_pointers;
 mod logical_operators;
 mod long_types;
 mod multidimensional_arrays;
+mod multidimensional_parameters;
 mod multiple_kernels;
 mod multiply24;
 mod multiply_high;
@@ -282,6 +283,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_INTEGER_MATH,
         CUDA_INTEGRAL_TEMPLATE_DEFAULTS,
         CUDA_IF_INITIALIZERS,
+        CUDA_MULTIDIMENSIONAL_PARAMETERS,
         CUDA_INTEGRAL_TEMPLATES,
         CUDA_LAUNCH_BOUNDS,
         CUDA_LIST_INITIALIZATION,
@@ -1172,3 +1174,7 @@ static CUDA_IF_INITIALIZERS: GpuTestConfiguration = configuration(if_initializer
 #[apply(gpu_test!)]
 static CUDA_DECLTYPE_POINTER_ARRAYS: GpuTestConfiguration =
     configuration(decltype_pointer_arrays::cases);
+
+#[apply(gpu_test!)]
+static CUDA_MULTIDIMENSIONAL_PARAMETERS: GpuTestConfiguration =
+    configuration(multidimensional_parameters::cases);

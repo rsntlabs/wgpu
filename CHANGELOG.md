@@ -197,6 +197,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA `__fmaf_rz` with portable fused multiply-add rounded once toward zero.
 - Support C++17 initialization statements in CUDA `if`/`else` constructs.
 - Support CUDA `decltype` queries of directly named pointer and complete array objects.
+- Support ordinary CUDA multidimensional array parameters and raw kernel array declarators, preserving row types and storage strides.
 - Support CUDA `copysignf` with bit-preserving magnitude and sign copying.
 - Support CUDA float `isfinite`, `isinf`, `isnan`, and `signbit` classification with integer results.
 - Support CUDA integral template defaults that directly reference earlier integral parameters.

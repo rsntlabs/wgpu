@@ -337,9 +337,35 @@ impl<'a> Parser<'a> {
             }
         }
         self.lexer.expect_span(Token::Paren(']'))?;
-        if self.lexer.peek()?.0 == Token::Paren('[') {
-            return self.fail("multidimensional array parameters are unsupported");
-        }
+        self.parameter_expansion_budget.charge_work(1, span)?;
+        let base = match *ty {
+            TypeResolution::Handle(handle) => handle,
+            TypeResolution::Value(ref inner) => {
+                let ty = Type {
+                    name: None,
+                    inner: inner.clone(),
+                };
+                match self.module.types.get(&ty) {
+                    Some(handle) => handle,
+                    None => {
+                        self.parameter_expansion_budget.charge_nodes(1, span)?;
+                        self.parameter_expansion_budget
+                            .charge_slice::<(Type, Span)>(1, span)?;
+                        self.module.types.insert(ty, span)
+                    }
+                }
+            }
+        };
+        let row = if self.lexer.peek()?.0 == Token::Paren('[') {
+            if self.templates.parsing_signature {
+                return self.fail("multidimensional array parameters are unsupported");
+            }
+            let row = self.array_declarator(base, false, span)?.unwrap();
+            TypeResolution::Handle(row.ty)
+        } else {
+            TypeResolution::Handle(base)
+        };
+        let ty = &row;
         if self.function.kind == FunctionKind::Kernel {
             let Some(name) = name else {
                 return self.fail("kernel array parameters require a name");
@@ -354,7 +380,7 @@ impl<'a> Parser<'a> {
             );
         }
         let pointee = self.type_handle(ty, span);
-        let pointer_ty = self.pointer_type(pointee, span)?;
+        let pointer_ty = TypeResolution::Handle(self.query_parameter_pointer_type(pointee, span)?);
         self.device_parameter(
             name,
             span,

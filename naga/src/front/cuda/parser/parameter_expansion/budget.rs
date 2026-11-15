@@ -125,6 +125,129 @@ mod tests {
     use super::*;
 
     #[test]
+    fn multidimensional_parameter_row_types_check_budgets_before_allocation() {
+        for prepared in [false, true] {
+            for resource in 0..3 {
+                let source = "[][3]";
+                let span = Span::new(0, source.len() as u32);
+                let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                parser.function = FunctionContext::new(FunctionKind::Device);
+                parser.parameter_expansion_budget.activate();
+                if prepared {
+                    parser.prepare_parameter_bindings(span).unwrap();
+                }
+                match resource {
+                    0 => parser
+                        .parameter_expansion_budget
+                        .charge_nodes(NODE_LIMIT - parser.parameter_expansion_budget.nodes, span)
+                        .unwrap(),
+                    1 => parser
+                        .parameter_expansion_budget
+                        .charge_bytes(BYTE_LIMIT - parser.parameter_expansion_budget.bytes, span)
+                        .unwrap(),
+                    _ => parser
+                        .parameter_expansion_budget
+                        .charge_work(WORK_LIMIT - parser.parameter_expansion_budget.work, span)
+                        .unwrap(),
+                }
+                let error = parser
+                    .array_parameter(
+                        None,
+                        span,
+                        &scalar_resolution(Scalar::I32),
+                        Qualifiers::NONE,
+                        ParameterMode::Value,
+                        0,
+                    )
+                    .unwrap_err();
+                assert_eq!(error.message, limit_error(span).message);
+                assert!(parser.parameter_expansion_budget.is_exhausted());
+                assert!(parser.module.types.is_empty());
+                assert!(parser.module.functions.is_empty());
+                assert!(parser.module.global_variables.is_empty());
+                assert!(parser.function.ir.expressions.is_empty());
+                assert!(parser.function.ir.arguments.is_empty());
+                assert!(parser.function.parameters.is_empty());
+                assert!(parser.function.pointer_symbols.is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn multidimensional_parameter_ignores_first_extent_without_allocating_outer_type() {
+        for source in ["[][3]", "[4294967295u][3]"] {
+            let span = Span::new(0, source.len() as u32);
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            parser.function = FunctionContext::new(FunctionKind::Device);
+            parser
+                .array_parameter(
+                    None,
+                    span,
+                    &scalar_resolution(Scalar::I32),
+                    Qualifiers::NONE,
+                    ParameterMode::Value,
+                    0,
+                )
+                .unwrap();
+            let ty = parser.function.parameters[0].shader_type().unwrap();
+            let TypeInner::Pointer { base: row, .. } = parser.module.types[ty].inner else {
+                panic!("expected adjusted pointer");
+            };
+            assert!(
+                matches!(parser.module.types[row].inner, TypeInner::Array { size: ArraySize::Constant(count), .. } if count.get() == 3)
+            );
+            assert_eq!(parser.array_shape(row, span).unwrap().1, 1);
+            assert_eq!(
+                parser
+                    .module
+                    .types
+                    .iter()
+                    .filter(|&(_, ty)| matches!(ty.inner, TypeInner::Array { .. }))
+                    .count(),
+                1
+            );
+        }
+    }
+
+    #[test]
+    fn multidimensional_parameter_retained_rank_boundary_is_bounded() {
+        for retained_rank in [64, 65] {
+            let source = "[1]".repeat(retained_rank + 1);
+            let span = Span::new(0, source.len() as u32);
+            let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
+            parser.function = FunctionContext::new(FunctionKind::Device);
+            let result = parser.array_parameter(
+                None,
+                span,
+                &scalar_resolution(Scalar::I32),
+                Qualifiers::NONE,
+                ParameterMode::Value,
+                0,
+            );
+            if retained_rank == 64 {
+                result.unwrap();
+                let ty = parser.function.parameters[0].shader_type().unwrap();
+                let TypeInner::Pointer { base: row, .. } = parser.module.types[ty].inner else {
+                    panic!("expected adjusted pointer");
+                };
+                assert_eq!(parser.array_shape(row, span).unwrap().1, retained_rank);
+            } else {
+                assert_eq!(
+                    result.unwrap_err().message,
+                    "CUDA array rank limit exceeded"
+                );
+                assert!(parser.function.ir.arguments.is_empty());
+                assert!(parser.function.parameters.is_empty());
+                assert!(!parser
+                    .module
+                    .types
+                    .iter()
+                    .any(|(_, ty)| matches!(ty.inner, TypeInner::Array { .. })));
+            }
+        }
+    }
+
+    #[test]
     fn packed_unary_checks_budgets_before_generating_ir() {
         for operation in [
             integer_intrinsics::PackedUnaryOperation::Absolute,

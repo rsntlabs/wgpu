@@ -102,6 +102,7 @@ mod logical_operators;
 mod long_types;
 mod loops;
 mod multidimensional_arrays;
+mod multidimensional_parameters;
 mod multiple_kernels;
 mod multiply24;
 mod multiply_high;

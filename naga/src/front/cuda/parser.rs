@@ -610,22 +610,7 @@ impl<'a> Parser<'a> {
             };
             return self.array_parameter(name, type_span, &ty, qualifiers, mode, parameter_index);
         }
-        if self.function.kind == FunctionKind::Kernel
-            && !is_pointer
-            && specifier.source_scalar().is_none()
-        {
-            return Err(ParseError {
-                message: String::from(
-                    if matches!(specifier, TypeSpecifier::Dim3 | TypeSpecifier::Structure(_)) {
-                        "structure kernel value parameters are unsupported"
-                    } else {
-                        "vector kernel parameters are unsupported"
-                    },
-                ),
-                span: type_span,
-            });
-        }
-        if self.function.kind == FunctionKind::Device && self.lexer.peek()?.0 == Token::Paren('[') {
+        if !is_pointer && self.lexer.peek()?.0 == Token::Paren('[') {
             return self.array_parameter(None, type_span, &ty, qualifiers, mode, parameter_index);
         }
         if self.function.kind == FunctionKind::Device
@@ -644,17 +629,28 @@ impl<'a> Parser<'a> {
         if aliased_pointer_qualifiers.is_some() && self.lexer.peek()?.0 == Token::Paren('[') {
             return self.fail("arrays of pointers are unsupported");
         }
-        if self.function.kind == FunctionKind::Device {
-            if self.lexer.peek()?.0 == Token::Paren('[') {
-                return self.array_parameter(
-                    Some(name),
-                    span,
-                    &ty,
-                    qualifiers,
-                    mode,
-                    parameter_index,
-                );
+        if self.lexer.peek()?.0 == Token::Paren('[') {
+            if is_pointer {
+                return self.fail("arrays of pointers are unsupported");
             }
+            return self.array_parameter(Some(name), span, &ty, qualifiers, mode, parameter_index);
+        }
+        if self.function.kind == FunctionKind::Kernel
+            && !is_pointer
+            && specifier.source_scalar().is_none()
+        {
+            return Err(ParseError {
+                message: String::from(
+                    if matches!(specifier, TypeSpecifier::Dim3 | TypeSpecifier::Structure(_)) {
+                        "structure kernel value parameters are unsupported"
+                    } else {
+                        "vector kernel parameters are unsupported"
+                    },
+                ),
+                span: type_span,
+            });
+        }
+        if self.function.kind == FunctionKind::Device {
             if mode == ParameterMode::Value {
                 self.note_volatile_parameter_object(qualifiers, type_span)?;
             }
