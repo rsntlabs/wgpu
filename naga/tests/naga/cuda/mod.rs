@@ -24,6 +24,7 @@ mod constant_expressions;
 mod constant_memory;
 mod control_flow;
 mod conversions;
+mod copysign;
 mod declarations;
 mod decltype_objects;
 mod default_arguments;

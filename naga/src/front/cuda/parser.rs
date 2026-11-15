@@ -11,6 +11,7 @@ mod constants;
 mod context;
 mod conversions;
 mod cooperative_groups;
+mod copysign;
 mod declarations;
 mod defaults;
 mod dim3;

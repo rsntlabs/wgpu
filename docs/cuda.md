@@ -954,6 +954,17 @@ use `fabsf` or explicitly convert to `float`. Exact user-defined integral
 overloads still participate and take precedence over the library templates.
 Calls execute at runtime and are not constant expressions.
 
+`copysignf(float, float)` returns the first argument's magnitude with the second
+argument's sign. Scalar arguments convert to `float` before integer bit operations
+combine their received representations. This preserves zeros, subnormals,
+infinities, and NaN magnitude bits. A NaN first argument produces a NaN with the
+second argument's sign, following NVIDIA's
+[`copysignf` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__SINGLE.html).
+Preserving the received NaN payload and signaling bit is this frontend's choice;
+CUDA does not specify a payload. A NaN second argument contributes only its sign.
+Calls execute at runtime and are not source constant expressions. Double-precision
+`copysign` remains unsupported.
+
 `isfinite(float)`, `isinf(float)`, `isnan(float)`, and `signbit(float)` classify
 the received single-precision representation using integer bit operations.
 They return `int`, following NVIDIA's default
@@ -1072,7 +1083,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 

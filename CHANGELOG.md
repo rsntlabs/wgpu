@@ -179,6 +179,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 
 #### Naga
 
+- Support CUDA `copysignf` with bit-preserving magnitude and sign copying.
 - Support CUDA float `isfinite`, `isinf`, `isnan`, and `signbit` classification with integer results.
 - Support CUDA integral template defaults that directly reference earlier integral parameters.
 - Support CUDA type template defaults that directly reference an earlier type parameter, preserving source types and qualifiers.

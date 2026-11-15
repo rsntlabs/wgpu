@@ -1163,6 +1163,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         )
     }));
+    declarations.insert(
+        "copysignf",
+        GlobalDeclaration::Functions(FunctionOverloads::default()),
+    );
     declarations
 }
 
@@ -1229,6 +1233,7 @@ pub(super) enum FunctionCandidate {
     },
     Sqrt,
     Fmodf,
+    CopySign,
     Constructor {
         component_count: u8,
         scalar: Scalar,
@@ -1821,6 +1826,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::FloatClassification(_)
                         | FunctionCandidate::Sqrt
                         | FunctionCandidate::Fmodf
+                        | FunctionCandidate::CopySign
                         | FunctionCandidate::Constructor { .. }
                 )
                 && self.function.parameters.len() == self.candidate_arity(candidate)
@@ -2096,7 +2102,8 @@ impl<'a> Parser<'a> {
             FunctionCandidate::IntegralDouble { .. } => unreachable!(),
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::Sqrt
-            | FunctionCandidate::Fmodf => TypeSpecifier::Scalar(Scalar::F32),
+            | FunctionCandidate::Fmodf
+            | FunctionCandidate::CopySign => TypeSpecifier::Scalar(Scalar::F32),
             FunctionCandidate::Constructor {
                 component_count,
                 scalar,
@@ -2365,6 +2372,9 @@ impl<'a> Parser<'a> {
         self.check_float_classification_argument(candidate, &arguments, span)?;
         if let FunctionCandidate::FloatClassification(classification) = candidate {
             return self.lower_float_classification_call(classification, arguments, span);
+        }
+        if candidate == FunctionCandidate::CopySign {
+            return self.lower_copysign_call(arguments, span);
         }
         if let FunctionCandidate::Constructor {
             component_count,
@@ -3075,6 +3085,7 @@ impl<'a> Parser<'a> {
                     .then_some(FunctionCandidate::Sqrt),
             )
             .chain((builtin_visible && name == "fmodf").then_some(FunctionCandidate::Fmodf))
+            .chain((builtin_visible && name == "copysignf").then_some(FunctionCandidate::CopySign))
             .chain(
                 (builtin_visible && name == "__byte_perm").then_some(FunctionCandidate::BytePerm),
             )
@@ -3140,7 +3151,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::PackedArithmetic(_)
             | FunctionCandidate::Atomic { .. }
             | FunctionCandidate::WrappingAtomic(_)
-            | FunctionCandidate::Fmodf => 2,
+            | FunctionCandidate::Fmodf
+            | FunctionCandidate::CopySign => 2,
             FunctionCandidate::AtomicCompareExchange(_)
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
@@ -3205,7 +3217,8 @@ impl<'a> Parser<'a> {
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::FloatClassification(_)
             | FunctionCandidate::Sqrt
-            | FunctionCandidate::Fmodf => return Some(scalar_resolution(Scalar::F32)),
+            | FunctionCandidate::Fmodf
+            | FunctionCandidate::CopySign => return Some(scalar_resolution(Scalar::F32)),
             FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::BytePerm
             | FunctionCandidate::ByteSwap32
