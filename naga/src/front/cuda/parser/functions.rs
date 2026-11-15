@@ -1187,6 +1187,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
     declarations.insert(
+        "__fmaf_rn",
+        GlobalDeclaration::Functions(Default::default()),
+    );
+    declarations.insert(
         "__frsqrt_rn",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
@@ -1260,6 +1264,7 @@ pub(super) enum FunctionCandidate {
     AddRoundNearest,
     SubtractRoundNearest,
     MultiplyRoundNearest,
+    FusedMultiplyAddRoundNearest,
     DivideRoundNearest,
     ReciprocalRoundNearest,
     ReciprocalSqrtRoundNearest,
@@ -1858,6 +1863,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::CopySign
                         | FunctionCandidate::AddRoundNearest
                         | FunctionCandidate::SubtractRoundNearest
+                        | FunctionCandidate::FusedMultiplyAddRoundNearest
                         | FunctionCandidate::MultiplyRoundNearest
                         | FunctionCandidate::DivideRoundNearest
                         | FunctionCandidate::ReciprocalRoundNearest
@@ -2141,6 +2147,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::CopySign
             | FunctionCandidate::AddRoundNearest
             | FunctionCandidate::SubtractRoundNearest
+            | FunctionCandidate::FusedMultiplyAddRoundNearest
             | FunctionCandidate::MultiplyRoundNearest
             | FunctionCandidate::DivideRoundNearest
             | FunctionCandidate::ReciprocalRoundNearest
@@ -2422,6 +2429,9 @@ impl<'a> Parser<'a> {
         }
         if candidate == FunctionCandidate::SubtractRoundNearest {
             return self.lower_fsub_rn_call(arguments, span);
+        }
+        if candidate == FunctionCandidate::FusedMultiplyAddRoundNearest {
+            return self.lower_fmaf_rn_call(arguments, span);
         }
         if candidate == FunctionCandidate::MultiplyRoundNearest {
             return self.lower_fmul_rn_call(arguments, span);
@@ -3155,6 +3165,10 @@ impl<'a> Parser<'a> {
                     .then_some(FunctionCandidate::ReciprocalRoundNearest),
             )
             .chain(
+                (builtin_visible && name == "__fmaf_rn")
+                    .then_some(FunctionCandidate::FusedMultiplyAddRoundNearest),
+            )
+            .chain(
                 (builtin_visible && name == "__frsqrt_rn")
                     .then_some(FunctionCandidate::ReciprocalSqrtRoundNearest),
             )
@@ -3235,7 +3249,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::BytePerm
             | FunctionCandidate::Dot4(_)
             | FunctionCandidate::Dot2 { .. }
-            | FunctionCandidate::Fns => 3,
+            | FunctionCandidate::Fns
+            | FunctionCandidate::FusedMultiplyAddRoundNearest => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::ByteSwap32
             | FunctionCandidate::PackedUnary(_)
@@ -3299,6 +3314,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::CopySign
             | FunctionCandidate::AddRoundNearest
             | FunctionCandidate::SubtractRoundNearest
+            | FunctionCandidate::FusedMultiplyAddRoundNearest
             | FunctionCandidate::MultiplyRoundNearest
             | FunctionCandidate::DivideRoundNearest
             | FunctionCandidate::ReciprocalRoundNearest

@@ -21,6 +21,7 @@ mod expressions;
 mod fadd_rn;
 mod float_classification;
 mod float_helpers;
+mod fmaf_rn;
 mod fmodf;
 mod fmul_rn;
 mod fns;
@@ -383,6 +384,7 @@ pub(super) struct Parser<'a> {
     fmodf_function: Option<Handle<Function>>,
     fadd_rn_function: Option<Handle<Function>>,
     fmul_rn_function: Option<Handle<Function>>,
+    fmaf_rn_function: Option<Handle<Function>>,
     frsqrt_rn_function: Option<Handle<Function>>,
     fns_function: Option<Handle<Function>>,
     float_math_functions: [Option<Handle<Function>>; 4],
@@ -423,6 +425,7 @@ impl<'a> Parser<'a> {
             fmodf_function: None,
             fadd_rn_function: None,
             fmul_rn_function: None,
+            fmaf_rn_function: None,
             frsqrt_rn_function: None,
             fns_function: None,
             float_math_functions: [None; 4],

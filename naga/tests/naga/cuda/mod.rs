@@ -53,6 +53,7 @@ mod float_math;
 mod float_separators;
 mod float_truthiness;
 mod floorf;
+mod fmaf_rn;
 mod fmodf;
 mod fmul_rn;
 mod fns;
