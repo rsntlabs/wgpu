@@ -347,7 +347,6 @@ fn cuda_rsqrtf_rejects_invalid_operands_mutation_and_invalid_dead_source() {
         "rsqrtf(output);",
         "rsqrtf(4.0);",
         "rsqrt(4.0f);",
-        "__frsqrt_rn(4.0f);",
         "rsqrtf(1.0f) = 3.0f;",
         "++rsqrtf(1.0f);",
         "rsqrtf(1.0f)++;",

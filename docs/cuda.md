@@ -1092,6 +1092,19 @@ These special cases follow the
 Calls share the existing square-root and division helpers and require a runtime
 context, including calls with literal arguments.
 
+`__frsqrt_rn(float)` computes the single-precision reciprocal square root with
+one round-to-nearest, ties-to-even step, following NVIDIA's
+[`__frsqrt_rn` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SINGLE.html).
+Scalar arguments convert to `float` first. A cached helper selects the nearest
+representable result using exact integer midpoint comparisons and only 32-bit
+integer arithmetic. It preserves received subnormal inputs without native
+square-root or division operations and requires no wider shader types.
+Finite positive inputs produce normal results. Signed zeros produce the
+corresponding signed infinity, and positive infinity produces positive zero.
+Negative nonzero inputs and NaNs produce the canonical quiet NaN `0x7fc00000`,
+whose payload is a frontend choice. Calls execute at runtime and are not source
+constant expressions.
+
 `floorf(float)` returns the greatest integral value no greater than its argument,
 represented as `float`. Scalar arguments convert to `float` before rounding.
 For example, `floorf(-0.25f)` returns `-1.0f`; negative nonzero subnormal inputs
@@ -1153,7 +1166,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fsub_rn`, `__fmul_rn`, `__fdiv_rn`, `__frcp_rn`, `__fsqrt_rn`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fsub_rn`, `__fmul_rn`, `__fdiv_rn`, `__frcp_rn`, `__fsqrt_rn`, `__frsqrt_rn`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 
