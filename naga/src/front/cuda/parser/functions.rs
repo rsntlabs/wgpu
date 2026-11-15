@@ -925,6 +925,7 @@ const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 12] = [
 ];
 
 const SQRT_BUILTINS: [&str; 3] = ["sqrtf", "sqrt", "__fsqrt_rn"];
+const FMA_BUILTINS: [&str; 2] = ["__fmaf_rn", "fmaf"];
 const INTEGRAL_DOUBLE_BUILTINS: [&str; 2] = ["fabs", "sqrt"];
 
 #[derive(Clone, Copy, PartialEq)]
@@ -1186,10 +1187,12 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__frcp_rn",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
-    declarations.insert(
-        "__fmaf_rn",
-        GlobalDeclaration::Functions(Default::default()),
-    );
+    declarations.extend(FMA_BUILTINS.into_iter().map(|name| {
+        (
+            name,
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        )
+    }));
     declarations.insert(
         "__frsqrt_rn",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
@@ -3165,7 +3168,7 @@ impl<'a> Parser<'a> {
                     .then_some(FunctionCandidate::ReciprocalRoundNearest),
             )
             .chain(
-                (builtin_visible && name == "__fmaf_rn")
+                (builtin_visible && FMA_BUILTINS.contains(&name))
                     .then_some(FunctionCandidate::FusedMultiplyAddRoundNearest),
             )
             .chain(

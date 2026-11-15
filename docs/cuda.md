@@ -1032,6 +1032,15 @@ zero. Nonzero sums that underflow retain their sign, and overflow rounds to
 signed infinity. Calls execute at runtime and are not source constant
 expressions. Other explicit FMA rounding modes remain unsupported.
 
+`fmaf(float, float, float)` uses the same single-rounded operation, following
+NVIDIA's
+[`fmaf` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__SINGLE.html).
+All three scalar arguments convert to `float`, and the result is `float`.
+Calls share the existing integer helper with `__fmaf_rn`, including its special
+values, signed-zero, subnormal, and overflow behavior. Calls execute at runtime
+and are not source constant expressions. The unsuffixed `fma` family remains
+unsupported.
+
 `copysignf(float, float)` returns the first argument's magnitude with the second
 argument's sign. Scalar arguments convert to `float` before integer bit operations
 combine their received representations. This preserves zeros, subnormals,
@@ -1183,7 +1192,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fsub_rn`, `__fmul_rn`, `__fdiv_rn`, `__frcp_rn`, `__fsqrt_rn`, `__frsqrt_rn`, `__fmaf_rn`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fsub_rn`, `__fmul_rn`, `__fdiv_rn`, `__frcp_rn`, `__fsqrt_rn`, `__frsqrt_rn`, `__fmaf_rn`, `fmaf`, `copysignf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 
