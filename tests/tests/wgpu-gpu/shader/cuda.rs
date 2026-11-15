@@ -83,6 +83,7 @@ mod multidimensional_arrays;
 mod multiple_kernels;
 mod multiply24;
 mod multiply_high;
+mod noexcept;
 mod nonfinite_constants;
 mod null_pointers;
 mod nullptr;
@@ -265,6 +266,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_NONFINITE_CONSTANTS,
         CUDA_NULL_POINTERS,
         CUDA_NULLPTR,
+        CUDA_NOEXCEPT,
         CUDA_NULLPTR_ASSIGNMENT_ORDER,
         CUDA_OPERATOR_ADDITION,
         CUDA_OPERATOR_COMPOUND_ASSIGNMENTS,
@@ -1031,3 +1033,6 @@ static CUDA_PACKED_GREATER_EQUAL: GpuTestConfiguration = configuration(packed_gr
 
 #[apply(gpu_test!)]
 static CUDA_DECLTYPE_OBJECTS: GpuTestConfiguration = configuration(decltype_objects::cases);
+
+#[apply(gpu_test!)]
+static CUDA_NOEXCEPT: GpuTestConfiguration = configuration(noexcept::cases);

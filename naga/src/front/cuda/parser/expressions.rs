@@ -394,20 +394,26 @@ impl Parser<'_> {
         if matches!(name, "sizeof" | "alignof") {
             return self.type_query(name, span).map(Into::into);
         }
-        if self.function.parsing_default && self.function.symbol_table.lookup(name).is_some() {
+        if name == "noexcept" {
             return Err(ParseError {
-                message: String::from(
-                    if matches!(
-                        self.function.symbol_table.lookup(name),
-                        Some(
-                            Symbol::TemplateParameter { .. } | Symbol::TemplateTypeParameter { .. }
-                        )
-                    ) {
-                        "dependent default argument expressions are unsupported"
-                    } else {
-                        "function parameters cannot appear in evaluated default arguments"
-                    },
-                ),
+                message: String::from("noexcept operator is unsupported"),
+                span,
+            });
+        }
+        if (self.function.parsing_default || self.function.parsing_exception_specification)
+            && self.function.symbol_table.lookup(name).is_some()
+        {
+            return Err(ParseError {
+                message: String::from(if self.function.parsing_exception_specification {
+                    "function parameters cannot appear in evaluated noexcept specifications"
+                } else if matches!(
+                    self.function.symbol_table.lookup(name),
+                    Some(Symbol::TemplateParameter { .. } | Symbol::TemplateTypeParameter { .. })
+                ) {
+                    "dependent default argument expressions are unsupported"
+                } else {
+                    "function parameters cannot appear in evaluated default arguments"
+                }),
                 span,
             });
         }

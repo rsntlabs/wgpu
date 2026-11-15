@@ -1658,6 +1658,7 @@ impl<'a> Parser<'a> {
         }
         let mut bounds = header.launch_bounds;
         self.parameters_with_launch_bounds(&mut bounds)?;
+        self.reject_noexcept("kernels")?;
         self.lexer.expect_span(Token::Paren('{'))?;
         self.initialize_helper_builtins()?;
         self.block_contents()?;
@@ -1683,6 +1684,59 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    pub(super) fn reject_noexcept(&mut self, context: &str) -> Result<(), ParseError> {
+        if self.lexer.peek()?.0 == Token::Word("noexcept") {
+            return self.fail(&format!(
+                "noexcept specifications on {context} are unsupported"
+            ));
+        }
+        Ok(())
+    }
+
+    pub(super) fn trailing_noexcept(&mut self) -> Result<Option<bool>, ParseError> {
+        let span = self.lexer.peek()?.1;
+        if !self.take_ident("noexcept")? {
+            return Ok(None);
+        }
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let value = if self.lexer.next_if(Token::Paren('('))? {
+            let previous =
+                core::mem::replace(&mut self.function.parsing_exception_specification, true);
+            let parsed = self.capture_block(|parser| {
+                let expression = parser.conditional_expression()?;
+                let value = parser.rvalue(expression)?;
+                let literal = Self::required_constant(&value)?;
+                let result = match literal {
+                    Literal::Bool(value) => Some(value),
+                    Literal::I16(value) if value == 0 || value == 1 => Some(value != 0),
+                    Literal::U16(value) if value <= 1 => Some(value != 0),
+                    Literal::I32(value) if value == 0 || value == 1 => Some(value != 0),
+                    Literal::U32(value) if value <= 1 => Some(value != 0),
+                    Literal::I64(value) if value == 0 || value == 1 => Some(value != 0),
+                    Literal::U64(value) if value <= 1 => Some(value != 0),
+                    _ => None,
+                };
+                result.ok_or_else(|| ParseError {
+                    message: String::from(
+                        "noexcept requires a non-narrowing integral constant expression of bool",
+                    ),
+                    span: value.span,
+                })
+            });
+            self.function.parsing_exception_specification = previous;
+            let (value, _) = parsed?;
+            self.lexer.expect_span(Token::Paren(')'))?;
+            value
+        } else {
+            true
+        };
+        if self.lexer.peek()?.0 == Token::Word("noexcept") {
+            return self.fail("duplicate noexcept specification");
+        }
+        Ok(Some(value))
+    }
+
     pub(super) fn device_function(&mut self, header: FunctionHeader<'a>) -> Result<(), ParseError> {
         self.device_function_with_target(header, None)
     }
@@ -1704,6 +1758,8 @@ impl<'a> Parser<'a> {
             self.function.ir.name = self.module.functions[target].name.clone();
         }
         self.parameters_with_launch_bounds(&mut header.launch_bounds)?;
+        let exception_specification = self.trailing_noexcept()?;
+        let is_noexcept = exception_specification.unwrap_or(false);
         if let Some(target) = target {
             if self.function_declarations[&target].parameters != self.function.parameters {
                 return self.fail("incompatible instantiated function parameter types");
@@ -1767,6 +1823,9 @@ impl<'a> Parser<'a> {
                             })
                 })
         });
+        if intrinsic.is_some() && exception_specification.is_some() {
+            return self.fail("noexcept specifications on intrinsics are unsupported");
+        }
         if intrinsic.is_some() && !self.function.defaults.is_empty() {
             return self.fail("intrinsic default arguments are unsupported");
         }
@@ -1841,6 +1900,14 @@ impl<'a> Parser<'a> {
                 header.inlining,
                 header.name_span,
             )?;
+            if declaration.is_noexcept != is_noexcept {
+                return Err(ParseError {
+                    message: String::from(
+                        "incompatible noexcept specification in helper redeclaration",
+                    ),
+                    span: header.name_span,
+                });
+            }
             if !is_prototype && declaration.is_defined {
                 return Err(ParseError {
                     message: format!("duplicate device helper definition `{}`", header.name),
@@ -1877,6 +1944,7 @@ impl<'a> Parser<'a> {
                     FunctionDeclaration {
                         parameters: core::mem::take(&mut self.function.parameters),
                         defaults: core::mem::take(&mut self.function.defaults),
+                        is_noexcept,
                         source_result: header.result,
                         result_qualifiers: header.result_qualifiers,
                         has_host: header.has_host,
@@ -1947,6 +2015,7 @@ impl<'a> Parser<'a> {
                 FunctionDeclaration {
                     parameters: function.parameters,
                     defaults: function.defaults,
+                    is_noexcept,
                     source_result: header.result,
                     result_qualifiers: header.result_qualifiers,
                     has_host: header.has_host,

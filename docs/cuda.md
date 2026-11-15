@@ -508,6 +508,28 @@ retain their referent's constness. The definition determines its
 parameter names and constness. Conflicting result types and duplicate definitions
 produce errors. These rules follow C++ [function declarations](https://eel.is/c++draft/dcl.fct).
 
+Ordinary device helpers accept `noexcept` and `noexcept(condition)` after their
+parameter list. The condition must be a supported constant expression of type
+`bool`, or an integral constant with value zero or one. Other integral values
+and floating values require an explicit conversion to `bool`. For example:
+
+```cuda
+__device__ unsigned copy(unsigned value) noexcept(sizeof(value) == 4) {
+    return value;
+}
+```
+
+Bare `noexcept` equals `noexcept(true)`; absence equals `noexcept(false)`.
+Declarations of the same helper must agree on that value. It does not create
+an overload or affect overload ranking. Parameters may appear in supported
+unevaluated type queries such as `sizeof(value)`, but cannot be read by the
+condition, including in a discarded branch. Conditions are checked during
+translation and add no runtime resource bindings.
+These rules follow C++ [exception specifications](https://eel.is/c++draft/except.spec).
+Specifications on kernels, function templates, and predefined intrinsic
+signatures remain unsupported. Calls to function templates inside conditions,
+exception handling, and the `noexcept` expression operator are also unsupported.
+
 Ordinary helpers accept trailing scalar constant default arguments:
 
 ```cuda

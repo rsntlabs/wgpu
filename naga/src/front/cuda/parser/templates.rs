@@ -660,6 +660,7 @@ impl<'a> Parser<'a> {
         self.check_dynamic_shared_linkage(header.name, header.name_span)?;
         self.function.symbol_table.push_scope();
         let signature = self.template_parameter_patterns()?;
+        self.reject_noexcept("function templates")?;
         let defaults = core::mem::take(&mut self.function.defaults);
         if header.kind == FunctionKind::Kernel && !defaults.is_empty() {
             return self.fail("kernel template default arguments are unsupported");
@@ -1285,6 +1286,7 @@ impl<'a> Parser<'a> {
             self.initialize_function_header(&header)?;
             self.function.replay_default_header = Some(template);
             self.parameters_with_launch_bounds(&mut header.launch_bounds)?;
+            self.reject_noexcept("function templates")?;
             self.lexer.expect_span(Token::End)?;
             let result = self.function.ir.result.as_ref().map(|result| result.ty);
             Ok(ResolvedSignature {
@@ -1381,6 +1383,7 @@ impl<'a> Parser<'a> {
                 FunctionDeclaration {
                     parameters: signature,
                     defaults,
+                    is_noexcept: false,
                     source_result,
                     result_qualifiers,
                     has_host,
@@ -1797,6 +1800,14 @@ impl<'a> Parser<'a> {
                 template,
                 arguments,
             } => {
+                if self.function.parsing_exception_specification {
+                    return Err(ParseError {
+                        message: String::from(
+                            "function template calls in noexcept specifications are unsupported",
+                        ),
+                        span,
+                    });
+                }
                 let instance = self.template_instance(template, arguments, span)?;
                 let InstanceTarget::Device(function) = self.templates.instances[instance].target
                 else {
@@ -1830,6 +1841,7 @@ impl<'a> Parser<'a> {
         let parsed = (|| {
             self.prepare_parameter_bindings(span)?;
             self.parameters_with_launch_bounds(&mut header.launch_bounds)?;
+            self.reject_noexcept("function templates")?;
             if !self.function.defaults.is_empty() {
                 return self.fail("kernel template default arguments are unsupported");
             }
@@ -1923,6 +1935,7 @@ impl<'a> Parser<'a> {
                 .charge_bytes(header.name.len(), span)?;
             self.initialize_function_header(&header)?;
             self.parameters_with_launch_bounds(&mut header.launch_bounds)?;
+            self.reject_noexcept("function templates")?;
             self.lexer.expect_span(Token::End)?;
             Ok::<_, ParseError>(header.launch_bounds)
         })();

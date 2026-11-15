@@ -976,6 +976,17 @@ impl<'a> Parser<'a> {
         slot: usize,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
+        if self.function.parsing_exception_specification {
+            // Consumers retain nonconstant source metadata without publishing runtime inputs.
+            let value = self.append(Expression::Literal(Literal::U32(0)), span)?;
+            return self.append(
+                Expression::Splat {
+                    size: VectorSize::Tri,
+                    value,
+                },
+                span,
+            );
+        }
         let global_handle = if let Some(global_handle) = self.helper_builtin_globals[slot] {
             global_handle
         } else {

@@ -25,6 +25,7 @@ pub(super) struct ScalarDefault {
 pub(super) struct FunctionDeclaration {
     pub(super) parameters: Vec<SourceParameter>,
     pub(super) defaults: Vec<Option<ScalarDefault>>,
+    pub(super) is_noexcept: bool,
     pub(super) source_result: ReturnType,
     pub(super) result_qualifiers: Qualifiers,
     pub(super) has_host: bool,
