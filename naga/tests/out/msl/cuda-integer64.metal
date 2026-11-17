@@ -34,20 +34,20 @@ uint wide_type_1(
     return 3u;
 }
 long naga_div(long lhs, long rhs) {
-    return lhs / metal::select(rhs, 1, (lhs == (-9223372036854775807L - 1L) & rhs == -1) | (rhs == 0));
+    return lhs / metal::select(rhs, 1L, (lhs == (-9223372036854775807L - 1L) & rhs == -1L) | (rhs == 0L));
 }
 
 long naga_mod(long lhs, long rhs) {
-    long divisor = metal::select(rhs, 1, (lhs == (-9223372036854775807L - 1L) & rhs == -1) | (rhs == 0));
+    long divisor = metal::select(rhs, 1L, (lhs == (-9223372036854775807L - 1L) & rhs == -1L) | (rhs == 0L));
     return lhs - (lhs / divisor) * divisor;
 }
 
 ulong naga_div(ulong lhs, ulong rhs) {
-    return lhs / metal::select(rhs, 1u, rhs == 0u);
+    return lhs / metal::select(rhs, 1uL, rhs == 0uL);
 }
 
 ulong naga_mod(ulong lhs, ulong rhs) {
-    return lhs % metal::select(rhs, 1u, rhs == 0u);
+    return lhs % metal::select(rhs, 1uL, rhs == 0uL);
 }
 
 

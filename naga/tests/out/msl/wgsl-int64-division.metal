@@ -23,71 +23,71 @@ struct Values {
 };
 typedef Values type_8[1];
 long naga_div(long lhs, long rhs) {
-    return lhs / metal::select(rhs, 1, (lhs == (-9223372036854775807L - 1L) & rhs == -1) | (rhs == 0));
+    return lhs / metal::select(rhs, 1L, (lhs == (-9223372036854775807L - 1L) & rhs == -1L) | (rhs == 0L));
 }
 
 ulong naga_div(ulong lhs, ulong rhs) {
-    return lhs / metal::select(rhs, 1u, rhs == 0u);
+    return lhs / metal::select(rhs, 1uL, rhs == 0uL);
 }
 
 metal::long2 naga_div(metal::long2 lhs, metal::long2 rhs) {
-    return lhs / metal::select(rhs, 1, (lhs == (-9223372036854775807L - 1L) & rhs == -1) | (rhs == 0));
+    return lhs / metal::select(rhs, 1L, (lhs == (-9223372036854775807L - 1L) & rhs == -1L) | (rhs == 0L));
 }
 
 metal::ulong2 naga_div(metal::ulong2 lhs, metal::ulong2 rhs) {
-    return lhs / metal::select(rhs, 1u, rhs == 0u);
+    return lhs / metal::select(rhs, 1uL, rhs == 0uL);
 }
 
 metal::long3 naga_div(metal::long3 lhs, metal::long3 rhs) {
-    return lhs / metal::select(rhs, 1, (lhs == (-9223372036854775807L - 1L) & rhs == -1) | (rhs == 0));
+    return lhs / metal::select(rhs, 1L, (lhs == (-9223372036854775807L - 1L) & rhs == -1L) | (rhs == 0L));
 }
 
 metal::ulong3 naga_div(metal::ulong3 lhs, metal::ulong3 rhs) {
-    return lhs / metal::select(rhs, 1u, rhs == 0u);
+    return lhs / metal::select(rhs, 1uL, rhs == 0uL);
 }
 
 metal::long4 naga_div(metal::long4 lhs, metal::long4 rhs) {
-    return lhs / metal::select(rhs, 1, (lhs == (-9223372036854775807L - 1L) & rhs == -1) | (rhs == 0));
+    return lhs / metal::select(rhs, 1L, (lhs == (-9223372036854775807L - 1L) & rhs == -1L) | (rhs == 0L));
 }
 
 metal::ulong4 naga_div(metal::ulong4 lhs, metal::ulong4 rhs) {
-    return lhs / metal::select(rhs, 1u, rhs == 0u);
+    return lhs / metal::select(rhs, 1uL, rhs == 0uL);
 }
 
 long naga_mod(long lhs, long rhs) {
-    long divisor = metal::select(rhs, 1, (lhs == (-9223372036854775807L - 1L) & rhs == -1) | (rhs == 0));
+    long divisor = metal::select(rhs, 1L, (lhs == (-9223372036854775807L - 1L) & rhs == -1L) | (rhs == 0L));
     return lhs - (lhs / divisor) * divisor;
 }
 
 ulong naga_mod(ulong lhs, ulong rhs) {
-    return lhs % metal::select(rhs, 1u, rhs == 0u);
+    return lhs % metal::select(rhs, 1uL, rhs == 0uL);
 }
 
 metal::long2 naga_mod(metal::long2 lhs, metal::long2 rhs) {
-    metal::long2 divisor = metal::select(rhs, 1, (lhs == (-9223372036854775807L - 1L) & rhs == -1) | (rhs == 0));
+    metal::long2 divisor = metal::select(rhs, 1L, (lhs == (-9223372036854775807L - 1L) & rhs == -1L) | (rhs == 0L));
     return lhs - (lhs / divisor) * divisor;
 }
 
 metal::ulong2 naga_mod(metal::ulong2 lhs, metal::ulong2 rhs) {
-    return lhs % metal::select(rhs, 1u, rhs == 0u);
+    return lhs % metal::select(rhs, 1uL, rhs == 0uL);
 }
 
 metal::long3 naga_mod(metal::long3 lhs, metal::long3 rhs) {
-    metal::long3 divisor = metal::select(rhs, 1, (lhs == (-9223372036854775807L - 1L) & rhs == -1) | (rhs == 0));
+    metal::long3 divisor = metal::select(rhs, 1L, (lhs == (-9223372036854775807L - 1L) & rhs == -1L) | (rhs == 0L));
     return lhs - (lhs / divisor) * divisor;
 }
 
 metal::ulong3 naga_mod(metal::ulong3 lhs, metal::ulong3 rhs) {
-    return lhs % metal::select(rhs, 1u, rhs == 0u);
+    return lhs % metal::select(rhs, 1uL, rhs == 0uL);
 }
 
 metal::long4 naga_mod(metal::long4 lhs, metal::long4 rhs) {
-    metal::long4 divisor = metal::select(rhs, 1, (lhs == (-9223372036854775807L - 1L) & rhs == -1) | (rhs == 0));
+    metal::long4 divisor = metal::select(rhs, 1L, (lhs == (-9223372036854775807L - 1L) & rhs == -1L) | (rhs == 0L));
     return lhs - (lhs / divisor) * divisor;
 }
 
 metal::ulong4 naga_mod(metal::ulong4 lhs, metal::ulong4 rhs) {
-    return lhs % metal::select(rhs, 1u, rhs == 0u);
+    return lhs % metal::select(rhs, 1uL, rhs == 0uL);
 }
 
 
