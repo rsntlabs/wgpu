@@ -1103,7 +1103,7 @@ mod tests {
                     assert!(parser.module.functions.is_empty());
                     assert_eq!(parser.dim3_type, None);
                     assert_eq!(parser.uint3_type, None);
-                    assert_eq!(parser.float_math_functions, [None; 5]);
+                    assert_eq!(parser.float_math_functions, [None; 6]);
                     assert_eq!(parser.sqrtf_function, None);
                     assert_eq!(parser.division_function, None);
                     assert_eq!(parser.fmodf_function, None);
@@ -1310,7 +1310,7 @@ mod tests {
             assert!(parser.numeric_storage_types.is_empty());
             assert_eq!(parser.dim3_type, None);
             assert_eq!(parser.uint3_type, None);
-            assert_eq!(parser.float_math_functions, [None; 5]);
+            assert_eq!(parser.float_math_functions, [None; 6]);
             assert_eq!(parser.sqrtf_function, None);
             assert_eq!(parser.division_function, None);
             assert_eq!(parser.fmodf_function, None);
@@ -1372,7 +1372,7 @@ mod tests {
                 assert!(parser.numeric_storage_types.is_empty());
                 assert_eq!(parser.dim3_type, None);
                 assert_eq!(parser.uint3_type, None);
-                assert_eq!(parser.float_math_functions, [None; 5]);
+                assert_eq!(parser.float_math_functions, [None; 6]);
                 assert_eq!(parser.sqrtf_function, None);
                 assert_eq!(parser.division_function, None);
                 assert_eq!(parser.fmodf_function, None);
@@ -1469,7 +1469,7 @@ mod tests {
                     assert!(parser.numeric_storage_types.is_empty());
                     assert_eq!(parser.dim3_type, None);
                     assert_eq!(parser.uint3_type, None);
-                    assert_eq!(parser.float_math_functions, [None; 5]);
+                    assert_eq!(parser.float_math_functions, [None; 6]);
                     assert_eq!(parser.sqrtf_function, None);
                     assert_eq!(parser.division_function, None);
                     assert_eq!(parser.fmodf_function, None);
@@ -1540,7 +1540,7 @@ mod tests {
             assert!(parser.module.functions.is_empty());
             assert_eq!(parser.dim3_type, None);
             assert_eq!(parser.uint3_type, None);
-            assert_eq!(parser.float_math_functions, [None; 5]);
+            assert_eq!(parser.float_math_functions, [None; 6]);
             assert_eq!(parser.sqrtf_function, None);
             assert_eq!(parser.division_function, None);
             assert_eq!(parser.fmodf_function, None);
@@ -1896,6 +1896,7 @@ mod tests {
             FloatMathFunction::AbsoluteValue,
             FloatMathFunction::Round,
             FloatMathFunction::Truncate,
+            FloatMathFunction::NearestEven,
         ] {
             for cached in [false, true] {
                 for prepared in [false, true] {
@@ -3903,6 +3904,7 @@ mod tests {
             (FloatMathFunction::AbsoluteValue, false),
             (FloatMathFunction::Round, false),
             (FloatMathFunction::Truncate, false),
+            (FloatMathFunction::NearestEven, false),
             (FloatMathFunction::AbsoluteValue, true),
         ] {
             let source = "1.5f";
@@ -3919,7 +3921,7 @@ mod tests {
                 .charge_nodes(remaining, span)
                 .unwrap();
             assert!(!parser.function.parameter_state_charged);
-            assert_eq!(parser.float_math_functions, [None; 5]);
+            assert_eq!(parser.float_math_functions, [None; 6]);
             assert_eq!(parser.function.ir.expressions.len(), 1);
             assert!(parser.function.ir.body.is_empty());
 
@@ -3932,7 +3934,7 @@ mod tests {
             assert_eq!(error.message, limit_error(span).message);
             assert_eq!(error.span, span);
             assert!(parser.parameter_expansion_budget.is_exhausted());
-            assert_eq!(parser.float_math_functions, [None; 5]);
+            assert_eq!(parser.float_math_functions, [None; 6]);
             assert!(parser.function.kind == FunctionKind::Kernel);
             assert_eq!(parser.function.ir.name.as_deref(), Some("caller"));
             assert_eq!(parser.function.ir.expressions.len(), 1);

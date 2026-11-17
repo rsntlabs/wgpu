@@ -5,6 +5,7 @@ pub(super) enum Rounding {
     Floor,
     Ceil,
     NearestAway,
+    NearestEven,
 }
 
 struct FractionMask {
@@ -62,6 +63,21 @@ impl Parser<'_> {
                     span,
                 )?
             }
+            Rounding::NearestEven => {
+                let half_unit =
+                    self.rounding_binary(BinaryOperator::ShiftRight, integral_unit, one, span)?;
+                let above_half =
+                    self.rounding_binary(BinaryOperator::Greater, discarded_bits, half_unit, span)?;
+                let at_half =
+                    self.rounding_binary(BinaryOperator::Equal, discarded_bits, half_unit, span)?;
+                // In [1, 2), the unit selects the low exponent bit of 1.0.
+                let parity =
+                    self.rounding_binary(BinaryOperator::And, truncated_bits, integral_unit, span)?;
+                let is_odd = self.rounding_binary(BinaryOperator::NotEqual, parity, zero, span)?;
+                let odd_tie =
+                    self.rounding_binary(BinaryOperator::LogicalAnd, at_half, is_odd, span)?;
+                self.rounding_binary(BinaryOperator::LogicalOr, above_half, odd_tie, span)?
+            }
         };
         let adjust = self.rounding_binary(
             BinaryOperator::LogicalAnd,
@@ -98,6 +114,16 @@ impl Parser<'_> {
                 let signed_one =
                     self.rounding_binary(BinaryOperator::InclusiveOr, sign, positive_one, span)?;
                 self.rounding_select(rounds_to_one, signed_one, sign, span)?
+            }
+            Rounding::NearestEven => {
+                let half_bits = self.rounding_literal(0x3f00_0000, span)?;
+                let rounds_to_one =
+                    self.rounding_binary(BinaryOperator::Greater, magnitude, half_bits, span)?;
+                let digit = self.rounding_select(rounds_to_one, one, zero, span)?;
+                let positive_one = self.rounding_literal(0x3f80_0000, span)?;
+                let magnitude =
+                    self.rounding_binary(BinaryOperator::Multiply, digit, positive_one, span)?;
+                self.rounding_binary(BinaryOperator::InclusiveOr, sign, magnitude, span)?
             }
         };
         let is_zero = self.rounding_binary(BinaryOperator::Equal, magnitude, zero, span)?;

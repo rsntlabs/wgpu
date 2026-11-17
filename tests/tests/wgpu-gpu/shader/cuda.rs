@@ -147,6 +147,7 @@ mod record_static_assertions;
 mod reference_bindings;
 mod reference_categories;
 mod restrict;
+mod rintf;
 mod roundf;
 mod rounding_zero_signs;
 mod rsqrtf;
@@ -263,6 +264,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FSUB_RZ,
         CUDA_FADD_RZ,
         CUDA_FADD_RN,
+        CUDA_RINTF,
         CUDA_TRUNCF,
         CUDA_FLOORF,
         CUDA_FMODF,
@@ -1193,3 +1195,6 @@ static CUDA_SWITCH_INITIALIZERS: GpuTestConfiguration = configuration(switch_ini
 
 #[apply(gpu_test!)]
 static CUDA_TRUNCF: GpuTestConfiguration = configuration(truncf::cases);
+
+#[apply(gpu_test!)]
+static CUDA_RINTF: GpuTestConfiguration = configuration(rintf::cases);

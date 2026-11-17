@@ -844,13 +844,14 @@ const BITCAST_BUILTINS: [(&str, Scalar, Scalar); 4] = [
     ("__uint_as_float", Scalar::U32, Scalar::F32),
 ];
 
-const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 6] = [
+const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 7] = [
     ("floorf", FloatMathFunction::Floor),
     ("ceilf", FloatMathFunction::Ceil),
     ("fabsf", FloatMathFunction::AbsoluteValue),
     ("fabs", FloatMathFunction::AbsoluteValue),
     ("roundf", FloatMathFunction::Round),
     ("truncf", FloatMathFunction::Truncate),
+    ("rintf", FloatMathFunction::NearestEven),
 ];
 
 const FLOAT_CLASSIFICATION_BUILTINS: &[(&str, FloatClassification)] = &[

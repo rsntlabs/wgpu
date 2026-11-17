@@ -8,6 +8,7 @@ pub(super) enum FloatMathFunction {
     AbsoluteValue,
     Round,
     Truncate,
+    NearestEven,
 }
 
 impl FloatMathFunction {
@@ -18,6 +19,7 @@ impl FloatMathFunction {
             Self::AbsoluteValue => 2,
             Self::Round => 3,
             Self::Truncate => 4,
+            Self::NearestEven => 5,
         }
     }
 
@@ -28,6 +30,7 @@ impl FloatMathFunction {
             Self::AbsoluteValue => "_naga_fabsf",
             Self::Round => "_naga_roundf",
             Self::Truncate => "_naga_truncf",
+            Self::NearestEven => "_naga_rintf",
         }
     }
 }
@@ -166,6 +169,9 @@ impl Parser<'_> {
                 self.rounding_bits(input_bits, Rounding::NearestAway, span)?
             }
             FloatMathFunction::Truncate => self.truncation_bits(input_bits, span)?,
+            FloatMathFunction::NearestEven => {
+                self.rounding_bits(input_bits, Rounding::NearestEven, span)?
+            }
         };
         self.parameter_expansion_budget.charge_nodes(1, span)?;
         self.parameter_expansion_budget
@@ -192,6 +198,7 @@ mod tests {
             FloatMathFunction::AbsoluteValue,
             FloatMathFunction::Round,
             FloatMathFunction::Truncate,
+            FloatMathFunction::NearestEven,
         ] {
             for exhaust_bytes in [false, true] {
                 let mut parser = Parser::new(Lexer::new("1").unwrap(), &Options::default());

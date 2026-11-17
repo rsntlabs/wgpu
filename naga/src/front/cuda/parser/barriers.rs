@@ -4,17 +4,18 @@ mod helpers;
 
 use helpers::CallUniformity;
 
-type PureIntrinsicFunctions = [Option<Handle<Function>>; 19];
+type PureIntrinsicFunctions = [Option<Handle<Function>>; 20];
 
 impl Parser<'_> {
     const fn pure_intrinsic_functions(&self) -> PureIntrinsicFunctions {
-        let [floor, ceil, absolute, round, truncate] = self.float_math_functions;
+        let [floor, ceil, absolute, round, truncate, nearest_even] = self.float_math_functions;
         [
             floor,
             ceil,
             absolute,
             round,
             truncate,
+            nearest_even,
             self.sqrtf_function,
             self.sqrtf_rz_function,
             self.division_function,

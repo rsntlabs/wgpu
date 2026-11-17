@@ -146,6 +146,7 @@ mod record_static_assertions;
 mod reference_bindings;
 mod reference_categories;
 mod restrict;
+mod rintf;
 mod roundf;
 mod rsqrtf;
 mod sad;
