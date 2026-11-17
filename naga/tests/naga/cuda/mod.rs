@@ -164,6 +164,7 @@ mod sqrtf;
 mod static_assertions;
 mod streaming;
 mod structures;
+mod switch_initializers;
 mod switches;
 mod template_default_arguments;
 mod template_default_merging;

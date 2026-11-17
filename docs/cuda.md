@@ -2377,9 +2377,14 @@ used by later cases. Entering a label that bypasses an active local initializer,
 including a `constexpr`, array, or reference initializer, is rejected. Initializers inside
 closed nested scopes do not block later labels, following C++
 [declaration statements](https://timsong-cpp.github.io/cppwp/n4861/stmt.dcl#3).
-Nested switches are supported. Switch initialization statements, declaration
-conditions, and labels that enter a nested block, branch, or loop remain
-unsupported.
+Nested switches and C++17 initialization statements are supported. For example,
+`switch (unsigned mode = flags[index]; mode & 3u)` initializes `mode` before
+selecting a case. The initializer can be empty, an expression, or a supported
+simple declaration. Its declarations are visible in the selector and switch
+body, and their scope ends after the switch. Initialization runs once even if
+no case matches. A case label cannot bypass an initializer in the body.
+Declaration conditions and labels that enter a nested block, branch, or loop
+remain unsupported.
 
 Comma expressions evaluate left to right and preserve the final operand's type
 and value category, including lvalues and void. Earlier operands are discarded.

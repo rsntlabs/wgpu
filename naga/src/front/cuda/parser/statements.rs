@@ -41,7 +41,11 @@ impl<'a> Parser<'a> {
         result.map(|(terminated, body)| (body, terminated))
     }
 
-    fn if_header_has_initializer(&mut self, span: Span) -> Result<bool, ParseError> {
+    fn selection_header_has_initializer(
+        &mut self,
+        kind: &str,
+        span: Span,
+    ) -> Result<bool, ParseError> {
         self.activate_parameter_expansion(span)?;
         let mut lookahead = self.lexer.clone();
         let mut depth = 0u32;
@@ -55,7 +59,7 @@ impl<'a> Parser<'a> {
                     depth += 1;
                     if depth > 64 {
                         return Err(ParseError {
-                            message: String::from("CUDA if header nesting limit exceeded"),
+                            message: format!("CUDA {kind} header nesting limit exceeded"),
                             span,
                         });
                     }
@@ -67,32 +71,43 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub(super) fn selection_header_expression(
+        &mut self,
+        kind: &str,
+        start: Span,
+    ) -> Result<ExpressionValue, ParseError> {
+        self.lexer.expect_span(Token::Paren('('))?;
+        if matches!(
+            self.lexer.peek()?.0,
+            Token::Word("using" | "namespace" | "static_assert")
+        ) {
+            return self.fail(&format!(
+                "unsupported declaration in C++17 {kind} initializer"
+            ));
+        }
+        let has_initializer = self.selection_header_has_initializer(kind, start)?;
+        let value = if self.lexer.next_if(Token::Separator(';'))? {
+            self.comma_expression()?
+        } else if has_initializer && self.starts_declaration()? {
+            self.local_declaration()?;
+            self.comma_expression()?
+        } else {
+            let first = self.comma_expression_result()?;
+            if self.lexer.next_if(Token::Separator(';'))? {
+                self.discard_result(first)?;
+                self.comma_expression()?
+            } else {
+                first.require_value()?
+            }
+        };
+        Ok(value)
+    }
+
     fn if_statement(&mut self, start: Span) -> Result<bool, ParseError> {
         let initialization_start = self.function.push_scope();
         let previous_guard = self.function.protected_if_header_scope.take();
         let result = (|| {
-            self.lexer.expect_span(Token::Paren('('))?;
-            if matches!(
-                self.lexer.peek()?.0,
-                Token::Word("using" | "namespace" | "static_assert")
-            ) {
-                return self.fail("unsupported declaration in C++17 if initializer");
-            }
-            let has_initializer = self.if_header_has_initializer(start)?;
-            let condition = if self.lexer.next_if(Token::Separator(';'))? {
-                self.comma_expression()?
-            } else if has_initializer && self.starts_declaration()? {
-                self.local_declaration()?;
-                self.comma_expression()?
-            } else {
-                let first = self.comma_expression_result()?;
-                if self.lexer.next_if(Token::Separator(';'))? {
-                    self.discard_result(first)?;
-                    self.comma_expression()?
-                } else {
-                    first.require_value()?
-                }
-            };
+            let condition = self.selection_header_expression("if", start)?;
             let condition = self.truthy(condition)?;
             self.lexer.expect_span(Token::Paren(')'))?;
             self.function.protected_if_header_scope =
@@ -843,7 +858,9 @@ mod tests {
             let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             let position = parser.lexer.position();
             assert_eq!(
-                parser.if_header_has_initializer(Span::new(0, 1)).unwrap(),
+                parser
+                    .selection_header_has_initializer("if", Span::new(0, 1))
+                    .unwrap(),
                 expected
             );
             assert_eq!(parser.lexer.position(), position);

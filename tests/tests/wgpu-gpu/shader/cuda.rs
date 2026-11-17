@@ -164,6 +164,7 @@ mod sqrt;
 mod sqrtf;
 mod static_assertions;
 mod structures;
+mod switch_initializers;
 mod switches;
 mod template_default_arguments;
 mod template_default_merging;
@@ -283,6 +284,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_INTEGER_INTRINSICS,
         CUDA_INTEGER_MATH,
         CUDA_INTEGRAL_TEMPLATE_DEFAULTS,
+        CUDA_SWITCH_INITIALIZERS,
         CUDA_IF_INITIALIZERS,
         CUDA_MULTIDIMENSIONAL_PARAMETERS,
         CUDA_SIZEOF_BINARY,
@@ -1183,3 +1185,6 @@ static CUDA_MULTIDIMENSIONAL_PARAMETERS: GpuTestConfiguration =
 
 #[apply(gpu_test!)]
 static CUDA_SIZEOF_BINARY: GpuTestConfiguration = configuration(sizeof_binary::cases);
+
+#[apply(gpu_test!)]
+static CUDA_SWITCH_INITIALIZERS: GpuTestConfiguration = configuration(switch_initializers::cases);

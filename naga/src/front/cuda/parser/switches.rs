@@ -66,33 +66,38 @@ fn switch_reaches_end(cases: &[crate::SwitchCase]) -> bool {
 
 impl Parser<'_> {
     pub(super) fn switch_statement(&mut self, start: Span) -> Result<bool, ParseError> {
-        self.lexer.expect_span(Token::Paren('('))?;
-        let selector = self.comma_expression()?;
-        let selector = self.integral_operand(selector)?;
-        let scalar = self.require_scalar_type(&selector.ty, selector.span)?;
-        if scalar.width == 8 {
-            return Err(ParseError {
-                message: String::from("64-bit switch selectors are unsupported"),
-                span: selector.span,
-            });
-        }
-        self.lexer.expect_span(Token::Paren(')'))?;
-
         let initialization_start = self.function.push_scope();
-        self.function.switch_depth += 1;
-        let result = self.switch_body(scalar, initialization_start);
-        self.function.switch_depth -= 1;
+        let previous_guard = self.function.protected_if_header_scope.take();
+        let result = (|| {
+            let selector = self.selection_header_expression("switch", start)?;
+            let selector = self.integral_operand(selector)?;
+            let scalar = self.require_scalar_type(&selector.ty, selector.span)?;
+            if scalar.width == 8 {
+                return Err(ParseError {
+                    message: String::from("64-bit switch selectors are unsupported"),
+                    span: selector.span,
+                });
+            }
+            self.lexer.expect_span(Token::Paren(')'))?;
+
+            let label_initialization_start = self.function.initialized_declarations.len();
+            self.function.switch_depth += 1;
+            let result = self.switch_body(scalar, label_initialization_start);
+            self.function.switch_depth -= 1;
+            let cases = result?;
+            let terminated = !switch_reaches_end(&cases);
+            self.push_statement(
+                Statement::Switch {
+                    selector: selector.handle,
+                    cases,
+                },
+                start,
+            );
+            Ok(terminated)
+        })();
+        self.function.protected_if_header_scope = previous_guard;
         self.function.pop_scope(initialization_start);
-        let cases = result?;
-        let terminated = !switch_reaches_end(&cases);
-        self.push_statement(
-            Statement::Switch {
-                selector: selector.handle,
-                cases,
-            },
-            start,
-        );
-        Ok(terminated)
+        result
     }
 
     fn switch_body(
@@ -220,5 +225,91 @@ impl Parser<'_> {
             ),
             span: value.span,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parser_with_outer_scope(source: &str) -> Parser<'_> {
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        parser
+            .function
+            .initialized_declarations
+            .push(Span::new(0, 1));
+        parser
+            .function
+            .symbol_table
+            .add("outer", Symbol::PendingAuto);
+        parser.function.protected_if_header_scope =
+            Some(parser.function.symbol_table.scope_depth());
+        parser.function.switch_depth = 4;
+        parser
+    }
+
+    fn assert_outer_scope_restored(parser: &Parser<'_>, depth: usize) {
+        assert_eq!(parser.function.symbol_table.scope_depth(), depth);
+        assert_eq!(parser.function.protected_if_header_scope, Some(depth));
+        assert_eq!(parser.function.initialized_declarations, [Span::new(0, 1)]);
+        assert_eq!(parser.function.switch_depth, 4);
+        assert_eq!(parser.function.statement_depth, 0);
+        assert!(parser.function.symbol_table.lookup("outer").is_some());
+        for name in ["header", "branch", "inner", "Alias"] {
+            assert!(parser.function.symbol_table.lookup(name).is_none());
+        }
+    }
+
+    #[test]
+    fn switch_initializer_and_body_errors_restore_scope_depths_and_guard() {
+        for source in [
+            "switch (int header = 1; ) {}",
+            "switch (int header = 1; header) { case 0: int branch = 2;",
+            "switch (int header = 1; header) { case 0: int header = 2; }",
+            "switch (int header = 1; header) { case 0: int branch = 2; case 1: break; }",
+            "switch (int header = 1; header) { default: switch(int inner = 2; ) {} }",
+        ] {
+            let mut parser = parser_with_outer_scope(source);
+            let depth = parser.function.symbol_table.scope_depth();
+            assert!(parser.statement().is_err(), "{source}");
+            assert_outer_scope_restored(&parser, depth);
+        }
+    }
+
+    #[test]
+    fn switch_case_checkpoint_excludes_executed_header_initializers() {
+        for source in [
+            "switch (int header = 1; header) { case 0: break; case 1: break; default: break; }",
+            "switch (int header = 1; header) { case 0: {int header = 2;} break; default: break; }",
+            "switch (typedef int Alias; 0) { default: typedef int Alias; break; }",
+        ] {
+            let mut parser = parser_with_outer_scope(source);
+            let depth = parser.function.symbol_table.scope_depth();
+            parser.statement().unwrap();
+            assert_outer_scope_restored(&parser, depth);
+        }
+    }
+
+    #[test]
+    fn switch_header_resource_errors_restore_outer_scope_and_depths() {
+        for resource in 0..3 {
+            let mut parser =
+                parser_with_outer_scope("switch (int header = 1; header) { default: break; }");
+            let span = Span::new(0, 1);
+            let depth = parser.function.symbol_table.scope_depth();
+            parser.parameter_expansion_budget.activate();
+            parser.prepare_parameter_bindings(span).unwrap();
+            for bit in (0..usize::BITS).rev() {
+                let count = 1usize << bit;
+                let _ = match resource {
+                    0 => parser.parameter_expansion_budget.charge_nodes(count, span),
+                    1 => parser.parameter_expansion_budget.charge_bytes(count, span),
+                    _ => parser.parameter_expansion_budget.charge_work(count, span),
+                };
+            }
+            assert!(parser.statement().is_err());
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_outer_scope_restored(&parser, depth);
+        }
     }
 }
