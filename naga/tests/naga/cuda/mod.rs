@@ -106,6 +106,7 @@ mod multidimensional_parameters;
 mod multiple_kernels;
 mod multiply24;
 mod multiply_high;
+mod nearbyintf;
 mod noexcept;
 mod nonfinite_constants;
 mod null_pointers;

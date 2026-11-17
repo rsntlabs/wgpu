@@ -844,7 +844,7 @@ const BITCAST_BUILTINS: [(&str, Scalar, Scalar); 4] = [
     ("__uint_as_float", Scalar::U32, Scalar::F32),
 ];
 
-const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 7] = [
+const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 8] = [
     ("floorf", FloatMathFunction::Floor),
     ("ceilf", FloatMathFunction::Ceil),
     ("fabsf", FloatMathFunction::AbsoluteValue),
@@ -852,6 +852,7 @@ const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 7] = [
     ("roundf", FloatMathFunction::Round),
     ("truncf", FloatMathFunction::Truncate),
     ("rintf", FloatMathFunction::NearestEven),
+    ("nearbyintf", FloatMathFunction::NearestEven),
 ];
 
 const FLOAT_CLASSIFICATION_BUILTINS: &[(&str, FloatClassification)] = &[
@@ -1048,7 +1049,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
             )
         }))
-        .chain(FLOAT_MATH_BUILTINS.into_iter().map(|(name, _)| {
+        .chain(FLOAT_MATH_BUILTINS.iter().map(|&(name, _)| {
             (
                 name,
                 GlobalDeclaration::Functions(FunctionOverloads::default()),

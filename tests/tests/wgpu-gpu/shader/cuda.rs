@@ -108,6 +108,7 @@ mod multidimensional_parameters;
 mod multiple_kernels;
 mod multiply24;
 mod multiply_high;
+mod nearbyintf;
 mod noexcept;
 mod nonfinite_constants;
 mod null_pointers;
@@ -265,6 +266,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FADD_RZ,
         CUDA_FADD_RN,
         CUDA_RINTF,
+        CUDA_NEARBYINTF,
         CUDA_TRUNCF,
         CUDA_FLOORF,
         CUDA_FMODF,
@@ -1198,3 +1200,6 @@ static CUDA_TRUNCF: GpuTestConfiguration = configuration(truncf::cases);
 
 #[apply(gpu_test!)]
 static CUDA_RINTF: GpuTestConfiguration = configuration(rintf::cases);
+
+#[apply(gpu_test!)]
+static CUDA_NEARBYINTF: GpuTestConfiguration = configuration(nearbyintf::cases);
