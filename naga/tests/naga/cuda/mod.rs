@@ -174,6 +174,7 @@ mod thread_block_dimensions;
 mod thread_block_parameters;
 mod token_pasting;
 mod trigonometry;
+mod truncf;
 mod type_aliases;
 mod type_queries;
 mod type_templates;

@@ -1103,7 +1103,7 @@ mod tests {
                     assert!(parser.module.functions.is_empty());
                     assert_eq!(parser.dim3_type, None);
                     assert_eq!(parser.uint3_type, None);
-                    assert_eq!(parser.float_math_functions, [None; 4]);
+                    assert_eq!(parser.float_math_functions, [None; 5]);
                     assert_eq!(parser.sqrtf_function, None);
                     assert_eq!(parser.division_function, None);
                     assert_eq!(parser.fmodf_function, None);
@@ -1310,7 +1310,7 @@ mod tests {
             assert!(parser.numeric_storage_types.is_empty());
             assert_eq!(parser.dim3_type, None);
             assert_eq!(parser.uint3_type, None);
-            assert_eq!(parser.float_math_functions, [None; 4]);
+            assert_eq!(parser.float_math_functions, [None; 5]);
             assert_eq!(parser.sqrtf_function, None);
             assert_eq!(parser.division_function, None);
             assert_eq!(parser.fmodf_function, None);
@@ -1372,7 +1372,7 @@ mod tests {
                 assert!(parser.numeric_storage_types.is_empty());
                 assert_eq!(parser.dim3_type, None);
                 assert_eq!(parser.uint3_type, None);
-                assert_eq!(parser.float_math_functions, [None; 4]);
+                assert_eq!(parser.float_math_functions, [None; 5]);
                 assert_eq!(parser.sqrtf_function, None);
                 assert_eq!(parser.division_function, None);
                 assert_eq!(parser.fmodf_function, None);
@@ -1469,7 +1469,7 @@ mod tests {
                     assert!(parser.numeric_storage_types.is_empty());
                     assert_eq!(parser.dim3_type, None);
                     assert_eq!(parser.uint3_type, None);
-                    assert_eq!(parser.float_math_functions, [None; 4]);
+                    assert_eq!(parser.float_math_functions, [None; 5]);
                     assert_eq!(parser.sqrtf_function, None);
                     assert_eq!(parser.division_function, None);
                     assert_eq!(parser.fmodf_function, None);
@@ -1540,7 +1540,7 @@ mod tests {
             assert!(parser.module.functions.is_empty());
             assert_eq!(parser.dim3_type, None);
             assert_eq!(parser.uint3_type, None);
-            assert_eq!(parser.float_math_functions, [None; 4]);
+            assert_eq!(parser.float_math_functions, [None; 5]);
             assert_eq!(parser.sqrtf_function, None);
             assert_eq!(parser.division_function, None);
             assert_eq!(parser.fmodf_function, None);
@@ -1885,6 +1885,77 @@ mod tests {
         assert_eq!(parser.module.functions.len(), 1);
         assert_eq!(parser.fmaf_rn_function, Some(nearest));
         assert_eq!(parser.fmaf_rz_function, None);
+    }
+
+    #[test]
+    fn float_math_checks_budgets_before_converting_with_cold_and_warm_shared_cache() {
+        use super::super::super::float_helpers::FloatMathFunction;
+        for operation in [
+            FloatMathFunction::Floor,
+            FloatMathFunction::Ceil,
+            FloatMathFunction::AbsoluteValue,
+            FloatMathFunction::Round,
+            FloatMathFunction::Truncate,
+        ] {
+            for cached in [false, true] {
+                for prepared in [false, true] {
+                    for exhaust_bytes in [false, true] {
+                        let source = "1";
+                        let span = Span::new(0, source.len() as u32);
+                        let mut parser =
+                            Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                        if cached {
+                            let left = parser.number("1.0f", span).unwrap().handle;
+                            parser.call_float_math(left, operation, span).unwrap();
+                            parser.function = FunctionContext::new(FunctionKind::Kernel);
+                        }
+                        parser.function.ir.name = Some(String::from("float_math_caller"));
+                        parser.function.loop_depth = 1;
+                        let arguments = alloc::vec![parser.number("1", span).unwrap()];
+                        parser.parameter_expansion_budget.activate();
+                        if prepared {
+                            parser.prepare_parameter_bindings(span).unwrap();
+                        }
+                        let caller = format!("{:?}", parser.function.ir);
+                        let depths = parser.function.expression_graph_depths.clone();
+                        let types = format!("{:?}", parser.module.types);
+                        let functions = format!("{:?}", parser.module.functions);
+                        let cache = parser.float_math_functions;
+                        assert_eq!(cache[operation.index()].is_some(), cached);
+                        if exhaust_bytes {
+                            let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                            parser
+                                .parameter_expansion_budget
+                                .charge_bytes(remaining, span)
+                                .unwrap();
+                        } else {
+                            let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                            parser
+                                .parameter_expansion_budget
+                                .charge_nodes(remaining, span)
+                                .unwrap();
+                        }
+                        let error = parser
+                            .lower_call(
+                                functions::FunctionCandidate::FloatMath(operation),
+                                arguments,
+                                span,
+                            )
+                            .unwrap_err();
+                        assert_eq!(error.message, limit_error(span).message);
+                        assert_eq!(error.span, span);
+                        assert!(parser.parameter_expansion_budget.is_exhausted());
+                        assert_eq!(parser.function.loop_depth, 1);
+                        assert_eq!(format!("{:?}", parser.function.ir), caller);
+                        assert_eq!(parser.function.expression_graph_depths, depths);
+                        assert_eq!(format!("{:?}", parser.module.types), types);
+                        assert_eq!(format!("{:?}", parser.module.functions), functions);
+                        assert_eq!(parser.float_math_functions, cache);
+                        assert!(parser.module.global_variables.is_empty());
+                    }
+                }
+            }
+        }
     }
 
     #[test]
@@ -3831,6 +3902,7 @@ mod tests {
             (FloatMathFunction::Ceil, false),
             (FloatMathFunction::AbsoluteValue, false),
             (FloatMathFunction::Round, false),
+            (FloatMathFunction::Truncate, false),
             (FloatMathFunction::AbsoluteValue, true),
         ] {
             let source = "1.5f";
@@ -3847,7 +3919,7 @@ mod tests {
                 .charge_nodes(remaining, span)
                 .unwrap();
             assert!(!parser.function.parameter_state_charged);
-            assert_eq!(parser.float_math_functions, [None; 4]);
+            assert_eq!(parser.float_math_functions, [None; 5]);
             assert_eq!(parser.function.ir.expressions.len(), 1);
             assert!(parser.function.ir.body.is_empty());
 
@@ -3860,7 +3932,7 @@ mod tests {
             assert_eq!(error.message, limit_error(span).message);
             assert_eq!(error.span, span);
             assert!(parser.parameter_expansion_budget.is_exhausted());
-            assert_eq!(parser.float_math_functions, [None; 4]);
+            assert_eq!(parser.float_math_functions, [None; 5]);
             assert!(parser.function.kind == FunctionKind::Kernel);
             assert_eq!(parser.function.ir.name.as_deref(), Some("caller"));
             assert_eq!(parser.function.ir.expressions.len(), 1);

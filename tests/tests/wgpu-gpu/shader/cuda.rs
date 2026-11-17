@@ -174,6 +174,7 @@ mod thread_block_dimensions;
 mod thread_block_parameters;
 mod token_pasting;
 mod trigonometry;
+mod truncf;
 mod type_aliases;
 mod type_queries;
 mod type_templates;
@@ -262,6 +263,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FSUB_RZ,
         CUDA_FADD_RZ,
         CUDA_FADD_RN,
+        CUDA_TRUNCF,
         CUDA_FLOORF,
         CUDA_FMODF,
         CUDA_ROUNDF,
@@ -1188,3 +1190,6 @@ static CUDA_SIZEOF_BINARY: GpuTestConfiguration = configuration(sizeof_binary::c
 
 #[apply(gpu_test!)]
 static CUDA_SWITCH_INITIALIZERS: GpuTestConfiguration = configuration(switch_initializers::cases);
+
+#[apply(gpu_test!)]
+static CUDA_TRUNCF: GpuTestConfiguration = configuration(truncf::cases);

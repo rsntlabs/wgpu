@@ -844,12 +844,13 @@ const BITCAST_BUILTINS: [(&str, Scalar, Scalar); 4] = [
     ("__uint_as_float", Scalar::U32, Scalar::F32),
 ];
 
-const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 5] = [
+const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 6] = [
     ("floorf", FloatMathFunction::Floor),
     ("ceilf", FloatMathFunction::Ceil),
     ("fabsf", FloatMathFunction::AbsoluteValue),
     ("fabs", FloatMathFunction::AbsoluteValue),
     ("roundf", FloatMathFunction::Round),
+    ("truncf", FloatMathFunction::Truncate),
 ];
 
 const FLOAT_CLASSIFICATION_BUILTINS: &[(&str, FloatClassification)] = &[
@@ -2565,18 +2566,7 @@ impl<'a> Parser<'a> {
             .into());
         }
         if let FunctionCandidate::FloatMath(operation) = candidate {
-            let argument =
-                self.convert_scalar(arguments.into_iter().next().unwrap().into(), Scalar::F32)?;
-            let handle = self.call_float_math(argument.handle, operation, span)?;
-            return Ok(Value {
-                category: ValueCategory::Prvalue,
-                qualifiers: Qualifiers::NONE,
-                constant: ConstantValue::default(),
-                handle,
-                ty: scalar_resolution(Scalar::F32),
-                span,
-            }
-            .into());
+            return self.lower_float_math_call(operation, arguments, span);
         }
         if candidate == FunctionCandidate::SqrtRoundZero {
             return self.lower_sqrt_rz_call(arguments, span);

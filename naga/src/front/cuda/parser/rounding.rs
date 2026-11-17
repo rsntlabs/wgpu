@@ -7,6 +7,12 @@ pub(super) enum Rounding {
     NearestAway,
 }
 
+struct FractionMask {
+    fraction_mask: Handle<Expression>,
+    integral_unit: Handle<Expression>,
+    shift_mask: Handle<Expression>,
+}
+
 impl Parser<'_> {
     pub(super) fn rounding_bits(
         &mut self,
@@ -23,23 +29,11 @@ impl Parser<'_> {
         let sign = self.rounding_binary(BinaryOperator::And, input_bits, sign_mask, span)?;
         let is_negative = self.rounding_binary(BinaryOperator::NotEqual, sign, zero, span)?;
 
-        let fraction_width = self.rounding_literal(23, span)?;
-        let exponent_bits =
-            self.rounding_binary(BinaryOperator::ShiftRight, magnitude, fraction_width, span)?;
-        let exponent_offset = self.rounding_literal(150, span)?;
-        let fractional_width = self.rounding_binary(
-            BinaryOperator::Subtract,
-            exponent_offset,
-            exponent_bits,
-            span,
-        )?;
-        let shift_mask = self.rounding_literal(31, span)?;
-        // Select evaluates both sides, so every shift count must stay below 32.
-        let shift =
-            self.rounding_binary(BinaryOperator::And, fractional_width, shift_mask, span)?;
-        let integral_unit = self.rounding_binary(BinaryOperator::ShiftLeft, one, shift, span)?;
-        let fraction_mask =
-            self.rounding_binary(BinaryOperator::Subtract, integral_unit, one, span)?;
+        let FractionMask {
+            fraction_mask,
+            integral_unit,
+            shift_mask,
+        } = self.rounding_fraction_mask(magnitude, one, span)?;
         let discarded_bits =
             self.rounding_binary(BinaryOperator::And, input_bits, fraction_mask, span)?;
         let has_fraction =
@@ -126,6 +120,70 @@ impl Parser<'_> {
         let result_bits = self.rounding_select(is_nan, quiet_nan, result_bits, span)?;
 
         Ok(result_bits)
+    }
+
+    pub(super) fn truncation_bits(
+        &mut self,
+        input: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        let one = self.rounding_literal(1, span)?;
+        let magnitude_mask = self.rounding_literal(0x7fff_ffff, span)?;
+        let sign_mask = self.rounding_literal(0x8000_0000, span)?;
+        let magnitude = self.rounding_binary(BinaryOperator::And, input, magnitude_mask, span)?;
+        let sign = self.rounding_binary(BinaryOperator::And, input, sign_mask, span)?;
+        let fraction_mask = self
+            .rounding_fraction_mask(magnitude, one, span)?
+            .fraction_mask;
+        let integral_mask = self.append(
+            Expression::Unary {
+                op: UnaryOperator::BitwiseNot,
+                expr: fraction_mask,
+            },
+            span,
+        )?;
+        let integral = self.rounding_binary(BinaryOperator::And, input, integral_mask, span)?;
+        let one_bits = self.rounding_literal(0x3f80_0000, span)?;
+        let small = self.rounding_binary(BinaryOperator::Less, magnitude, one_bits, span)?;
+        let result = self.rounding_select(small, sign, integral, span)?;
+        let threshold = self.rounding_literal(0x4b00_0000, span)?;
+        let large =
+            self.rounding_binary(BinaryOperator::GreaterEqual, magnitude, threshold, span)?;
+        let result = self.rounding_select(large, input, result, span)?;
+        let infinity = self.rounding_literal(0x7f80_0000, span)?;
+        let is_nan = self.rounding_binary(BinaryOperator::Greater, magnitude, infinity, span)?;
+        let quiet_nan = self.rounding_literal(0x7fc0_0000, span)?;
+        self.rounding_select(is_nan, quiet_nan, result, span)
+    }
+
+    fn rounding_fraction_mask(
+        &mut self,
+        magnitude: Handle<Expression>,
+        one: Handle<Expression>,
+        span: Span,
+    ) -> Result<FractionMask, ParseError> {
+        let fraction_width = self.rounding_literal(23, span)?;
+        let exponent_bits =
+            self.rounding_binary(BinaryOperator::ShiftRight, magnitude, fraction_width, span)?;
+        let exponent_offset = self.rounding_literal(150, span)?;
+        let fractional_width = self.rounding_binary(
+            BinaryOperator::Subtract,
+            exponent_offset,
+            exponent_bits,
+            span,
+        )?;
+        let shift_mask = self.rounding_literal(31, span)?;
+        // Select evaluates both sides, so every shift count must stay below 32.
+        let shift =
+            self.rounding_binary(BinaryOperator::And, fractional_width, shift_mask, span)?;
+        let integral_unit = self.rounding_binary(BinaryOperator::ShiftLeft, one, shift, span)?;
+        let fraction_mask =
+            self.rounding_binary(BinaryOperator::Subtract, integral_unit, one, span)?;
+        Ok(FractionMask {
+            fraction_mask,
+            integral_unit,
+            shift_mask,
+        })
     }
 
     fn rounding_literal(
