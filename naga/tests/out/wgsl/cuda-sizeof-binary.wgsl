@@ -1,0 +1,204 @@
+@group(0) @binding(0)
+var<storage> input: array<i32>;
+@group(0) @binding(1)
+var<storage, read_write> output: array<u32>;
+
+@compute @workgroup_size(4, 1, 1)
+fn sizeof_binary(@builtin(local_invocation_id) threadIdx: vec3<u32>) {
+    var other: u32;
+    var real: f32;
+    var counter: i32;
+    var grid: array<array<i32, 3>, 2>;
+    var local: u32;
+    var local_1: u32;
+    var Add: u32;
+    var Subtract: u32;
+    var Multiply: u32;
+    var Divide: u32;
+    var Modulo: u32;
+    var Left: u32;
+    var Right: u32;
+    var And: u32;
+    var Or: u32;
+    var Xor: u32;
+    var Less: u32;
+    var Equal: u32;
+    var LogicalAnd: u32;
+    var LogicalOr: u32;
+    var Nested: u32;
+    var Row: u32;
+    var Element: u32;
+    var Reference: u32;
+    var BinaryIndex: u32;
+    var InvalidShift: u32;
+    var ReferenceDivide: u32;
+    var GroupedComparison: u32;
+    var local_2: u32;
+    var local_3: u32;
+    var local_4: u32;
+    var local_5: u32;
+    var local_6: u32;
+    var local_7: u32;
+    var local_8: u32;
+    var local_9: u32;
+    var local_10: u32;
+    var local_11: u32;
+    var local_12: u32;
+    var local_13: u32;
+    var local_14: u32;
+    var local_15: u32;
+    var local_16: u32;
+    var local_17: u32;
+    var local_18: u32;
+    var local_19: u32;
+    var local_20: u32;
+    var local_21: u32;
+    var local_22: u32;
+    var local_23: u32;
+    var local_24: u32;
+
+    let lane = threadIdx.x;
+    let base = (4u + (lane * 24u));
+    let seed = input[lane];
+    other = 33u;
+    real = 2f;
+    counter = 7i;
+    local = 0u;
+    loop {
+        let _e17 = local;
+        if (_e17 >= 2u) {
+            break;
+        }
+        local_1 = 0u;
+        loop {
+            let _e24 = local_1;
+            if (_e24 >= 3u) {
+                break;
+            }
+            grid[_e17][_e24] = i32();
+            continuing {
+                let _e29 = local_1;
+                local_1 = (_e29 + 1u);
+            }
+        }
+        continuing {
+            let _e32 = local;
+            local = (_e32 + 1u);
+        }
+    }
+    Add = 4u;
+    Subtract = 4u;
+    Multiply = 4u;
+    Divide = 4u;
+    Modulo = 4u;
+    Left = 4u;
+    Right = 4u;
+    And = 4u;
+    Or = 4u;
+    Xor = 4u;
+    Less = 1u;
+    Equal = 1u;
+    LogicalAnd = 1u;
+    LogicalOr = 1u;
+    Nested = 4u;
+    Row = 12u;
+    Element = 4u;
+    Reference = 4u;
+    BinaryIndex = 12u;
+    InvalidShift = 4u;
+    ReferenceDivide = 4u;
+    GroupedComparison = 1u;
+    let _e79 = Add;
+    output[base] = _e79;
+    let _e82 = Subtract;
+    local_2 = u32((base + 1u));
+    let _e87 = local_2;
+    output[_e87] = _e82;
+    let _e89 = Multiply;
+    local_3 = u32((base + 2u));
+    let _e94 = local_3;
+    output[_e94] = _e89;
+    let _e96 = Divide;
+    local_4 = u32((base + 3u));
+    let _e101 = local_4;
+    output[_e101] = _e96;
+    let _e103 = Modulo;
+    local_5 = u32((base + 4u));
+    let _e108 = local_5;
+    output[_e108] = _e103;
+    let _e110 = Left;
+    local_6 = u32((base + 5u));
+    let _e115 = local_6;
+    output[_e115] = _e110;
+    let _e117 = Right;
+    local_7 = u32((base + 6u));
+    let _e122 = local_7;
+    output[_e122] = _e117;
+    let _e124 = And;
+    local_8 = u32((base + 7u));
+    let _e129 = local_8;
+    output[_e129] = _e124;
+    let _e131 = Or;
+    local_9 = u32((base + 8u));
+    let _e136 = local_9;
+    output[_e136] = _e131;
+    let _e138 = Xor;
+    local_10 = u32((base + 9u));
+    let _e143 = local_10;
+    output[_e143] = _e138;
+    let _e145 = Less;
+    local_11 = u32((base + 10u));
+    let _e150 = local_11;
+    output[_e150] = _e145;
+    let _e152 = Equal;
+    local_12 = u32((base + 11u));
+    let _e157 = local_12;
+    output[_e157] = _e152;
+    let _e159 = LogicalAnd;
+    local_13 = u32((base + 12u));
+    let _e164 = local_13;
+    output[_e164] = _e159;
+    let _e166 = LogicalOr;
+    local_14 = u32((base + 13u));
+    let _e171 = local_14;
+    output[_e171] = _e166;
+    let _e173 = Nested;
+    local_15 = u32((base + 14u));
+    let _e178 = local_15;
+    output[_e178] = _e173;
+    let _e180 = Row;
+    local_16 = u32((base + 15u));
+    let _e185 = local_16;
+    output[_e185] = _e180;
+    let _e187 = Element;
+    local_17 = u32((base + 16u));
+    let _e192 = local_17;
+    output[_e192] = _e187;
+    let _e194 = Reference;
+    local_18 = u32((base + 17u));
+    let _e199 = local_18;
+    output[_e199] = _e194;
+    let _e201 = BinaryIndex;
+    local_19 = u32((base + 18u));
+    let _e206 = local_19;
+    output[_e206] = _e201;
+    let _e208 = InvalidShift;
+    local_20 = u32((base + 19u));
+    let _e213 = local_20;
+    output[_e213] = _e208;
+    let _e215 = counter;
+    local_21 = u32((base + 20u));
+    let _e221 = local_21;
+    output[_e221] = u32(_e215);
+    local_22 = u32((base + 21u));
+    let _e228 = local_22;
+    output[_e228] = u32(seed);
+    let _e230 = ReferenceDivide;
+    local_23 = u32((base + 22u));
+    let _e235 = local_23;
+    output[_e235] = _e230;
+    let _e237 = GroupedComparison;
+    local_24 = u32((base + 23u));
+    let _e242 = local_24;
+    output[_e242] = _e237;
+}

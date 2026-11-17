@@ -3,6 +3,30 @@ use super::*;
 
 const UNARY_PRECEDENCE: u8 = 11;
 
+pub(super) const fn binary_operator(token: Token<'_>) -> Option<(BinaryOperator, u8)> {
+    Some(match token {
+        Token::LogicalOperation('|') => (BinaryOperator::LogicalOr, 1),
+        Token::LogicalOperation('&') => (BinaryOperator::LogicalAnd, 2),
+        Token::Operation('|') => (BinaryOperator::InclusiveOr, 3),
+        Token::Operation('^') => (BinaryOperator::ExclusiveOr, 4),
+        Token::Operation('&') => (BinaryOperator::And, 5),
+        Token::LogicalOperation('=') => (BinaryOperator::Equal, 6),
+        Token::LogicalOperation('!') => (BinaryOperator::NotEqual, 6),
+        Token::Paren('<') => (BinaryOperator::Less, 7),
+        Token::Paren('>') => (BinaryOperator::Greater, 7),
+        Token::LogicalOperation('<') => (BinaryOperator::LessEqual, 7),
+        Token::LogicalOperation('>') => (BinaryOperator::GreaterEqual, 7),
+        Token::ShiftOperation('<') => (BinaryOperator::ShiftLeft, 8),
+        Token::ShiftOperation('>') => (BinaryOperator::ShiftRight, 8),
+        Token::Operation('+') => (BinaryOperator::Add, 9),
+        Token::Operation('-') => (BinaryOperator::Subtract, 9),
+        Token::Operation('*') => (BinaryOperator::Multiply, 10),
+        Token::Operation('/') => (BinaryOperator::Divide, 10),
+        Token::Operation('%') => (BinaryOperator::Modulo, 10),
+        _ => return None,
+    })
+}
+
 impl Parser<'_> {
     pub(super) fn comma_expression(&mut self) -> Result<ExpressionValue, ParseError> {
         self.comma_expression_result()?.require_value()
@@ -101,28 +125,7 @@ impl Parser<'_> {
     ) -> Result<ExpressionResult, ParseError> {
         let start = self.lexer.peek()?.1.to_range().unwrap().start;
         let mut left = self.primary()?;
-        loop {
-            let (operator, precedence) = match self.lexer.peek()?.0 {
-                Token::LogicalOperation('|') => (BinaryOperator::LogicalOr, 1),
-                Token::LogicalOperation('&') => (BinaryOperator::LogicalAnd, 2),
-                Token::Operation('|') => (BinaryOperator::InclusiveOr, 3),
-                Token::Operation('^') => (BinaryOperator::ExclusiveOr, 4),
-                Token::Operation('&') => (BinaryOperator::And, 5),
-                Token::LogicalOperation('=') => (BinaryOperator::Equal, 6),
-                Token::LogicalOperation('!') => (BinaryOperator::NotEqual, 6),
-                Token::Paren('<') => (BinaryOperator::Less, 7),
-                Token::Paren('>') => (BinaryOperator::Greater, 7),
-                Token::LogicalOperation('<') => (BinaryOperator::LessEqual, 7),
-                Token::LogicalOperation('>') => (BinaryOperator::GreaterEqual, 7),
-                Token::ShiftOperation('<') => (BinaryOperator::ShiftLeft, 8),
-                Token::ShiftOperation('>') => (BinaryOperator::ShiftRight, 8),
-                Token::Operation('+') => (BinaryOperator::Add, 9),
-                Token::Operation('-') => (BinaryOperator::Subtract, 9),
-                Token::Operation('*') => (BinaryOperator::Multiply, 10),
-                Token::Operation('/') => (BinaryOperator::Divide, 10),
-                Token::Operation('%') => (BinaryOperator::Modulo, 10),
-                _ => break,
-            };
+        while let Some((operator, precedence)) = binary_operator(self.lexer.peek()?.0) {
             if precedence < minimum_precedence {
                 break;
             }

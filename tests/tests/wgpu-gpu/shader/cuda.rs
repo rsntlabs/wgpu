@@ -158,6 +158,7 @@ mod shared_vectors;
 mod signed;
 mod signed_saturating_arithmetic;
 mod single_component_vectors;
+mod sizeof_binary;
 mod specifiers;
 mod sqrt;
 mod sqrtf;
@@ -284,6 +285,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_INTEGRAL_TEMPLATE_DEFAULTS,
         CUDA_IF_INITIALIZERS,
         CUDA_MULTIDIMENSIONAL_PARAMETERS,
+        CUDA_SIZEOF_BINARY,
         CUDA_INTEGRAL_TEMPLATES,
         CUDA_LAUNCH_BOUNDS,
         CUDA_LIST_INITIALIZATION,
@@ -1178,3 +1180,6 @@ static CUDA_DECLTYPE_POINTER_ARRAYS: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_MULTIDIMENSIONAL_PARAMETERS: GpuTestConfiguration =
     configuration(multidimensional_parameters::cases);
+
+#[apply(gpu_test!)]
+static CUDA_SIZEOF_BINARY: GpuTestConfiguration = configuration(sizeof_binary::cases);

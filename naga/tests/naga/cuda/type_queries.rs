@@ -579,12 +579,20 @@ fn cuda_sizeof_named_shared_and_constant_memory_keeps_source_layouts() {
 
 #[test]
 fn cuda_sizeof_named_objects_rejects_nonobjects_and_unsupported_operands() {
+    assert_query_results(
+        "__global__ void kernel(unsigned long *output) { unsigned value; int *pointer; int index;
+            output[0] = sizeof(value + 1); output[1] = sizeof(*pointer + 1);
+            output[2] = sizeof((value + 1)); output[3] = sizeof(1 + 1);
+            output[4] = sizeof(pointer[index + 1]);
+        }",
+        &[4, 4, 4, 4, 4],
+    );
     for operand in [
         "missing",
         "helper",
         "group",
         "value++",
-        "value + 1",
+        "value + pointer",
         "value, value",
     ] {
         rejected(&format!(
@@ -789,7 +797,7 @@ fn cuda_sizeof_members_rejects_invalid_access_and_unsupported_expressions() {
         "record.matrix->x",
         "record.vector.x.y",
         "record.vector.x++",
-        "pointer->vector.x + 1",
+        "pointer->vector.x % 1",
         "pointer->vector()",
         "record.vector.x, scalar",
     ] {
@@ -856,7 +864,7 @@ fn cuda_sizeof_dereference_rejects_invalid_operands() {
         "**pointer",
         "*null_value",
         "*pointer++",
-        "*pointer + 1",
+        "*pointer + pointer",
         "*pointer, value",
     ] {
         rejected(&format!(
@@ -951,7 +959,7 @@ fn cuda_sizeof_grouping_rejects_invalid_syntax_and_bounds_nesting() {
         "()",
         "(int)",
         "(missing)",
-        "(value + 1)",
+        "(value + pointer)",
         "(value++)",
         "(helper())",
         "(value",
@@ -1047,7 +1055,7 @@ fn cuda_sizeof_literals_rejects_unsupported_literal_forms_and_invalid_uses() {
         "nullptr->x",
         "*nullptr",
         "*1",
-        "1 + 1",
+        "1 + nullptr",
     ] {
         rejected(&format!(
             "__global__ void kernel(unsigned long *output) {{ output[0] = sizeof({operand}); }}"
@@ -1209,7 +1217,7 @@ fn cuda_sizeof_subscripts_rejects_invalid_types_and_unsupported_index_expression
         "vector[index]",
         "pointer[missing]",
         "pointer[index++]",
-        "pointer[index + 1]",
+        "pointer[index + 1.0f]",
         "pointer[helper()]",
         "pointer[]",
     ] {

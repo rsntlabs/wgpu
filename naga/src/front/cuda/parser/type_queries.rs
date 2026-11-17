@@ -1,6 +1,7 @@
 use super::*;
 
 enum SizeofOperand {
+    Scalar(SourceScalar),
     Object(TypeResolution),
     IncompleteArray(TypeResolution),
     NullPointer,
@@ -124,14 +125,104 @@ impl Parser<'_> {
 
     fn sizeof_operand(&mut self) -> Result<(SizeofOperand, Span), ParseError> {
         self.function.expression_depth += 1;
-        if self.function.expression_depth > 64 {
-            return self.fail("CUDA expression nesting limit exceeded");
-        }
-        self.parameter_expansion_budget
-            .charge_work(1, self.lexer.peek()?.1)?;
-        let result = self.sizeof_operand_inner();
+        let result = (|| {
+            if self.function.expression_depth > 64 {
+                return self.fail("CUDA expression nesting limit exceeded");
+            }
+            self.parameter_expansion_budget
+                .charge_work(1, self.lexer.peek()?.1)?;
+            self.sizeof_operand_inner()
+        })();
         self.function.expression_depth -= 1;
         result
+    }
+
+    fn sizeof_binary_expression(
+        &mut self,
+        minimum_precedence: u8,
+    ) -> Result<(SizeofOperand, Span), ParseError> {
+        let (mut left, mut span) = self.sizeof_operand()?;
+        while let Some((operator, precedence)) = expressions::binary_operator(self.lexer.peek()?.0)
+        {
+            if precedence < minimum_precedence {
+                break;
+            }
+            let operator_span = self.lexer.next()?.1;
+            self.parameter_expansion_budget
+                .charge_work(1, operator_span)?;
+            let (right, right_span) = self.sizeof_binary_expression(precedence + 1)?;
+            left = self.sizeof_binary_operand(operator, left, right, operator_span)?;
+            span = span.until(&right_span);
+        }
+        Ok((left, span))
+    }
+
+    fn sizeof_source_scalar(&self, operand: &SizeofOperand) -> Option<SourceScalar> {
+        match *operand {
+            SizeofOperand::Scalar(scalar) => Some(scalar),
+            SizeofOperand::Object(ref ty) => self.source_scalar(ty),
+            _ => None,
+        }
+    }
+
+    const fn sizeof_promoted_scalar(scalar: SourceScalar) -> SourceScalar {
+        if matches!(scalar.scalar(), Scalar::BOOL | Scalar::I16 | Scalar::U16) {
+            SourceScalar::Scalar(Scalar::I32)
+        } else {
+            scalar
+        }
+    }
+
+    fn sizeof_binary_operand(
+        &self,
+        operator: BinaryOperator,
+        left: SizeofOperand,
+        right: SizeofOperand,
+        span: Span,
+    ) -> Result<SizeofOperand, ParseError> {
+        let invalid = || ParseError {
+            message: String::from("sizeof binary operator requires supported scalar operands"),
+            span,
+        };
+        let left = self.sizeof_source_scalar(&left).ok_or_else(invalid)?;
+        let right = self.sizeof_source_scalar(&right).ok_or_else(invalid)?;
+        let integral = |scalar: SourceScalar| {
+            matches!(
+                scalar.scalar().kind,
+                ScalarKind::Sint | ScalarKind::Uint | ScalarKind::Bool
+            )
+        };
+        let common = Self::arithmetic_scalar(left, right);
+        let scalar = match operator {
+            BinaryOperator::Add
+            | BinaryOperator::Subtract
+            | BinaryOperator::Multiply
+            | BinaryOperator::Divide => common,
+            BinaryOperator::Modulo
+            | BinaryOperator::And
+            | BinaryOperator::InclusiveOr
+            | BinaryOperator::ExclusiveOr => {
+                if !integral(left) || !integral(right) {
+                    return Err(invalid());
+                }
+                common
+            }
+            BinaryOperator::ShiftLeft | BinaryOperator::ShiftRight => {
+                if !integral(left) || !integral(right) {
+                    return Err(invalid());
+                }
+                Self::sizeof_promoted_scalar(left)
+            }
+            BinaryOperator::Equal
+            | BinaryOperator::NotEqual
+            | BinaryOperator::Less
+            | BinaryOperator::LessEqual
+            | BinaryOperator::Greater
+            | BinaryOperator::GreaterEqual
+            | BinaryOperator::LogicalAnd
+            | BinaryOperator::LogicalOr => SourceScalar::Scalar(Scalar::BOOL),
+        };
+        Ok(SizeofOperand::Scalar(scalar))
     }
 
     fn sizeof_operand_inner(&mut self) -> Result<(SizeofOperand, Span), ParseError> {
@@ -152,7 +243,7 @@ impl Parser<'_> {
                     .map(|operand| (operand, span));
             }
             Token::Paren('(') => {
-                let (operand, _) = self.sizeof_operand()?;
+                let (operand, _) = self.sizeof_binary_expression(0)?;
                 let closing = self.lexer.expect_span(Token::Paren(')'))?;
                 (operand, start.until(&closing))
             }
@@ -161,11 +252,10 @@ impl Parser<'_> {
                     message: String::from("unsupported or out-of-range numeric literal"),
                     span: start,
                 })?;
-                let ty = self.source_scalar_resolution(number.scalar, start)?;
-                (SizeofOperand::Object(ty), start)
+                (SizeofOperand::Scalar(number.scalar), start)
             }
             Token::Word("true" | "false") => (
-                SizeofOperand::Object(scalar_resolution(Scalar::BOOL)),
+                SizeofOperand::Scalar(SourceScalar::Scalar(Scalar::BOOL)),
                 start,
             ),
             Token::Word("nullptr") => (SizeofOperand::NullPointer, start),
@@ -188,7 +278,7 @@ impl Parser<'_> {
             Token::Separator('.') | Token::Arrow | Token::Paren('[')
         ) {
             if self.lexer.next_if(Token::Paren('['))? {
-                let (index, _) = self.sizeof_operand()?;
+                let (index, _) = self.sizeof_binary_expression(0)?;
                 end = self.lexer.expect_span(Token::Paren(']'))?;
                 operand = self.sizeof_subscript(operand, index, start.until(&end))?;
                 continue;
@@ -230,10 +320,7 @@ impl Parser<'_> {
     }
 
     fn sizeof_integral_operand(&self, operand: &SizeofOperand) -> bool {
-        let SizeofOperand::Object(ref ty) = *operand else {
-            return false;
-        };
-        self.source_scalar(ty).is_some_and(|scalar| {
+        self.sizeof_source_scalar(operand).is_some_and(|scalar| {
             matches!(
                 scalar.scalar().kind,
                 ScalarKind::Sint | ScalarKind::Uint | ScalarKind::Bool
@@ -290,7 +377,7 @@ impl Parser<'_> {
                 })
                 .map(TypeResolution::Handle),
             SizeofOperand::IncompleteArray(element) => Some(element),
-            SizeofOperand::NullPointer => None,
+            SizeofOperand::Scalar(_) | SizeofOperand::NullPointer => None,
         }
         .ok_or_else(|| ParseError {
             message: String::from("sizeof dereference requires a pointer or array operand"),
@@ -310,6 +397,15 @@ impl Parser<'_> {
             span,
         };
         let ty = match operand {
+            SizeofOperand::Scalar(scalar) => {
+                if operator == '!' {
+                    return Ok(SizeofOperand::Scalar(SourceScalar::Scalar(Scalar::BOOL)));
+                }
+                if operator == '~' && scalar.scalar().kind == ScalarKind::Float {
+                    return Err(invalid());
+                }
+                return Ok(SizeofOperand::Scalar(Self::sizeof_promoted_scalar(scalar)));
+            }
             SizeofOperand::NullPointer if operator == '!' => {
                 return Ok(SizeofOperand::Object(scalar_resolution(Scalar::BOOL)));
             }
@@ -362,6 +458,7 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<u32, ParseError> {
         let value = match operand {
+            SizeofOperand::Scalar(scalar) => u32::from(scalar.scalar().width),
             SizeofOperand::NullPointer => 8,
             SizeofOperand::IncompleteArray(_) => {
                 return Err(ParseError {
@@ -422,9 +519,7 @@ impl Parser<'_> {
             Symbol::ConstantMemory(declaration) => {
                 TypeResolution::Handle(self.constant_memory_type(declaration))
             }
-            Symbol::TemplateParameter { scalar, .. } => {
-                self.source_scalar_resolution(scalar, span)?
-            }
+            Symbol::TemplateParameter { scalar, .. } => return Ok(SizeofOperand::Scalar(scalar)),
             Symbol::DynamicShared(declaration) => {
                 return Ok(SizeofOperand::IncompleteArray(TypeResolution::Handle(
                     self.dynamic_shared_element_type(declaration),
@@ -465,5 +560,133 @@ impl Parser<'_> {
         } else {
             layout.alignment * 1
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sizeof_binary_scalar_types_preserve_source_identity_without_ir() {
+        for (source, expected) in [
+            ("(1L + 1u)", SourceScalar::Long(ScalarKind::Sint)),
+            ("(1L + 1ull)", SourceScalar::Scalar(Scalar::U64)),
+            ("(1ul + 1ll)", SourceScalar::Scalar(Scalar::U64)),
+            ("(1u << 1ull)", SourceScalar::Scalar(Scalar::U32)),
+            ("(true + false)", SourceScalar::Scalar(Scalar::I32)),
+            ("(1.0f < 2u)", SourceScalar::Scalar(Scalar::BOOL)),
+            ("(1 / 0)", SourceScalar::Scalar(Scalar::I32)),
+            ("(1 << -1)", SourceScalar::Scalar(Scalar::I32)),
+            ("(true || (1 / 0))", SourceScalar::Scalar(Scalar::BOOL)),
+        ] {
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            let (operand, _) = parser.sizeof_operand().unwrap();
+            assert!(
+                matches!(operand, SizeofOperand::Scalar(scalar) if scalar == expected),
+                "{source}"
+            );
+            assert_eq!(parser.function.expression_depth, 0);
+            assert!(parser.function.ir.expressions.is_empty());
+            assert!(parser.function.ir.body.is_empty());
+            assert!(parser.function.ir.local_variables.is_empty());
+            assert!(parser.module.types.is_empty());
+            assert!(parser.module.functions.is_empty());
+            assert!(parser.module.global_variables.is_empty());
+        }
+    }
+
+    #[test]
+    fn sizeof_binary_metadata_needs_no_node_or_byte_allocation_budget() {
+        for exhaust_bytes in [false, true] {
+            let mut parser = Parser::new(Lexer::new("(1L + 1u)").unwrap(), &Options::default());
+            let span = Span::new(0, 1);
+            parser.parameter_expansion_budget.activate();
+            parser.prepare_parameter_bindings(span).unwrap();
+            for bit in (0..usize::BITS).rev() {
+                let count = 1usize << bit;
+                let _ = if exhaust_bytes {
+                    parser.parameter_expansion_budget.charge_bytes(count, span)
+                } else {
+                    parser.parameter_expansion_budget.charge_nodes(count, span)
+                };
+            }
+            let (operand, _) = parser.sizeof_operand().unwrap();
+            assert!(matches!(
+                operand,
+                SizeofOperand::Scalar(SourceScalar::Long(ScalarKind::Sint))
+            ));
+            assert!(parser.function.ir.expressions.is_empty());
+            assert!(parser.module.types.is_empty());
+        }
+    }
+
+    #[test]
+    fn sizeof_binary_errors_restore_depth_without_evaluation() {
+        for source in ["(1 +)", "(1 + (2 *))", "((1)", "(1.0f % 2)", "(1 << 2.0f)"] {
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            assert!(parser.sizeof_operand().is_err(), "{source}");
+            assert_eq!(parser.function.expression_depth, 0);
+            assert!(parser.function.ir.expressions.is_empty());
+            assert!(parser.module.types.is_empty());
+        }
+        let mut parser = Parser::new(
+            Lexer::new("(1 + 2 * 3 + 4 * 5)").unwrap(),
+            &Options::default(),
+        );
+        let span = Span::new(0, 1);
+        parser.parameter_expansion_budget.activate();
+        parser.prepare_parameter_bindings(span).unwrap();
+        parser
+            .parameter_expansion_budget
+            .charge_work(1, span)
+            .unwrap();
+        for bit in (3..usize::BITS).rev() {
+            let _ = parser
+                .parameter_expansion_budget
+                .charge_work(1usize << bit, span);
+        }
+        let start = parser.lexer.position();
+        assert!(parser.sizeof_operand().is_err());
+        assert_ne!(parser.lexer.position(), start);
+        assert_eq!(parser.function.expression_depth, 0);
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+        assert!(parser.function.ir.expressions.is_empty());
+        assert!(parser.module.types.is_empty());
+    }
+
+    #[test]
+    fn sizeof_binary_preserves_legacy_grouping_depth_boundary() {
+        for groups in [51, 63, 64] {
+            let source = format!("{}1{}", "(".repeat(groups), ")".repeat(groups));
+            let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
+            assert_eq!(parser.sizeof_operand().is_ok(), groups < 64);
+            assert_eq!(parser.function.expression_depth, 0);
+            assert!(parser.function.ir.expressions.is_empty());
+            assert!(parser.module.types.is_empty());
+        }
+    }
+
+    #[test]
+    fn sizeof_operand_depth_and_work_errors_restore_expression_depth() {
+        for exhaust_work in [false, true] {
+            let mut parser = Parser::new(Lexer::new("1").unwrap(), &Options::default());
+            let span = Span::new(0, 1);
+            let previous_depth = if exhaust_work { 0 } else { 64 };
+            parser.function.expression_depth = previous_depth;
+            if exhaust_work {
+                parser.parameter_expansion_budget.activate();
+                parser.prepare_parameter_bindings(span).unwrap();
+                for bit in (0..usize::BITS).rev() {
+                    let _ = parser
+                        .parameter_expansion_budget
+                        .charge_work(1usize << bit, span);
+                }
+            }
+            assert!(parser.sizeof_operand().is_err());
+            assert_eq!(parser.function.expression_depth, previous_depth);
+            assert!(parser.function.ir.expressions.is_empty());
+            assert!(parser.module.types.is_empty());
+        }
     }
 }

@@ -493,14 +493,30 @@ promotions, so `sizeof(+short_value)` is four; logical negation has Boolean type
 Unary `+` preserves pointers and decays arrays once, so `sizeof(+matrix)` is
 eight while `sizeof(*+matrix)` retains the complete row extent. Record and
 vector operator overloads are not resolved within these queries. Built-in
-subscripts accept integral indices from these same named, literal, grouped,
-member, and unary operand forms, preserving multidimensional array extents.
+subscripts accept integral indices from these named, literal, grouped,
+member, unary, and scalar binary operand forms, preserving multidimensional
+array extents.
 Commuted forms such as `index[pointer]` are also supported. Neither pointer nor
 index values are read or bounds-checked, and indexing dynamic shared arrays does
 not allocate launch storage. The selected element type must be complete before
 further subscripts or member access; dereferencing a pointer to an incomplete
-array first permits indexing the array's complete elements. Binary index
-expressions, calls, casts, and updates remain unsupported.
+array first permits indexing the array's complete elements.
+
+Built-in scalar binary arithmetic, bitwise, shift, comparison, and logical
+operators also use operand types without evaluating their values. Arithmetic
+operators apply the existing usual arithmetic conversions, including integral
+promotions and the distinct source ranks of `long` and `long long`. Shift
+results use the promoted left operand's type. Comparisons and logical operators
+produce Boolean types. Remainder, bitwise, and shift operators require integral
+operands. Grouping and ordinary operator precedence are preserved;
+`sizeof small + 1` still adds one to the size of `small`.
+Both operands must have supported types, even for logical operators. Values are
+not checked for division by zero, overflow, invalid shift counts, or out-of-range
+indices, so `sizeof(1 / 0)` is four.
+
+Pointer, array, record, and vector binary operators remain unsupported within
+these queries. Calls, casts, updates, assignments, comma and conditional
+expressions, and nested type queries also remain unsupported.
 
 `static_assert(condition);` declarations are accepted at global, function, and
 record scope, including local records in instantiated function templates.
@@ -2260,9 +2276,9 @@ bound must be explicit. Initializers accept nested lists and brace elision;
 Each row's omitted elements become zero before the next row's initializer runs.
 Index every dimension to access a scalar or vector element, as in
 `matrix[1][0]`. Borrowing a row preserves its own extent; whole-array and row
-copies remain unsupported. Parameter declarators with multiple written brackets,
-such as `int values[][3]`, require further frontend support. Array aliases provide
-row types for adjusted parameters such as `Row values[]` and `Matrix values`.
+copies remain unsupported. Ordinary parameters such as `int values[][3]`
+adjust to pointers to rows. Array aliases also provide row types for adjusted
+parameters such as `Row values[]` and `Matrix values`.
 Constant-address checks require each index to fit its own dimension.
 
 Local scalars, vectors, and fixed arrays accept direct-list and copy-list
