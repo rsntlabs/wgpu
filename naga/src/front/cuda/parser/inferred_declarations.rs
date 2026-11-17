@@ -95,6 +95,66 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub(super) fn inferred_condition_declaration(
+        &mut self,
+        qualifiers: Qualifiers,
+        is_constexpr: bool,
+    ) -> Result<ExpressionValue, ParseError> {
+        if qualifiers.is_volatile {
+            return self.fail("volatile automatic objects are unsupported");
+        }
+        let (name, span) = self.identifier()?;
+        self.check_name(name, span)?;
+        if !matches!(
+            self.lexer.peek()?.0,
+            Token::Operation('=') | Token::Paren('{')
+        ) {
+            return self.fail("condition declarations require an equals or brace initializer");
+        }
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        self.parameter_expansion_budget.charge_work(1, span)?;
+        self.parameter_expansion_budget.charge_nodes(1, span)?;
+        self.parameter_expansion_budget
+            .charge_map_entry::<&str, Symbol>(1, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<Span>(1, span)?;
+        self.insert_symbol(name, Symbol::PendingAuto, span)?;
+        let ((_, binding), body) = self.capture_block(|parser| {
+            let result = parser.inferred_initializer()?;
+            parser.deduce_initializer(result, Declarator::Value, qualifiers, is_constexpr)
+        })?;
+        let InferredBinding::Value(value) = binding else {
+            return self.fail("condition declarations require an inferred scalar value type");
+        };
+        let Some(scalar) = self.source_scalar(&value.ty) else {
+            return self.fail("condition declarations require an inferred scalar value type");
+        };
+        if self.lexer.peek()?.0 == Token::Separator(',') {
+            return self.fail("condition declarations support exactly one declarator");
+        }
+        self.prepare_condition_local(name, span)?;
+        if let TypeResolution::Value(ref inner) = value.ty {
+            let ty = Type {
+                name: None,
+                inner: inner.clone(),
+            };
+            if self.module.types.get(&ty).is_none() {
+                self.parameter_expansion_budget.charge_nodes(1, span)?;
+                self.parameter_expansion_budget
+                    .charge_slice::<(Type, Span)>(1, span)?;
+            }
+        }
+        if qualifiers.is_const && (is_constexpr || scalar.scalar().kind != ScalarKind::Float) {
+            self.parameter_expansion_budget.charge_nodes(1, span)?;
+            self.parameter_expansion_budget
+                .charge_map_entry::<Handle<LocalVariable>, Literal>(1, span)?;
+        }
+        self.bind_inferred_value(name, span, value, body, qualifiers, is_constexpr)?;
+        self.function.initialized_declarations.push(span);
+        self.variable_expression(name, span)?.require_value()
+    }
+
     pub(super) fn inferred_global_constant_declaration(&mut self) -> Result<(), ParseError> {
         let mut deduced_type = None;
         loop {

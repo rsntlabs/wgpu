@@ -83,6 +83,7 @@ mod immutable_pointers;
 mod incomplete_array_aliases;
 mod incomplete_array_pointers;
 mod inferred_arrays;
+mod inferred_selection_conditions;
 mod inline;
 mod integer16;
 mod integer16_vectors;

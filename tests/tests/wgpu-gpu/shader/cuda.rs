@@ -86,6 +86,7 @@ mod immutable_pointers;
 mod incomplete_array_aliases;
 mod incomplete_array_pointers;
 mod inferred_arrays;
+mod inferred_selection_conditions;
 mod inline;
 mod integer16;
 mod integer16_vectors;
@@ -269,6 +270,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_RINTF,
         CUDA_NEARBYINTF,
         CUDA_SELECTION_DECLARATION_CONDITIONS,
+        CUDA_INFERRED_SELECTION_CONDITIONS,
         CUDA_TRUNCF,
         CUDA_FLOORF,
         CUDA_FMODF,
@@ -1209,3 +1211,7 @@ static CUDA_NEARBYINTF: GpuTestConfiguration = configuration(nearbyintf::cases);
 #[apply(gpu_test!)]
 static CUDA_SELECTION_DECLARATION_CONDITIONS: GpuTestConfiguration =
     configuration(selection_declaration_conditions::cases);
+
+#[apply(gpu_test!)]
+static CUDA_INFERRED_SELECTION_CONDITIONS: GpuTestConfiguration =
+    configuration(inferred_selection_conditions::cases);

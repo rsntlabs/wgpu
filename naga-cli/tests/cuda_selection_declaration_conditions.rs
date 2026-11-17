@@ -93,7 +93,7 @@ fn cuda_selection_declaration_conditions_cli_rejects_scope_escapes_redeclaration
         "__global__ void kernel() { int value=1; if(int item){} }",
         "__global__ void kernel() { int value=1; if(int item(1)){} }",
         "__global__ void kernel() { int value=1; if(int one=1,two=2){} }",
-        "__global__ void kernel() { int value=1; if(auto item=1){} }",
+        "__global__ void kernel() { int value=1; if(auto item={1}){} }",
         "__global__ void kernel() { int value=1; if(int *item=0){} }",
         "__global__ void kernel() { int value=1; if(int &item=value){} }",
         "__global__ void kernel() { int value=1; if(int item[2]={1,2}){} }",

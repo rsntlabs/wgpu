@@ -193,7 +193,7 @@ fn cuda_selection_declaration_conditions_reject_narrowing_and_unsupported_declar
         "int value",
         "int value(1)",
         "int first = 1, second = 2",
-        "auto value = 1",
+        "auto value = {1}",
         "int *value = nullptr",
         "int &value = input",
         "int value[2]{}",

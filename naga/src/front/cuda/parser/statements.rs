@@ -118,14 +118,31 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub(super) fn prepare_condition_local(
+        &mut self,
+        name: &str,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        self.parameter_expansion_budget.charge_nodes(2, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<(LocalVariable, Span)>(1, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<(Statement, Span)>(1, span)?;
+        self.parameter_expansion_budget
+            .charge_bytes(name.len(), span)?;
+        Ok(())
+    }
+
     fn scalar_condition_declaration(&mut self) -> Result<ExpressionValue, ParseError> {
         let (declaration, is_constexpr) = self.declaration_type()?;
-        let DeclarationType::Explicit(QualifiedType {
+        let QualifiedType {
             ty: specifier,
             qualifiers,
-        }) = declaration
-        else {
-            return self.fail("condition declarations require an explicit scalar value type");
+        } = match declaration {
+            DeclarationType::Explicit(ty) => ty,
+            DeclarationType::Inferred { qualifiers } => {
+                return self.inferred_condition_declaration(qualifiers, is_constexpr)
+            }
         };
         let Some(scalar) = specifier.source_scalar() else {
             return self.fail("condition declarations require an explicit scalar value type");
@@ -144,13 +161,7 @@ impl<'a> Parser<'a> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         self.parameter_expansion_budget.charge_work(1, span)?;
-        self.parameter_expansion_budget.charge_nodes(2, span)?;
-        self.parameter_expansion_budget
-            .charge_slice::<(LocalVariable, Span)>(1, span)?;
-        self.parameter_expansion_budget
-            .charge_slice::<(Statement, Span)>(1, span)?;
-        self.parameter_expansion_budget
-            .charge_bytes(name.len(), span)?;
+        self.prepare_condition_local(name, span)?;
         self.parameter_expansion_budget
             .charge_map_entry::<&str, Symbol>(1, span)?;
         self.parameter_expansion_budget
@@ -911,6 +922,111 @@ mod tests {
     use super::*;
 
     #[test]
+    fn inferred_scalar_conditions_preserve_source_types_and_explicit_cv() {
+        for (source, has_prefix, expected, is_const) in [
+            (
+                "auto header = 1L)",
+                false,
+                SourceScalar::Long(ScalarKind::Sint),
+                false,
+            ),
+            (
+                "constexpr auto header = 1L)",
+                false,
+                SourceScalar::Long(ScalarKind::Sint),
+                true,
+            ),
+            (
+                "const auto header{1})",
+                false,
+                SourceScalar::Scalar(Scalar::I32),
+                true,
+            ),
+            (
+                "const short original = 2; auto header = original)",
+                true,
+                SourceScalar::Scalar(Scalar::I16),
+                false,
+            ),
+            (
+                "const short original = 2; const auto header = original)",
+                true,
+                SourceScalar::Scalar(Scalar::I16),
+                true,
+            ),
+        ] {
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            if has_prefix {
+                parser.local_declaration().unwrap();
+            }
+            let value = parser.scalar_condition_declaration().unwrap();
+            assert_eq!(
+                parser.source_scalar(value.shader_type().unwrap()),
+                Some(expected)
+            );
+            assert!(
+                matches!(&value, &ExpressionValue::Reference(ref reference) if reference.qualifiers.is_const == is_const)
+            );
+            assert!(
+                matches!(parser.function.symbol_table.lookup("header"), Some(&Symbol::Variable { qualifiers, .. }) if qualifiers.is_const == is_const)
+            );
+            if is_const {
+                assert!(
+                    matches!(&value, &ExpressionValue::Reference(ref reference) if reference.constant.literal.is_some())
+                );
+            }
+            assert_eq!(parser.lexer.peek().unwrap().0, Token::Paren(')'));
+        }
+    }
+
+    #[test]
+    fn inferred_condition_initializer_cannot_read_its_own_shadowed_name() {
+        let source = "int header = 1; if (auto header = header) {}";
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        parser.local_declaration().unwrap();
+        let depth = parser.function.symbol_table.scope_depth();
+        let outer = format!("{:?}", parser.function.symbol_table.lookup("header"));
+        let initialized = parser.function.initialized_declarations.clone();
+        let error = parser.statement().unwrap_err();
+        assert_eq!(error.message, "auto initializer cannot use its own binding");
+        assert_eq!(parser.function.symbol_table.scope_depth(), depth);
+        assert_eq!(
+            format!("{:?}", parser.function.symbol_table.lookup("header")),
+            outer
+        );
+        assert_eq!(parser.function.initialized_declarations, initialized);
+        assert_eq!(parser.function.protected_if_header_scope, None);
+        assert_eq!(parser.function.statement_depth, 0);
+    }
+
+    #[test]
+    fn inferred_condition_errors_restore_header_metadata() {
+        for source in [
+            "if (auto header = {1}) {}",
+            "if (auto header{}) {}",
+            "if (auto header{1, 2}) {}",
+            "if (auto header = 1, branch = 2) {}",
+            "if (auto header = 1) { int header = 2; }",
+            "if (int header = 1; auto header = 2) {}",
+            "if (constexpr auto header = threadIdx.x) {}",
+            "switch (auto header = 1) { case 0: int branch = 2; case 1: break; }",
+        ] {
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            let marker = Span::new(0, 1);
+            let depth = parser.function.symbol_table.scope_depth();
+            parser.function.protected_if_header_scope = Some(depth);
+            parser.function.initialized_declarations.push(marker);
+            parser
+                .function
+                .symbol_table
+                .add("outer", Symbol::PendingAuto);
+            assert!(parser.statement().is_err(), "{source}");
+            assert_if_scope_restored(&parser, depth, marker);
+            assert_eq!(parser.function.switch_depth, 0);
+        }
+    }
+
+    #[test]
     fn scalar_condition_binding_preserves_constexpr_long_and_defers_its_read() {
         let source = "constexpr long header = 3L)";
         let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
@@ -938,32 +1054,33 @@ mod tests {
 
     #[test]
     fn scalar_condition_declarations_preflight_exhausted_budgets() {
-        for prepared in [false, true] {
-            for resource in 0..3 {
-                let source = "int header = 1)";
-                let span = Span::new(0, 1);
-                let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
-                parser.parameter_expansion_budget.activate();
-                if prepared {
-                    parser.prepare_parameter_bindings(span).unwrap();
+        for source in ["int header = 1)", "auto header = 1)"] {
+            for prepared in [false, true] {
+                for resource in 0..3 {
+                    let span = Span::new(0, 1);
+                    let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                    parser.parameter_expansion_budget.activate();
+                    if prepared {
+                        parser.prepare_parameter_bindings(span).unwrap();
+                    }
+                    for bit in (0..usize::BITS).rev() {
+                        let count = 1usize << bit;
+                        let _ = match resource {
+                            0 => parser.parameter_expansion_budget.charge_nodes(count, span),
+                            1 => parser.parameter_expansion_budget.charge_bytes(count, span),
+                            _ => parser.parameter_expansion_budget.charge_work(count, span),
+                        };
+                    }
+                    assert!(parser.scalar_condition_declaration().is_err());
+                    assert!(parser.parameter_expansion_budget.is_exhausted());
+                    assert!(parser.module.types.is_empty());
+                    assert!(parser.module.global_variables.is_empty());
+                    assert!(parser.module.functions.is_empty());
+                    assert!(parser.function.ir.local_variables.is_empty());
+                    assert!(parser.function.ir.expressions.is_empty());
+                    assert!(parser.function.initialized_declarations.is_empty());
+                    assert!(parser.function.symbol_table.lookup("header").is_none());
                 }
-                for bit in (0..usize::BITS).rev() {
-                    let count = 1usize << bit;
-                    let _ = match resource {
-                        0 => parser.parameter_expansion_budget.charge_nodes(count, span),
-                        1 => parser.parameter_expansion_budget.charge_bytes(count, span),
-                        _ => parser.parameter_expansion_budget.charge_work(count, span),
-                    };
-                }
-                assert!(parser.scalar_condition_declaration().is_err());
-                assert!(parser.parameter_expansion_budget.is_exhausted());
-                assert!(parser.module.types.is_empty());
-                assert!(parser.module.global_variables.is_empty());
-                assert!(parser.module.functions.is_empty());
-                assert!(parser.function.ir.local_variables.is_empty());
-                assert!(parser.function.ir.expressions.is_empty());
-                assert!(parser.function.initialized_declarations.is_empty());
-                assert!(parser.function.symbol_table.lookup("header").is_none());
             }
         }
     }

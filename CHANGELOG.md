@@ -204,6 +204,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA `rintf` with portable rounding to the nearest even integer.
 - Support CUDA `nearbyintf` through the existing nearest-even rounding helper.
 - Support explicit scalar declaration conditions in CUDA `if` and `switch` statements.
+- Support scalar `auto` declaration conditions in CUDA `if` and `switch` statements.
 - Support CUDA `copysignf` with bit-preserving magnitude and sign copying.
 - Support CUDA float `isfinite`, `isinf`, `isnan`, and `signbit` classification with integer results.
 - Support CUDA integral template defaults that directly reference earlier integral parameters.

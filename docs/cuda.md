@@ -2368,13 +2368,18 @@ visible in the condition and both branches, then leave scope after the entire
 block or a new `else if` initializer may shadow them. These rules follow C++17
 [if statements](https://timsong-cpp.github.io/cppwp/n4659/stmt.if) and
 [block scope](https://timsong-cpp.github.io/cppwp/n4659/basic.scope.block).
-An `if` condition can declare one explicitly typed scalar variable with an
-equals or brace initializer, as in `if (int value = input[index])`. The
+An `if` condition can declare one scalar variable with an equals or brace
+initializer, as in `if (int value = input[index])`. The
 initializer runs once, and the stored value determines the branch. The name is
 visible in both branches and leaves scope after the selection. An optional
 initializer statement shares this scope with the condition declaration. The
 supported types include scalar aliases and `decltype` of scalar objects.
 Const and `constexpr` follow the ordinary scalar initializer rules.
+Value declarations with `auto`, `const auto`, or `constexpr auto` deduce a
+scalar type from an equals expression or a direct brace initializer with one
+element. Top-level qualifiers of the initializer do not transfer to the new
+variable. Copy-list forms such as `auto value = {1}` require initializer-list
+deduction and remain unsupported in these conditions.
 `if constexpr` and C++23 `using` alias initializers remain unsupported.
 
 At statement start, C++ parses `int(value);` as a declaration. Parenthesized
@@ -2411,8 +2416,8 @@ A switch can also declare its selector, as in
 `switch (const unsigned mode{flags[index]})`. The stored value is promoted by
 the ordinary selector rules, and cases can access the declared name. The
 condition declaration runs before dispatch, so its initializer does not make
-case labels invalid. Declaration conditions for `if` and `switch` currently
-require an explicit scalar value type. Labels that enter a nested block, branch,
+case labels invalid. Declaration conditions for `if` and `switch` accept
+explicit or inferred scalar value types. Labels that enter a nested block, branch,
 or loop remain unsupported.
 
 Comma expressions evaluate left to right and preserve the final operand's type
