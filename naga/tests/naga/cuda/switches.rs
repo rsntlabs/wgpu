@@ -402,14 +402,13 @@ fn cuda_switch_barriers_accept_uniform_control_and_preserve_return_rules() {
 }
 
 #[test]
-fn cuda_switch_rejects_nested_entry_labels_and_declaration_conditions() {
+fn cuda_switch_rejects_nested_entry_labels() {
     for body in [
         "switch (selector) { if (true) { case 0: out[0] = 1; } }",
         "switch (selector) { while (false) { case 0: out[0] = 1; } }",
         "switch (selector) { do { case 0: out[0] = 1; } while (false); }",
         "switch (selector) { for (;;) { default: break; } }",
         "switch (selector) if (true) case 0: out[0] = 1;",
-        "switch (int value = selector) { default: break; }",
     ] {
         rejected(&kernel(body));
     }

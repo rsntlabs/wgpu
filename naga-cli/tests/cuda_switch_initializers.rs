@@ -85,7 +85,6 @@ fn cuda_switch_initializers_cli_rejects_scope_errors_and_invalid_headers() {
         "__global__ void kernel(){switch(int key=1;){default:break;}}",
         "__global__ void kernel(){switch(int key=1;key;key){default:break;}}",
         "__global__ void kernel(){switch(using Value=int;1){default:break;}}",
-        "__global__ void kernel(){switch(int key=1;int decision=key){default:break;}}",
         "__global__ void kernel(){switch(int key=1;1LL){default:break;}}",
     ] {
         let files = TestFiles::new("cu", source);

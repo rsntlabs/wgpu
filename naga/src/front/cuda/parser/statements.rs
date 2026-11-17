@@ -86,21 +86,127 @@ impl<'a> Parser<'a> {
             ));
         }
         let has_initializer = self.selection_header_has_initializer(kind, start)?;
-        let value = if self.lexer.next_if(Token::Separator(';'))? {
-            self.comma_expression()?
-        } else if has_initializer && self.starts_declaration()? {
+        if !has_initializer || self.lexer.next_if(Token::Separator(';'))? {
+            return self.selection_condition_expression();
+        }
+        if self.starts_declaration()? {
             self.local_declaration()?;
-            self.comma_expression()?
+            return self.selection_condition_expression();
+        }
+        let first = self.comma_expression_result()?;
+        if self.lexer.next_if(Token::Separator(';'))? {
+            self.discard_result(first)?;
+            self.selection_condition_expression()
         } else {
-            let first = self.comma_expression_result()?;
-            if self.lexer.next_if(Token::Separator(';'))? {
-                self.discard_result(first)?;
-                self.comma_expression()?
-            } else {
-                first.require_value()?
+            first.require_value()
+        }
+    }
+
+    fn selection_condition_expression(&mut self) -> Result<ExpressionValue, ParseError> {
+        let span = self.lexer.peek()?.1;
+        self.parameter_expansion_budget.charge_work(1, span)?;
+        let mut lookahead = self.lexer.clone();
+        let declaration = self.declaration_type_from(&mut lookahead).is_ok()
+            && matches!(
+                lookahead.peek()?.0,
+                Token::Word(_) | Token::Operation('*' | '&') | Token::LogicalOperation('&')
+            );
+        if declaration {
+            self.scalar_condition_declaration()
+        } else {
+            self.comma_expression()
+        }
+    }
+
+    fn scalar_condition_declaration(&mut self) -> Result<ExpressionValue, ParseError> {
+        let (declaration, is_constexpr) = self.declaration_type()?;
+        let DeclarationType::Explicit(QualifiedType {
+            ty: specifier,
+            qualifiers,
+        }) = declaration
+        else {
+            return self.fail("condition declarations require an explicit scalar value type");
+        };
+        let Some(scalar) = specifier.source_scalar() else {
+            return self.fail("condition declarations require an explicit scalar value type");
+        };
+        if qualifiers.is_volatile {
+            return self.fail("volatile automatic objects are unsupported");
+        }
+        let (name, span) = self.identifier()?;
+        self.check_name(name, span)?;
+        if !matches!(
+            self.lexer.peek()?.0,
+            Token::Operation('=') | Token::Paren('{')
+        ) {
+            return self.fail("condition declarations require an equals or brace initializer");
+        }
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        self.parameter_expansion_budget.charge_work(1, span)?;
+        self.parameter_expansion_budget.charge_nodes(2, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<(LocalVariable, Span)>(1, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<(Statement, Span)>(1, span)?;
+        self.parameter_expansion_budget
+            .charge_bytes(name.len(), span)?;
+        self.parameter_expansion_budget
+            .charge_map_entry::<&str, Symbol>(1, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<Span>(1, span)?;
+        if qualifiers.is_const && (is_constexpr || scalar.scalar().kind != ScalarKind::Float) {
+            self.parameter_expansion_budget.charge_nodes(1, span)?;
+            self.parameter_expansion_budget
+                .charge_map_entry::<Handle<LocalVariable>, Literal>(1, span)?;
+        }
+        let declared_ty = self.lower_type(specifier, span)?;
+        let ty = match declared_ty {
+            TypeResolution::Handle(handle) => handle,
+            TypeResolution::Value(ref inner) => {
+                let ty = Type {
+                    name: None,
+                    inner: inner.clone(),
+                };
+                match self.module.types.get(&ty) {
+                    Some(handle) => handle,
+                    None => {
+                        self.parameter_expansion_budget.charge_nodes(1, span)?;
+                        self.parameter_expansion_budget
+                            .charge_slice::<(Type, Span)>(1, span)?;
+                        self.module.types.insert(ty, span)
+                    }
+                }
             }
         };
-        Ok(value)
+        let (local, pointer) = self.allocate_local(name, ty, span)?;
+        self.insert_symbol(
+            name,
+            Symbol::Variable {
+                pointer,
+                ty: declared_ty.clone(),
+                qualifiers,
+            },
+            span,
+        )?;
+        let initializer = if is_constexpr {
+            let literal = self.constant_initializer(&declared_ty)?;
+            self.function.constant_locals.insert(local, literal);
+            self.materialize_literal(literal, span)?
+        } else if qualifiers.is_const && scalar.scalar().kind != ScalarKind::Float {
+            let (value, body) =
+                self.capture_block(|parser| parser.value_initializer(&declared_ty))?;
+            self.constant_local_initializer(local, value, body)?
+        } else {
+            self.value_initializer(&declared_ty)?.handle
+        };
+        if self.lexer.peek()?.0 == Token::Separator(',') {
+            return self.fail("condition declarations support exactly one declarator");
+        }
+        let end = self.lexer.peek()?.1;
+        self.store_initializer(pointer, initializer, span.until(&end))?;
+        self.function.initialized_declarations.push(span);
+        self.variable_expression(name, span)?.require_value()
     }
 
     fn if_statement(&mut self, start: Span) -> Result<bool, ParseError> {
@@ -803,6 +909,89 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scalar_condition_binding_preserves_constexpr_long_and_defers_its_read() {
+        let source = "constexpr long header = 3L)";
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        let value = parser.scalar_condition_declaration().unwrap();
+        assert_eq!(
+            parser.source_scalar(value.shader_type().unwrap()),
+            Some(SourceScalar::Long(ScalarKind::Sint))
+        );
+        assert!(
+            matches!(&value, &ExpressionValue::Reference(ref reference) if reference.qualifiers.is_const && reference.constant.literal == Some(Literal::I64(3)))
+        );
+        assert_eq!(parser.function.ir.local_variables.len(), 1);
+        assert_eq!(parser.function.initialized_declarations.len(), 1);
+        assert!(!parser
+            .function
+            .ir
+            .expressions
+            .iter()
+            .any(|(_, expression)| matches!(expression, &Expression::Load { .. })));
+        assert!(
+            matches!(parser.function.symbol_table.lookup("header"), Some(&Symbol::Variable { qualifiers, .. }) if qualifiers.is_const)
+        );
+        assert_eq!(parser.lexer.peek().unwrap().0, Token::Paren(')'));
+    }
+
+    #[test]
+    fn scalar_condition_declarations_preflight_exhausted_budgets() {
+        for prepared in [false, true] {
+            for resource in 0..3 {
+                let source = "int header = 1)";
+                let span = Span::new(0, 1);
+                let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                parser.parameter_expansion_budget.activate();
+                if prepared {
+                    parser.prepare_parameter_bindings(span).unwrap();
+                }
+                for bit in (0..usize::BITS).rev() {
+                    let count = 1usize << bit;
+                    let _ = match resource {
+                        0 => parser.parameter_expansion_budget.charge_nodes(count, span),
+                        1 => parser.parameter_expansion_budget.charge_bytes(count, span),
+                        _ => parser.parameter_expansion_budget.charge_work(count, span),
+                    };
+                }
+                assert!(parser.scalar_condition_declaration().is_err());
+                assert!(parser.parameter_expansion_budget.is_exhausted());
+                assert!(parser.module.types.is_empty());
+                assert!(parser.module.global_variables.is_empty());
+                assert!(parser.module.functions.is_empty());
+                assert!(parser.function.ir.local_variables.is_empty());
+                assert!(parser.function.ir.expressions.is_empty());
+                assert!(parser.function.initialized_declarations.is_empty());
+                assert!(parser.function.symbol_table.lookup("header").is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn selection_declaration_condition_errors_restore_header_metadata() {
+        for source in [
+            "if (int header) {}",
+            "if (int header = 1, branch = 2) {}",
+            "if (int header = 1) { int header = 2; }",
+            "if (int header = 1; int header = 2) {}",
+            "if (constexpr int header = threadIdx.x) {}",
+            "switch (int header = 1) { case 0: int branch = 2; case 1: break; }",
+        ] {
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            let marker = Span::new(0, 1);
+            let depth = parser.function.symbol_table.scope_depth();
+            parser.function.protected_if_header_scope = Some(depth);
+            parser.function.initialized_declarations.push(marker);
+            parser
+                .function
+                .symbol_table
+                .add("outer", Symbol::PendingAuto);
+            assert!(parser.statement().is_err(), "{source}");
+            assert_if_scope_restored(&parser, depth, marker);
+            assert_eq!(parser.function.switch_depth, 0);
+        }
+    }
 
     #[test]
     fn statement_depth_limit_restores_depth_after_error() {

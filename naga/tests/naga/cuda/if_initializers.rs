@@ -172,13 +172,11 @@ fn cuda_if_initializers_preserve_dangling_else_and_loop_switch_termination() {
 fn cuda_if_initializers_reject_malformed_or_out_of_scope_header_forms() {
     for body in [
         "if (unsigned value = 1u; ) {}",
-        "if (unsigned value = 1u) {}",
         "if (1u 2u) {}",
         "if (using Word = unsigned; true) {}",
         "if (static_assert(true); true) {}",
         "if (namespace Name = cooperative_groups; true) {}",
         "if constexpr (unsigned value = 1u; true) {}",
-        "if (unsigned value = 1u; unsigned other = value) {}",
     ] {
         reject(&format!(
             "// π UTF-8 prefix\n__global__ void kernel() {{ {body} }}"

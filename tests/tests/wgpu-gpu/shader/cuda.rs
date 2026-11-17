@@ -156,6 +156,7 @@ mod sad;
 mod saturate;
 mod scalar_braces;
 mod scalar_promotion;
+mod selection_declaration_conditions;
 mod shared_vectors;
 mod signed;
 mod signed_saturating_arithmetic;
@@ -267,6 +268,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FADD_RN,
         CUDA_RINTF,
         CUDA_NEARBYINTF,
+        CUDA_SELECTION_DECLARATION_CONDITIONS,
         CUDA_TRUNCF,
         CUDA_FLOORF,
         CUDA_FMODF,
@@ -1203,3 +1205,7 @@ static CUDA_RINTF: GpuTestConfiguration = configuration(rintf::cases);
 
 #[apply(gpu_test!)]
 static CUDA_NEARBYINTF: GpuTestConfiguration = configuration(nearbyintf::cases);
+
+#[apply(gpu_test!)]
+static CUDA_SELECTION_DECLARATION_CONDITIONS: GpuTestConfiguration =
+    configuration(selection_declaration_conditions::cases);

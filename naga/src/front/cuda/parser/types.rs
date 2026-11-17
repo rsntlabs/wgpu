@@ -955,6 +955,26 @@ impl<'a> Parser<'a> {
         )
     }
 
+    pub(super) fn declaration_type_from(
+        &self,
+        lexer: &mut Lexer<'_>,
+    ) -> Result<(DeclarationType, bool), ParseError> {
+        declaration_type(
+            lexer,
+            &self.function.symbol_table,
+            &self.global_declarations,
+            &TypeContext {
+                types: &self.module.types,
+                global_variables: &self.module.global_variables,
+                function: &self.function,
+                long_types: &self.long_types,
+                dim3_type: self.dim3_type,
+                structures: &self.structures,
+            },
+            true,
+        )
+    }
+
     pub(super) fn decltype_operand_type(&mut self) -> Result<(QualifiedType, Span), ParseError> {
         decltype_operand_type(
             &mut self.lexer,

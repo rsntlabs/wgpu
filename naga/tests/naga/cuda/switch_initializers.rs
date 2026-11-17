@@ -151,11 +151,9 @@ fn cuda_switch_initializers_reject_malformed_and_unsupported_headers() {
         "unsigned value = 1u;",
         ";",
         ";; 1u",
-        "unsigned value = 1u; unsigned other = value",
         "using Word = unsigned; 1u",
         "static_assert(true); 1u",
         "namespace Name = cooperative_groups; 1u",
-        "unsigned value = 1u",
         "long value = 1L; value",
     ] {
         reject(&format!("// π UTF-8 span\n__global__ void kernel() {{ switch ({header}) {{ default: break; }} }}"));

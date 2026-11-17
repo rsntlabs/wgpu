@@ -513,7 +513,7 @@ impl Parser<'_> {
         }))
     }
 
-    fn variable_expression(
+    pub(super) fn variable_expression(
         &mut self,
         name: &str,
         span: Span,

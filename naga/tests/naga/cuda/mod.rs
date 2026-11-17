@@ -154,6 +154,7 @@ mod sad;
 mod saturate;
 mod scalar_braces;
 mod scalar_promotion;
+mod selection_declaration_conditions;
 mod shared;
 mod shared_vectors;
 mod signed;
