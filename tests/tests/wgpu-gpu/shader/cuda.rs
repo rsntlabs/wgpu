@@ -195,6 +195,7 @@ mod vector_values;
 mod void_casts;
 mod void_forms;
 mod volatile;
+mod while_declaration_conditions;
 
 pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
     kernels::all_tests(tests);
@@ -271,6 +272,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_NEARBYINTF,
         CUDA_SELECTION_DECLARATION_CONDITIONS,
         CUDA_INFERRED_SELECTION_CONDITIONS,
+        CUDA_WHILE_DECLARATION_CONDITIONS,
         CUDA_TRUNCF,
         CUDA_FLOORF,
         CUDA_FMODF,
@@ -1215,3 +1217,7 @@ static CUDA_SELECTION_DECLARATION_CONDITIONS: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_INFERRED_SELECTION_CONDITIONS: GpuTestConfiguration =
     configuration(inferred_selection_conditions::cases);
+
+#[apply(gpu_test!)]
+static CUDA_WHILE_DECLARATION_CONDITIONS: GpuTestConfiguration =
+    configuration(while_declaration_conditions::cases);

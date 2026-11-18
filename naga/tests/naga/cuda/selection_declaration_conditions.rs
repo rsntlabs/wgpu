@@ -216,7 +216,6 @@ fn cuda_selection_declaration_conditions_reject_narrowing_and_unsupported_declar
         }
     }
     for body in [
-        "while (int value = input) {}",
         "for (; int value = input;) {}",
         "if constexpr (int value = 1) {}",
         "switch (long value = 1L) { default: break; }",

@@ -2385,9 +2385,16 @@ deduction and remain unsupported in these conditions.
 At statement start, C++ parses `int(value);` as a declaration. Parenthesized
 declarators are unsupported; use `int value = ...;` for a local declaration or
 `(int(value));` for a discarded cast expression.
-Loop conditions are scalar expressions; `for` initializers can declare scalar
-or array locals, declare scalar aliases, or evaluate an expression. Empty
-`for` clauses are supported.
+A `while` condition can use a scalar expression or the same scalar declaration
+forms as `if`. A condition declaration initializes its variable on every test,
+including the test that ends the loop. Its name is visible in the body and leaves
+scope after the loop. A `continue` checks the condition again, and a `break`
+exits without another check. The outermost body scope cannot redeclare the
+condition variable. A nested block can shadow it.
+
+`for` and `do`/`while` conditions use scalar expressions. A `while` header takes
+one condition. `for` initializers can declare scalar or array locals, declare
+scalar aliases, or evaluate an expression. Empty `for` clauses are supported.
 
 Switch selectors accept `int`, `unsigned int`, and `bool`; booleans promote to
 `int`. The selector is evaluated once. Case labels require integral constant

@@ -196,6 +196,7 @@ mod void_casts;
 mod void_forms;
 mod void_functions;
 mod volatile;
+mod while_declaration_conditions;
 
 use naga::front::cuda::{parse_str, Options};
 

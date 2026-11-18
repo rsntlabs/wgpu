@@ -106,7 +106,6 @@ fn cuda_inferred_selection_conditions_cli_rejects_scope_escapes_redeclarations_a
         "__global__ void kernel() { int value=1; if(int item=1;auto item=2){} }",
         "__global__ void kernel() { int value=1; if(auto item=1){int item=2;} }",
         "__global__ void kernel() { int value=1; switch(auto item=1.0f){} }",
-        "__global__ void kernel() { int value=1; while(auto item=1){} }",
     ] {
         let files = TestFiles::new("cu", source);
         let result = files.translate(&[]);

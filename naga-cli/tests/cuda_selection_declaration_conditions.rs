@@ -101,7 +101,6 @@ fn cuda_selection_declaration_conditions_cli_rejects_scope_escapes_redeclaration
         "__global__ void kernel() { int value=1; if(volatile int item=1){} }",
         "__global__ void kernel() { int value=1; switch(float item=1.0f){} }",
         "__global__ void kernel() { int value=1; switch(int item=1){} int escaped=item; }",
-        "__global__ void kernel() { int value=1; while(int item=1){} }",
         "__global__ void kernel() { int value=1; if constexpr(int item=1){} }",
     ] {
         let files = TestFiles::new("cu", source);

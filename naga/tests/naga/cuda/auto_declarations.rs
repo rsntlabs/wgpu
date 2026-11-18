@@ -224,7 +224,6 @@ fn cuda_auto_rejects_missing_initializers_lists_and_unsupported_placeholder_cont
         "__device__ auto helper() { return 3; } __global__ void kernel() {}",
         "__global__ void kernel(auto value) {}",
         "__device__ void empty() {} __global__ void kernel() { auto value = empty(); }",
-        "__global__ void kernel() { while (auto value = 3) {} }",
         "using Deduced = auto; __global__ void kernel() {}",
     ] {
         rejected(source);

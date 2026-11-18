@@ -105,17 +105,21 @@ impl<'a> Parser<'a> {
     fn selection_condition_expression(&mut self) -> Result<ExpressionValue, ParseError> {
         let span = self.lexer.peek()?.1;
         self.parameter_expansion_budget.charge_work(1, span)?;
-        let mut lookahead = self.lexer.clone();
-        let declaration = self.declaration_type_from(&mut lookahead).is_ok()
-            && matches!(
-                lookahead.peek()?.0,
-                Token::Word(_) | Token::Operation('*' | '&') | Token::LogicalOperation('&')
-            );
+        let declaration = self.condition_declaration_follows()?;
         if declaration {
             self.scalar_condition_declaration()
         } else {
             self.comma_expression()
         }
+    }
+
+    pub(super) fn condition_declaration_follows(&self) -> Result<bool, ParseError> {
+        let mut lookahead = self.lexer.clone();
+        Ok(self.declaration_type_from(&mut lookahead).is_ok()
+            && matches!(
+                lookahead.peek()?.0,
+                Token::Word(_) | Token::Operation('*' | '&') | Token::LogicalOperation('&')
+            ))
     }
 
     pub(super) fn prepare_condition_local(
@@ -133,7 +137,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn scalar_condition_declaration(&mut self) -> Result<ExpressionValue, ParseError> {
+    pub(super) fn scalar_condition_declaration(&mut self) -> Result<ExpressionValue, ParseError> {
         let (declaration, is_constexpr) = self.declaration_type()?;
         let QualifiedType {
             ty: specifier,
