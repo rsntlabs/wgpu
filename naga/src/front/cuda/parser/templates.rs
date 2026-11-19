@@ -159,6 +159,7 @@ struct FunctionTemplate<'a> {
     template_defaults: Vec<Option<TemplateParameterDefault>>,
     signature: Vec<ParameterPattern>,
     defaults: Vec<Option<ScalarDefault>>,
+    is_noexcept: bool,
     result: ReturnType,
     source: SignatureSource<'a>,
     globals: FastHashMap<&'a str, GlobalDeclaration>,
@@ -462,6 +463,7 @@ impl<'a> Parser<'a> {
             template_defaults,
             signature,
             defaults,
+            is_noexcept,
             result,
             source,
             ..
@@ -535,6 +537,14 @@ impl<'a> Parser<'a> {
                 header.inlining,
                 header.name_span,
             )?;
+            if previous.is_noexcept != is_noexcept {
+                return Err(ParseError {
+                    message: String::from(
+                        "incompatible noexcept specification in function template redeclaration",
+                    ),
+                    span: header.name_span,
+                });
+            }
             if is_definition && previous.definition.is_some() {
                 return Err(ParseError {
                     message: String::from("duplicate function template definition"),
@@ -575,6 +585,7 @@ impl<'a> Parser<'a> {
                 template_defaults,
                 signature,
                 defaults,
+                is_noexcept,
                 result,
                 source: source.take().unwrap(),
                 globals: FastHashMap::default(),
@@ -896,12 +907,12 @@ impl<'a> Parser<'a> {
         self.check_dynamic_shared_linkage(header.name, header.name_span)?;
         self.function.symbol_table.push_scope();
         let signature = self.template_parameter_patterns()?;
-        self.reject_noexcept("function templates")?;
         let defaults = core::mem::take(&mut self.function.defaults);
         if header.kind == FunctionKind::Kernel && !defaults.is_empty() {
             return self.fail("kernel template default arguments are unsupported");
         }
         self.trailing_launch_bounds(&mut header.launch_bounds)?;
+        let is_noexcept = self.template_noexcept(header.kind)?.unwrap_or(false);
         let end = self.lexer.position();
         Ok(FunctionTemplate {
             result: header.result,
@@ -910,11 +921,49 @@ impl<'a> Parser<'a> {
             template_defaults,
             signature,
             defaults,
+            is_noexcept,
             source: SignatureSource { start: source, end },
             globals: FastHashMap::default(),
             definition: None,
             launch_bounds: None,
         })
+    }
+
+    pub(super) fn template_noexcept(
+        &mut self,
+        kind: FunctionKind,
+    ) -> Result<Option<bool>, ParseError> {
+        if kind == FunctionKind::Kernel {
+            self.reject_noexcept("kernel templates")?;
+            return Ok(None);
+        }
+        let (token, span) = self.lexer.peek()?;
+        if token != Token::Word("noexcept") {
+            return Ok(None);
+        }
+        self.parameter_expansion_budget.charge_work(1, span)?;
+        self.lexer.next()?;
+        let value = if self.lexer.next_if(Token::Paren('('))? {
+            let (token, span) = self.lexer.next()?;
+            let value = match token {
+                Token::Word("true") => true,
+                Token::Word("false") => false,
+                _ => {
+                    return Err(ParseError {
+                        message: String::from("template noexcept requires `true` or `false`"),
+                        span,
+                    })
+                }
+            };
+            self.lexer.expect_span(Token::Paren(')'))?;
+            value
+        } else {
+            true
+        };
+        if self.lexer.peek()?.0 == Token::Word("noexcept") {
+            return self.fail("duplicate noexcept specification");
+        }
+        Ok(Some(value))
     }
 
     fn bind_template_function_parameter(
@@ -1569,7 +1618,7 @@ impl<'a> Parser<'a> {
             self.initialize_function_header(&header)?;
             self.function.replay_default_header = Some(template);
             self.parameters_with_launch_bounds(&mut header.launch_bounds)?;
-            self.reject_noexcept("function templates")?;
+            self.template_noexcept(header.kind)?;
             self.lexer.expect_span(Token::End)?;
             let result = self.function.ir.result.as_ref().map(|result| result.ty);
             Ok(ResolvedSignature {
@@ -1625,6 +1674,7 @@ impl<'a> Parser<'a> {
         let has_host = declaration.header.has_host;
         let is_static = declaration.header.is_static;
         let inlining = declaration.header.inlining;
+        let is_noexcept = declaration.is_noexcept;
         self.parameter_expansion_budget
             .charge_slice::<Instance>(1, span)?;
         self.parameter_expansion_budget
@@ -1666,7 +1716,7 @@ impl<'a> Parser<'a> {
                 FunctionDeclaration {
                     parameters: signature,
                     defaults,
-                    is_noexcept: false,
+                    is_noexcept,
                     source_result,
                     result_qualifiers,
                     has_host,
@@ -2224,7 +2274,7 @@ impl<'a> Parser<'a> {
                 .charge_bytes(header.name.len(), span)?;
             self.initialize_function_header(&header)?;
             self.parameters_with_launch_bounds(&mut header.launch_bounds)?;
-            self.reject_noexcept("function templates")?;
+            self.template_noexcept(header.kind)?;
             self.lexer.expect_span(Token::End)?;
             Ok::<_, ParseError>(header.launch_bounds)
         })();
@@ -2301,5 +2351,54 @@ impl<'a> Parser<'a> {
         self.lexer = previous_lexer;
         self.global_declarations = previous_globals;
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cuda_template_noexcept_checks_work_budget_before_consuming_specification() {
+        let source = "noexcept(true)";
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        parser.parameter_expansion_budget.activate();
+        let span = Span::new(0, 8);
+        for bit in (0..usize::BITS).rev() {
+            let _ = parser
+                .parameter_expansion_budget
+                .charge_work(1usize << bit, span);
+        }
+        assert!(parser.template_noexcept(FunctionKind::Device).is_err());
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+        assert_eq!(parser.lexer.peek().unwrap().0, Token::Word("noexcept"));
+        assert!(parser.function.ir.expressions.is_empty());
+        assert!(parser.module.types.is_empty());
+    }
+
+    #[test]
+    fn cuda_template_noexcept_stores_the_primary_specification_in_instances() {
+        let source = "template<class T = int> __device__ T copy(T value) noexcept;
+            template<class U> __device__ U copy(U renamed) noexcept(true) { return renamed; }";
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        parser.template_declaration().unwrap();
+
+        let span = Span::new(0, 8);
+        let arguments = parser
+            .normalized_template_arguments(0, &[], span)
+            .unwrap()
+            .unwrap();
+        let instance = parser.template_instance(0, arguments, span).unwrap();
+        let InstanceTarget::Device(function) = parser.templates.instances[instance].target else {
+            panic!("expected a device helper");
+        };
+        assert!(parser.function_declarations[&function].is_noexcept);
+
+        parser.template_declaration().unwrap();
+        parser.queue_template_instance(instance).unwrap();
+        parser.finish_templates().unwrap();
+        let declaration = &parser.function_declarations[&function];
+        assert!(declaration.is_defined);
+        assert!(declaration.is_noexcept);
     }
 }

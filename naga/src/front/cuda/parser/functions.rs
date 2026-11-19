@@ -1853,7 +1853,11 @@ impl<'a> Parser<'a> {
             self.function.ir.name = self.module.functions[target].name.clone();
         }
         self.parameters_with_launch_bounds(&mut header.launch_bounds)?;
-        let exception_specification = self.trailing_noexcept()?;
+        let exception_specification = if target.is_some() {
+            self.template_noexcept(header.kind)?
+        } else {
+            self.trailing_noexcept()?
+        };
         let is_noexcept = exception_specification.unwrap_or(false);
         if let Some(target) = target {
             if self.function_declarations[&target].parameters != self.function.parameters {

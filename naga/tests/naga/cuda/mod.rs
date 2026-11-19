@@ -174,6 +174,7 @@ mod switches;
 mod template_default_arguments;
 mod template_default_merging;
 mod template_default_type_queries;
+mod template_noexcept;
 mod thread_block;
 mod thread_block_dimensions;
 mod thread_block_parameters;

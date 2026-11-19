@@ -114,7 +114,6 @@ fn cuda_noexcept_rejects_nonnarrowing_boolean_failures_and_runtime_specification
 fn cuda_noexcept_rejects_kernel_template_intrinsic_specs_and_noexcept_operator() {
     for specification in ["noexcept", "noexcept(false)"] {
         reject(&format!("__global__ void kernel() {specification} {{}}"));
-        reject(&format!("template<class T> __device__ int f(T value) {specification} {{ return int(value); }} __global__ void kernel() {{}}"));
         reject(&format!(
             "template<int N> __global__ void kernel() {specification} {{}}"
         ));

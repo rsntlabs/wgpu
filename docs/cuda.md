@@ -641,9 +641,13 @@ unevaluated type queries such as `sizeof(value)`, but cannot be read by the
 condition, including in a discarded branch. Conditions are checked during
 translation and add no runtime resource bindings.
 These rules follow C++ [exception specifications](https://eel.is/c++draft/except.spec).
-Specifications on kernels, function templates, and predefined intrinsic
-signatures remain unsupported. Calls to function templates inside conditions,
-exception handling, and the `noexcept` expression operator are also unsupported.
+Device function templates accept `noexcept`, `noexcept(true)`, and
+`noexcept(false)`. Redeclarations must agree on the effective Boolean value,
+and each instantiation inherits that value. Template specifications with
+other expressions remain unsupported. Specifications on kernels, explicit
+kernel instantiation directives, and predefined intrinsic signatures remain
+unsupported. Calls to function templates inside conditions, exception
+handling, and the `noexcept` expression operator are also unsupported.
 
 Ordinary helpers accept trailing scalar constant default arguments:
 

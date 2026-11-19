@@ -215,6 +215,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support fixed integral defaults on CUDA function template parameters, preserving declared conversions and specialization reuse.
 - Support fixed type defaults on CUDA function template parameters, applying defaults after argument deduction.
 - Support CUDA `noexcept` specifications on ordinary device helpers, with constant conditions and compatible redeclarations.
+- Support fixed `noexcept` specifications on CUDA device function templates.
 - Support CUDA `decltype(name)` for named non-reference value objects, preserving source types and qualifiers without evaluating the object.
 - Support CUDA packed signed and unsigned greater-than-or-equal comparisons with lane masks or per-lane 0/1 results.
 - Support CUDA packed signed and unsigned strict greater-than comparisons with lane masks or per-lane 0/1 results.

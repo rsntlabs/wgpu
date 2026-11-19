@@ -138,7 +138,6 @@ fn cuda_noexcept_cli_rejects_invalid_specs_and_incompatible_redeclarations() {
         "__device__ unsigned helper() noexcept(true { return 1u; } __global__ void kernel() {}",
         "__device__ unsigned helper() noexcept noexcept { return 1u; } __global__ void kernel() {}",
         "__global__ void kernel() noexcept(false) {}",
-        "template<class T> __device__ T helper(T value) noexcept(false) { return value; } __global__ void kernel() {}",
         "__device__ unsigned __vabs2(unsigned value) noexcept(false); __global__ void kernel() {}",
         "__global__ void kernel() { bool value = noexcept(1u); }",
     ] {
