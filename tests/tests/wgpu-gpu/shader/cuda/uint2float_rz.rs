@@ -2,13 +2,13 @@ use super::{module_case, ShaderBuffer, ShaderTest};
 
 const SENTINEL: u32 = 0xdead_beef;
 
-fn expected_bits(value: u32) -> u32 {
+pub(super) fn toward_zero_bits(value: u32) -> u32 {
     let exact = f64::from(value);
     let nearest = exact as f32;
     nearest.to_bits() - u32::from(f64::from(nearest) > exact)
 }
 
-pub(super) fn cases() -> Vec<ShaderTest> {
+pub(super) fn unsigned_inputs() -> Vec<u32> {
     let mut input = vec![
         0u32,
         1,
@@ -55,13 +55,18 @@ pub(super) fn cases() -> Vec<ShaderTest> {
         state ^= state << 5;
         input.push(state);
     }
-    assert_eq!(expected_bits(u32::MAX), 0x4f7f_ffff);
-    assert_eq!(expected_bits(2_147_483_648), 0x4f00_0000);
-    assert_eq!(expected_bits(2_147_483_649), 0x4f00_0000);
-    assert_eq!(expected_bits(16_777_219), 0x4b80_0001);
+    input
+}
+
+pub(super) fn cases() -> Vec<ShaderTest> {
+    let input = unsigned_inputs();
+    assert_eq!(toward_zero_bits(u32::MAX), 0x4f7f_ffff);
+    assert_eq!(toward_zero_bits(2_147_483_648), 0x4f00_0000);
+    assert_eq!(toward_zero_bits(2_147_483_649), 0x4f00_0000);
+    assert_eq!(toward_zero_bits(16_777_219), 0x4b80_0001);
     let mut expected = vec![SENTINEL; input.len() * 8 + 8];
     for (index, &value) in input.iter().enumerate() {
-        let bits = expected_bits(value);
+        let bits = toward_zero_bits(value);
         expected[4 + index * 8..12 + index * 8].copy_from_slice(&[
             bits,
             bits,

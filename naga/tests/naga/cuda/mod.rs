@@ -193,6 +193,7 @@ mod type_aliases;
 mod type_queries;
 mod type_templates;
 mod typedef_structures;
+mod uint2float_rn;
 mod uint2float_rz;
 mod uniform_branch_barriers;
 mod uniform_loop_barriers;

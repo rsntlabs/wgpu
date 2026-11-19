@@ -35,6 +35,17 @@ fn cuda_int2float_rn_cli_emits_all_backends_with_bit_exact_float_result() {
     );
 }
 
+#[test]
+fn cuda_uint2float_rn_cli_emits_all_backends_with_bit_exact_float_result() {
+    emits_all_backends_with_bit_exact_float_result(
+        "using Word = unsigned; __device__ float __uint2float_rn(const Word);
+        __global__ void kernel(float *out, const unsigned *input, int integral) {
+            out[0] = __uint2float_rn(input[0]);
+            out[1] = __uint2float_rn(integral);
+        }",
+    );
+}
+
 fn emits_all_backends_with_bit_exact_float_result(source: &str) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);
@@ -107,6 +118,16 @@ fn cuda_int2float_rn_cli_rejects_invalid_calls_without_output() {
         "__device__ float __int2float_rn(int value) { return 1.0f; } __global__ void kernel() {}",
         "__global__ void kernel(float *out) { out[0] = __int2float_rn(1, 2); }",
         "__global__ void kernel(float *out) { constexpr float value = __int2float_rn(1); out[0] = value; }",
+    ]);
+}
+
+#[test]
+fn cuda_uint2float_rn_cli_rejects_invalid_calls_without_output() {
+    rejects_invalid_calls_without_output(&[
+        "__device__ unsigned __uint2float_rn(unsigned); __global__ void kernel() {}",
+        "__device__ float __uint2float_rn(unsigned value) { return 1.0f; } __global__ void kernel() {}",
+        "__global__ void kernel(float *out) { out[0] = __uint2float_rn(); }",
+        "__global__ void kernel(float *out) { out[0] = __uint2float_rn(1u, 2u); }",
     ]);
 }
 

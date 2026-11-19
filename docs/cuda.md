@@ -1384,9 +1384,11 @@ a `float`. For example, `2147483647` becomes `2147483520.0f` in the signed
 form, and `4294967295u` becomes `4294967040.0f` in the unsigned form. Both
 conversions are exact for integers representable as `float`, including zero.
 
-`__int2float_rn(int)` converts its argument to `int` first and rounds to the
-nearest representable `float`, choosing the even significand on a tie. For
-example, `16777217` becomes `16777216.0f` and `16777219` becomes `16777220.0f`.
+`__int2float_rn(int)` and `__uint2float_rn(unsigned int)` convert the argument
+to the declared integer type first, then round to the nearest representable
+`float`, choosing the even significand on a tie. For example, `16777217` becomes
+`16777216.0f`, `16777219` becomes `16777220.0f`, and `4294967295u` becomes
+`4294967296.0f`.
 
 These predefined functions operate on integer representations:
 
