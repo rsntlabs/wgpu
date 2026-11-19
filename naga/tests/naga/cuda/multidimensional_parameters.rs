@@ -190,7 +190,7 @@ fn cuda_multidimensional_parameters_expose_kernel_row_storage_strides_and_bindin
     }
     validate("__global__ void kernel(int output[2], const int input[]) { output[0] = input[0]; }");
     validate("struct R { unsigned value; }; __global__ void kernel(float3 output[][2], const R input[][2]) { output[0][1].x = float(input[0][1].value); }");
-    for parameter in ["float3 value", "uint1 value", "R value"] {
+    for parameter in ["short3 value", "ushort1 value", "R value"] {
         reject(&format!(
             "struct R {{ unsigned value; }}; __global__ void kernel({parameter}) {{}}"
         ));

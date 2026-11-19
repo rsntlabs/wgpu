@@ -399,7 +399,7 @@ fn cuda_single_component_vectors_specialize_dynamic_shared_at_the_scalar_stride(
 
 #[test]
 fn cuda_single_component_vectors_reject_implicit_scalar_conversions_arithmetic_and_extra_fields() {
-    for (name, component, _) in TYPES {
+    for (name, component, scalar) in TYPES {
         for operation in [
             "Value value = scalar;",
             "Component value = wrapped;",
@@ -424,7 +424,9 @@ fn cuda_single_component_vectors_reject_implicit_scalar_conversions_arithmetic_a
                 "__global__ void kernel() {{ make_{name}({arguments}); }}"
             ));
         }
-        rejected(&format!("__global__ void kernel({name} value) {{}}"));
+        if scalar.width == 2 {
+            rejected(&format!("__global__ void kernel({name} value) {{}}"));
+        }
     }
     rejected("__global__ void kernel(const int1 *input, uint1 *output) { output[0] = input[0]; }");
     rejected(

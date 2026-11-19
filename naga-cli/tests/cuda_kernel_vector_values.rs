@@ -5,10 +5,14 @@ use common::TestFiles;
 #[test]
 fn cuda_kernel_vector_values_cli_preserves_bindings_across_writers() {
     let source = "using Pair = float2;
-        __global__ void kernel(const Pair input, unsigned *out, uint4 value, bool flag) {
+        __global__ void kernel(const Pair input, unsigned *out, uint4 value, bool flag,
+                               const float1 single, int3 triple) {
             value.x += value.w;
             out[0] = __float_as_uint(input.y);
             out[1] = flag ? value.x : value.z;
+            triple.z += triple.y;
+            out[2] = __float_as_uint(single.x);
+            out[3] = unsigned(triple.z);
         }";
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);
@@ -51,10 +55,8 @@ fn cuda_kernel_vector_values_cli_preserves_bindings_across_writers() {
             },
             naga::TypeInner::Scalar(naga::Scalar::U32),
         ];
-        assert_eq!(resources.len(), expected.len());
-        for (index, ((binding, global), expected)) in
-            resources.into_iter().zip(expected).enumerate()
-        {
+        assert_eq!(resources.len(), expected.len() + 2);
+        for (index, (binding, global)) in resources.into_iter().enumerate() {
             assert_eq!(
                 binding,
                 naga::ResourceBinding {
@@ -88,7 +90,28 @@ fn cuda_kernel_vector_values_cli_preserves_bindings_across_writers() {
                 assert_eq!(members[0].offset, 0);
                 members[0].ty
             };
-            assert_eq!(module.types[payload].inner, expected);
+            if let Some(expected) = expected.get(index) {
+                assert_eq!(&module.types[payload].inner, expected);
+            } else {
+                let naga::TypeInner::Struct { ref members, .. } = module.types[payload].inner
+                else {
+                    panic!("expected a named CUDA vector");
+                };
+                let (count, scalar) = if index == 4 {
+                    (1, naga::Scalar::F32)
+                } else {
+                    (3, naga::Scalar::I32)
+                };
+                assert_eq!(members.len(), count);
+                for (field, (member, name)) in members.iter().zip(["x", "y", "z"]).enumerate() {
+                    assert_eq!(member.name.as_deref(), Some(name));
+                    assert_eq!(member.offset, field as u32 * 4);
+                    assert_eq!(
+                        module.types[member.ty].inner,
+                        naga::TypeInner::Scalar(scalar)
+                    );
+                }
+            }
         }
     }
 }
@@ -96,7 +119,7 @@ fn cuda_kernel_vector_values_cli_preserves_bindings_across_writers() {
 #[test]
 fn cuda_kernel_vector_values_cli_rejects_unsupported_values_and_const_writes() {
     for source in [
-        "__global__ void kernel(float3 value) {}",
+        "__global__ void kernel(short3 value) {}",
         "__global__ void kernel(short2 value) {}",
         "__global__ void kernel(const uint4 value) { value.w = 7u; }",
         "__global__ void kernel(float2 &value) {}",

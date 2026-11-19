@@ -272,8 +272,8 @@ fn cuda_vector_make_functions_merge_extra_arities_and_reject_duplicate_signature
 }
 
 #[test]
-fn cuda_one_and_three_component_vector_kernel_parameters_require_pointers() {
-    for scalar in ["float", "int", "uint"] {
+fn cuda_16_bit_named_vector_kernel_parameters_require_pointers() {
+    for scalar in ["short", "ushort"] {
         for width in [1, 3] {
             for parameter in [
                 format!("{scalar}{width} value"),

@@ -147,7 +147,12 @@ mod tests {
 
     #[test]
     fn cuda_kernel_vector_values_preflight_before_publishing_parameters() {
-        for source in ["int2 value)", "const float4 value)"] {
+        for source in [
+            "int2 value)",
+            "const float4 value)",
+            "int1 value)",
+            "uint3 value)",
+        ] {
             let span = Span::new(0, 1);
             let mut complete = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             complete.parameter(0).unwrap();
@@ -168,6 +173,7 @@ mod tests {
                 assert_eq!(error.message, limit_error(span).message);
                 assert!(parser.parameter_expansion_budget.is_exhausted());
                 assert!(parser.module.types.is_empty());
+                assert!(parser.uint3_type.is_none());
                 assert!(parser.module.global_variables.is_empty());
                 assert!(parser.function.ir.local_variables.is_empty());
                 assert!(parser.function.ir.expressions.is_empty());

@@ -210,7 +210,6 @@ fn cuda_shared_vectors_reject_initializers_and_unsupported_declarations() {
          __global__ void kernel() {}",
         "__device__ float3 helper(float3 *value) { return value[0]; }
          __global__ void kernel() { __shared__ float3 value; helper(value); }",
-        "__global__ void kernel(float3 value) { __shared__ float3 valid; }",
     ] {
         rejected(source);
     }

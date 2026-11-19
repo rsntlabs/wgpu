@@ -533,12 +533,14 @@ unsupported. Successful assertions add no runtime checks. Requested template
 instances are checked before CLI entry selection.
 
 Vector elements support whole-value copies and scalar field access, including
-assignments and updates to writable fields. Kernel value parameters also accept
-`int2`, `uint2`, `float2`, `int4`, `uint4`, and `float4`. Each uses a separate
-16-byte uniform buffer at the parameter's source binding index. Its components
-start at byte offset 0 and use four bytes each in `x`, `y`, `z`, `w` order. The
-last eight bytes of a two-component parameter's buffer are padding. Other
-kernel vector parameters require pointers or adjusted array declarators.
+assignments and updates to writable fields. Kernel value parameters accept the
+one-, two-, three-, and four-component `int`, `uint`, and `float` vectors. Each
+uses a separate 16-byte uniform buffer at the parameter's source binding index.
+Components occupy four bytes each in `x`, `y`, `z`, `w` order starting at byte
+offset 0. Bytes after the final component are padding. Source queries still see
+the four-byte size of a one-component vector and the 12-byte size of a
+three-component vector. Other kernel vector parameters require pointers or
+adjusted array declarators.
 
 Scalar parameters use 16-byte uniform buffers containing the two-, four-, or eight-byte
 numeric value at byte offset 0. Boolean value parameters use a `u32` field at offset

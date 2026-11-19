@@ -527,6 +527,37 @@ impl<'a> Parser<'a> {
             }
             return self.thread_block_parameter(type_span);
         }
+        if self.function.kind == FunctionKind::Kernel
+            && explicit_pointer_qualifiers.is_none()
+            && !is_reference
+        {
+            if let TypeSpecifier::Vector {
+                component_count: component_count @ 1..=4,
+                scalar: Scalar::I32 | Scalar::U32 | Scalar::F32,
+            } = specifier
+            {
+                let mut declarator = self.lexer.clone();
+                if let (Token::Word(name), span) = declarator.next()? {
+                    if matches!(
+                        declarator.peek()?.0,
+                        Token::Separator(',') | Token::Paren(')') | Token::Operation('=')
+                    ) {
+                        self.check_name(name, span)?;
+                        self.note_volatile_parameter_object(qualifiers, type_span)?;
+                        self.prepare_kernel_vector_value_parameter(name, component_count, span)?;
+                        let ty = self.lower_type(specifier, type_span)?;
+                        self.lexer = declarator;
+                        return self.value_parameter(
+                            parameter_index,
+                            name,
+                            span,
+                            &ty,
+                            qualifiers.is_const,
+                        );
+                    }
+                }
+            }
+        }
         let (ty, qualifiers, aliased_pointer_qualifiers) = match specifier {
             TypeSpecifier::Pointer {
                 pointee,
@@ -638,20 +669,13 @@ impl<'a> Parser<'a> {
         if self.function.kind == FunctionKind::Kernel
             && !is_pointer
             && specifier.source_scalar().is_none()
-            && !matches!(
-                specifier,
-                TypeSpecifier::Vector {
-                    component_count: 2 | 4,
-                    scalar: Scalar::I32 | Scalar::U32 | Scalar::F32,
-                }
-            )
         {
             return Err(ParseError {
                 message: String::from(
                     if matches!(specifier, TypeSpecifier::Dim3 | TypeSpecifier::Structure(_)) {
                         "structure kernel value parameters are unsupported"
                     } else {
-                        "kernel vector value parameters require two or four 32-bit components"
+                        "unsupported kernel vector value parameter"
                     },
                 ),
                 span: type_span,
@@ -744,6 +768,35 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    fn prepare_kernel_vector_value_parameter(
+        &mut self,
+        name: &str,
+        component_count: u8,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let budget = &mut self.parameter_expansion_budget;
+        let mut types = 2;
+        if matches!(component_count, 1 | 3) {
+            // These vectors intern a scalar and a named struct before the uniform wrapper.
+            types += 1;
+            let members = usize::from(component_count);
+            budget.charge_slice::<StructMember>(members, span)?;
+            budget.charge_bytes("float3".len() + members, span)?;
+        }
+        budget.charge_work(1, span)?;
+        budget.charge_nodes(types + 2, span)?;
+        budget.charge_slice::<(Type, Span)>(types, span)?;
+        budget.charge_slice::<StructMember>(1, span)?;
+        budget.charge_slice::<(GlobalVariable, Span)>(1, span)?;
+        budget.charge_slice::<(LocalVariable, Span)>(1, span)?;
+        budget.charge_slice::<(Statement, Span)>(3, span)?;
+        budget.charge_map_entry::<&str, Symbol>(1, span)?;
+        budget.charge_bytes("value".len() + 2 * name.len(), span)?;
+        budget.preflight_expressions(4, span)
+    }
+
     fn value_parameter(
         &mut self,
         parameter_index: u32,
@@ -752,24 +805,6 @@ impl<'a> Parser<'a> {
         parameter_ty: &TypeResolution,
         is_const: bool,
     ) -> Result<(), ParseError> {
-        if matches!(
-            parameter_ty,
-            &TypeResolution::Value(TypeInner::Vector { .. })
-        ) {
-            self.activate_parameter_expansion(span)?;
-            self.prepare_parameter_bindings(span)?;
-            let budget = &mut self.parameter_expansion_budget;
-            budget.charge_work(1, span)?;
-            budget.charge_nodes(4, span)?;
-            budget.charge_slice::<(Type, Span)>(2, span)?;
-            budget.charge_slice::<StructMember>(1, span)?;
-            budget.charge_slice::<(GlobalVariable, Span)>(1, span)?;
-            budget.charge_slice::<(LocalVariable, Span)>(1, span)?;
-            budget.charge_slice::<(Statement, Span)>(3, span)?;
-            budget.charge_map_entry::<&str, Symbol>(1, span)?;
-            budget.charge_bytes("value".len() + 2 * name.len(), span)?;
-            budget.preflight_expressions(4, span)?;
-        }
         let is_bool = self
             .module
             .compare_types(parameter_ty, &scalar_resolution(Scalar::BOOL));

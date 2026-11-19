@@ -133,9 +133,6 @@ fn cuda_kernel_vector_values_route_fixed_and_deduced_template_instances() {
 #[test]
 fn cuda_kernel_vector_values_keep_other_aggregate_value_families_out_of_scope() {
     for ty in [
-        "int1",
-        "uint3",
-        "float3",
         "short2",
         "ushort4",
         "long2",
