@@ -208,6 +208,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA `__int2float_rn` for signed integer-to-float conversion with nearest-even rounding.
 - Support CUDA `__uint2float_rn` for unsigned integer-to-float conversion with nearest-even rounding.
 - Support CUDA `__int2float_rd` for signed integer-to-float conversion toward negative infinity.
+- Support CUDA `__int2float_ru` for signed integer-to-float conversion toward positive infinity.
 - Support CUDA `rintf` with portable rounding to the nearest even integer.
 - Support CUDA `nearbyintf` through the existing nearest-even rounding helper.
 - Support explicit scalar declaration conditions in CUDA `if` and `switch` statements.

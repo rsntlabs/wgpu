@@ -90,6 +90,7 @@ mod inferred_selection_conditions;
 mod inline;
 mod int2float_rd;
 mod int2float_rn;
+mod int2float_ru;
 mod int2float_rz;
 mod integer16;
 mod integer16_vectors;

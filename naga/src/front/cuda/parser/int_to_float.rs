@@ -9,6 +9,7 @@ pub(super) enum IntegerToFloatRounding {
     TowardZero,
     NearestEven,
     TowardNegative,
+    TowardPositive,
 }
 
 impl Parser<'_> {
@@ -120,6 +121,15 @@ impl Parser<'_> {
                     // Only negative inexact values need a larger magnitude.
                     let inexact = binary(self, NotEqual, discarded, zero)?;
                     (inexact, negative_digit.unwrap_or(zero))
+                }
+                IntegerToFloatRounding::TowardPositive => {
+                    let inexact = binary(self, NotEqual, discarded, zero)?;
+                    let positive_digit = if let Some(negative_digit) = negative_digit {
+                        binary(self, Subtract, one, negative_digit)?
+                    } else {
+                        one
+                    };
+                    (inexact, positive_digit)
                 }
                 IntegerToFloatRounding::TowardZero => unreachable!(),
             };
