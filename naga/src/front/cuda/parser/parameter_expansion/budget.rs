@@ -1710,12 +1710,21 @@ mod tests {
 
     #[test]
     fn cuda_int2float_rz_checks_budgets_before_converting_and_encoding() {
+        check_integer_to_float_rz_budget("__int2float_rz", "1u");
+    }
+
+    #[test]
+    fn cuda_uint2float_rz_checks_budgets_before_converting_and_encoding() {
+        check_integer_to_float_rz_budget("__uint2float_rz", "1");
+    }
+
+    fn check_integer_to_float_rz_budget(intrinsic: &str, literal: &str) {
         for prepared in [false, true] {
             for (exhaust_bytes, headroom) in [(false, 0), (false, 1), (true, 0), (true, 1)] {
-                let span = Span::new(0, 2);
-                let mut parser = Parser::new(Lexer::new("1u").unwrap(), &Options::default());
-                let arguments = alloc::vec![parser.number("1u", span).unwrap()];
-                let candidate = parser.function_candidates("__int2float_rz").next().unwrap();
+                let span = Span::new(0, literal.len() as u32);
+                let mut parser = Parser::new(Lexer::new(literal).unwrap(), &Options::default());
+                let arguments = alloc::vec![parser.number(literal, span).unwrap()];
+                let candidate = parser.function_candidates(intrinsic).next().unwrap();
                 parser.parameter_expansion_budget.activate();
                 if prepared {
                     parser.prepare_parameter_bindings(span).unwrap();

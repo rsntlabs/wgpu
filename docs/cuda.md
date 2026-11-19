@@ -1378,10 +1378,11 @@ return type's range or the input is nonfinite. In the unsigned form, negative
 fractions greater than `-1` truncate to zero. Both intrinsics follow the runtime
 and overload rules for predefined device functions.
 
-`__int2float_rz(int)` converts its argument to `int` first and rounds the
-signed integer toward zero to produce a `float`. For example, `2147483647`
-becomes `2147483520.0f`. The conversion is exact for integers representable as
-`float`, including zero.
+`__int2float_rz(int)` and `__uint2float_rz(unsigned int)` convert the argument
+to the declared integer parameter type first, then round toward zero to produce
+a `float`. For example, `2147483647` becomes `2147483520.0f` in the signed
+form, and `4294967295u` becomes `4294967040.0f` in the unsigned form. Both
+conversions are exact for integers representable as `float`, including zero.
 
 These predefined functions operate on integer representations:
 
