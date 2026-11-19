@@ -6,10 +6,19 @@ use super::helpers::{validate, validate_with_options_and_capabilities};
 
 #[test]
 fn cuda_uint2float_rz_converts_actuals_before_encoding_the_float_result() {
-    let (module, info) = validate(
-        "using Word = const unsigned; __device__ float __uint2float_rz(Word);
-        __global__ void kernel(float *out, int value) { out[0] = __uint2float_rz(value); }",
-    );
+    check_unsigned_conversion("__uint2float_rz");
+}
+
+#[test]
+fn cuda_uint2float_rd_converts_actuals_before_encoding_the_float_result() {
+    check_unsigned_conversion("__uint2float_rd");
+}
+
+fn check_unsigned_conversion(intrinsic: &str) {
+    let (module, info) = validate(&format!(
+        "using Word = const unsigned; __device__ float {intrinsic}(Word);
+        __global__ void kernel(float *out, int value) {{ out[0] = {intrinsic}(value); }}"
+    ));
     assert!(module.functions.is_empty());
     let expressions = &module.entry_points[0].function.expressions;
     let types = info.get_entry_point(0);
@@ -36,7 +45,7 @@ fn cuda_uint2float_rz_converts_actuals_before_encoding_the_float_result() {
         "float value = 3.5f;",
     ] {
         validate_with_options_and_capabilities(
-            &format!("__global__ void kernel(float *out) {{ {declaration} out[0] = __uint2float_rz(value); }}"),
+            &format!("__global__ void kernel(float *out) {{ {declaration} out[0] = {intrinsic}(value); }}"),
             &Options::default(),
             Capabilities::SHADER_INT16 | Capabilities::SHADER_INT64,
         );
@@ -45,15 +54,25 @@ fn cuda_uint2float_rz_converts_actuals_before_encoding_the_float_result() {
 
 #[test]
 fn cuda_uint2float_rz_preserves_user_overloads_and_template_selection() {
+    check_unsigned_overloads("__uint2float_rz");
+}
+
+#[test]
+fn cuda_uint2float_rd_preserves_user_overloads_and_template_selection() {
+    check_unsigned_overloads("__uint2float_rd");
+}
+
+fn check_unsigned_overloads(intrinsic: &str) {
     let (module, _) = validate(
-        "__device__ int __uint2float_rz(int value) { return value + 1; }
+        &"__device__ int __uint2float_rz(int value) { return value + 1; }
         template<class T> __device__ T __uint2float_rz(T *value) { return value[0]; }
         __device__ float use_template() { float value = 1.0f; return __uint2float_rz(&value); }
         __global__ void kernel(float *out, int signed_value, unsigned word) {
             out[0] = float(__uint2float_rz(signed_value));
             out[1] = __uint2float_rz(word);
             out[2] = use_template();
-        }",
+        }"
+        .replace("__uint2float_rz", intrinsic),
     );
     let function = &module.entry_points[0].function;
     let mut signed_calls = 0;
@@ -77,6 +96,15 @@ fn cuda_uint2float_rz_preserves_user_overloads_and_template_selection() {
 
 #[test]
 fn cuda_uint2float_rz_rejects_invalid_declarations_calls_and_source_constants() {
+    check_invalid_unsigned_calls("__uint2float_rz");
+}
+
+#[test]
+fn cuda_uint2float_rd_rejects_invalid_declarations_calls_and_source_constants() {
+    check_invalid_unsigned_calls("__uint2float_rd");
+}
+
+fn check_invalid_unsigned_calls(intrinsic: &str) {
     for source in [
         "__device__ float __uint2float_rz(unsigned value) { return float(value); } __global__ void kernel() {}",
         "__device__ unsigned __uint2float_rz(unsigned); __global__ void kernel() {}",
@@ -88,9 +116,10 @@ fn cuda_uint2float_rz_rejects_invalid_declarations_calls_and_source_constants() 
         "__global__ void kernel() { constexpr float value = __uint2float_rz(3u); }",
         "__global__ void kernel() { static_assert(__uint2float_rz(3u) == 3.0f); }",
     ] {
-        let error = parse_str(source, &Options::default()).unwrap_err();
+        let source = source.replace("__uint2float_rz", intrinsic);
+        let error = parse_str(&source, &Options::default()).unwrap_err();
         let range = error.span.to_range().unwrap();
         assert!(!range.is_empty() && source.get(range).is_some(), "{source}: {error}");
     }
-    validate("__global__ void kernel(float *out) { constexpr float value = true ? 3.0f : __uint2float_rz(3u); out[0] = value; }");
+    validate(&format!("__global__ void kernel(float *out) {{ constexpr float value = true ? 3.0f : {intrinsic}(3u); out[0] = value; }}"));
 }

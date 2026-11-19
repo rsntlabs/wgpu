@@ -1390,9 +1390,11 @@ to the declared integer type first, then round to the nearest representable
 `16777216.0f`, `16777219` becomes `16777220.0f`, and `4294967295u` becomes
 `4294967296.0f`.
 
-`__int2float_rd(int)` converts its argument to `int` first and rounds toward
-negative infinity. For example, `16777217` becomes `16777216.0f`, and
-`-16777217` becomes `-16777218.0f`.
+`__int2float_rd(int)` and `__uint2float_rd(unsigned int)` convert the argument
+to the declared integer type first, then round toward negative infinity. For
+example, `16777217` becomes `16777216.0f` and `-16777217` becomes `-16777218.0f`
+in the signed form. The unsigned form gives the same result as
+`__uint2float_rz` because every converted argument is nonnegative.
 
 `__int2float_ru(int)` and `__uint2float_ru(unsigned int)` convert the argument
 to the declared integer type first, then round toward positive infinity. For

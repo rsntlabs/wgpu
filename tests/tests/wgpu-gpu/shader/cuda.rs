@@ -195,6 +195,7 @@ mod type_aliases;
 mod type_queries;
 mod type_templates;
 mod typedef_structures;
+mod uint2float_rd;
 mod uint2float_rn;
 mod uint2float_ru;
 mod uint2float_rz;
@@ -266,6 +267,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FLOAT_MATH,
         CUDA_FLOAT_SEPARATORS,
         CUDA_FLOAT_TRUTHINESS,
+        CUDA_UINT2FLOAT_RD,
         CUDA_UINT2FLOAT_RN,
         CUDA_UINT2FLOAT_RU,
         CUDA_UINT2FLOAT_RZ,
@@ -1299,3 +1301,6 @@ static CUDA_INT2FLOAT_RU: GpuTestConfiguration = configuration(int2float_ru::cas
 
 #[apply(gpu_test!)]
 static CUDA_UINT2FLOAT_RU: GpuTestConfiguration = configuration(uint2float_ru::cases);
+
+#[apply(gpu_test!)]
+static CUDA_UINT2FLOAT_RD: GpuTestConfiguration = configuration(uint2float_rd::cases);
