@@ -1,12 +1,12 @@
 use super::*;
 
 impl Parser<'_> {
-    fn loop_condition(&mut self) -> Result<(), ParseError> {
-        let value = self.comma_expression()?;
-        self.loop_condition_value(value)
-    }
-
-    fn loop_condition_value(&mut self, value: ExpressionValue) -> Result<(), ParseError> {
+    fn loop_condition(&mut self, declaration: bool) -> Result<(), ParseError> {
+        let value = if declaration {
+            self.scalar_condition_declaration()?
+        } else {
+            self.comma_expression()?
+        };
         let condition = self.truthy(value)?;
         let mut reject = crate::Block::new();
         reject.push(Statement::Break, condition.span);
@@ -30,12 +30,7 @@ impl Parser<'_> {
             self.function.protected_if_header_scope = None;
         }
         let result = self.capture_block(|parser| {
-            let value = if declaration {
-                parser.scalar_condition_declaration()?
-            } else {
-                parser.comma_expression()?
-            };
-            parser.loop_condition_value(value)?;
+            parser.loop_condition(declaration)?;
             parser.lexer.expect_span(Token::Paren(')'))?;
             if declaration {
                 parser.function.protected_if_header_scope =
@@ -90,7 +85,8 @@ impl Parser<'_> {
         })?;
         let ((), mut body) = self.capture_block(|parser| {
             if !parser.lexer.next_if(Token::Separator(';'))? {
-                parser.loop_condition()?;
+                let declaration = parser.condition_declaration_follows()?;
+                parser.loop_condition(declaration)?;
                 parser.lexer.expect_span(Token::Separator(';'))?;
             }
             Ok(())
@@ -272,6 +268,55 @@ mod tests {
                 assert!(parser.parameter_expansion_budget.is_exhausted());
                 assert_outer_scope(&parser, depth);
             }
+        }
+    }
+
+    #[test]
+    fn for_declaration_is_initialized_in_body_and_loaded_in_continuing() {
+        let source = "for (; int header = 1; header += 2) { header = 3; continue; }";
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        parser.statement().unwrap();
+        let [Statement::Block(init)] = &parser.function.ir.body[..] else {
+            panic!("expected for scope");
+        };
+        let [Statement::Loop {
+            body, continuing, ..
+        }] = &init[..]
+        else {
+            panic!("condition initializer belongs inside the loop");
+        };
+        let initialize = body
+            .iter()
+            .position(|statement| matches!(statement, Statement::Store { .. }))
+            .unwrap();
+        let exit = body.iter().position(|statement| {
+            matches!(statement, Statement::If { reject, .. } if matches!(&reject[..], [Statement::Break]))
+        }).unwrap();
+        assert!(initialize < exit);
+        let Statement::Store { pointer, .. } = body[initialize] else {
+            unreachable!();
+        };
+        let expressions = &parser.function.ir.expressions;
+        assert!(continuing.iter().any(|statement| match statement {
+            Statement::Emit(range) => range.clone().any(|handle| {
+                matches!(expressions[handle], Expression::Load { pointer: loaded } if loaded == pointer)
+            }),
+            _ => false,
+        }));
+        assert!(parser.function.symbol_table.lookup("header").is_none());
+    }
+
+    #[test]
+    fn for_declaration_errors_restore_outer_scope_and_control_depths() {
+        for source in [
+            "for (int branch = 1; auto header = header;) {}",
+            "for (int branch = 1; int header = 2; header +=) {}",
+            "for (int branch = 1; int header = 2;) { int inner = 3;",
+        ] {
+            let mut parser = parser_with_outer_scope(source);
+            let depth = parser.function.symbol_table.scope_depth();
+            assert!(parser.statement().is_err(), "{source}");
+            assert_outer_scope(&parser, depth);
         }
     }
 

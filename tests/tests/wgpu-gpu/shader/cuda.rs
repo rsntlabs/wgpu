@@ -67,6 +67,7 @@ mod fmodf;
 mod fmul_rn;
 mod fmul_rz;
 mod fns;
+mod for_declaration_conditions;
 mod frcp_rn;
 mod frcp_rz;
 mod frsqrt_rn;
@@ -273,6 +274,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_SELECTION_DECLARATION_CONDITIONS,
         CUDA_INFERRED_SELECTION_CONDITIONS,
         CUDA_WHILE_DECLARATION_CONDITIONS,
+        CUDA_FOR_DECLARATION_CONDITIONS,
         CUDA_TRUNCF,
         CUDA_FLOORF,
         CUDA_FMODF,
@@ -1221,3 +1223,7 @@ static CUDA_INFERRED_SELECTION_CONDITIONS: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_WHILE_DECLARATION_CONDITIONS: GpuTestConfiguration =
     configuration(while_declaration_conditions::cases);
+
+#[apply(gpu_test!)]
+static CUDA_FOR_DECLARATION_CONDITIONS: GpuTestConfiguration =
+    configuration(for_declaration_conditions::cases);

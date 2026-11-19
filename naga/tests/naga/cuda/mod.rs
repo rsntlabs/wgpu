@@ -63,6 +63,7 @@ mod fmodf;
 mod fmul_rn;
 mod fmul_rz;
 mod fns;
+mod for_declaration_conditions;
 mod frcp_rn;
 mod frcp_rz;
 mod frsqrt_rn;

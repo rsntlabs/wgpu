@@ -167,7 +167,6 @@ fn cuda_inferred_selection_conditions_reject_pending_auto_lists_and_nonscalar_bi
         "switch (auto key = 1u) { default: auto key = 2u; }",
         "if (auto value = 1u) {} value = 2u;",
         "switch (auto key = 1u) { default: break; } key = 2u;",
-        "for (; auto value = input;) {}",
         "if constexpr (auto value = 1u) {}",
         "switch (auto key = 1L) { default: break; }",
         "switch (auto key = 1.0f) { default: break; }",

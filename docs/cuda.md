@@ -2392,9 +2392,15 @@ scope after the loop. A `continue` checks the condition again, and a `break`
 exits without another check. The outermost body scope cannot redeclare the
 condition variable. A nested block can shadow it.
 
-`for` and `do`/`while` conditions use scalar expressions. A `while` header takes
-one condition. `for` initializers can declare scalar or array locals, declare
-scalar aliases, or evaluate an expression. Empty `for` clauses are supported.
+The middle clause of a `for` loop accepts the same scalar declarations as
+`while`. The variable is initialized on every condition test and is visible in
+the body and the update expression. The update sees changes made by the body,
+including changes before a `continue`. A false condition or a `break` skips the
+update. The condition variable shares a scope with the initializer clause and
+leaves scope after the loop. `for` initializers can declare scalar or array
+locals, declare scalar aliases, or evaluate an expression. Empty `for` clauses
+are supported. `do`/`while` conditions use scalar expressions. A `while` header
+takes one condition.
 
 Switch selectors accept `int`, `unsigned int`, and `bool`; booleans promote to
 `int`. The selector is evaluated once. Case labels require integral constant

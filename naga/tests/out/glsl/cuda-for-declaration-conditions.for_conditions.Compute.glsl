@@ -1,0 +1,420 @@
+#version 310 es
+
+precision highp float;
+precision highp int;
+
+layout(local_size_x = 4, local_size_y = 1, local_size_z = 1) in;
+
+layout(std430) readonly buffer type_2_block_0Compute { int _group_0_binding_0_cs[]; };
+
+layout(std430) buffer type_3_block_1Compute { uint _group_0_binding_1_cs[]; };
+
+
+void main() {
+    uvec3 threadIdx = gl_LocalInvocationID;
+    uvec3 blockIdx = gl_WorkGroupID;
+    uint input_[2] = uint[2](0u, 0u);
+    uint output_[2] = uint[2](0u, 0u);
+    int cursor = 0;
+    int total = 0;
+    uint iterations = 0u;
+    uint observed = 0u;
+    int value = 0;
+    uint local[2] = uint[2](0u, 0u);
+    int local_1 = 0;
+    uint local_2[2] = uint[2](0u, 0u);
+    uint local_3[2] = uint[2](0u, 0u);
+    uint local_4 = 0u;
+    uint local_5[2] = uint[2](0u, 0u);
+    uint local_6 = 0u;
+    uint local_7[2] = uint[2](0u, 0u);
+    uint local_8 = 0u;
+    int inferred_cursor = 0;
+    int inferred_total = 0;
+    uint local_9[2] = uint[2](0u, 0u);
+    int local_10 = 0;
+    int value_1 = 0;
+    uint local_11[2] = uint[2](0u, 0u);
+    uint local_12 = 0u;
+    uint local_13[2] = uint[2](0u, 0u);
+    uint local_14 = 0u;
+    int break_cursor = 0;
+    int first = 0;
+    uint continued = 0u;
+    uint local_15[2] = uint[2](0u, 0u);
+    int local_16 = 0;
+    int value_2 = 0;
+    uint local_17[2] = uint[2](0u, 0u);
+    uint local_18 = 0u;
+    uint local_19[2] = uint[2](0u, 0u);
+    uint local_20 = 0u;
+    uint input_1[2] = uint[2](0u, 0u);
+    uint offset = 0u;
+    uint local_21[2] = uint[2](0u, 0u);
+    uint local_22 = 0u;
+    int local_23 = 0;
+    int local_24 = 0;
+    int local_25 = 0;
+    uint input_2[2] = uint[2](0u, 0u);
+    uint offset_1 = 0u;
+    uint local_26[2] = uint[2](0u, 0u);
+    uint local_27 = 0u;
+    int local_28 = 0;
+    int local_29 = 0;
+    int local_30 = 0;
+    uint input_3[2] = uint[2](0u, 0u);
+    uint offset_2 = 0u;
+    uint local_31[2] = uint[2](0u, 0u);
+    uint local_32 = 0u;
+    int local_33 = 0;
+    int local_34 = 0;
+    int local_35 = 0;
+    uint local_36[2] = uint[2](0u, 0u);
+    uint local_37 = 0u;
+    uint local_38 = 0u;
+    int local_39 = 0;
+    uint local_40[2] = uint[2](0u, 0u);
+    uint local_41 = 0u;
+    uint local_42 = 0u;
+    uint local_43[2] = uint[2](0u, 0u);
+    uint local_44 = 0u;
+    uint local_45 = 0u;
+    uint local_46[2] = uint[2](0u, 0u);
+    uint local_47 = 0u;
+    uint local_48 = 0u;
+    uint local_49[2] = uint[2](0u, 0u);
+    uint local_50 = 0u;
+    uint local_51 = 0u;
+    uint local_52[2] = uint[2](0u, 0u);
+    uint local_53 = 0u;
+    uint local_54 = 0u;
+    int local_55 = 0;
+    uint local_56[2] = uint[2](0u, 0u);
+    uint local_57 = 0u;
+    uint local_58 = 0u;
+    uint local_59[2] = uint[2](0u, 0u);
+    uint local_60 = 0u;
+    uint local_61 = 0u;
+    uint local_62[2] = uint[2](0u, 0u);
+    uint local_63 = 0u;
+    uint local_64 = 0u;
+    int local_65 = 0;
+    uint local_66[2] = uint[2](0u, 0u);
+    uint local_67 = 0u;
+    uint local_68 = 0u;
+    uint local_69[2] = uint[2](0u, 0u);
+    uint local_70 = 0u;
+    uint local_71 = 0u;
+    input_ = uint[2](0u, 0u);
+    input_[0] = 2u;
+    input_[1] = 0u;
+    output_ = uint[2](0u, 0u);
+    output_[0] = 3u;
+    output_[1] = 0u;
+    uint lane = (threadIdx.x + (blockIdx.x * 4u));
+    if ((lane >= 4u)) {
+        return;
+    }
+    uint offset_3 = (lane * 4u);
+    uint base = (4u + (lane * 8u));
+    cursor = 0;
+    total = 0;
+    iterations = 0u;
+    observed = 0u;
+    {
+        bool loop_init = true;
+        while(true) {
+            if (!loop_init) {
+                int _e102 = value;
+                uint _e104 = observed;
+                observed = (_e104 + uint(_e102));
+                uint _e106 = iterations;
+                iterations = (_e106 + uint(1));
+            }
+            loop_init = false;
+            uint _e36[2] = input_;
+            local = _e36;
+            offset = 0u;
+            local_22 = 0u;
+            local_23 = 0;
+            uint _e44[2] = local;
+            input_1 = _e44;
+            offset = offset_3;
+            uint _e48[2] = input_1;
+            local_21 = _e48;
+            int _e50 = cursor;
+            local_24 = _e50;
+            int _e52 = local_24;
+            cursor = (_e52 + 1);
+            uint _e56 = offset;
+            local_22 = uint((_e56 + uint(_e52)));
+            uint _e60[2] = local_21;
+            local_36 = _e60;
+            uint _e62 = local_22;
+            uint _e64 = local_36[1];
+            local_36[1] = (_e64 + _e62);
+            uint _e68 = local_36[0];
+            local_37 = uint(_e68);
+            uint _e72 = local_36[1];
+            local_38 = uint(_e72);
+            uint _e75 = local_38;
+            int _e78 = _group_0_binding_0_cs[_e75];
+            local_39 = _e78;
+            int _e80 = local_39;
+            local_25 = _e80;
+            int _e82 = local_25;
+            local_23 = _e82;
+            int _e84 = local_23;
+            local_1 = _e84;
+            int _e86 = local_1;
+            value = _e86;
+            int _e88 = value;
+            if ((_e88 != 0)) {
+            } else {
+                break;
+            }
+            int _e91 = value;
+            int _e92 = total;
+            total = (_e92 + _e91);
+            uint _e94 = iterations;
+            value = (10 + int(_e94));
+            uint _e98 = iterations;
+            if ((_e98 == 0u)) {
+                continue;
+            }
+        }
+    }
+    int _e110 = total;
+    uint _e113[2] = output_;
+    local_2 = _e113;
+    uint _e115[2] = local_2;
+    local_40 = _e115;
+    uint _e118 = local_40[1];
+    local_40[1] = (_e118 + base);
+    uint _e122 = local_40[0];
+    local_41 = uint(_e122);
+    uint _e126 = local_40[1];
+    local_42 = uint(_e126);
+    uint _e129 = local_42;
+    _group_0_binding_1_cs[_e129] = uint(_e110);
+    int _e132 = cursor;
+    uint _e134[2] = output_;
+    local_3 = _e134;
+    local_4 = uint((base + 1u));
+    uint _e140[2] = local_3;
+    local_43 = _e140;
+    uint _e142 = local_4;
+    uint _e144 = local_43[1];
+    local_43[1] = (_e144 + _e142);
+    uint _e148 = local_43[0];
+    local_44 = uint(_e148);
+    uint _e152 = local_43[1];
+    local_45 = uint(_e152);
+    uint _e155 = local_45;
+    _group_0_binding_1_cs[_e155] = uint(_e132);
+    uint _e157 = iterations;
+    uint _e158[2] = output_;
+    local_5 = _e158;
+    local_6 = uint((base + 2u));
+    uint _e164[2] = local_5;
+    local_46 = _e164;
+    uint _e166 = local_6;
+    uint _e168 = local_46[1];
+    local_46[1] = (_e168 + _e166);
+    uint _e172 = local_46[0];
+    local_47 = uint(_e172);
+    uint _e176 = local_46[1];
+    local_48 = uint(_e176);
+    uint _e179 = local_48;
+    _group_0_binding_1_cs[_e179] = _e157;
+    uint _e181 = observed;
+    uint _e182[2] = output_;
+    local_7 = _e182;
+    local_8 = uint((base + 3u));
+    uint _e188[2] = local_7;
+    local_49 = _e188;
+    uint _e190 = local_8;
+    uint _e192 = local_49[1];
+    local_49[1] = (_e192 + _e190);
+    uint _e196 = local_49[0];
+    local_50 = uint(_e196);
+    uint _e200 = local_49[1];
+    local_51 = uint(_e200);
+    uint _e203 = local_51;
+    _group_0_binding_1_cs[_e203] = _e181;
+    inferred_cursor = 0;
+    inferred_total = 0;
+    {
+        bool loop_init_1 = true;
+        while(true) {
+            if (!loop_init_1) {
+                value_1 = 0;
+            }
+            loop_init_1 = false;
+            uint _e210[2] = input_;
+            local_9 = _e210;
+            offset_1 = 0u;
+            local_27 = 0u;
+            local_28 = 0;
+            uint _e218[2] = local_9;
+            input_2 = _e218;
+            offset_1 = offset_3;
+            uint _e222[2] = input_2;
+            local_26 = _e222;
+            int _e224 = inferred_cursor;
+            local_29 = _e224;
+            int _e226 = local_29;
+            inferred_cursor = (_e226 + 1);
+            uint _e230 = offset_1;
+            local_27 = uint((_e230 + uint(_e226)));
+            uint _e234[2] = local_26;
+            local_52 = _e234;
+            uint _e236 = local_27;
+            uint _e238 = local_52[1];
+            local_52[1] = (_e238 + _e236);
+            uint _e242 = local_52[0];
+            local_53 = uint(_e242);
+            uint _e246 = local_52[1];
+            local_54 = uint(_e246);
+            uint _e249 = local_54;
+            int _e252 = _group_0_binding_0_cs[_e249];
+            local_55 = _e252;
+            int _e254 = local_55;
+            local_30 = _e254;
+            int _e256 = local_30;
+            local_28 = _e256;
+            int _e258 = local_28;
+            local_10 = _e258;
+            int _e260 = local_10;
+            value_1 = _e260;
+            int _e262 = value_1;
+            if ((_e262 != 0)) {
+            } else {
+                break;
+            }
+            int _e265 = value_1;
+            int _e266 = inferred_total;
+            inferred_total = (_e266 + _e265);
+            value_1 = 99;
+        }
+    }
+    int _e271 = inferred_total;
+    uint _e273[2] = output_;
+    local_11 = _e273;
+    local_12 = uint((base + 4u));
+    uint _e279[2] = local_11;
+    local_56 = _e279;
+    uint _e281 = local_12;
+    uint _e283 = local_56[1];
+    local_56[1] = (_e283 + _e281);
+    uint _e287 = local_56[0];
+    local_57 = uint(_e287);
+    uint _e291 = local_56[1];
+    local_58 = uint(_e291);
+    uint _e294 = local_58;
+    _group_0_binding_1_cs[_e294] = uint(_e271);
+    int _e296 = inferred_cursor;
+    uint _e298[2] = output_;
+    local_13 = _e298;
+    local_14 = uint((base + 5u));
+    uint _e304[2] = local_13;
+    local_59 = _e304;
+    uint _e306 = local_14;
+    uint _e308 = local_59[1];
+    local_59[1] = (_e308 + _e306);
+    uint _e312 = local_59[0];
+    local_60 = uint(_e312);
+    uint _e316 = local_59[1];
+    local_61 = uint(_e316);
+    uint _e319 = local_61;
+    _group_0_binding_1_cs[_e319] = uint(_e296);
+    break_cursor = 0;
+    first = 0;
+    continued = 0u;
+    {
+        bool loop_init_2 = true;
+        while(true) {
+            if (!loop_init_2) {
+                uint _e384 = continued;
+                continued = (_e384 + uint(1));
+            }
+            loop_init_2 = false;
+            uint _e328[2] = input_;
+            local_15 = _e328;
+            offset_2 = 0u;
+            local_32 = 0u;
+            local_33 = 0;
+            uint _e336[2] = local_15;
+            input_3 = _e336;
+            offset_2 = offset_3;
+            uint _e340[2] = input_3;
+            local_31 = _e340;
+            int _e342 = break_cursor;
+            local_34 = _e342;
+            int _e344 = local_34;
+            break_cursor = (_e344 + 1);
+            uint _e348 = offset_2;
+            local_32 = uint((_e348 + uint(_e344)));
+            uint _e352[2] = local_31;
+            local_62 = _e352;
+            uint _e354 = local_32;
+            uint _e356 = local_62[1];
+            local_62[1] = (_e356 + _e354);
+            uint _e360 = local_62[0];
+            local_63 = uint(_e360);
+            uint _e364 = local_62[1];
+            local_64 = uint(_e364);
+            uint _e367 = local_64;
+            int _e370 = _group_0_binding_0_cs[_e367];
+            local_65 = _e370;
+            int _e372 = local_65;
+            local_35 = _e372;
+            int _e374 = local_35;
+            local_33 = _e374;
+            int _e376 = local_33;
+            local_16 = _e376;
+            int _e378 = local_16;
+            value_2 = _e378;
+            int _e380 = value_2;
+            if ((_e380 != 0)) {
+            } else {
+                break;
+            }
+            int _e383 = value_2;
+            first = _e383;
+            break;
+        }
+    }
+    int _e388 = break_cursor;
+    uint _e390[2] = output_;
+    local_17 = _e390;
+    local_18 = uint((base + 6u));
+    uint _e396[2] = local_17;
+    local_66 = _e396;
+    uint _e398 = local_18;
+    uint _e400 = local_66[1];
+    local_66[1] = (_e400 + _e398);
+    uint _e404 = local_66[0];
+    local_67 = uint(_e404);
+    uint _e408 = local_66[1];
+    local_68 = uint(_e408);
+    uint _e411 = local_68;
+    _group_0_binding_1_cs[_e411] = uint(_e388);
+    int _e413 = first;
+    uint _e415 = continued;
+    uint _e419[2] = output_;
+    local_19 = _e419;
+    local_20 = uint((base + 7u));
+    uint _e425[2] = local_19;
+    local_69 = _e425;
+    uint _e427 = local_20;
+    uint _e429 = local_69[1];
+    local_69[1] = (_e429 + _e427);
+    uint _e433 = local_69[0];
+    local_70 = uint(_e433);
+    uint _e437 = local_69[1];
+    local_71 = uint(_e437);
+    uint _e440 = local_71;
+    _group_0_binding_1_cs[_e440] = (uint(_e413) + (100u * _e415));
+}
+

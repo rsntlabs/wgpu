@@ -203,7 +203,6 @@ fn cuda_while_declaration_conditions_reject_redeclarations_escapes_and_unsupport
         "int value = 1; while (auto value = value) {}",
         "while (int seed = 1; seed) {}",
         "do {} while (int value = 0);",
-        "for (; int value = 1;) {}",
     ] {
         reject(&format!("__global__ void kernel() {{ {body} }}"));
     }
