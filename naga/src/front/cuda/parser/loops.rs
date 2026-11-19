@@ -276,11 +276,13 @@ mod tests {
         let source = "for (; int header = 1; header += 2) { header = 3; continue; }";
         let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
         parser.statement().unwrap();
-        let [Statement::Block(init)] = &parser.function.ir.body[..] else {
+        let &[Statement::Block(ref init)] = &parser.function.ir.body[..] else {
             panic!("expected for scope");
         };
-        let [Statement::Loop {
-            body, continuing, ..
+        let &[Statement::Loop {
+            ref body,
+            ref continuing,
+            ..
         }] = &init[..]
         else {
             panic!("condition initializer belongs inside the loop");
@@ -297,8 +299,8 @@ mod tests {
             unreachable!();
         };
         let expressions = &parser.function.ir.expressions;
-        assert!(continuing.iter().any(|statement| match statement {
-            Statement::Emit(range) => range.clone().any(|handle| {
+        assert!(continuing.iter().any(|statement| match *statement {
+            Statement::Emit(ref range) => range.clone().any(|handle| {
                 matches!(expressions[handle], Expression::Load { pointer: loaded } if loaded == pointer)
             }),
             _ => false,
