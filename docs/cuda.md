@@ -554,6 +554,13 @@ arithmetic type name or visible scalar alias. A grouped comma expression
 such as `int((left, right))` counts as one argument. Functional casts in these
 queries use the same type conversion rules as `static_cast`.
 
+C-style casts such as `sizeof((unsigned long)value)` support qualified
+arithmetic targets and the same operand types as these casts. The cast binds
+to its unary operand, so `sizeof((short)value + 1)` uses the promoted type of
+the addition, while `sizeof((short)(value + 1))` uses `short` directly.
+`sizeof(short)` still queries the type, including in expressions such as
+`sizeof(short) + 1`.
+
 `static_assert(condition);` declarations are accepted at global, function, and
 record scope, including local records in instantiated function templates.
 Record assertions may use `sizeof` on previously declared members, preserving

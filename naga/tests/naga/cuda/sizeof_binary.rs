@@ -65,7 +65,6 @@ fn cuda_sizeof_static_casts_reject_unsupported_forms_and_clear_zero_provenance()
         "static_cast<int>()",
         "static_cast<int>(1,)",
         "static_cast<int(value)",
-        "(int)value",
         "int(value, value)",
     ] {
         reject(&format!(
@@ -240,7 +239,6 @@ fn cuda_sizeof_functional_casts_reject_other_forms_and_clear_zero_provenance() {
         "const int(value)",
         "unsigned int(value)",
         "long long(value)",
-        "(int)value",
         "decltype(value)(1)",
         "Pointer(value)",
         "Row(value)",
@@ -271,6 +269,119 @@ fn cuda_sizeof_functional_casts_reject_other_forms_and_clear_zero_provenance() {
     let error = parse_str(
         "__global__ void kernel(unsigned long *out) {
         int *pointer; out[0] = sizeof(true ? pointer : int(0));
+    }",
+        &Options::default(),
+    )
+    .unwrap_err();
+    assert!(
+        error.message.contains("sizeof conditional requires"),
+        "{error}"
+    );
+}
+
+#[test]
+fn cuda_sizeof_c_style_casts_bind_unary_operands_without_evaluation() {
+    let compile = |body| {
+        queries(
+            &format!(
+                "#define WIDE unsigned long long
+                using Small = const short; using Flag = bool;
+                __global__ void kernel(unsigned long *out, volatile int *input) {{
+                    int grid[2][3]; int value; {body}
+                }}"
+            ),
+            &[2, 8, 1, 1, 1, 4, 2, 2, 2, 4, 2, 12, 4, 2, 1, 4],
+        )
+    };
+    let module = compile(
+        "out[0] = sizeof((volatile Small)-input[99]);
+        out[1] = sizeof((WIDE)(float)(1 / 0));
+        out[2] = sizeof((Flag)input);
+        out[3] = sizeof((bool)grid);
+        out[4] = sizeof((bool)nullptr);
+        out[5] = sizeof((short)input[99] + 1);
+        out[6] = sizeof((short)(input[99] + 1));
+        out[7] = sizeof((short)(input[99], 1));
+        out[8] = sizeof((short(input[99])));
+        out[9] = sizeof((short)input[99], 1);
+        out[10] = sizeof (Small);
+        out[11] = sizeof(grid[(unsigned int)input[99]]);
+        out[12] = sizeof((unsigned)-1.0f);
+        out[13] = sizeof((short)int(static_cast<bool>(input)));
+        out[14] = sizeof((bool)input[99] ? true : false);
+        { int Small; out[15] = sizeof((Small) + 1); }
+        static_assert(sizeof(Small) + 1 == 3);
+        static_assert(sizeof((decltype(value))0) == 4);",
+    );
+    let baseline = compile(
+        "out[0] = 2UL; out[1] = 8UL; out[2] = 1UL; out[3] = 1UL;
+        out[4] = 1UL; out[5] = 4UL; out[6] = 2UL; out[7] = 2UL;
+        out[8] = 2UL; out[9] = 4UL; out[10] = sizeof(Small); out[11] = 12UL;
+        out[12] = 4UL; out[13] = 2UL; out[14] = 1UL;
+        { int Small; out[15] = 4UL; }
+        static_assert(sizeof(Small) + 1 == 3);",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .eq(baseline.entry_points[0].function.expressions.iter()));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+}
+
+#[test]
+fn cuda_sizeof_c_style_casts_accept_incomplete_arrays_without_launch_storage() {
+    let module = queries(
+        "extern __shared__ int scratch[];
+        __global__ void kernel(unsigned long *out) {
+            out[0] = sizeof((bool)scratch);
+        }",
+        &[1],
+    );
+    assert_eq!(module.global_variables.len(), 1);
+}
+
+#[test]
+fn cuda_sizeof_c_style_casts_reject_unsupported_forms_and_clear_zero_provenance() {
+    for operand in [
+        "(void)value",
+        "(int *)pointer",
+        "(int &)value",
+        "(Pointer)pointer",
+        "(Row)values",
+        "(Record)record",
+        "(int2)value",
+        "(decltype(nullptr))0",
+        "(int)pointer",
+        "(int)values",
+        "(int)nullptr",
+        "(bool)record",
+        "(short)value++",
+        "(int)(value = 1)",
+        "(int)helper()",
+        "(int)",
+        "(int value)",
+    ] {
+        reject(&format!(
+            "using Pointer = int *; using Row = int[2];
+            struct Record {{ int value; }}; __device__ int helper() {{ return 1; }}
+            __global__ void kernel(unsigned long *out) {{
+                int value; int *pointer; int values[2]; Record record;
+                out[0] = sizeof({operand});
+            }}"
+        ));
+    }
+    reject(
+        "__global__ void kernel(unsigned long *out) {
+        int value; out[0] = sizeof(int)value;
+    }",
+    );
+    let error = parse_str(
+        "__global__ void kernel(unsigned long *out) {
+        int *pointer; out[0] = sizeof(true ? pointer : (int)0);
     }",
         &Options::default(),
     )

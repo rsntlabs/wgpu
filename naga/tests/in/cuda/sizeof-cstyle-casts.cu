@@ -1,0 +1,30 @@
+__global__ void sizeof_cstyle_casts(const int *input, unsigned *output) {
+    unsigned lane = threadIdx.x;
+    unsigned base = 4u + lane * 16u;
+    int seed = input[lane];
+    int counter = 7;
+    int matrix[2][3]{};
+    using Integer = unsigned;
+    constexpr unsigned Short = unsigned(sizeof((short)seed));
+    constexpr unsigned Boolean = unsigned(sizeof((bool)seed));
+    constexpr unsigned Alias = unsigned(sizeof((const Integer)seed));
+    constexpr unsigned Wide = unsigned(sizeof((unsigned long long)seed));
+    constexpr unsigned PointerBool = unsigned(sizeof((bool)input));
+    constexpr unsigned Nested = unsigned(sizeof((short)(unsigned)seed));
+    constexpr unsigned Comma = unsigned(sizeof((bool)(input[counter], seed)));
+    constexpr unsigned SameType = unsigned(sizeof(seed ? (short)counter : (short)seed));
+    constexpr unsigned Mixed = unsigned(sizeof(seed ? (short)counter : seed));
+    constexpr unsigned Row = unsigned(sizeof(matrix[(int)(seed ? counter : seed)]));
+    constexpr unsigned InvalidRange = unsigned(sizeof((unsigned)-1.0f));
+    constexpr unsigned InvalidMath = unsigned(sizeof((bool)(1 / 0)));
+    constexpr unsigned Binding = unsigned(sizeof(int) + 1);
+    constexpr unsigned NullBool = unsigned(sizeof((bool)nullptr));
+    output[base] = Short; output[base + 1u] = Boolean;
+    output[base + 2u] = Alias; output[base + 3u] = Wide;
+    output[base + 4u] = PointerBool; output[base + 5u] = Nested;
+    output[base + 6u] = Comma; output[base + 7u] = SameType;
+    output[base + 8u] = Mixed; output[base + 9u] = Row;
+    output[base + 10u] = InvalidRange; output[base + 11u] = InvalidMath;
+    output[base + 12u] = Binding; output[base + 13u] = NullBool;
+    output[base + 14u] = unsigned(counter); output[base + 15u] = unsigned(input[lane]);
+}

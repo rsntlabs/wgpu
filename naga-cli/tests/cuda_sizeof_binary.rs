@@ -143,7 +143,19 @@ fn cuda_sizeof_functional_casts_cli_emit_all_backends() {
     );
 }
 
+#[test]
+fn cuda_sizeof_cstyle_casts_emit_all_backends_without_evaluating_operands() {
+    emits_entry_all_backends(
+        include_str!("../../naga/tests/in/cuda/sizeof-cstyle-casts.cu"),
+        "sizeof_cstyle_casts",
+    );
+}
+
 fn emits_all_backends(source: &str) {
+    emits_entry_all_backends(source, "kernel");
+}
+
+fn emits_entry_all_backends(source: &str, entry: &str) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);
         let outputs: Vec<_> = ["wgsl", "spv", "hlsl", "metal", "comp"]
@@ -151,7 +163,7 @@ fn emits_all_backends(source: &str) {
             .map(|ext| files.output.with_extension(ext))
             .collect();
         let paths: Vec<_> = outputs.iter().map(|p| p.as_path()).collect();
-        let mut args = vec!["--entry-point", "kernel", "--compact"];
+        let mut args = vec!["--entry-point", entry, "--compact"];
         if !compact {
             args.pop();
         }
@@ -247,6 +259,28 @@ fn cuda_sizeof_conditional_cli_rejects_invalid_arms() {
         let files = TestFiles::new("cu", &source);
         let result = files.translate(&[]);
         assert!(!result.status.success(), "{source}");
+        assert!(!files.output.exists());
+    }
+}
+
+#[test]
+fn cuda_sizeof_cstyle_casts_reject_unsupported_targets_and_preserve_type_query_priority() {
+    for body in [
+        "constexpr unsigned n = unsigned(sizeof((int*)input));",
+        "constexpr unsigned n = unsigned(sizeof((int&)value));",
+        "constexpr unsigned n = unsigned(sizeof((void)value));",
+        "constexpr unsigned n = unsigned(sizeof((unsigned)input));",
+        "constexpr unsigned n = unsigned(sizeof (int)value);",
+        "constexpr unsigned n = unsigned(sizeof((int)));",
+        "constexpr unsigned n = unsigned(sizeof((int)value++));",
+        "constexpr unsigned n = unsigned(sizeof((int)(value = 1)));",
+        "constexpr unsigned n = unsigned(sizeof(true ? input : (int)0));",
+    ] {
+        let source = format!("__global__ void kernel(int *input, unsigned *output) {{ int value = 7; {body} output[0] = n; }}");
+        let files = TestFiles::new("cu", &source);
+        let result = files.translate(&[]);
+        assert!(!result.status.success(), "unexpected acceptance: {source}");
+        assert!(!result.stderr.is_empty());
         assert!(!files.output.exists());
     }
 }

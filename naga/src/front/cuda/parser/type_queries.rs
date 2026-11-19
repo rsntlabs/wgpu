@@ -361,6 +361,25 @@ impl Parser<'_> {
                     .map(|operand| (operand, span));
             }
             Token::Paren('(') => {
+                self.parameter_expansion_budget.charge_work(1, start)?;
+                if self.starts_type()? {
+                    self.parameter_expansion_budget.charge_work(2, start)?;
+                    let mut lookahead = self.lexer.clone();
+                    let target_span = lookahead.peek()?.1;
+                    let target = self.parse_type_from(&mut lookahead)?;
+                    if lookahead.next_if(Token::Paren(')'))? {
+                        let scalar = target.ty.source_scalar().ok_or_else(|| ParseError {
+                            message: String::from(
+                                "sizeof C-style cast requires an arithmetic scalar target",
+                            ),
+                            span: target_span,
+                        })?;
+                        self.lexer = lookahead;
+                        let (operand, end) = self.sizeof_operand()?;
+                        let operand = self.sizeof_scalar_cast_result(scalar, &operand, end)?;
+                        return Ok((operand, start.until(&end)));
+                    }
+                }
                 let (operand, _) = self.sizeof_comma_expression()?;
                 let closing = self.lexer.expect_span(Token::Paren(')'))?;
                 (operand, start.until(&closing))
@@ -827,6 +846,28 @@ mod tests {
     #[test]
     fn sizeof_functional_casts_bound_nesting_and_restore_depth() {
         let source = format!("{}1{}", "int(".repeat(70), ")".repeat(70));
+        let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
+        let Err(error) = parser.sizeof_operand() else {
+            panic!("expected expression nesting error");
+        };
+        assert_eq!(error.message, "CUDA expression nesting limit exceeded");
+        assert_eq!(parser.function.expression_depth, 0);
+        assert!(parser.function.ir.expressions.is_empty());
+        assert!(parser.module.types.is_empty());
+    }
+
+    #[test]
+    fn sizeof_c_style_casts_need_no_allocation_budget() {
+        check_sizeof_metadata_budget(
+            "(const signed long)(short)(1 / 0, 3u)",
+            SourceScalar::Long(ScalarKind::Sint),
+        );
+        check_sizeof_metadata_budget("(bool)nullptr", SourceScalar::Scalar(Scalar::BOOL));
+    }
+
+    #[test]
+    fn sizeof_c_style_casts_bound_nesting_and_restore_depth() {
+        let source = format!("{}1", "(int)".repeat(70));
         let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
         let Err(error) = parser.sizeof_operand() else {
             panic!("expected expression nesting error");
