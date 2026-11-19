@@ -54,7 +54,10 @@ fn cuda_sizeof_static_casts_reject_unsupported_forms_and_clear_zero_provenance()
         "static_cast<Row>(value)",
         "static_cast<int2>(value)",
         "static_cast<Record>(value)",
-        "static_cast<bool>(pointer)",
+        "static_cast<unsigned>(pointer)",
+        "static_cast<float>(pointer)",
+        "static_cast<bool>(record)",
+        "static_cast<bool>(vector)",
         "static_cast<int>(nullptr)",
         "static_cast<int>(values)",
         "static_cast<int>(static_cast<int>(value++))",
@@ -69,7 +72,7 @@ fn cuda_sizeof_static_casts_reject_unsupported_forms_and_clear_zero_provenance()
             "using Pointer = int *; using Row = int[2];
             struct Record {{ int value; }};
             __global__ void kernel(unsigned long *out) {{
-                int value; int *pointer; int values[2];
+                int value; int *pointer; int values[2]; Record record; int2 vector;
                 out[0] = sizeof({operand});
             }}"
         ));
@@ -90,6 +93,61 @@ fn cuda_sizeof_static_casts_reject_unsupported_forms_and_clear_zero_provenance()
         int Small; out[0] = sizeof(static_cast<Small>(0));
     }",
     );
+    reject(
+        "__global__ void kernel(unsigned long *out) {
+        int *pointer; out[0] = sizeof(true ? pointer : static_cast<bool>(nullptr));
+    }",
+    );
+}
+
+#[test]
+fn cuda_sizeof_bool_casts_accept_pointer_array_and_nullptr_types_without_reads() {
+    let compile = |body| {
+        queries(
+            &format!(
+                "using Flag = const bool;
+        __global__ void kernel(unsigned long *out, volatile int *input) {{
+            int *pointer; auto empty = nullptr; int grid[2][3]; bool flag; {body}
+        }}"
+            ),
+            &[1, 1, 1, 1, 1, 12, 4, 1],
+        )
+    };
+    let module = compile(
+        "out[0] = sizeof(static_cast<bool>(pointer));
+        out[1] = sizeof(static_cast<Flag>(input));
+        out[2] = sizeof(static_cast<bool>(grid));
+        out[3] = sizeof(static_cast<bool>(nullptr));
+        out[4] = sizeof(static_cast<bool>(input[99], empty));
+        out[5] = sizeof(grid[static_cast<bool>(input)]);
+        out[6] = sizeof(static_cast<int>(static_cast<bool>(input)));
+        out[7] = sizeof(static_cast<bool>(flag ? input : nullptr));",
+    );
+    let baseline = compile(
+        "out[0] = 1UL; out[1] = 1UL; out[2] = 1UL; out[3] = 1UL;
+        out[4] = 1UL; out[5] = 12UL; out[6] = 4UL; out[7] = 1UL;",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .eq(baseline.entry_points[0].function.expressions.iter()));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+}
+
+#[test]
+fn cuda_sizeof_bool_casts_accept_incomplete_arrays_without_launch_storage() {
+    let module = queries(
+        "extern __shared__ int scratch[];
+        __global__ void kernel(unsigned long *out) {
+            out[0] = sizeof(static_cast<bool>(scratch));
+        }",
+        &[1],
+    );
+    assert_eq!(module.global_variables.len(), 1);
 }
 
 fn queries(source: &str, expected: &[u64]) -> naga::Module {

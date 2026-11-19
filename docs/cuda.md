@@ -543,8 +543,10 @@ remain unsupported.
 
 `sizeof(static_cast<short>(value))` uses the cast's destination type and gives
 two bytes. This form supports existing arithmetic scalar types as both source
-and destination. It checks the operand type without evaluating the value or
-performing the conversion. The argument may be a supported comma expression.
+and destination. A `bool` destination also accepts pointers, complete or
+incomplete arrays, and `nullptr`. The query checks the operand type without
+evaluating the value or performing the conversion. The argument may be a
+supported comma expression.
 
 `static_assert(condition);` declarations are accepted at global, function, and
 record scope, including local records in instantiated function templates.

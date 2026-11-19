@@ -114,6 +114,20 @@ fn cuda_sizeof_static_casts_cli_emit_all_backends() {
     );
 }
 
+#[test]
+fn cuda_sizeof_bool_casts_cli_emit_all_backends() {
+    emits_all_backends(
+        r#"__global__ void kernel(const int *input, unsigned *output) {
+        int grid[2][3];
+        constexpr unsigned Pointer=unsigned(sizeof(static_cast<bool>(input)));
+        constexpr unsigned Null=unsigned(sizeof(static_cast<bool>(input[99],nullptr)));
+        constexpr unsigned Row=unsigned(sizeof(grid[static_cast<bool>(grid)]));
+        output[0]=Pointer+Null+Row;
+        output[1]=unsigned(input[0]);
+    }"#,
+    );
+}
+
 fn emits_all_backends(source: &str) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);

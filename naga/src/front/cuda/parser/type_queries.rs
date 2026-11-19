@@ -168,18 +168,7 @@ impl Parser<'_> {
             }
             self.parameter_expansion_budget
                 .charge_work(1, question_span)?;
-            let supported_condition = match condition {
-                SizeofOperand::Object(ref ty) => {
-                    self.source_scalar(ty).is_some()
-                        || self.source_pointer_pointee(ty).is_some()
-                        || matches!(ty.inner_with(&self.module.types), TypeInner::Array { .. })
-                }
-                SizeofOperand::Scalar(_)
-                | SizeofOperand::IntegerZeroLiteral(_)
-                | SizeofOperand::IncompleteArray(_)
-                | SizeofOperand::NullPointer => true,
-            };
-            if !supported_condition {
+            if !self.sizeof_bool_convertible(&condition) {
                 return Err(ParseError {
                     message: String::from(
                         "sizeof conditional requires a scalar, pointer, array, or nullptr condition",
@@ -265,6 +254,20 @@ impl Parser<'_> {
             }
             SizeofOperand::Object(ref ty) => self.source_scalar(ty),
             _ => None,
+        }
+    }
+
+    fn sizeof_bool_convertible(&self, operand: &SizeofOperand) -> bool {
+        match *operand {
+            SizeofOperand::Object(ref ty) => {
+                self.source_scalar(ty).is_some()
+                    || self.source_pointer_pointee(ty).is_some()
+                    || matches!(ty.inner_with(&self.module.types), TypeInner::Array { .. })
+            }
+            SizeofOperand::Scalar(_)
+            | SizeofOperand::IntegerZeroLiteral(_)
+            | SizeofOperand::IncompleteArray(_)
+            | SizeofOperand::NullPointer => true,
         }
     }
 
@@ -450,9 +453,14 @@ impl Parser<'_> {
         self.lexer.expect_span(Token::Paren('('))?;
         let (operand, operand_span) = self.sizeof_comma_expression()?;
         let end = self.lexer.expect_span(Token::Paren(')'))?;
-        if self.sizeof_source_scalar(&operand).is_none() {
+        let valid_operand = if scalar == SourceScalar::Scalar(Scalar::BOOL) {
+            self.sizeof_bool_convertible(&operand)
+        } else {
+            self.sizeof_source_scalar(&operand).is_some()
+        };
+        if !valid_operand {
             return Err(ParseError {
-                message: String::from("sizeof static_cast requires an arithmetic scalar operand"),
+                message: String::from("invalid operand type for sizeof static_cast"),
                 span: operand_span,
             });
         }
@@ -742,22 +750,33 @@ mod tests {
 
     #[test]
     fn sizeof_binary_metadata_needs_no_node_or_byte_allocation_budget() {
-        check_sizeof_metadata_budget("(1L + 1u)");
+        check_sizeof_metadata_budget("(1L + 1u)", SourceScalar::Long(ScalarKind::Sint));
     }
 
     #[test]
     fn sizeof_conditional_metadata_needs_no_node_or_byte_allocation_budget() {
-        check_sizeof_metadata_budget("(1 / 0 ? 1L : 1u)");
+        check_sizeof_metadata_budget("(1 / 0 ? 1L : 1u)", SourceScalar::Long(ScalarKind::Sint));
     }
 
     #[test]
     fn sizeof_pointer_conditions_metadata_needs_no_node_or_byte_allocation_budget() {
-        check_sizeof_metadata_budget("(nullptr ? 1L : 1u)");
+        check_sizeof_metadata_budget("(nullptr ? 1L : 1u)", SourceScalar::Long(ScalarKind::Sint));
     }
 
     #[test]
     fn sizeof_static_casts_preserve_source_long_without_allocations() {
-        check_sizeof_metadata_budget("static_cast<const long>(1 / 0, static_cast<short>(3u))");
+        check_sizeof_metadata_budget(
+            "static_cast<const long>(1 / 0, static_cast<short>(3u))",
+            SourceScalar::Long(ScalarKind::Sint),
+        );
+    }
+
+    #[test]
+    fn sizeof_bool_casts_require_no_allocation_for_nullptr() {
+        check_sizeof_metadata_budget(
+            "static_cast<const bool>((1, nullptr))",
+            SourceScalar::Scalar(Scalar::BOOL),
+        );
     }
 
     #[test]
@@ -776,7 +795,7 @@ mod tests {
     #[test]
     fn sizeof_comma_metadata_handles_flat_chains_without_allocations() {
         let source = format!("({}1L)", "1,".repeat(96));
-        check_sizeof_metadata_budget(&source);
+        check_sizeof_metadata_budget(&source, SourceScalar::Long(ScalarKind::Sint));
 
         let span = Span::new(0, 1);
         let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
@@ -858,14 +877,14 @@ mod tests {
         assert_eq!(parser.function.expression_depth, 0);
     }
 
-    fn check_sizeof_metadata_budget(source: &str) {
+    fn check_sizeof_metadata_budget(source: &str, expected: SourceScalar) {
         for exhaust_bytes in [false, true] {
             let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             exhaust_sizeof_allocation_budget(&mut parser, exhaust_bytes);
             let (operand, _) = parser.sizeof_operand().unwrap();
             assert!(matches!(
                 operand,
-                SizeofOperand::Scalar(SourceScalar::Long(ScalarKind::Sint))
+                SizeofOperand::Scalar(scalar) if scalar == expected
             ));
             assert!(parser.function.ir.expressions.is_empty());
             assert!(parser.module.types.is_empty());

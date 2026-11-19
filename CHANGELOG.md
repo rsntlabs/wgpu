@@ -218,6 +218,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support integer zero literals paired with pointers in CUDA `sizeof` conditional expressions.
 - Support built-in comma expressions in CUDA `sizeof` operands.
 - Support arithmetic scalar `static_cast` expressions in CUDA `sizeof` operands.
+- Support pointer, array, and `nullptr` operands for `static_cast<bool>` in CUDA `sizeof`.
 - Support CUDA `rintf` with portable rounding to the nearest even integer.
 - Support CUDA `nearbyintf` through the existing nearest-even rounding helper.
 - Support explicit scalar declaration conditions in CUDA `if` and `switch` statements.

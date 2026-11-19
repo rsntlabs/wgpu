@@ -175,6 +175,7 @@ mod signed;
 mod signed_saturating_arithmetic;
 mod single_component_vectors;
 mod sizeof_binary;
+mod sizeof_bool_casts;
 mod sizeof_comma;
 mod sizeof_conditionals;
 mod sizeof_pointer_arms;
@@ -339,6 +340,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_IF_INITIALIZERS,
         CUDA_MULTIDIMENSIONAL_PARAMETERS,
         CUDA_SIZEOF_BINARY,
+        CUDA_SIZEOF_BOOL_CASTS,
         CUDA_SIZEOF_COMMA,
         CUDA_SIZEOF_CONDITIONALS,
         CUDA_SIZEOF_POINTER_ARMS,
@@ -1340,3 +1342,6 @@ static CUDA_SIZEOF_COMMA: GpuTestConfiguration = configuration(sizeof_comma::cas
 
 #[apply(gpu_test!)]
 static CUDA_SIZEOF_STATIC_CASTS: GpuTestConfiguration = configuration(sizeof_static_casts::cases);
+
+#[apply(gpu_test!)]
+static CUDA_SIZEOF_BOOL_CASTS: GpuTestConfiguration = configuration(sizeof_bool_casts::cases);
