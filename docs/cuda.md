@@ -1394,9 +1394,10 @@ to the declared integer type first, then round to the nearest representable
 negative infinity. For example, `16777217` becomes `16777216.0f`, and
 `-16777217` becomes `-16777218.0f`.
 
-`__int2float_ru(int)` converts its argument to `int` first and rounds toward
-positive infinity. For example, `16777217` becomes `16777218.0f`, and
-`-16777217` becomes `-16777216.0f`.
+`__int2float_ru(int)` and `__uint2float_ru(unsigned int)` convert the argument
+to the declared integer type first, then round toward positive infinity. For
+example, `16777217` becomes `16777218.0f`, `-16777217` becomes `-16777216.0f`,
+and `4294967041u` becomes `4294967296.0f`.
 
 These predefined functions operate on integer representations:
 

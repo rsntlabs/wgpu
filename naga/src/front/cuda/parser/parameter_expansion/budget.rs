@@ -1738,6 +1738,11 @@ mod tests {
         check_integer_to_float_budget("__uint2float_rn", "1");
     }
 
+    #[test]
+    fn cuda_uint2float_ru_checks_budgets_before_converting_and_encoding() {
+        check_integer_to_float_budget("__uint2float_ru", "1");
+    }
+
     fn check_integer_to_float_budget(intrinsic: &str, literal: &str) {
         for prepared in [false, true] {
             for (exhaust_bytes, headroom) in [(false, 0), (false, 1), (true, 0), (true, 1)] {
