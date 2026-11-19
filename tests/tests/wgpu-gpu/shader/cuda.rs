@@ -91,6 +91,7 @@ mod incomplete_array_pointers;
 mod inferred_arrays;
 mod inferred_selection_conditions;
 mod inline;
+mod int2float_rn;
 mod int2float_rz;
 mod integer16;
 mod integer16_vectors;
@@ -262,6 +263,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FLOAT_SEPARATORS,
         CUDA_FLOAT_TRUTHINESS,
         CUDA_UINT2FLOAT_RZ,
+        CUDA_INT2FLOAT_RN,
         CUDA_INT2FLOAT_RZ,
         CUDA_FLOAT2INT_RZ,
         CUDA_FLOAT2UINT_RZ,
@@ -1274,3 +1276,6 @@ static CUDA_INT2FLOAT_RZ: GpuTestConfiguration = configuration(int2float_rz::cas
 
 #[apply(gpu_test!)]
 static CUDA_UINT2FLOAT_RZ: GpuTestConfiguration = configuration(uint2float_rz::cases);
+
+#[apply(gpu_test!)]
+static CUDA_INT2FLOAT_RN: GpuTestConfiguration = configuration(int2float_rn::cases);

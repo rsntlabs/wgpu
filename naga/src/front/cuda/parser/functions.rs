@@ -4,6 +4,7 @@ use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
 use super::float_classification::FloatClassification;
 use super::float_helpers::FloatMathFunction;
 use super::function_declarations::Inlining;
+use super::int_to_float::IntegerToFloatRounding;
 use super::integer_intrinsics::{
     FunnelShiftBuiltin, FunnelShiftDirection, HalfAddBuiltin, PackedArithmeticBuiltin,
     PackedArithmeticOperation, PackedArithmeticSaturation, PackedAverageMode, PackedUnaryBuiltin,
@@ -1183,6 +1184,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
     declarations.insert(
+        "__int2float_rn",
+        GlobalDeclaration::Functions(FunctionOverloads::default()),
+    );
+    declarations.insert(
         "__uint2float_rz",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
@@ -1313,7 +1318,10 @@ pub(super) enum FunctionCandidate {
     Fmodf,
     CopySign,
     FloatToIntegerRoundZero(Scalar),
-    IntegerToFloatRoundZero(Scalar),
+    IntegerToFloat {
+        source: Scalar,
+        rounding: IntegerToFloatRounding,
+    },
     AddRoundNearest,
     AddRoundZero,
     SubtractRoundNearest,
@@ -1926,7 +1934,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Fmodf
                         | FunctionCandidate::CopySign
                         | FunctionCandidate::FloatToIntegerRoundZero(_)
-                        | FunctionCandidate::IntegerToFloatRoundZero(_)
+                        | FunctionCandidate::IntegerToFloat { .. }
                         | FunctionCandidate::AddRoundZero
                         | FunctionCandidate::AddRoundNearest
                         | FunctionCandidate::SubtractRoundNearest
@@ -2215,7 +2223,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::PackedUnary(_) => TypeSpecifier::Scalar(Scalar::U32),
             FunctionCandidate::IntegralDouble { .. } => unreachable!(),
             FunctionCandidate::FloatMath(_)
-            | FunctionCandidate::IntegerToFloatRoundZero(_)
+            | FunctionCandidate::IntegerToFloat { .. }
             | FunctionCandidate::SqrtRoundZero
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf
@@ -2508,8 +2516,8 @@ impl<'a> Parser<'a> {
         if let FunctionCandidate::FloatToIntegerRoundZero(destination) = candidate {
             return self.lower_float_to_integer_rz_call(destination, arguments, span);
         }
-        if let FunctionCandidate::IntegerToFloatRoundZero(source) = candidate {
-            return self.lower_integer_to_float_rz_call(source, arguments, span);
+        if let FunctionCandidate::IntegerToFloat { source, rounding } = candidate {
+            return self.lower_integer_to_float_call(source, rounding, arguments, span);
         }
         if candidate == FunctionCandidate::AddRoundZero {
             return self.lower_fadd_rz_call(arguments, span);
@@ -3252,12 +3260,18 @@ impl<'a> Parser<'a> {
                 (true, "__float2uint_rz") => {
                     Some(FunctionCandidate::FloatToIntegerRoundZero(Scalar::U32))
                 }
-                (true, "__int2float_rz") => {
-                    Some(FunctionCandidate::IntegerToFloatRoundZero(Scalar::I32))
-                }
-                (true, "__uint2float_rz") => {
-                    Some(FunctionCandidate::IntegerToFloatRoundZero(Scalar::U32))
-                }
+                (true, "__int2float_rz") => Some(FunctionCandidate::IntegerToFloat {
+                    source: Scalar::I32,
+                    rounding: IntegerToFloatRounding::TowardZero,
+                }),
+                (true, "__uint2float_rz") => Some(FunctionCandidate::IntegerToFloat {
+                    source: Scalar::U32,
+                    rounding: IntegerToFloatRounding::TowardZero,
+                }),
+                (true, "__int2float_rn") => Some(FunctionCandidate::IntegerToFloat {
+                    source: Scalar::I32,
+                    rounding: IntegerToFloatRounding::NearestEven,
+                }),
                 _ => None,
             })
             .chain(
@@ -3403,7 +3417,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FloatClassification(_)
             | FunctionCandidate::IntegralDouble { .. }
             | FunctionCandidate::FloatToIntegerRoundZero(_)
-            | FunctionCandidate::IntegerToFloatRoundZero(_)
+            | FunctionCandidate::IntegerToFloat { .. }
             | FunctionCandidate::SqrtRoundZero
             | FunctionCandidate::Sqrt
             | FunctionCandidate::ReciprocalRoundNearest
@@ -3453,7 +3467,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Dot2 { scalar: source, .. }
             | FunctionCandidate::HalfAdd(HalfAddBuiltin { scalar: source, .. })
             | FunctionCandidate::IntegralDouble { source }
-            | FunctionCandidate::IntegerToFloatRoundZero(source) => {
+            | FunctionCandidate::IntegerToFloat { source, .. } => {
                 return Some(scalar_resolution(source))
             }
             FunctionCandidate::FloatMath(_)

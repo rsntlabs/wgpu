@@ -30,7 +30,7 @@ mod function_declarations;
 mod functions;
 mod inferred_declarations;
 mod initializers;
-mod int_to_float_rz;
+mod int_to_float;
 mod integer_intrinsics;
 mod launch_bounds;
 mod loops;

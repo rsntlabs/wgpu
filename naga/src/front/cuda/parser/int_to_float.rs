@@ -1,13 +1,20 @@
 use super::*;
 use crate::MathFunction;
 use BinaryOperator::{
-    Add, And, ExclusiveOr, InclusiveOr, NotEqual, ShiftLeft, ShiftRight, Subtract,
+    Add, And, ExclusiveOr, Greater, InclusiveOr, NotEqual, ShiftLeft, ShiftRight, Subtract,
 };
 
+#[derive(Clone, Copy, PartialEq)]
+pub(super) enum IntegerToFloatRounding {
+    TowardZero,
+    NearestEven,
+}
+
 impl Parser<'_> {
-    pub(super) fn lower_integer_to_float_rz_call(
+    pub(super) fn lower_integer_to_float_call(
         &mut self,
         source: Scalar,
+        rounding: IntegerToFloatRounding,
         arguments: Vec<Value>,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
@@ -95,7 +102,27 @@ impl Parser<'_> {
         } else {
             None
         };
-        let magnitude_bits = binary(self, InclusiveOr, exponent_bits, fraction)?;
+        let mut magnitude_bits = binary(self, InclusiveOr, exponent_bits, fraction)?;
+        if rounding == IntegerToFloatRounding::NearestEven {
+            let unit = binary(self, ShiftLeft, one, right_shift)?;
+            let discarded_mask = binary(self, Subtract, unit, one)?;
+            let discarded = binary(self, And, magnitude, discarded_mask)?;
+            // The parity bit breaks a halfway tie toward an even significand.
+            let doubled = binary(self, ShiftLeft, discarded, one)?;
+            let parity = binary(self, And, significand, one)?;
+            let discarded_with_parity = binary(self, InclusiveOr, doubled, parity)?;
+            let round_up = binary(self, Greater, discarded_with_parity, unit)?;
+            let increment = self.append(
+                Expression::Select {
+                    condition: round_up,
+                    accept: one,
+                    reject: zero,
+                },
+                span,
+            )?;
+            // Add to the packed magnitude so a fraction carry also increments the exponent.
+            magnitude_bits = binary(self, Add, magnitude_bits, increment)?;
+        }
         let encoded = if let Some(sign_bits) = sign_bits {
             binary(self, InclusiveOr, sign_bits, magnitude_bits)?
         } else {
