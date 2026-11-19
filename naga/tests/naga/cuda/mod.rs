@@ -94,6 +94,7 @@ mod integer_math;
 mod integer_operators;
 mod integral_template_defaults;
 mod integral_templates;
+mod kernel_vector_values;
 mod launch_bounds;
 mod list_initialization;
 mod literals;

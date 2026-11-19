@@ -14,6 +14,27 @@ pub(in super::super) struct ExpansionBudget {
 }
 
 impl ExpansionBudget {
+    pub(in super::super) fn charge_expressions(
+        &mut self,
+        count: usize,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        self.charge_nodes(count, span)?;
+        self.charge_slice::<Expression>(count, span)?;
+        self.charge_slice::<u32>(count, span)
+    }
+
+    pub(in super::super) fn preflight_expressions(
+        &mut self,
+        count: usize,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        let (nodes, bytes) = (self.nodes, self.bytes);
+        let result = self.charge_expressions(count, span);
+        (self.nodes, self.bytes) = (nodes, bytes);
+        result
+    }
+
     pub(in super::super) const fn activate(&mut self) -> bool {
         let newly_active = !self.active;
         self.active = true;
@@ -123,6 +144,38 @@ pub(super) fn limit_error(span: Span) -> ParseError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cuda_kernel_vector_values_preflight_before_publishing_parameters() {
+        for source in ["int2 value)", "const float4 value)"] {
+            let span = Span::new(0, 1);
+            let mut complete = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            complete.parameter(0).unwrap();
+            let used = &complete.parameter_expansion_budget;
+            for (nodes, bytes, work) in [
+                (NODE_LIMIT - used.nodes + 1, 0, 0),
+                (0, BYTE_LIMIT - used.bytes + 1, 0),
+                (0, 0, WORK_LIMIT - used.work + 1),
+            ] {
+                let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                let budget = &mut parser.parameter_expansion_budget;
+                budget.activate();
+                budget.charge_nodes(nodes, span).unwrap();
+                budget.charge_bytes(bytes, span).unwrap();
+                budget.charge_work(work, span).unwrap();
+
+                let error = parser.parameter(0).unwrap_err();
+                assert_eq!(error.message, limit_error(span).message);
+                assert!(parser.parameter_expansion_budget.is_exhausted());
+                assert!(parser.module.types.is_empty());
+                assert!(parser.module.global_variables.is_empty());
+                assert!(parser.function.ir.local_variables.is_empty());
+                assert!(parser.function.ir.expressions.is_empty());
+                assert!(parser.function.ir.body.is_empty());
+                assert!(parser.function.symbol_table.lookup("value").is_none());
+            }
+        }
+    }
 
     #[test]
     fn multidimensional_parameter_row_types_check_budgets_before_allocation() {

@@ -638,13 +638,20 @@ impl<'a> Parser<'a> {
         if self.function.kind == FunctionKind::Kernel
             && !is_pointer
             && specifier.source_scalar().is_none()
+            && !matches!(
+                specifier,
+                TypeSpecifier::Vector {
+                    component_count: 2 | 4,
+                    scalar: Scalar::I32 | Scalar::U32 | Scalar::F32,
+                }
+            )
         {
             return Err(ParseError {
                 message: String::from(
                     if matches!(specifier, TypeSpecifier::Dim3 | TypeSpecifier::Structure(_)) {
                         "structure kernel value parameters are unsupported"
                     } else {
-                        "vector kernel parameters are unsupported"
+                        "kernel vector value parameters require two or four 32-bit components"
                     },
                 ),
                 span: type_span,
@@ -745,6 +752,24 @@ impl<'a> Parser<'a> {
         parameter_ty: &TypeResolution,
         is_const: bool,
     ) -> Result<(), ParseError> {
+        if matches!(
+            parameter_ty,
+            &TypeResolution::Value(TypeInner::Vector { .. })
+        ) {
+            self.activate_parameter_expansion(span)?;
+            self.prepare_parameter_bindings(span)?;
+            let budget = &mut self.parameter_expansion_budget;
+            budget.charge_work(1, span)?;
+            budget.charge_nodes(4, span)?;
+            budget.charge_slice::<(Type, Span)>(2, span)?;
+            budget.charge_slice::<StructMember>(1, span)?;
+            budget.charge_slice::<(GlobalVariable, Span)>(1, span)?;
+            budget.charge_slice::<(LocalVariable, Span)>(1, span)?;
+            budget.charge_slice::<(Statement, Span)>(3, span)?;
+            budget.charge_map_entry::<&str, Symbol>(1, span)?;
+            budget.charge_bytes("value".len() + 2 * name.len(), span)?;
+            budget.preflight_expressions(4, span)?;
+        }
         let is_bool = self
             .module
             .compare_types(parameter_ty, &scalar_resolution(Scalar::BOOL));
@@ -1130,11 +1155,8 @@ impl<'a> Parser<'a> {
 
     fn prepare_append(&mut self, depth: u32, span: Span) -> Result<(), ParseError> {
         if self.function.parameter_state_charged {
-            self.parameter_expansion_budget.charge_nodes(1, span)?;
             self.parameter_expansion_budget
-                .charge_slice::<Expression>(1, span)?;
-            self.parameter_expansion_budget
-                .charge_slice::<u32>(1, span)?;
+                .charge_expressions(1, span)?;
         }
         if depth > 64 {
             return Err(ParseError {

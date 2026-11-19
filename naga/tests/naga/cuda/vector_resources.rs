@@ -245,10 +245,10 @@ fn cuda_vector_resources_reject_implicit_element_type_and_width_conversions() {
 }
 
 #[test]
-fn cuda_vector_resources_keep_general_pointer_and_kernel_value_forms_unsupported() {
+fn cuda_vector_resources_keep_unsupported_pointer_and_vector_value_forms() {
     validate("__global__ void kernel(float3 values[2]) { values[0].x = 1.0f; }");
     for scalar in ["float", "int", "uint"] {
-        for width in [2, 3, 4] {
+        for width in [1, 3] {
             rejected(&format!(
                 "__global__ void kernel({scalar}{width} value) {{}}"
             ));

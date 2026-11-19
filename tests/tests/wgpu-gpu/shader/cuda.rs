@@ -96,6 +96,7 @@ mod integer_intrinsics;
 mod integer_math;
 mod integral_template_defaults;
 mod integral_templates;
+mod kernel_vector_values;
 mod kernels;
 mod launch_bounds;
 mod list_initialization;
@@ -273,6 +274,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_NEARBYINTF,
         CUDA_SELECTION_DECLARATION_CONDITIONS,
         CUDA_INFERRED_SELECTION_CONDITIONS,
+        CUDA_KERNEL_VECTOR_VALUES,
         CUDA_WHILE_DECLARATION_CONDITIONS,
         CUDA_FOR_DECLARATION_CONDITIONS,
         CUDA_TRUNCF,
@@ -1227,3 +1229,6 @@ static CUDA_WHILE_DECLARATION_CONDITIONS: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_FOR_DECLARATION_CONDITIONS: GpuTestConfiguration =
     configuration(for_declaration_conditions::cases);
+
+#[apply(gpu_test!)]
+static CUDA_KERNEL_VECTOR_VALUES: GpuTestConfiguration = configuration(kernel_vector_values::cases);
