@@ -1,8 +1,9 @@
 use super::*;
 
 impl Parser<'_> {
-    pub(super) fn lower_float2int_rz_call(
+    pub(super) fn lower_float_to_integer_rz_call(
         &mut self,
+        destination: Scalar,
         arguments: Vec<Value>,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
@@ -16,7 +17,7 @@ impl Parser<'_> {
         // The intrinsic is not a source constant expression, even for literal arguments.
         argument.constant = ConstantValue::default();
         let argument = self.convert_scalar(argument.into(), Scalar::F32)?;
-        let mut result = self.convert_scalar(argument.into(), Scalar::I32)?;
+        let mut result = self.convert_scalar(argument.into(), destination)?;
         result.span = span;
         Ok(result.into())
     }

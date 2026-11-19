@@ -1175,6 +1175,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
     declarations.insert(
+        "__float2uint_rz",
+        GlobalDeclaration::Functions(FunctionOverloads::default()),
+    );
+    declarations.insert(
         "__fadd_rz",
         GlobalDeclaration::Functions(Default::default()),
     );
@@ -1300,7 +1304,7 @@ pub(super) enum FunctionCandidate {
     SqrtRoundZero,
     Fmodf,
     CopySign,
-    FloatToIntRoundZero,
+    FloatToIntegerRoundZero(Scalar),
     AddRoundNearest,
     AddRoundZero,
     SubtractRoundNearest,
@@ -1912,7 +1916,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Sqrt
                         | FunctionCandidate::Fmodf
                         | FunctionCandidate::CopySign
-                        | FunctionCandidate::FloatToIntRoundZero
+                        | FunctionCandidate::FloatToIntegerRoundZero(_)
                         | FunctionCandidate::AddRoundZero
                         | FunctionCandidate::AddRoundNearest
                         | FunctionCandidate::SubtractRoundNearest
@@ -2188,10 +2192,9 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Atomic { scalar: result, .. }
             | FunctionCandidate::AtomicCompareExchange(result)
             | FunctionCandidate::Bitcast { result, .. }
+            | FunctionCandidate::FloatToIntegerRoundZero(result)
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
-            FunctionCandidate::FloatClassification(_) | FunctionCandidate::FloatToIntRoundZero => {
-                TypeSpecifier::Scalar(Scalar::I32)
-            }
+            FunctionCandidate::FloatClassification(_) => TypeSpecifier::Scalar(Scalar::I32),
             FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
@@ -2491,8 +2494,8 @@ impl<'a> Parser<'a> {
         if candidate == FunctionCandidate::CopySign {
             return self.lower_copysign_call(arguments, span);
         }
-        if candidate == FunctionCandidate::FloatToIntRoundZero {
-            return self.lower_float2int_rz_call(arguments, span);
+        if let FunctionCandidate::FloatToIntegerRoundZero(destination) = candidate {
+            return self.lower_float_to_integer_rz_call(destination, arguments, span);
         }
         if candidate == FunctionCandidate::AddRoundZero {
             return self.lower_fadd_rz_call(arguments, span);
@@ -3229,7 +3232,12 @@ impl<'a> Parser<'a> {
             .chain((builtin_visible && name == "fmodf").then_some(FunctionCandidate::Fmodf))
             .chain(match (builtin_visible, name) {
                 (true, "copysignf") => Some(FunctionCandidate::CopySign),
-                (true, "__float2int_rz") => Some(FunctionCandidate::FloatToIntRoundZero),
+                (true, "__float2int_rz") => {
+                    Some(FunctionCandidate::FloatToIntegerRoundZero(Scalar::I32))
+                }
+                (true, "__float2uint_rz") => {
+                    Some(FunctionCandidate::FloatToIntegerRoundZero(Scalar::U32))
+                }
                 _ => None,
             })
             .chain(
@@ -3374,7 +3382,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FloatMath(_)
             | FunctionCandidate::FloatClassification(_)
             | FunctionCandidate::IntegralDouble { .. }
-            | FunctionCandidate::FloatToIntRoundZero
+            | FunctionCandidate::FloatToIntegerRoundZero(_)
             | FunctionCandidate::SqrtRoundZero
             | FunctionCandidate::Sqrt
             | FunctionCandidate::ReciprocalRoundNearest
@@ -3428,7 +3436,7 @@ impl<'a> Parser<'a> {
             }
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::FloatClassification(_)
-            | FunctionCandidate::FloatToIntRoundZero
+            | FunctionCandidate::FloatToIntegerRoundZero(_)
             | FunctionCandidate::SqrtRoundZero
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf

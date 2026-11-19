@@ -1371,10 +1371,12 @@ so exceptional bit patterns are not guaranteed to survive every target.
 
 ## Integer intrinsics
 
-`__float2int_rz(float)` converts its argument to `float`, truncates toward zero,
-and returns `int`. CUDA leaves the result undefined when the truncated value
-falls outside the `int` range or the input is nonfinite. This intrinsic follows
-the runtime and overload rules for predefined device functions.
+`__float2int_rz(float)` and `__float2uint_rz(float)` convert their arguments to
+`float`, truncate toward zero, and return `int` and `unsigned int`, respectively.
+CUDA leaves the result undefined when the truncated value falls outside the
+return type's range or the input is nonfinite. In the unsigned form, negative
+fractions greater than `-1` truncate to zero. Both intrinsics follow the runtime
+and overload rules for predefined device functions.
 
 These predefined functions operate on integer representations:
 

@@ -52,6 +52,7 @@ mod fdiv_rn;
 mod fdiv_rz;
 mod ffsll;
 mod float2int_rz;
+mod float2uint_rz;
 mod float_classification;
 mod float_math;
 mod float_separators;
