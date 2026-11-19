@@ -521,11 +521,13 @@ retain their source type, including `short` and `bool`. Mixed scalar arms use
 the usual arithmetic conversions. A typed pointer paired with a `nullptr`
 operand retains the pointer's source type, so
 `sizeof(*(flag ? pointer : nullptr))` gives the pointee size. Two `nullptr`
-arms give the size of `decltype(nullptr)`. Conditional expressions also work
-in integral subscript indices within a query.
+arms give the size of `decltype(nullptr)`. Two single-level pointers to the
+same pointee type retain that pointee type, including any array extents.
+Conditional expressions also work in integral subscript indices within a query.
 
-Pointer and integer arms, including literal `0`, pointer pairs, and array
-arms are unsupported in these queries.
+Pointer pairs with different pointee types or pointer-to-pointer types,
+pointer and integer arms including literal `0`, and array arms are unsupported
+in these queries.
 
 Pointer, array, record, and vector binary operators remain unsupported within
 these queries. Calls, casts, updates, assignments, comma expressions, and

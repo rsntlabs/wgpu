@@ -175,6 +175,17 @@ impl Parser<'_> {
             self.parameter_expansion_budget.charge_work(1, colon_span)?;
             let (reject, reject_span) = self.sizeof_conditional_expression()?;
             let operand = match (accept, reject) {
+                (SizeofOperand::Object(left), SizeofOperand::Object(right))
+                    if self.source_pointer_pointee(&left).is_some_and(|pointee| {
+                        self.source_pointer_pointee(&right) == Some(pointee)
+                            && !matches!(
+                                self.module.types[pointee].inner,
+                                TypeInner::Pointer { .. }
+                            )
+                    }) =>
+                {
+                    SizeofOperand::Object(left)
+                }
                 (SizeofOperand::Object(ty), SizeofOperand::NullPointer)
                 | (SizeofOperand::NullPointer, SizeofOperand::Object(ty))
                     if self.source_pointer_pointee(&ty).is_some() =>
@@ -188,7 +199,7 @@ impl Parser<'_> {
                     let scalar_arm = |operand, span| {
                         self.sizeof_source_scalar(operand).ok_or_else(|| ParseError {
                             message: String::from(
-                                "sizeof conditional requires scalar arms, a pointer with nullptr, or two nullptr arms",
+                                "sizeof conditional requires scalar arms, single-level pointers to the same type, a pointer with nullptr, or two nullptr arms",
                             ),
                             span,
                         })
@@ -684,12 +695,14 @@ mod tests {
 
     #[test]
     fn sizeof_pointer_arms_reuse_the_source_descriptor_under_allocation_limits() {
-        for exhaust_bytes in [false, true] {
+        for (source, exhaust_bytes) in [
+            ("(true ? nullptr : pointer)", false),
+            ("(true ? nullptr : pointer)", true),
+            ("(true ? pointer : pointer)", false),
+            ("(true ? pointer : pointer)", true),
+        ] {
             let span = Span::new(0, 1);
-            let mut parser = Parser::new(
-                Lexer::new("(true ? nullptr : pointer)").unwrap(),
-                &Options::default(),
-            );
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             let pointee = parser.module.types.insert(
                 Type {
                     name: None,
@@ -715,6 +728,31 @@ mod tests {
             assert!(parser.function.ir.local_variables.is_empty());
             assert!(parser.function.ir.body.is_empty());
         }
+    }
+
+    #[test]
+    fn sizeof_pointer_pairs_reject_nested_source_descriptors() {
+        let source = "(true ? pointer : pointer)";
+        let span = Span::new(0, 1);
+        let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+        let pointee = parser.module.types.insert(
+            Type {
+                name: None,
+                inner: TypeInner::Scalar(Scalar::I32),
+            },
+            span,
+        );
+        let inner = parser.query_parameter_pointer_type(pointee, span).unwrap();
+        let outer = parser.query_parameter_pointer_type(inner, span).unwrap();
+        parser
+            .insert_symbol(
+                "pointer",
+                Symbol::TemplateFunctionParameter(Some(SourceType::Shader(outer))),
+                span,
+            )
+            .unwrap();
+        assert!(parser.sizeof_operand().is_err());
+        assert_eq!(parser.function.expression_depth, 0);
     }
 
     fn check_sizeof_metadata_budget(source: &str) {

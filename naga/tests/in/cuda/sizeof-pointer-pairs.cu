@@ -1,0 +1,33 @@
+struct Record { int first; unsigned second; float third; };
+__global__ void sizeof_pointer_pairs(const int *input, unsigned *output) {
+    unsigned lane = threadIdx.x;
+    unsigned base = 4u + lane * 12u;
+    int seed = input[lane];
+    bool flag = seed != 0;
+    int counter = 7;
+    using Number = int;
+    Number *other = nullptr;
+    const int *const fixed = input;
+    volatile int *watched = nullptr;
+    using Row = int[3];
+    Row *left = nullptr;
+    const Row *right = nullptr;
+    Record *first = nullptr;
+    const Record *second = nullptr;
+    constexpr unsigned Pair = unsigned(sizeof(flag ? input : other));
+    constexpr unsigned Reverse = unsigned(sizeof(flag ? other : input));
+    constexpr unsigned Qualified = unsigned(sizeof(*(flag ? fixed : watched)));
+    constexpr unsigned Origins = unsigned(sizeof(flag ? input : fixed));
+    constexpr unsigned RowPointer = unsigned(sizeof(flag ? left : right));
+    constexpr unsigned RowValue = unsigned(sizeof(*(flag ? right : left)));
+    constexpr unsigned RowElement = unsigned(sizeof((flag ? left : right)[counter][seed]));
+    constexpr unsigned Member = unsigned(sizeof((flag ? first : second)->third));
+    constexpr unsigned Nested = unsigned(sizeof(flag ? input : flag ? other : nullptr));
+    constexpr unsigned Subscript = unsigned(sizeof((flag ? fixed : other)[counter]));
+    output[base] = Pair; output[base + 1u] = Reverse;
+    output[base + 2u] = Qualified; output[base + 3u] = Origins;
+    output[base + 4u] = RowPointer; output[base + 5u] = RowValue;
+    output[base + 6u] = RowElement; output[base + 7u] = Member;
+    output[base + 8u] = Nested; output[base + 9u] = Subscript;
+    output[base + 10u] = unsigned(counter); output[base + 11u] = unsigned(input[lane]);
+}

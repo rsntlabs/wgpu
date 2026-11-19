@@ -58,6 +58,19 @@ fn cuda_sizeof_pointer_arms_cli_emit_all_backends() {
     );
 }
 
+#[test]
+fn cuda_sizeof_pointer_pairs_cli_emit_all_backends() {
+    emits_all_backends(
+        r#"__global__ void kernel(const int *input, unsigned *output) {
+        bool flag; int *local;
+        constexpr unsigned Pointer=unsigned(sizeof(flag ? input : local));
+        constexpr unsigned Element=unsigned(sizeof((flag ? local : input)[99]));
+        output[0]=Pointer+Element;
+        output[1]=unsigned(input[0]);
+    }"#,
+    );
+}
+
 fn emits_all_backends(source: &str) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);
@@ -151,12 +164,12 @@ fn cuda_sizeof_conditional_cli_rejects_invalid_arms() {
         "true?1:p",
         "p?1:nullptr",
         "true?p:0",
-        "true?p:p",
+        "true?p:f",
         "true?1,2:3",
         "true?1:",
         "true?1:1.0f%2",
     ] {
-        let source = format!("__global__ void kernel() {{ int *p=nullptr; constexpr unsigned size=unsigned(sizeof({operands})); }}");
+        let source = format!("__global__ void kernel() {{ int *p=nullptr; float *f=nullptr; constexpr unsigned size=unsigned(sizeof({operands})); }}");
         let files = TestFiles::new("cu", &source);
         let result = files.translate(&[]);
         assert!(!result.status.success(), "{source}");

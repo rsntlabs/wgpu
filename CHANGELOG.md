@@ -214,6 +214,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support scalar conditional expressions in CUDA `sizeof` operands.
 - Support pointer, array, and `nullptr` conditions in CUDA `sizeof` expressions with scalar arms.
 - Support typed pointer and `nullptr` arm combinations in CUDA `sizeof` conditional expressions.
+- Support matching single-level pointer arms in CUDA `sizeof` conditional expressions.
 - Support CUDA `rintf` with portable rounding to the nearest even integer.
 - Support CUDA `nearbyintf` through the existing nearest-even rounding helper.
 - Support explicit scalar declaration conditions in CUDA `if` and `switch` statements.

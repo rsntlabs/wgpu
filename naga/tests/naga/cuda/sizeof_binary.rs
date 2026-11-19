@@ -336,10 +336,16 @@ fn cuda_sizeof_pointer_arms_preserve_incomplete_pointee_checks() {
         __global__ void kernel(unsigned long *out, Values *view) {
             out[0] = sizeof(true ? view : nullptr);
             out[1] = sizeof((*(true ? nullptr : view))[0]);
+            out[2] = sizeof(true ? view : view);
+            out[3] = sizeof((*(true ? view : view))[0]);
         }",
-        &[8, 4],
+        &[8, 4, 8, 4],
     );
-    for operand in ["*(true ? view : nullptr)", "(true ? nullptr : view)[0]"] {
+    for operand in [
+        "*(true ? view : nullptr)",
+        "(true ? nullptr : view)[0]",
+        "*(true ? view : view)",
+    ] {
         let source = format!(
             "using Values = int[];
             __global__ void kernel(unsigned long *out, Values *view) {{
@@ -348,6 +354,64 @@ fn cuda_sizeof_pointer_arms_preserve_incomplete_pointee_checks() {
         );
         let error = parse_str(&source, &Options::default()).unwrap_err();
         assert!(error.message.contains("complete"), "{error}");
+    }
+}
+
+#[test]
+fn cuda_sizeof_pointer_pairs_preserve_source_layouts_without_evaluation() {
+    let compile = |body| {
+        queries(
+            &format!(
+                "using Alias = int; using Row = int[3]; struct Record {{ int values[3]; }};
+        __global__ void kernel(unsigned long *out, volatile int *input, const Alias *other) {{
+            bool flag; Row *row; const Row *other_row; Record *record; const Record *other_record;
+            {body}
+        }}"
+            ),
+            &[8, 4, 12, 12, 4, 4],
+        )
+    };
+    let module = compile(
+        "out[0] = sizeof(flag ? input : other);
+        out[1] = sizeof(*(flag ? other : input));
+        out[2] = sizeof((flag ? row : other_row)[99]);
+        out[3] = sizeof((flag ? record : other_record)->values);
+        out[4] = sizeof(*(flag ? flag ? input : nullptr : other));
+        out[5] = sizeof((flag ? input : other)[flag ? 0 : 1]);",
+    );
+    let baseline = compile(
+        "out[0] = 8UL; out[1] = 4UL; out[2] = 12UL;
+        out[3] = 12UL; out[4] = 4UL; out[5] = 4UL;",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .eq(baseline.entry_points[0].function.expressions.iter()));
+}
+
+#[test]
+fn cuda_sizeof_pointer_pairs_reject_distinct_pointee_types() {
+    for (left, right) in [
+        ("int", "float"),
+        ("int", "unsigned"),
+        ("long", "long long"),
+        ("Row", "OtherRow"),
+        ("Record", "OtherRecord"),
+    ] {
+        let source = format!(
+            "using Row = int[3]; using OtherRow = int[4];
+            struct Record {{ int value; }}; struct OtherRecord {{ int value; }};
+            __global__ void kernel(unsigned long *out) {{
+                {left} *left; {right} *right;
+                out[0] = sizeof(true ? left : right);
+            }}"
+        );
+        let error = parse_str(&source, &Options::default()).unwrap_err();
+        assert!(
+            error.message.contains("sizeof conditional requires"),
+            "{source}: {error}"
+        );
     }
 }
 
@@ -368,7 +432,6 @@ fn cuda_sizeof_conditional_checks_both_arms_and_keeps_unsupported_boundaries() {
         "true ? value : nullptr",
         "true ? pointer : 0",
         "true ? pointer : false",
-        "true ? pointer : pointer",
         "true ? values : nullptr",
         "true ? values : values",
         "*(true ? nullptr : nullptr)",
