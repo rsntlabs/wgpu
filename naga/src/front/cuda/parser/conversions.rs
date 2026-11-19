@@ -1,6 +1,26 @@
 use super::*;
 
 impl Parser<'_> {
+    pub(super) fn lower_float2int_rz_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let mut argument = arguments.into_iter().next().unwrap();
+        let needs_float_conversion =
+            self.source_scalar(&argument.ty) != Some(SourceScalar::Scalar(Scalar::F32));
+        self.parameter_expansion_budget
+            .preflight_expressions(1 + usize::from(needs_float_conversion), span)?;
+        // The intrinsic is not a source constant expression, even for literal arguments.
+        argument.constant = ConstantValue::default();
+        let argument = self.convert_scalar(argument.into(), Scalar::F32)?;
+        let mut result = self.convert_scalar(argument.into(), Scalar::I32)?;
+        result.span = span;
+        Ok(result.into())
+    }
+
     pub(super) fn bitcast_scalar(
         &mut self,
         expr: Handle<Expression>,

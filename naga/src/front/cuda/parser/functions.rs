@@ -1171,6 +1171,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
     declarations.insert(
+        "__float2int_rz",
+        GlobalDeclaration::Functions(FunctionOverloads::default()),
+    );
+    declarations.insert(
         "__fadd_rz",
         GlobalDeclaration::Functions(Default::default()),
     );
@@ -1296,6 +1300,7 @@ pub(super) enum FunctionCandidate {
     SqrtRoundZero,
     Fmodf,
     CopySign,
+    FloatToIntRoundZero,
     AddRoundNearest,
     AddRoundZero,
     SubtractRoundNearest,
@@ -1907,6 +1912,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Sqrt
                         | FunctionCandidate::Fmodf
                         | FunctionCandidate::CopySign
+                        | FunctionCandidate::FloatToIntRoundZero
                         | FunctionCandidate::AddRoundZero
                         | FunctionCandidate::AddRoundNearest
                         | FunctionCandidate::SubtractRoundNearest
@@ -2183,7 +2189,9 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::AtomicCompareExchange(result)
             | FunctionCandidate::Bitcast { result, .. }
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
-            FunctionCandidate::FloatClassification(_) => TypeSpecifier::Scalar(Scalar::I32),
+            FunctionCandidate::FloatClassification(_) | FunctionCandidate::FloatToIntRoundZero => {
+                TypeSpecifier::Scalar(Scalar::I32)
+            }
             FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
@@ -2482,6 +2490,9 @@ impl<'a> Parser<'a> {
         }
         if candidate == FunctionCandidate::CopySign {
             return self.lower_copysign_call(arguments, span);
+        }
+        if candidate == FunctionCandidate::FloatToIntRoundZero {
+            return self.lower_float2int_rz_call(arguments, span);
         }
         if candidate == FunctionCandidate::AddRoundZero {
             return self.lower_fadd_rz_call(arguments, span);
@@ -3216,7 +3227,11 @@ impl<'a> Parser<'a> {
                     .then_some(FunctionCandidate::Sqrt),
             )
             .chain((builtin_visible && name == "fmodf").then_some(FunctionCandidate::Fmodf))
-            .chain((builtin_visible && name == "copysignf").then_some(FunctionCandidate::CopySign))
+            .chain(match (builtin_visible, name) {
+                (true, "copysignf") => Some(FunctionCandidate::CopySign),
+                (true, "__float2int_rz") => Some(FunctionCandidate::FloatToIntRoundZero),
+                _ => None,
+            })
             .chain(
                 (builtin_visible && name == "__fadd_rz").then_some(FunctionCandidate::AddRoundZero),
             )
@@ -3359,6 +3374,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FloatMath(_)
             | FunctionCandidate::FloatClassification(_)
             | FunctionCandidate::IntegralDouble { .. }
+            | FunctionCandidate::FloatToIntRoundZero
             | FunctionCandidate::SqrtRoundZero
             | FunctionCandidate::Sqrt
             | FunctionCandidate::ReciprocalRoundNearest
@@ -3412,6 +3428,7 @@ impl<'a> Parser<'a> {
             }
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::FloatClassification(_)
+            | FunctionCandidate::FloatToIntRoundZero
             | FunctionCandidate::SqrtRoundZero
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf
