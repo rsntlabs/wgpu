@@ -19,7 +19,7 @@ impl Parser<'_> {
                 Token::Operation('*' | '+' | '-' | '~' | '!')
                 | Token::Paren('(')
                 | Token::Number(_)
-                | Token::Word("true" | "false" | "nullptr") => true,
+                | Token::Word("true" | "false" | "nullptr" | "static_cast") => true,
                 Token::Word(operand) => self.lookup_symbol(operand).is_some_and(|symbol| {
                     !matches!(
                         symbol,
@@ -368,6 +368,7 @@ impl Parser<'_> {
                 start,
             ),
             Token::Word("nullptr") => (SizeofOperand::NullPointer, start),
+            Token::Word("static_cast") => self.sizeof_static_cast(start)?,
             Token::Word(name) => {
                 let symbol = self.lookup_symbol(name).ok_or_else(|| ParseError {
                     message: String::from("sizeof requires a supported named object"),
@@ -426,6 +427,36 @@ impl Parser<'_> {
             end = field_span;
         }
         Ok((operand, start.until(&end)))
+    }
+
+    fn sizeof_static_cast(&mut self, start: Span) -> Result<(SizeofOperand, Span), ParseError> {
+        // Account for parsing the bounded type syntax and the four delimiters.
+        self.parameter_expansion_budget.charge_work(5, start)?;
+        self.lexer.expect_span(Token::Paren('<'))?;
+        let target_span = self.lexer.peek()?.1;
+        let scalar = match self.parse_type()?.ty {
+            TypeSpecifier::Scalar(scalar) => SourceScalar::Scalar(scalar),
+            TypeSpecifier::Long { kind } => SourceScalar::Long(kind),
+            _ => {
+                return Err(ParseError {
+                    message: String::from(
+                        "sizeof static_cast requires an arithmetic scalar target",
+                    ),
+                    span: target_span,
+                })
+            }
+        };
+        self.lexer.expect_span(Token::Paren('>'))?;
+        self.lexer.expect_span(Token::Paren('('))?;
+        let (operand, operand_span) = self.sizeof_comma_expression()?;
+        let end = self.lexer.expect_span(Token::Paren(')'))?;
+        if self.sizeof_source_scalar(&operand).is_none() {
+            return Err(ParseError {
+                message: String::from("sizeof static_cast requires an arithmetic scalar operand"),
+                span: operand_span,
+            });
+        }
+        Ok((SizeofOperand::Scalar(scalar), start.until(&end)))
     }
 
     fn sizeof_integral_operand(&self, operand: &SizeofOperand) -> bool {
@@ -722,6 +753,24 @@ mod tests {
     #[test]
     fn sizeof_pointer_conditions_metadata_needs_no_node_or_byte_allocation_budget() {
         check_sizeof_metadata_budget("(nullptr ? 1L : 1u)");
+    }
+
+    #[test]
+    fn sizeof_static_casts_preserve_source_long_without_allocations() {
+        check_sizeof_metadata_budget("static_cast<const long>(1 / 0, static_cast<short>(3u))");
+    }
+
+    #[test]
+    fn sizeof_static_casts_bound_nesting_and_restore_depth() {
+        let source = format!("{}1{}", "static_cast<int>(".repeat(70), ")".repeat(70));
+        let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
+        let Err(error) = parser.sizeof_operand() else {
+            panic!("expected expression nesting error");
+        };
+        assert_eq!(error.message, "CUDA expression nesting limit exceeded");
+        assert_eq!(parser.function.expression_depth, 0);
+        assert!(parser.function.ir.expressions.is_empty());
+        assert!(parser.module.types.is_empty());
     }
 
     #[test]

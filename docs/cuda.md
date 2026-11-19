@@ -538,8 +538,13 @@ A comma expression ending in `0` has integer type and cannot serve as a null
 pointer constant.
 
 Pointer, array, record, and vector binary operators remain unsupported within
-these queries. Calls, casts, updates, assignments, and nested type queries
-also remain unsupported.
+these queries. Calls, updates, assignments, and nested type queries also
+remain unsupported.
+
+`sizeof(static_cast<short>(value))` uses the cast's destination type and gives
+two bytes. This form supports existing arithmetic scalar types as both source
+and destination. It checks the operand type without evaluating the value or
+performing the conversion. The argument may be a supported comma expression.
 
 `static_assert(condition);` declarations are accepted at global, function, and
 record scope, including local records in instantiated function templates.

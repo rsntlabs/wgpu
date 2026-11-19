@@ -1,0 +1,30 @@
+__global__ void sizeof_static_casts(const int *input, unsigned *output) {
+    unsigned lane = threadIdx.x;
+    unsigned base = 4u + lane * 16u;
+    int seed = input[lane];
+    int counter = 7;
+    int matrix[2][3]{};
+    using Integer = unsigned;
+    constexpr unsigned Short = unsigned(sizeof(static_cast<short>(seed)));
+    constexpr unsigned Boolean = unsigned(sizeof(static_cast<bool>(seed)));
+    constexpr unsigned Alias = unsigned(sizeof(static_cast<const Integer>(seed)));
+    constexpr unsigned Wide = unsigned(sizeof(static_cast<long long>(seed)));
+    constexpr unsigned Real = unsigned(sizeof(static_cast<float>(seed)));
+    constexpr unsigned Nested = unsigned(sizeof(static_cast<short>(static_cast<unsigned>(seed))));
+    constexpr unsigned Comma = unsigned(sizeof(static_cast<bool>(input[counter], seed)));
+    constexpr unsigned SameType = unsigned(sizeof(seed ? static_cast<short>(counter) : static_cast<short>(seed)));
+    constexpr unsigned Mixed = unsigned(sizeof(seed ? static_cast<short>(counter) : seed));
+    constexpr unsigned Row = unsigned(sizeof(matrix[static_cast<int>(seed ? counter : seed)]));
+    constexpr unsigned InvalidRange = unsigned(sizeof(static_cast<unsigned>(-1.0f)));
+    constexpr unsigned InvalidMath = unsigned(sizeof(static_cast<bool>(1 / 0)));
+    constexpr unsigned Binding = unsigned(sizeof static_cast<short>(seed) + 1);
+    constexpr unsigned Shift = unsigned(sizeof(static_cast<unsigned>(seed) >> 1));
+    output[base] = Short; output[base + 1u] = Boolean;
+    output[base + 2u] = Alias; output[base + 3u] = Wide;
+    output[base + 4u] = Real; output[base + 5u] = Nested;
+    output[base + 6u] = Comma; output[base + 7u] = SameType;
+    output[base + 8u] = Mixed; output[base + 9u] = Row;
+    output[base + 10u] = InvalidRange; output[base + 11u] = InvalidMath;
+    output[base + 12u] = Binding; output[base + 13u] = Shift;
+    output[base + 14u] = unsigned(counter); output[base + 15u] = unsigned(input[lane]);
+}

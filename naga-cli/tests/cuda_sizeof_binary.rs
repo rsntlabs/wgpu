@@ -100,6 +100,20 @@ fn cuda_sizeof_comma_cli_emit_all_backends() {
     );
 }
 
+#[test]
+fn cuda_sizeof_static_casts_cli_emit_all_backends() {
+    emits_all_backends(
+        r#"using Narrow = const short;
+    __global__ void kernel(const int *input, unsigned *output) {
+        constexpr unsigned NarrowWidth=unsigned(sizeof(static_cast<Narrow>(input[99])));
+        constexpr unsigned WideWidth=unsigned(sizeof(static_cast<unsigned long long>(input[99], 1/0)));
+        constexpr unsigned FlagWidth=unsigned(sizeof static_cast<bool>(input[99]));
+        output[0]=NarrowWidth+WideWidth+FlagWidth;
+        output[1]=unsigned(input[0]);
+    }"#,
+    );
+}
+
 fn emits_all_backends(source: &str) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);

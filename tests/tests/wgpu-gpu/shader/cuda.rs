@@ -180,6 +180,7 @@ mod sizeof_conditionals;
 mod sizeof_pointer_arms;
 mod sizeof_pointer_conditions;
 mod sizeof_pointer_pairs;
+mod sizeof_static_casts;
 mod sizeof_zero_arms;
 mod specifiers;
 mod sqrt;
@@ -343,6 +344,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_SIZEOF_POINTER_ARMS,
         CUDA_SIZEOF_POINTER_CONDITIONS,
         CUDA_SIZEOF_POINTER_PAIRS,
+        CUDA_SIZEOF_STATIC_CASTS,
         CUDA_SIZEOF_ZERO_ARMS,
         CUDA_INTEGRAL_TEMPLATES,
         CUDA_LAUNCH_BOUNDS,
@@ -1335,3 +1337,6 @@ static CUDA_SIZEOF_ZERO_ARMS: GpuTestConfiguration = configuration(sizeof_zero_a
 
 #[apply(gpu_test!)]
 static CUDA_SIZEOF_COMMA: GpuTestConfiguration = configuration(sizeof_comma::cases);
+
+#[apply(gpu_test!)]
+static CUDA_SIZEOF_STATIC_CASTS: GpuTestConfiguration = configuration(sizeof_static_casts::cases);

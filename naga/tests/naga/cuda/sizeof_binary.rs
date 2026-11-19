@@ -3,6 +3,95 @@ use naga::valid::Capabilities;
 
 use super::helpers::{root_expression, validate_with_options_and_capabilities};
 
+#[test]
+fn cuda_sizeof_static_casts_use_the_destination_type_without_evaluation() {
+    let compile = |body| {
+        queries(
+            &format!(
+                "using Small = const short; using Wide = unsigned long long;
+        __global__ void kernel(unsigned long *out, volatile int *input) {{
+            bool flag; short small; int grid[2][3]; {body}
+        }}"
+            ),
+            &[2, 1, 8, 2, 2, 4, 12, 4, 4, 8, 4],
+        )
+    };
+    let module = compile(
+        "out[0] = sizeof(static_cast<Small>(input[99]));
+        out[1] = sizeof(static_cast<bool>(input[99]));
+        out[2] = sizeof(static_cast<Wide>(static_cast<float>(1 / 0)));
+        out[3] = sizeof(static_cast<decltype(small)>(0));
+        out[4] = sizeof(flag ? static_cast<short>(input[99]) : small);
+        out[5] = sizeof(flag ? static_cast<int>(input[99]) : small);
+        out[6] = sizeof(grid[static_cast<unsigned>(input[99])]);
+        out[7] = sizeof(static_cast<unsigned>(input[99]) >> 1);
+        out[8] = sizeof(static_cast<unsigned>(-1.0f));
+        out[9] = sizeof(static_cast<volatile long>(input[99], small));
+        out[10] = sizeof(static_cast<int>(0));
+        static_assert(sizeof static_cast<short>(input[99]) + 1 == 3);",
+    );
+    let baseline = compile(
+        "out[0] = 2UL; out[1] = 1UL; out[2] = 8UL; out[3] = 2UL;
+        out[4] = 2UL; out[5] = 4UL; out[6] = 12UL; out[7] = 4UL;
+        out[8] = 4UL; out[9] = 8UL; out[10] = 4UL;
+        static_assert(2UL + 1 == 3);",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .eq(baseline.entry_points[0].function.expressions.iter()));
+}
+
+#[test]
+fn cuda_sizeof_static_casts_reject_unsupported_forms_and_clear_zero_provenance() {
+    for operand in [
+        "static_cast<void>(value)",
+        "static_cast<int *>(value)",
+        "static_cast<int &>(value)",
+        "static_cast<Pointer>(value)",
+        "static_cast<decltype(nullptr)>(0)",
+        "static_cast<Row>(value)",
+        "static_cast<int2>(value)",
+        "static_cast<Record>(value)",
+        "static_cast<bool>(pointer)",
+        "static_cast<int>(nullptr)",
+        "static_cast<int>(values)",
+        "static_cast<int>(static_cast<int>(value++))",
+        "static_cast<int>(value = 1)",
+        "static_cast<int>()",
+        "static_cast<int>(1,)",
+        "static_cast<int(value)",
+        "(int)value",
+        "int(value)",
+    ] {
+        reject(&format!(
+            "using Pointer = int *; using Row = int[2];
+            struct Record {{ int value; }};
+            __global__ void kernel(unsigned long *out) {{
+                int value; int *pointer; int values[2];
+                out[0] = sizeof({operand});
+            }}"
+        ));
+    }
+    let error = parse_str(
+        "__global__ void kernel(unsigned long *out) {
+        int *pointer; out[0] = sizeof(true ? pointer : (static_cast<int>(0)));
+    }",
+        &Options::default(),
+    )
+    .unwrap_err();
+    assert!(
+        error.message.contains("sizeof conditional requires"),
+        "{error}"
+    );
+    reject(
+        "using Small = short; __global__ void kernel(unsigned long *out) {
+        int Small; out[0] = sizeof(static_cast<Small>(0));
+    }",
+    );
+}
+
 fn queries(source: &str, expected: &[u64]) -> naga::Module {
     let capabilities = Capabilities::SHADER_INT16 | Capabilities::SHADER_INT64;
     let (module, info) =
