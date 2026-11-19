@@ -530,31 +530,33 @@ impl<'a> Parser<'a> {
         if self.function.kind == FunctionKind::Kernel
             && explicit_pointer_qualifiers.is_none()
             && !is_reference
-        {
-            if let TypeSpecifier::Vector {
-                component_count: component_count @ 1..=4,
-                scalar: Scalar::I32 | Scalar::U32 | Scalar::F32,
-            } = specifier
-            {
-                let mut declarator = self.lexer.clone();
-                if let (Token::Word(name), span) = declarator.next()? {
-                    if matches!(
-                        declarator.peek()?.0,
-                        Token::Separator(',') | Token::Paren(')') | Token::Operation('=')
-                    ) {
-                        self.check_name(name, span)?;
-                        self.note_volatile_parameter_object(qualifiers, type_span)?;
-                        self.prepare_kernel_vector_value_parameter(name, component_count, span)?;
-                        let ty = self.lower_type(specifier, type_span)?;
-                        self.lexer = declarator;
-                        return self.value_parameter(
-                            parameter_index,
-                            name,
-                            span,
-                            &ty,
-                            qualifiers.is_const,
-                        );
+            && matches!(
+                specifier,
+                TypeSpecifier::Dim3
+                    | TypeSpecifier::Vector {
+                        component_count: 1..=4,
+                        scalar: Scalar::I32 | Scalar::U32 | Scalar::F32,
                     }
+            )
+        {
+            let mut declarator = self.lexer.clone();
+            if let (Token::Word(name), span) = declarator.next()? {
+                if matches!(
+                    declarator.peek()?.0,
+                    Token::Separator(',') | Token::Paren(')') | Token::Operation('=')
+                ) {
+                    self.check_name(name, span)?;
+                    self.note_volatile_parameter_object(qualifiers, type_span)?;
+                    self.prepare_kernel_aggregate_value_parameter(name, specifier, span)?;
+                    let ty = self.lower_type(specifier, type_span)?;
+                    self.lexer = declarator;
+                    return self.value_parameter(
+                        parameter_index,
+                        name,
+                        span,
+                        &ty,
+                        qualifiers.is_const,
+                    );
                 }
             }
         }
@@ -768,22 +770,32 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn prepare_kernel_vector_value_parameter(
+    fn prepare_kernel_aggregate_value_parameter(
         &mut self,
         name: &str,
-        component_count: u8,
+        specifier: TypeSpecifier,
         span: Span,
     ) -> Result<(), ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         let budget = &mut self.parameter_expansion_budget;
-        let mut types = 2;
-        if matches!(component_count, 1 | 3) {
-            // These vectors intern a scalar and a named struct before the uniform wrapper.
-            types += 1;
-            let members = usize::from(component_count);
+        let members = match specifier {
+            TypeSpecifier::Dim3 => 3,
+            TypeSpecifier::Vector {
+                component_count: count @ (1 | 3),
+                ..
+            } => usize::from(count),
+            _ => 0,
+        };
+        // A named struct also interns its scalar member type.
+        let types = 2 + usize::from(members != 0);
+        if members != 0 {
             budget.charge_slice::<StructMember>(members, span)?;
             budget.charge_bytes("float3".len() + members, span)?;
+        }
+        if specifier == TypeSpecifier::Dim3 {
+            budget.charge_nodes(1, span)?;
+            budget.charge_map_entry::<Handle<Type>, structures::Structure>(1, span)?;
         }
         budget.charge_work(1, span)?;
         budget.charge_nodes(types + 2, span)?;

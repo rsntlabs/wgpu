@@ -146,15 +146,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn cuda_kernel_vector_values_preflight_before_publishing_parameters() {
-        for source in [
-            "int2 value)",
-            "const float4 value)",
-            "int1 value)",
-            "uint3 value)",
+    fn cuda_kernel_aggregate_values_preflight_before_publishing_parameters() {
+        for (source, cached) in [
+            ("int2 value)", false),
+            ("const float4 value)", false),
+            ("int1 value)", false),
+            ("uint3 value)", false),
+            ("dim3 value)", false),
+            ("dim3 value)", true),
         ] {
             let span = Span::new(0, 1);
             let mut complete = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            if cached {
+                complete.dim3_type(span);
+            }
             complete.parameter(0).unwrap();
             let used = &complete.parameter_expansion_budget;
             for (nodes, bytes, work) in [
@@ -163,6 +168,9 @@ mod tests {
                 (0, 0, WORK_LIMIT - used.work + 1),
             ] {
                 let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+                let dim3 = cached.then(|| parser.dim3_type(span));
+                let type_count = parser.module.types.len();
+                let structure_count = parser.structures.len();
                 let budget = &mut parser.parameter_expansion_budget;
                 budget.activate();
                 budget.charge_nodes(nodes, span).unwrap();
@@ -172,7 +180,9 @@ mod tests {
                 let error = parser.parameter(0).unwrap_err();
                 assert_eq!(error.message, limit_error(span).message);
                 assert!(parser.parameter_expansion_budget.is_exhausted());
-                assert!(parser.module.types.is_empty());
+                assert_eq!(parser.module.types.len(), type_count);
+                assert_eq!(parser.structures.len(), structure_count);
+                assert_eq!(parser.dim3_type, dim3);
                 assert!(parser.uint3_type.is_none());
                 assert!(parser.module.global_variables.is_empty());
                 assert!(parser.function.ir.local_variables.is_empty());

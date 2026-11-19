@@ -1986,7 +1986,11 @@ initialization and narrowing rules as vector declarations.
 `dim3` is distinct from `uint3`, with unsigned `.x`, `.y`, and `.z` fields,
 12-byte size and array stride, and 4-byte alignment. It supports aliases, `auto`,
 mutable fields, value copies, local arrays, record members, helper value results,
-and helper value, reference, and pointer parameters. Kernel parameters require pointers.
+and helper value, reference, and pointer parameters. Kernels accept `dim3` by
+value or through a pointer. Each value uses a 16-byte uniform buffer at the
+parameter's source binding index. Write `x`, `y`, and `z` as `u32` words at byte
+offsets 0, 4, and 8. The fourth word is padding. Each invocation receives its own
+copy, including any zero components supplied by the host.
 
 Default construction produces `(1, 1, 1)`, including `dim3 shape;`,
 `dim3{}`, and `dim3()`. Constructors accept zero to three scalar arguments;

@@ -271,7 +271,6 @@ fn cuda_dim3_default_construction_obeys_switch_initialization_and_preserves_pod_
 fn cuda_dim3_rejects_malformed_values_and_keeps_existing_aggregate_boundaries() {
     for source in [
         "using dim3 = uint3; __global__ void kernel() {}",
-        "__global__ void kernel(dim3 value) {}",
         "constexpr dim3 Shape(2u); __global__ void kernel() {}",
         "__global__ void kernel() { constexpr dim3 shape(2u); }",
         "__global__ void kernel() { constexpr unsigned Count = dim3(2u).x; unsigned values[Count]; }",

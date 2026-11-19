@@ -139,7 +139,6 @@ fn cuda_kernel_vector_values_keep_other_aggregate_value_families_out_of_scope() 
         "ulong4",
         "longlong2",
         "Record",
-        "dim3",
     ] {
         reject(&format!(
             "struct Record {{ unsigned value; }}; __global__ void kernel({ty} value) {{}}"
