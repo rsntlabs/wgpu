@@ -8,6 +8,7 @@ use BinaryOperator::{
 pub(super) enum IntegerToFloatRounding {
     TowardZero,
     NearestEven,
+    TowardNegative,
 }
 
 impl Parser<'_> {
@@ -103,19 +104,29 @@ impl Parser<'_> {
             None
         };
         let mut magnitude_bits = binary(self, InclusiveOr, exponent_bits, fraction)?;
-        if rounding == IntegerToFloatRounding::NearestEven {
+        if rounding != IntegerToFloatRounding::TowardZero {
             let unit = binary(self, ShiftLeft, one, right_shift)?;
             let discarded_mask = binary(self, Subtract, unit, one)?;
             let discarded = binary(self, And, magnitude, discarded_mask)?;
-            // The parity bit breaks a halfway tie toward an even significand.
-            let doubled = binary(self, ShiftLeft, discarded, one)?;
-            let parity = binary(self, And, significand, one)?;
-            let discarded_with_parity = binary(self, InclusiveOr, doubled, parity)?;
-            let round_up = binary(self, Greater, discarded_with_parity, unit)?;
+            let (condition, increment_if_true) = match rounding {
+                IntegerToFloatRounding::NearestEven => {
+                    // The parity bit breaks a halfway tie toward an even significand.
+                    let doubled = binary(self, ShiftLeft, discarded, one)?;
+                    let parity = binary(self, And, significand, one)?;
+                    let discarded_with_parity = binary(self, InclusiveOr, doubled, parity)?;
+                    (binary(self, Greater, discarded_with_parity, unit)?, one)
+                }
+                IntegerToFloatRounding::TowardNegative => {
+                    // Only negative inexact values need a larger magnitude.
+                    let inexact = binary(self, NotEqual, discarded, zero)?;
+                    (inexact, negative_digit.unwrap_or(zero))
+                }
+                IntegerToFloatRounding::TowardZero => unreachable!(),
+            };
             let increment = self.append(
                 Expression::Select {
-                    condition: round_up,
-                    accept: one,
+                    condition,
+                    accept: increment_if_true,
                     reject: zero,
                 },
                 span,

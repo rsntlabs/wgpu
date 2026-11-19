@@ -1719,6 +1719,11 @@ mod tests {
     }
 
     #[test]
+    fn cuda_int2float_rd_checks_budgets_before_converting_and_encoding() {
+        check_integer_to_float_budget("__int2float_rd", "1u");
+    }
+
+    #[test]
     fn cuda_int2float_rn_checks_budgets_before_converting_and_encoding() {
         check_integer_to_float_budget("__int2float_rn", "1u");
     }
