@@ -71,6 +71,21 @@ fn cuda_sizeof_pointer_pairs_cli_emit_all_backends() {
     );
 }
 
+#[test]
+fn cuda_sizeof_zero_arms_cli_emit_all_backends() {
+    emits_all_backends(
+        r#"#define NULL_WORD 0U
+        __global__ void kernel(const int *input, unsigned *output) {
+        bool flag;
+        constexpr unsigned Pointer=unsigned(sizeof(flag ? input : NULL_WORD));
+        constexpr unsigned Element=unsigned(sizeof((flag ? (0x0L) : input)[99]));
+        constexpr unsigned Zero=unsigned(sizeof(0));
+        output[0]=Pointer+Element+Zero;
+        output[1]=unsigned(input[0]);
+    }"#,
+    );
+}
+
 fn emits_all_backends(source: &str) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);
@@ -163,7 +178,8 @@ fn cuda_sizeof_conditional_cli_rejects_invalid_arms() {
     for operands in [
         "true?1:p",
         "p?1:nullptr",
-        "true?p:0",
+        "true?p:+0",
+        "true?nullptr:0",
         "true?p:f",
         "true?1,2:3",
         "true?1:",

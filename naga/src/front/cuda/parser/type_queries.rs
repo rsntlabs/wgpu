@@ -2,6 +2,7 @@ use super::*;
 
 enum SizeofOperand {
     Scalar(SourceScalar),
+    IntegerZeroLiteral(SourceScalar),
     Object(TypeResolution),
     IncompleteArray(TypeResolution),
     NullPointer,
@@ -159,6 +160,7 @@ impl Parser<'_> {
                         || matches!(ty.inner_with(&self.module.types), TypeInner::Array { .. })
                 }
                 SizeofOperand::Scalar(_)
+                | SizeofOperand::IntegerZeroLiteral(_)
                 | SizeofOperand::IncompleteArray(_)
                 | SizeofOperand::NullPointer => true,
             };
@@ -186,12 +188,14 @@ impl Parser<'_> {
                 {
                     SizeofOperand::Object(left)
                 }
-                (SizeofOperand::Object(ty), SizeofOperand::NullPointer)
-                | (SizeofOperand::NullPointer, SizeofOperand::Object(ty))
-                    if self.source_pointer_pointee(&ty).is_some() =>
-                {
-                    SizeofOperand::Object(ty)
-                }
+                (
+                    SizeofOperand::Object(ty),
+                    SizeofOperand::NullPointer | SizeofOperand::IntegerZeroLiteral(_),
+                )
+                | (
+                    SizeofOperand::NullPointer | SizeofOperand::IntegerZeroLiteral(_),
+                    SizeofOperand::Object(ty),
+                ) if self.source_pointer_pointee(&ty).is_some() => SizeofOperand::Object(ty),
                 (SizeofOperand::NullPointer, SizeofOperand::NullPointer) => {
                     SizeofOperand::NullPointer
                 }
@@ -199,7 +203,7 @@ impl Parser<'_> {
                     let scalar_arm = |operand, span| {
                         self.sizeof_source_scalar(operand).ok_or_else(|| ParseError {
                             message: String::from(
-                                "sizeof conditional requires scalar arms, single-level pointers to the same type, a pointer with nullptr, or two nullptr arms",
+                                "sizeof conditional requires scalar arms, matching single-level pointer arms, a pointer with nullptr or literal integer zero, or two nullptr arms",
                             ),
                             span,
                         })
@@ -241,7 +245,9 @@ impl Parser<'_> {
 
     fn sizeof_source_scalar(&self, operand: &SizeofOperand) -> Option<SourceScalar> {
         match *operand {
-            SizeofOperand::Scalar(scalar) => Some(scalar),
+            SizeofOperand::Scalar(scalar) | SizeofOperand::IntegerZeroLiteral(scalar) => {
+                Some(scalar)
+            }
             SizeofOperand::Object(ref ty) => self.source_scalar(ty),
             _ => None,
         }
@@ -334,7 +340,13 @@ impl Parser<'_> {
                     message: String::from("unsupported or out-of-range numeric literal"),
                     span: start,
                 })?;
-                (SizeofOperand::Scalar(number.scalar), start)
+                let operand = match number.literal {
+                    Literal::I32(0) | Literal::U32(0) | Literal::I64(0) | Literal::U64(0) => {
+                        SizeofOperand::IntegerZeroLiteral(number.scalar)
+                    }
+                    _ => SizeofOperand::Scalar(number.scalar),
+                };
+                (operand, start)
             }
             Token::Word("true" | "false") => (
                 SizeofOperand::Scalar(SourceScalar::Scalar(Scalar::BOOL)),
@@ -459,7 +471,9 @@ impl Parser<'_> {
                 })
                 .map(TypeResolution::Handle),
             SizeofOperand::IncompleteArray(element) => Some(element),
-            SizeofOperand::Scalar(_) | SizeofOperand::NullPointer => None,
+            SizeofOperand::Scalar(_)
+            | SizeofOperand::IntegerZeroLiteral(_)
+            | SizeofOperand::NullPointer => None,
         }
         .ok_or_else(|| ParseError {
             message: String::from("sizeof dereference requires a pointer or array operand"),
@@ -479,7 +493,7 @@ impl Parser<'_> {
             span,
         };
         let ty = match operand {
-            SizeofOperand::Scalar(scalar) => {
+            SizeofOperand::Scalar(scalar) | SizeofOperand::IntegerZeroLiteral(scalar) => {
                 if operator == '!' {
                     return Ok(SizeofOperand::Scalar(SourceScalar::Scalar(Scalar::BOOL)));
                 }
@@ -540,7 +554,9 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<u32, ParseError> {
         let value = match operand {
-            SizeofOperand::Scalar(scalar) => u32::from(scalar.scalar().width),
+            SizeofOperand::Scalar(scalar) | SizeofOperand::IntegerZeroLiteral(scalar) => {
+                u32::from(scalar.scalar().width)
+            }
             SizeofOperand::NullPointer => 8,
             SizeofOperand::IncompleteArray(_) => {
                 return Err(ParseError {
@@ -700,6 +716,8 @@ mod tests {
             ("(true ? nullptr : pointer)", true),
             ("(true ? pointer : pointer)", false),
             ("(true ? pointer : pointer)", true),
+            ("(true ? pointer : (0L))", false),
+            ("(true ? (0x0ULL) : pointer)", true),
         ] {
             let span = Span::new(0, 1);
             let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());

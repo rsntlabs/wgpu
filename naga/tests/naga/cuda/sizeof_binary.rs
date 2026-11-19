@@ -416,6 +416,84 @@ fn cuda_sizeof_pointer_pairs_reject_distinct_pointee_types() {
 }
 
 #[test]
+fn cuda_sizeof_zero_arms_preserve_pointer_and_scalar_layouts_without_evaluation() {
+    let compile =
+        |body| {
+            queries(
+        &format!("#define NULL_WORD (0x0u)\nusing Row = int[3]; struct Record {{ int values[3]; }};
+        __global__ void kernel(unsigned long *out, volatile int *input) {{
+            bool flag; Row *row; Record *record; {body}
+        }}"),
+        &[8, 4, 12, 12, 8, 4, 8, 8, 4],
+    )
+        };
+    let module = compile(
+        "out[0] = sizeof(flag ? input : 0);
+        out[1] = sizeof(*(flag ? 0ULL : input));
+        out[2] = sizeof((flag ? row : ((0b0)))[99]);
+        out[3] = sizeof((flag ? NULL_WORD : record)->values);
+        out[4] = sizeof(flag ? flag ? 0'0 : input : 00);
+        out[5] = sizeof 0;
+        out[6] = sizeof(0L);
+        out[7] = sizeof(flag ? 0u : 0LL);
+        out[8] = sizeof(*((0 ? row : 0L)[0]));",
+    );
+    let baseline = compile(
+        "out[0] = 8UL; out[1] = 4UL; out[2] = 12UL;
+        out[3] = 12UL; out[4] = 8UL; out[5] = 4UL; out[6] = 8UL;
+        out[7] = 8UL; out[8] = 4UL;",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .eq(baseline.entry_points[0].function.expressions.iter()));
+}
+
+#[test]
+fn cuda_sizeof_zero_arms_reject_other_zero_expressions_and_nullptr_mixtures() {
+    for operand in [
+        "true ? pointer : (1)",
+        "true ? pointer : 0x0f",
+        "true ? pointer : false",
+        "true ? pointer : 0.0f",
+        "true ? pointer : 0x0p0f",
+        "true ? pointer : +0",
+        "true ? pointer : -0",
+        "true ? pointer : !1",
+        "true ? pointer : (1 - 1)",
+        "true ? pointer : (0 + 0)",
+        "true ? pointer : (0 << 1)",
+        "true ? pointer : zero",
+        "true ? pointer : ((true ? 0 : 0))",
+        "true ? nullptr : 0",
+        "true ? 0u : nullptr",
+        "true ? values : 0",
+    ] {
+        let source = format!(
+            "__global__ void kernel(unsigned long *out) {{
+            int *pointer; int values[3]; constexpr int zero = 0;
+            out[0] = sizeof({operand});
+        }}"
+        );
+        let error = parse_str(&source, &Options::default()).unwrap_err();
+        assert!(
+            error.message.contains("sizeof conditional requires"),
+            "{source}: {error}"
+        );
+    }
+    let source = "template<int N> __device__ unsigned width() {
+        int *pointer; return unsigned(sizeof(true ? pointer : N));
+    }
+    __global__ void kernel(unsigned *out) { out[0] = width<0>(); }";
+    let error = parse_str(source, &Options::default()).unwrap_err();
+    assert!(
+        error.message.contains("sizeof conditional requires"),
+        "{error}"
+    );
+}
+
+#[test]
 fn cuda_sizeof_conditional_checks_both_arms_and_keeps_unsupported_boundaries() {
     for operand in [
         "record ? value : 1",
@@ -430,7 +508,6 @@ fn cuda_sizeof_conditional_checks_both_arms_and_keeps_unsupported_boundaries() {
         "true ? value : record",
         "true ? value : values",
         "true ? value : nullptr",
-        "true ? pointer : 0",
         "true ? pointer : false",
         "true ? values : nullptr",
         "true ? values : values",
