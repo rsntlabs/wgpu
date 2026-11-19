@@ -88,6 +88,7 @@ mod incomplete_array_pointers;
 mod inferred_arrays;
 mod inferred_selection_conditions;
 mod inline;
+mod int2float_rz;
 mod integer16;
 mod integer16_vectors;
 mod integer64;

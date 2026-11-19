@@ -1179,6 +1179,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
     declarations.insert(
+        "__int2float_rz",
+        GlobalDeclaration::Functions(FunctionOverloads::default()),
+    );
+    declarations.insert(
         "__fadd_rz",
         GlobalDeclaration::Functions(Default::default()),
     );
@@ -1305,6 +1309,7 @@ pub(super) enum FunctionCandidate {
     Fmodf,
     CopySign,
     FloatToIntegerRoundZero(Scalar),
+    IntToFloatRoundZero,
     AddRoundNearest,
     AddRoundZero,
     SubtractRoundNearest,
@@ -1917,6 +1922,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Fmodf
                         | FunctionCandidate::CopySign
                         | FunctionCandidate::FloatToIntegerRoundZero(_)
+                        | FunctionCandidate::IntToFloatRoundZero
                         | FunctionCandidate::AddRoundZero
                         | FunctionCandidate::AddRoundNearest
                         | FunctionCandidate::SubtractRoundNearest
@@ -2205,6 +2211,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::PackedUnary(_) => TypeSpecifier::Scalar(Scalar::U32),
             FunctionCandidate::IntegralDouble { .. } => unreachable!(),
             FunctionCandidate::FloatMath(_)
+            | FunctionCandidate::IntToFloatRoundZero
             | FunctionCandidate::SqrtRoundZero
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf
@@ -2496,6 +2503,9 @@ impl<'a> Parser<'a> {
         }
         if let FunctionCandidate::FloatToIntegerRoundZero(destination) = candidate {
             return self.lower_float_to_integer_rz_call(destination, arguments, span);
+        }
+        if candidate == FunctionCandidate::IntToFloatRoundZero {
+            return self.lower_int2float_rz_call(arguments, span);
         }
         if candidate == FunctionCandidate::AddRoundZero {
             return self.lower_fadd_rz_call(arguments, span);
@@ -3238,6 +3248,7 @@ impl<'a> Parser<'a> {
                 (true, "__float2uint_rz") => {
                     Some(FunctionCandidate::FloatToIntegerRoundZero(Scalar::U32))
                 }
+                (true, "__int2float_rz") => Some(FunctionCandidate::IntToFloatRoundZero),
                 _ => None,
             })
             .chain(
@@ -3383,6 +3394,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FloatClassification(_)
             | FunctionCandidate::IntegralDouble { .. }
             | FunctionCandidate::FloatToIntegerRoundZero(_)
+            | FunctionCandidate::IntToFloatRoundZero
             | FunctionCandidate::SqrtRoundZero
             | FunctionCandidate::Sqrt
             | FunctionCandidate::ReciprocalRoundNearest
@@ -3434,6 +3446,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::IntegralDouble { source } => {
                 return Some(scalar_resolution(source))
             }
+            FunctionCandidate::IntToFloatRoundZero => return Some(scalar_resolution(Scalar::I32)),
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::FloatClassification(_)
             | FunctionCandidate::FloatToIntegerRoundZero(_)

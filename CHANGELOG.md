@@ -203,6 +203,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA `truncf` with portable rounding toward zero that preserves signed zero.
 - Support CUDA `__float2int_rz` for float-to-int conversion toward zero.
 - Support CUDA `__float2uint_rz` for float-to-unsigned conversion toward zero.
+- Support CUDA `__int2float_rz` for signed integer-to-float conversion toward zero.
 - Support CUDA `rintf` with portable rounding to the nearest even integer.
 - Support CUDA `nearbyintf` through the existing nearest-even rounding helper.
 - Support explicit scalar declaration conditions in CUDA `if` and `switch` statements.

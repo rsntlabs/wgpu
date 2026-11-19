@@ -1709,6 +1709,49 @@ mod tests {
     }
 
     #[test]
+    fn cuda_int2float_rz_checks_budgets_before_converting_and_encoding() {
+        for prepared in [false, true] {
+            for (exhaust_bytes, headroom) in [(false, 0), (false, 1), (true, 0), (true, 1)] {
+                let span = Span::new(0, 2);
+                let mut parser = Parser::new(Lexer::new("1u").unwrap(), &Options::default());
+                let arguments = alloc::vec![parser.number("1u", span).unwrap()];
+                let candidate = parser.function_candidates("__int2float_rz").next().unwrap();
+                parser.parameter_expansion_budget.activate();
+                if prepared {
+                    parser.prepare_parameter_bindings(span).unwrap();
+                }
+                let expressions = parser.function.ir.expressions.len();
+                let types = parser.module.types.len();
+                let budget = &mut parser.parameter_expansion_budget;
+                if exhaust_bytes {
+                    let expression_bytes = size_of::<Expression>() + size_of::<u32>();
+                    budget
+                        .charge_bytes(
+                            BYTE_LIMIT - budget.bytes - headroom * expression_bytes,
+                            span,
+                        )
+                        .unwrap();
+                } else {
+                    budget
+                        .charge_nodes(NODE_LIMIT - budget.nodes - headroom, span)
+                        .unwrap();
+                }
+                let error = parser.lower_call(candidate, arguments, span).unwrap_err();
+                assert_eq!(error.message, limit_error(span).message);
+                assert_eq!(error.span, span);
+                assert!(parser.parameter_expansion_budget.is_exhausted());
+                assert_eq!(parser.function.ir.expressions.len(), expressions);
+                assert_eq!(parser.function.expression_graph_depths.len(), expressions);
+                assert_eq!(parser.module.types.len(), types);
+                assert!(parser.function.ir.body.is_empty());
+                assert!(parser.function.ir.local_variables.is_empty());
+                assert!(parser.module.functions.is_empty());
+                assert!(parser.module.global_variables.is_empty());
+            }
+        }
+    }
+
+    #[test]
     fn bitcast_checks_type_and_expression_nodes_before_inserting_types() {
         for available_nodes in [0, 1] {
             let source = "1.5f";
