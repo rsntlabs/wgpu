@@ -220,6 +220,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support one- and three-component 32-bit CUDA kernel vector value parameters.
 - Support `dim3` CUDA kernel value parameters.
 - Support CUDA kernel record value parameters with up to four packed 32-bit numeric scalar fields.
+- Extend CUDA kernel record value parameters to eight packed 32-bit numeric scalar fields.
 - Support CUDA `decltype(name)` for named non-reference value objects, preserving source types and qualifiers without evaluating the object.
 - Support CUDA packed signed and unsigned greater-than-or-equal comparisons with lane masks or per-lane 0/1 results.
 - Support CUDA packed signed and unsigned strict greater-than comparisons with lane masks or per-lane 0/1 results.

@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn cuda_kernel_record_values_preflight_after_existing_parameter() {
-        let source = "struct R { int x; unsigned y; float z; }; using Alias = R; unsigned prior, Alias value)";
+        let source = "struct R { int x; unsigned y; float z; int a, b, c, d, e; }; using Alias = R; unsigned prior, Alias value)";
         let prepare = || {
             let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             parser.structure_declaration(true).unwrap();

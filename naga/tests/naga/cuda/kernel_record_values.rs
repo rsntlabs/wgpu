@@ -12,9 +12,18 @@ fn reject(source: &str) {
 }
 
 #[test]
-fn cuda_kernel_record_values_keep_one_to_four_scalar_fields_and_fixed_launch_wrappers() {
-    let fields = ["int x;", "unsigned y;", "float z;", "unsigned w;"];
-    for count in 1..=4 {
+fn cuda_kernel_record_values_keep_one_to_eight_scalar_fields_and_rounded_launch_wrappers() {
+    let fields = [
+        "int x;",
+        "unsigned y;",
+        "float z;",
+        "unsigned w;",
+        "int e;",
+        "unsigned f;",
+        "float g;",
+        "unsigned h;",
+    ];
+    for count in 1..=8 {
         let declaration = fields[..count].join(" ");
         let (module, _) = validate(&format!("struct Record {{ {declaration} }}; __global__ void kernel(unsigned *out, const Record original, Record value, const Record *source) {{ Record copy = value; value.x += 1; copy.x = 2; out[0] = unsigned(original.x + value.x + copy.x + source[0].x); }}"));
         assert_eq!(module.global_variables.len(), 4);
@@ -42,7 +51,7 @@ fn cuda_kernel_record_values_keep_one_to_four_scalar_fields_and_fixed_launch_wra
             else {
                 panic!("expected launch wrapper");
             };
-            assert_eq!(span, 16);
+            assert_eq!(span, if count <= 4 { 16 } else { 32 });
             assert_eq!(members.len(), 1);
             assert_eq!(members[0].offset, 0);
             assert_eq!(members[0].ty, record_ty);
@@ -61,6 +70,10 @@ fn cuda_kernel_record_values_keep_one_to_four_scalar_fields_and_fixed_launch_wra
                     module.types[field.ty].inner,
                     naga::TypeInner::Scalar(
                         [
+                            naga::Scalar::I32,
+                            naga::Scalar::U32,
+                            naga::Scalar::F32,
+                            naga::Scalar::U32,
                             naga::Scalar::I32,
                             naga::Scalar::U32,
                             naga::Scalar::F32,
@@ -175,7 +188,7 @@ fn cuda_kernel_record_values_reject_excluded_fields_const_mutation_and_incomplet
         "float2 x;",
         "dim3 x;",
         "Inner x;",
-        "unsigned a,b,c,d,e;",
+        "unsigned a,b,c,d,e,f,g,h,i;",
     ] {
         reject(&format!("struct Inner {{ unsigned x; }}; struct Record {{ {fields} }}; __global__ void kernel(Record value) {{}}"));
     }
@@ -186,4 +199,46 @@ fn cuda_kernel_record_values_reject_excluded_fields_const_mutation_and_incomplet
         "struct Record { unsigned x; }; __global__ void kernel(Record value);",
         "struct Record { unsigned x; }; __global__ void kernel(Record value = Record{}) {}",
     ] { reject(source); }
+}
+
+#[test]
+fn cuda_kernel_record_values_round_only_large_envelopes_and_preserve_template_source_layout() {
+    let (module, _) = validate_with_options_and_capabilities(
+        "struct Small { unsigned x, y, z; };
+        struct Large { int x; unsigned y; float z; unsigned w; int e; unsigned f; float g; unsigned h; }; using Config = Large;
+        template<class T> __global__ void launch(unsigned *out, unsigned count, uint2 offset, dim3 shape, Small small, const T value) {
+            using Frozen = decltype(value); Frozen original = value; T copy = value; copy.h += count;
+            static_assert(sizeof(T) == 32); static_assert(alignof(T) == 4);
+            out[0] = copy.h + unsigned(original.e) + offset.x + shape.y + small.z;
+        }
+        template __global__ void launch<Config>(unsigned *, unsigned, uint2, dim3, Small, const Config);",
+        &Options::default(), naga::valid::Capabilities::SHADER_INT64,
+    );
+    let mut values: Vec<_> = module
+        .global_variables
+        .iter()
+        .filter_map(|(_, global)| {
+            (global.space == naga::AddressSpace::Uniform)
+                .then_some((global.binding.unwrap().binding, global))
+        })
+        .collect();
+    values.sort_by_key(|(binding, _)| *binding);
+    assert_eq!(values.len(), 5);
+    for ((binding, global), expected) in values.into_iter().zip([16, 16, 16, 16, 32]) {
+        assert!((1..=5).contains(&binding));
+        let naga::TypeInner::Struct { span, ref members } = module.types[global.ty].inner else {
+            panic!("expected launch wrapper");
+        };
+        assert_eq!(span, expected);
+        assert_eq!(members.len(), 1);
+        assert_eq!(members[0].offset, 0);
+        if binding == 5 {
+            let naga::TypeInner::Struct { span, ref members } = module.types[members[0].ty].inner
+            else {
+                panic!("expected original large record");
+            };
+            assert_eq!(span, 32);
+            assert_eq!(members[7].offset, 28);
+        }
+    }
 }

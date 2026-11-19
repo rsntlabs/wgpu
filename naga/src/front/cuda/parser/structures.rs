@@ -13,6 +13,7 @@ impl<'a> Parser<'a> {
         ty: Handle<Type>,
         span: Span,
     ) -> Result<(), ParseError> {
+        const MAX_FIELDS: usize = 8;
         let TypeInner::Struct {
             ref members,
             span: size,
@@ -22,8 +23,8 @@ impl<'a> Parser<'a> {
         };
         let count = members.len();
         self.parameter_expansion_budget
-            .charge_work(count.min(4), span)?;
-        if (1..=4).contains(&count)
+            .charge_work(count.min(MAX_FIELDS), span)?;
+        if (1..=MAX_FIELDS).contains(&count)
             && size == count as u32 * 4
             && self
                 .structures
@@ -40,7 +41,7 @@ impl<'a> Parser<'a> {
             return Ok(());
         }
         Err(ParseError {
-            message: String::from("kernel record value parameters require one to four tightly packed 32-bit numeric scalar fields"),
+            message: String::from("kernel record value parameters require one to eight tightly packed 32-bit numeric scalar fields"),
             span,
         })
     }

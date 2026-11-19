@@ -4,13 +4,18 @@ use common::TestFiles;
 
 #[test]
 fn cuda_kernel_record_values_cli_emits_all_writers_with_source_binding_order() {
-    let source = "struct Config { int bias; unsigned offset; float factor; };
+    let source = "struct Config {
+            int bias; unsigned offset; float factor; unsigned flags;
+            int delta; float scale; unsigned limit; float last;
+        };
         using Options = Config;
         __global__ void kernel(unsigned *out, unsigned index, const Options input) {
             Options copy = input;
             copy.bias += int(index);
             out[0] = unsigned(copy.bias) + input.offset;
             out[1] = __float_as_uint(copy.factor);
+            out[2] = copy.flags + unsigned(copy.delta) + copy.limit;
+            out[3] = __float_as_uint(copy.scale + copy.last);
         }";
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);
@@ -61,18 +66,23 @@ fn cuda_kernel_record_values_cli_emits_all_writers_with_source_binding_order() {
         assert_eq!(members[0].offset, 0);
         let naga::TypeInner::Struct {
             ref members,
-            span: 12,
+            span: 32,
         } = module.types[members[0].ty].inner
         else {
-            panic!("expected a twelve-byte configuration record");
+            panic!("expected a thirty-two-byte configuration record");
         };
-        assert_eq!(members.len(), 3);
+        assert_eq!(members.len(), 8);
         for (index, (member, (name, scalar))) in members
             .iter()
             .zip([
                 ("bias", naga::Scalar::I32),
                 ("offset", naga::Scalar::U32),
                 ("factor", naga::Scalar::F32),
+                ("flags", naga::Scalar::U32),
+                ("delta", naga::Scalar::I32),
+                ("scale", naga::Scalar::F32),
+                ("limit", naga::Scalar::U32),
+                ("last", naga::Scalar::F32),
             ])
             .enumerate()
         {
@@ -90,7 +100,7 @@ fn cuda_kernel_record_values_cli_emits_all_writers_with_source_binding_order() {
 fn cuda_kernel_record_values_cli_rejects_invalid_parameters_without_output() {
     for source in [
         "struct Config { dim3 shape; }; __global__ void kernel(Config value) {}",
-        "struct Config { int a, b, c, d, e; }; __global__ void kernel(Config value) {}",
+        "struct Config { int a, b, c, d, e, f, g, h, i; }; __global__ void kernel(Config value) {}",
         "struct Config { float coefficients[2]; }; __global__ void kernel(Config value) {}",
         "struct Config { int count; }; __global__ void kernel(const Config value) { ++value.count; }",
         "struct Config { int count; }; __global__ void kernel(Config &value) {}",

@@ -829,6 +829,10 @@ impl<'a> Parser<'a> {
         } else {
             self.type_handle(parameter_ty, span)
         };
+        let uniform_size = match self.module.types[value_ty].inner {
+            TypeInner::Struct { span, .. } => crate::proc::Alignment::SIXTEEN.round_up(span),
+            _ => 16,
+        };
         let ty = self.module.types.insert(
             Type {
                 name: None,
@@ -839,7 +843,7 @@ impl<'a> Parser<'a> {
                         binding: None,
                         offset: 0,
                     }],
-                    span: 16,
+                    span: uniform_size,
                 },
             },
             span,
