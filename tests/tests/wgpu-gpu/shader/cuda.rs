@@ -175,6 +175,7 @@ mod signed;
 mod signed_saturating_arithmetic;
 mod single_component_vectors;
 mod sizeof_binary;
+mod sizeof_conditionals;
 mod specifiers;
 mod sqrt;
 mod sqrtf;
@@ -332,6 +333,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_IF_INITIALIZERS,
         CUDA_MULTIDIMENSIONAL_PARAMETERS,
         CUDA_SIZEOF_BINARY,
+        CUDA_SIZEOF_CONDITIONALS,
         CUDA_INTEGRAL_TEMPLATES,
         CUDA_LAUNCH_BOUNDS,
         CUDA_LIST_INITIALIZATION,
@@ -1304,3 +1306,6 @@ static CUDA_UINT2FLOAT_RU: GpuTestConfiguration = configuration(uint2float_ru::c
 
 #[apply(gpu_test!)]
 static CUDA_UINT2FLOAT_RD: GpuTestConfiguration = configuration(uint2float_rd::cases);
+
+#[apply(gpu_test!)]
+static CUDA_SIZEOF_CONDITIONALS: GpuTestConfiguration = configuration(sizeof_conditionals::cases);

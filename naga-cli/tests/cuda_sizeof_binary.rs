@@ -13,6 +13,24 @@ fn cuda_sizeof_binary_cli_emits_all_backends_without_evaluating_operands() {
         output[0]=Sum+Product+Comparison+Undefined+Row;
         output[1]=unsigned(first);
     }"#;
+    emits_all_backends(source);
+}
+
+#[test]
+fn cuda_sizeof_conditional_cli_emits_all_backends_without_evaluating_operands() {
+    emits_all_backends(
+        r#"__global__ void kernel(const int *input,unsigned *output) {
+        bool flag; int grid[2][3];
+        constexpr unsigned Boolean=unsigned(sizeof(input[0] ? flag : false));
+        constexpr unsigned Row=unsigned(sizeof(grid[input[1] ? 0u : 1]));
+        constexpr unsigned Undefined=unsigned(sizeof(input[2] ? 1/0 : 1<<99));
+        output[0]=Boolean+Row+Undefined;
+        output[1]=unsigned(input[0]);
+    }"#,
+    );
+}
+
+fn emits_all_backends(source: &str) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);
         let outputs: Vec<_> = ["wgsl", "spv", "hlsl", "metal", "comp"]
@@ -88,7 +106,6 @@ fn cuda_sizeof_binary_cli_rejects_invalid_types_and_out_of_scope_expressions() {
         "float2 value{}; unsigned n=sizeof(value+value);",
         "int value=1; unsigned n=sizeof((value,2));",
         "int value=1; unsigned n=sizeof(value=2);",
-        "int value=1; unsigned n=sizeof(value?1:2);",
         "int value=1; unsigned n=sizeof(value++);",
         "float value=1; unsigned n=sizeof(value%2);",
         "float value=1; unsigned n=sizeof(value<<2);",
@@ -97,5 +114,22 @@ fn cuda_sizeof_binary_cli_rejects_invalid_types_and_out_of_scope_expressions() {
         let files = TestFiles::new("cu", &source);
         let result = files.translate(&[]);
         assert!(!result.status.success(), "unexpectedacceptance:{source}");
+    }
+}
+
+#[test]
+fn cuda_sizeof_conditional_cli_rejects_invalid_arms() {
+    for operands in [
+        "true?1:p",
+        "p?1:2",
+        "true?1,2:3",
+        "true?1:",
+        "true?1:1.0f%2",
+    ] {
+        let source = format!("__global__ void kernel() {{ int *p=nullptr; constexpr unsigned size=unsigned(sizeof({operands})); }}");
+        let files = TestFiles::new("cu", &source);
+        let result = files.translate(&[]);
+        assert!(!result.status.success(), "{source}");
+        assert!(!files.output.exists());
     }
 }

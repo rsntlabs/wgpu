@@ -494,8 +494,8 @@ Unary `+` preserves pointers and decays arrays once, so `sizeof(+matrix)` is
 eight while `sizeof(*+matrix)` retains the complete row extent. Record and
 vector operator overloads are not resolved within these queries. Built-in
 subscripts accept integral indices from these named, literal, grouped,
-member, unary, and scalar binary operand forms, preserving multidimensional
-array extents.
+member, unary, scalar binary, and scalar conditional operand forms. Subscripts
+preserve multidimensional array extents.
 Commuted forms such as `index[pointer]` are also supported. Neither pointer nor
 index values are read or bounds-checked, and indexing dynamic shared arrays does
 not allocate launch storage. The selected element type must be complete before
@@ -514,8 +514,14 @@ Both operands must have supported types, even for logical operators. Values are
 not checked for division by zero, overflow, invalid shift counts, or out-of-range
 indices, so `sizeof(1 / 0)` is four.
 
-Pointer, array, record, and vector binary operators remain unsupported within
-these queries. Calls, casts, updates, assignments, comma and conditional
+A grouped conditional operand such as `sizeof(flag ? left : right)` uses the
+types of its scalar condition and both scalar arms without evaluating them.
+Matching arm types retain their source type, including `short` and `bool`.
+Mixed arm types use the usual arithmetic conversions. Conditional expressions
+also work in integral subscript indices within a query.
+
+Pointer, array, record, and vector binary and conditional operators remain
+unsupported within these queries. Calls, casts, updates, assignments, comma
 expressions, and nested type queries also remain unsupported.
 
 `static_assert(condition);` declarations are accepted at global, function, and

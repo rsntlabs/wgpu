@@ -175,7 +175,6 @@ fn cuda_sizeof_binary_keeps_unsupported_expression_and_type_boundaries() {
         "value++ + 1",
         "value = 1",
         "value, 1",
-        "true ? value : 1",
         "value + sizeof(int)",
         "1.0 + value",
         "double",
@@ -185,5 +184,82 @@ fn cuda_sizeof_binary_keeps_unsupported_expression_and_type_boundaries() {
         "missing + 1",
     ] {
         reject(&format!("// π UTF-8 prefix\nstruct Record {{ int value; }}; __device__ int helper() {{ return 1; }} __global__ void kernel(unsigned long *out) {{ int value; int *pointer; int2 vector; Record record; out[0] = sizeof({operand}); }}"));
+    }
+}
+
+#[test]
+fn cuda_sizeof_conditional_preserves_matching_types_and_combines_mixed_arms() {
+    queries(
+        "__global__ void kernel(unsigned long *out) {
+        bool flag; short small; short other; int word; unsigned index; long wide;
+        int grid[2][3];
+        static_assert((sizeof small ? 7 : 9) == 7);
+        out[0] = sizeof(flag ? true : false);
+        out[1] = sizeof(flag ? small : other);
+        out[2] = sizeof(flag ? small : word);
+        out[3] = sizeof(flag ? index : wide);
+        out[4] = sizeof(flag ? index : 1.0f);
+        out[5] = sizeof(flag || word ? small : other);
+        out[6] = sizeof(flag ? small : flag ? small : other);
+        out[7] = sizeof(flag ? flag ? small : other : small);
+        out[8] = sizeof(grid[flag ? index : word]);
+        out[9] = sizeof(grid[flag ? index : word][flag ? small : other]);
+        out[10] = sizeof(flag ? wide : flag ? small : other);
+    }",
+        &[1, 2, 4, 8, 4, 2, 2, 2, 12, 4, 8],
+    );
+}
+
+#[test]
+fn cuda_sizeof_conditional_never_evaluates_operands() {
+    let module = queries(
+        "__global__ void kernel(unsigned long *out, volatile int *input) {
+        out[0] = sizeof(input[0] ? input[1] : input[2]);
+        out[1] = sizeof(1 / 0 ? 1 << 99 : 1 / 0);
+    }",
+        &[4, 4],
+    );
+    let baseline = queries(
+        "__global__ void kernel(unsigned long *out, volatile int *input) {
+        out[0] = 4UL; out[1] = 4UL;
+    }",
+        &[4, 4],
+    );
+    let function = &module.entry_points[0].function;
+    assert_eq!(
+        function.expressions.len(),
+        baseline.entry_points[0].function.expressions.len(),
+    );
+    assert!(function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+}
+
+#[test]
+fn cuda_sizeof_conditional_checks_both_arms_and_keeps_unsupported_boundaries() {
+    for operand in [
+        "pointer ? value : 1",
+        "values ? value : 1",
+        "true ? value : pointer",
+        "true ? pointer : value",
+        "true ? value : vector",
+        "true ? value : record",
+        "true ? value : values",
+        "true ? value : nullptr",
+        "true ? value : missing",
+        "true ? value : (1.0f % 2)",
+        "values[true ? 1 : 2.0f]",
+        "true ? value++, value : 1",
+        "true ? value, 1 : 2",
+        "true ? value : (value = 1)",
+        "true ? value",
+        "true ? value :",
+    ] {
+        reject(&format!("// π UTF-8 prefix\nstruct Record {{ int value; }}; __global__ void kernel(unsigned long *out) {{ int value; int *pointer; int values[2]; int2 vector; Record record; out[0] = sizeof({operand}); }}"));
     }
 }

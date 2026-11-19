@@ -137,6 +137,56 @@ impl Parser<'_> {
         result
     }
 
+    fn sizeof_conditional_expression(&mut self) -> Result<(SizeofOperand, Span), ParseError> {
+        let (condition, condition_span) = self.sizeof_binary_expression(0)?;
+        let (token, question_span) = self.lexer.peek()?;
+        if token != Token::Operation('?') {
+            return Ok((condition, condition_span));
+        }
+        self.lexer.next()?;
+
+        self.function.expression_depth += 1;
+        let result = (|| {
+            if self.function.expression_depth > 64 {
+                return self.fail("CUDA expression nesting limit exceeded");
+            }
+            self.parameter_expansion_budget
+                .charge_work(1, question_span)?;
+            if self.sizeof_source_scalar(&condition).is_none() {
+                return Err(ParseError {
+                    message: String::from(
+                        "sizeof conditional requires a supported scalar condition",
+                    ),
+                    span: condition_span,
+                });
+            }
+            let (accept, accept_span) = self.sizeof_conditional_expression()?;
+            let colon_span = self.lexer.expect_span(Token::Separator(':'))?;
+            self.parameter_expansion_budget.charge_work(1, colon_span)?;
+            let (reject, reject_span) = self.sizeof_conditional_expression()?;
+            let scalar_arm = |operand, span| {
+                self.sizeof_source_scalar(operand)
+                    .ok_or_else(|| ParseError {
+                        message: String::from("sizeof conditional requires supported scalar arms"),
+                        span,
+                    })
+            };
+            let accept = scalar_arm(&accept, accept_span)?;
+            let reject = scalar_arm(&reject, reject_span)?;
+            let scalar = if accept == reject {
+                accept
+            } else {
+                Self::arithmetic_scalar(accept, reject)
+            };
+            Ok((
+                SizeofOperand::Scalar(scalar),
+                condition_span.until(&reject_span),
+            ))
+        })();
+        self.function.expression_depth -= 1;
+        result
+    }
+
     fn sizeof_binary_expression(
         &mut self,
         minimum_precedence: u8,
@@ -243,7 +293,7 @@ impl Parser<'_> {
                     .map(|operand| (operand, span));
             }
             Token::Paren('(') => {
-                let (operand, _) = self.sizeof_binary_expression(0)?;
+                let (operand, _) = self.sizeof_conditional_expression()?;
                 let closing = self.lexer.expect_span(Token::Paren(')'))?;
                 (operand, start.until(&closing))
             }
@@ -278,7 +328,7 @@ impl Parser<'_> {
             Token::Separator('.') | Token::Arrow | Token::Paren('[')
         ) {
             if self.lexer.next_if(Token::Paren('['))? {
-                let (index, _) = self.sizeof_binary_expression(0)?;
+                let (index, _) = self.sizeof_conditional_expression()?;
                 end = self.lexer.expect_span(Token::Paren(']'))?;
                 operand = self.sizeof_subscript(operand, index, start.until(&end))?;
                 continue;
@@ -598,8 +648,17 @@ mod tests {
 
     #[test]
     fn sizeof_binary_metadata_needs_no_node_or_byte_allocation_budget() {
+        check_sizeof_metadata_budget("(1L + 1u)");
+    }
+
+    #[test]
+    fn sizeof_conditional_metadata_needs_no_node_or_byte_allocation_budget() {
+        check_sizeof_metadata_budget("(1 / 0 ? 1L : 1u)");
+    }
+
+    fn check_sizeof_metadata_budget(source: &str) {
         for exhaust_bytes in [false, true] {
-            let mut parser = Parser::new(Lexer::new("(1L + 1u)").unwrap(), &Options::default());
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             let span = Span::new(0, 1);
             parser.parameter_expansion_budget.activate();
             parser.prepare_parameter_bindings(span).unwrap();
@@ -616,6 +675,23 @@ mod tests {
                 operand,
                 SizeofOperand::Scalar(SourceScalar::Long(ScalarKind::Sint))
             ));
+            assert!(parser.function.ir.expressions.is_empty());
+            assert!(parser.module.types.is_empty());
+        }
+    }
+
+    #[test]
+    fn sizeof_conditional_rejects_excessive_arm_nesting_and_restores_depth() {
+        for source in [
+            format!("({}1)", "true ? 1 : ".repeat(70)),
+            format!("({}1{})", "true ? ".repeat(70), " : 1".repeat(70)),
+        ] {
+            let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
+            let Err(error) = parser.sizeof_operand() else {
+                panic!("expected expression nesting error");
+            };
+            assert_eq!(error.message, "CUDA expression nesting limit exceeded");
+            assert_eq!(parser.function.expression_depth, 0);
             assert!(parser.function.ir.expressions.is_empty());
             assert!(parser.module.types.is_empty());
         }
