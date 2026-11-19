@@ -152,10 +152,20 @@ impl Parser<'_> {
             }
             self.parameter_expansion_budget
                 .charge_work(1, question_span)?;
-            if self.sizeof_source_scalar(&condition).is_none() {
+            let supported_condition = match condition {
+                SizeofOperand::Object(ref ty) => {
+                    self.source_scalar(ty).is_some()
+                        || self.source_pointer_pointee(ty).is_some()
+                        || matches!(ty.inner_with(&self.module.types), TypeInner::Array { .. })
+                }
+                SizeofOperand::Scalar(_)
+                | SizeofOperand::IncompleteArray(_)
+                | SizeofOperand::NullPointer => true,
+            };
+            if !supported_condition {
                 return Err(ParseError {
                     message: String::from(
-                        "sizeof conditional requires a supported scalar condition",
+                        "sizeof conditional requires a scalar, pointer, array, or nullptr condition",
                     ),
                     span: condition_span,
                 });
@@ -654,6 +664,11 @@ mod tests {
     #[test]
     fn sizeof_conditional_metadata_needs_no_node_or_byte_allocation_budget() {
         check_sizeof_metadata_budget("(1 / 0 ? 1L : 1u)");
+    }
+
+    #[test]
+    fn sizeof_pointer_conditions_metadata_needs_no_node_or_byte_allocation_budget() {
+        check_sizeof_metadata_budget("(nullptr ? 1L : 1u)");
     }
 
     fn check_sizeof_metadata_budget(source: &str) {

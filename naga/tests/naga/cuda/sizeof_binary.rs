@@ -241,10 +241,65 @@ fn cuda_sizeof_conditional_never_evaluates_operands() {
 }
 
 #[test]
+fn cuda_sizeof_pointer_conditions_keep_scalar_arm_types_without_reads() {
+    let compile = |body| {
+        queries(
+            &format!(
+                "__global__ void kernel(unsigned long *out, volatile int *input) {{
+        int *pointer; auto null_object = nullptr;
+        bool flag; short small; short other; int grid[2][3]; {body}
+    }}"
+            ),
+            &[2, 1, 8, 4, 1, 12, 4, 2],
+        )
+    };
+    let module = compile(
+        "out[0] = sizeof(pointer ? small : other);
+        out[1] = sizeof((pointer) ? flag : false);
+        out[2] = sizeof(nullptr ? 1u : 2L);
+        out[3] = sizeof(null_object ? 1.0f : 2);
+        out[4] = sizeof(grid ? true : flag);
+        out[5] = sizeof(grid[pointer ? 0 : 1u]);
+        out[6] = sizeof(input ? *input : input[99]);
+        out[7] = sizeof(input ? nullptr ? small : other : small);",
+    );
+    let baseline = compile(
+        "out[0]=2UL; out[1]=1UL; out[2]=8UL; out[3]=4UL;
+        out[4]=1UL; out[5]=12UL; out[6]=4UL; out[7]=2UL;",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .eq(baseline.entry_points[0].function.expressions.iter()));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+}
+
+#[test]
+fn cuda_sizeof_pointer_conditions_accept_incomplete_arrays_without_launch_storage() {
+    let module = queries(
+        "extern __shared__ int scratch[];
+        __global__ void kernel(unsigned long *out) {
+            out[0] = sizeof(scratch ? scratch[99] : 1u);
+            out[1] = sizeof(scratch ? true : false);
+        }",
+        &[4, 1],
+    );
+    assert_eq!(module.global_variables.len(), 1);
+}
+
+#[test]
 fn cuda_sizeof_conditional_checks_both_arms_and_keeps_unsupported_boundaries() {
     for operand in [
-        "pointer ? value : 1",
-        "values ? value : 1",
+        "record ? value : 1",
+        "vector ? value : 1",
+        "&value ? value : 1",
+        "pointer ? value : missing",
+        "nullptr ? pointer : value",
+        "values ? value : nullptr",
         "true ? value : pointer",
         "true ? pointer : value",
         "true ? value : vector",

@@ -1,0 +1,34 @@
+struct Record { int field; };
+__global__ void sizeof_pointer_conditions(const int *input, unsigned *output) {
+    unsigned lane = threadIdx.x;
+    unsigned base = 4u + lane * 16u;
+    int seed = input[lane];
+    int counter = 7;
+    int *pointer;
+    Record *record;
+    auto empty = nullptr;
+    int values[3]{};
+    int matrix[2][3]{};
+    constexpr unsigned Pointer = unsigned(sizeof(pointer ? seed : counter));
+    constexpr unsigned StoragePointer = unsigned(sizeof(input ? *input : counter));
+    constexpr unsigned DereferencedCondition = unsigned(sizeof(*input ? *input : counter));
+    constexpr unsigned NullLiteral = unsigned(sizeof(nullptr ? true : false));
+    constexpr unsigned NullObject = unsigned(sizeof(empty ? seed : 1.0f));
+    constexpr unsigned Array = unsigned(sizeof(values ? seed : counter));
+    constexpr unsigned Matrix = unsigned(sizeof(matrix ? true : false));
+    constexpr unsigned Member = unsigned(sizeof(record ? record->field : seed));
+    constexpr unsigned Nested = unsigned(sizeof(pointer ? nullptr ? seed : counter : values ? seed : counter));
+    constexpr unsigned Row = unsigned(sizeof(matrix[pointer ? 0 : 1]));
+    constexpr unsigned Element = unsigned(sizeof(matrix[empty ? 0 : 1][input ? counter : seed]));
+    constexpr unsigned NoRead = unsigned(sizeof(input ? input[counter] : input[seed]));
+    constexpr unsigned Negated = unsigned(sizeof(!pointer ? true : false));
+    constexpr unsigned ArrayGroup = unsigned(sizeof((values) ? seed : counter));
+    output[base] = Pointer; output[base + 1u] = StoragePointer;
+    output[base + 2u] = DereferencedCondition; output[base + 3u] = NullLiteral;
+    output[base + 4u] = NullObject; output[base + 5u] = Array;
+    output[base + 6u] = Matrix; output[base + 7u] = Member;
+    output[base + 8u] = Nested; output[base + 9u] = Row;
+    output[base + 10u] = Element; output[base + 11u] = NoRead;
+    output[base + 12u] = Negated; output[base + 13u] = ArrayGroup;
+    output[base + 14u] = unsigned(counter); output[base + 15u] = unsigned(seed);
+}

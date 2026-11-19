@@ -514,15 +514,16 @@ Both operands must have supported types, even for logical operators. Values are
 not checked for division by zero, overflow, invalid shift counts, or out-of-range
 indices, so `sizeof(1 / 0)` is four.
 
-A grouped conditional operand such as `sizeof(flag ? left : right)` uses the
-types of its scalar condition and both scalar arms without evaluating them.
+A grouped conditional operand such as `sizeof(flag ? left : right)` uses
+the types of its condition and both arms without evaluating them. Conditions
+may be scalar values, pointers, arrays, or `nullptr`. Both arms must be scalar.
 Matching arm types retain their source type, including `short` and `bool`.
 Mixed arm types use the usual arithmetic conversions. Conditional expressions
 also work in integral subscript indices within a query.
 
-Pointer, array, record, and vector binary and conditional operators remain
-unsupported within these queries. Calls, casts, updates, assignments, comma
-expressions, and nested type queries also remain unsupported.
+Pointer, array, record, and vector binary operators remain unsupported within
+these queries. Calls, casts, updates, assignments, comma expressions, and
+nested type queries also remain unsupported.
 
 `static_assert(condition);` declarations are accepted at global, function, and
 record scope, including local records in instantiated function templates.

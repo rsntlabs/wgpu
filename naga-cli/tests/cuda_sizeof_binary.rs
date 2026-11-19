@@ -30,6 +30,20 @@ fn cuda_sizeof_conditional_cli_emits_all_backends_without_evaluating_operands() 
     );
 }
 
+#[test]
+fn cuda_sizeof_pointer_conditions_cli_emits_all_backends_without_reading_conditions() {
+    emits_all_backends(
+        r#"__global__ void kernel(const int *input,unsigned *output) {
+        int grid[2][3];
+        constexpr unsigned Element=unsigned(sizeof(input ? input[99] : 1u));
+        constexpr unsigned Row=unsigned(sizeof(grid[nullptr ? 0 : 1]));
+        constexpr unsigned Boolean=unsigned(sizeof(grid ? true : false));
+        output[0]=Element+Row+Boolean;
+        output[1]=unsigned(input[0]);
+    }"#,
+    );
+}
+
 fn emits_all_backends(source: &str) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);
@@ -121,7 +135,7 @@ fn cuda_sizeof_binary_cli_rejects_invalid_types_and_out_of_scope_expressions() {
 fn cuda_sizeof_conditional_cli_rejects_invalid_arms() {
     for operands in [
         "true?1:p",
-        "p?1:2",
+        "p?1:nullptr",
         "true?1,2:3",
         "true?1:",
         "true?1:1.0f%2",
