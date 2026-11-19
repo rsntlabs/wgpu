@@ -652,6 +652,18 @@ impl PointerRuntime {
         if families.is_empty() {
             return Err(runtime_error(span));
         }
+        if access.requires_read_only_storage {
+            parser
+                .parameter_expansion_budget
+                .charge_work(families.len(), span)?;
+            if !families.iter().all(|origin| {
+                matches!(*origin, RuntimeOrigin::Family(index)
+                    if matches!(self.families[index as usize].root, OriginRoot::Global(global)
+                        if parser.is_read_only_kernel_buffer(global)))
+            }) {
+                return Err(read_only_storage_error(span));
+            }
+        }
         let state = self.temporary_state(parser, span)?;
         self.write_value(parser, source, &access.pointer, state, mapper, span)?;
         let value = self.load_word(parser, state, 0, span)?;

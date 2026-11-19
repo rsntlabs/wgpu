@@ -109,6 +109,7 @@ mod kernel_record_values;
 mod kernel_vector_values;
 mod kernels;
 mod launch_bounds;
+mod ldg;
 mod list_initialization;
 mod literals;
 mod local_arrays;
@@ -285,6 +286,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_INT2FLOAT_RD,
         CUDA_INT2FLOAT_RN,
         CUDA_INT2FLOAT_RZ,
+        CUDA_LDG,
         CUDA_FLOAT2INT_RZ,
         CUDA_FLOAT2UINT_RZ,
         CUDA_FLOAT_CLASSIFICATION,
@@ -1356,3 +1358,6 @@ static CUDA_SIZEOF_FUNCTIONAL_CASTS: GpuTestConfiguration =
 
 #[apply(gpu_test!)]
 static CUDA_SIZEOF_CSTYLE_CASTS: GpuTestConfiguration = configuration(sizeof_cstyle_casts::cases);
+
+#[apply(gpu_test!)]
+static CUDA_LDG: GpuTestConfiguration = configuration(ldg::cases);

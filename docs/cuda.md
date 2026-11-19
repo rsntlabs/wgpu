@@ -1810,6 +1810,19 @@ their positions, avoiding native 64-bit bit-reversal operations.
 Other integer intrinsics remain unsupported.
 Metal output for `__brev` and `__brevll` requires MSL version 1.2 or newer.
 
+## Read-only loads
+
+`__ldg(const unsigned int *address)` returns the 32-bit unsigned value at
+the address. It accepts offsets such as `__ldg(input + i)` and element
+addresses such as `__ldg(&input[i])`. The pointer can pass through device
+helpers and local aliases. Each possible origin must be a read-only kernel
+buffer, such as a `const unsigned int *` kernel parameter. A `const` alias of
+a writable buffer is rejected.
+
+Naga emits an ordinary unsynchronized storage load using the target backend's
+cache policy. The source requires a valid address and data that stay read-only
+during the kernel.
+
 ## Integer atomics
 
 These functions accept `int *address, int value` or

@@ -105,6 +105,7 @@ mod kernel_named_vector_values;
 mod kernel_record_values;
 mod kernel_vector_values;
 mod launch_bounds;
+mod ldg;
 mod list_initialization;
 mod literals;
 mod local_arrays;

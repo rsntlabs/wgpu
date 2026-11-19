@@ -390,6 +390,10 @@ impl Parser<'_> {
             debug_assert!(matches!(order, ArgumentEvaluationOrder::LeftToRight));
             return self.atomic_call(arguments, candidate, span);
         }
+        if candidate == functions::FunctionCandidate::LoadReadOnlyU32 {
+            let [argument] = arguments.try_into().ok().unwrap();
+            return self.read_only_storage_load(argument, span).map(Into::into);
+        }
         let has_indirect_parameters = (0..arguments.len()).any(|index| {
             self.candidate_type(candidate, index).is_some()
                 && self.candidate_mode(candidate, index).is_indirect()

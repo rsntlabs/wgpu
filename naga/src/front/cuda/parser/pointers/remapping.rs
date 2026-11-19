@@ -214,8 +214,15 @@ impl Parser<'_> {
                 }
             });
         }
-        let reference =
-            self.retain_pointer_access(pointer, projections, access.ty.clone(), span)?;
+        let reference = self.retain_pointer_access(
+            PointerAccess {
+                pointer,
+                projections,
+                ty: access.ty.clone(),
+                requires_read_only_storage: access.requires_read_only_storage,
+            },
+            span,
+        )?;
         self.materialize_pointer_reference(reference)
     }
 

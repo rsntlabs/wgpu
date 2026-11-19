@@ -87,6 +87,16 @@ pub(super) struct PointerAccess {
     pub(super) pointer: PointerValue,
     pub(super) projections: Vec<AddressProjection>,
     pub(super) ty: TypeResolution,
+    requires_read_only_storage: bool,
+}
+
+fn read_only_storage_error(span: Span) -> ParseError {
+    ParseError {
+        message: String::from(
+            "__ldg requires a pointer into read-only storage from a kernel buffer",
+        ),
+        span,
+    }
 }
 
 #[derive(Clone, Default)]
@@ -897,18 +907,17 @@ impl<'a> Parser<'a> {
         Ok(pointer)
     }
 
-    pub(super) fn retain_pointer_access(
+    fn retain_pointer_access(
         &mut self,
-        pointer: PointerValue,
-        projections: Vec<AddressProjection>,
-        ty: TypeResolution,
+        access: PointerAccess,
         span: Span,
     ) -> Result<ReferenceValue, ParseError> {
         self.parameter_expansion_budget.charge_nodes(1, span)?;
         self.parameter_expansion_budget
             .charge_slice::<(PointerAccess, Span)>(1, span)?;
         self.parameter_expansion_budget
-            .charge_slice::<AddressProjection>(projections.len(), span)?;
+            .charge_slice::<AddressProjection>(access.projections.len(), span)?;
+        let pointer = &access.pointer;
         let qualifiers = pointer.qualifiers;
         let constant = ConstantValue {
             literal: None,
@@ -923,14 +932,8 @@ impl<'a> Parser<'a> {
                 }),
             is_null_pointer_constant: false,
         };
-        let access = self.function.pointers.accesses.append(
-            PointerAccess {
-                pointer,
-                projections,
-                ty: ty.clone(),
-            },
-            span,
-        );
+        let ty = access.ty.clone();
+        let access = self.function.pointers.accesses.append(access, span);
         Ok(ReferenceValue {
             discard_read: true,
             reference: Reference::PointerAccess(access),
@@ -957,10 +960,38 @@ impl<'a> Parser<'a> {
                             .is_some_and(|offset| offset < i64::from(extent))
                     })
             });
-        let mut reference =
-            self.retain_pointer_access(pointer, Vec::new(), TypeResolution::Handle(pointee), span)?;
+        let mut reference = self.retain_pointer_access(
+            PointerAccess {
+                pointer,
+                projections: Vec::new(),
+                ty: TypeResolution::Handle(pointee),
+                requires_read_only_storage: false,
+            },
+            span,
+        )?;
         reference.constant.is_discardable = discardable;
         Ok(reference)
+    }
+
+    pub(super) fn read_only_storage_load(
+        &mut self,
+        argument: CapturedArgument,
+        span: Span,
+    ) -> Result<Value, ParseError> {
+        self.append_block(argument.body);
+        let operand = argument.value.require_value()?;
+        if operand.is_null_pointer_constant() {
+            return Err(read_only_storage_error(span));
+        }
+        let mut pointer = self.borrowed_pointer(operand)?;
+        pointer.span = span;
+        let mut reference = self.pointer_reference(pointer)?;
+        let Reference::PointerAccess(access) = reference.reference else {
+            unreachable!();
+        };
+        self.function.pointers.accesses[access].requires_read_only_storage = true;
+        reference.constant = ConstantValue::default();
+        self.rvalue(ExpressionValue::Reference(reference))
     }
 
     pub(super) fn project_pointer_access(
@@ -972,12 +1003,11 @@ impl<'a> Parser<'a> {
         span: Span,
     ) -> Result<ReferenceValue, ParseError> {
         self.charge_pointer_access_clone(access, span)?;
-        let access = self.function.pointers.accesses[access].clone();
-        let mut pointer = access.pointer;
-        pointer.constant = pointer.constant.after(constant);
-        let mut projections = access.projections;
-        projections.push(projection);
-        let mut reference = self.retain_pointer_access(pointer, projections, ty.clone(), span)?;
+        let mut access = self.function.pointers.accesses[access].clone();
+        access.pointer.constant = access.pointer.constant.after(constant);
+        access.projections.push(projection);
+        access.ty = ty.clone();
+        let mut reference = self.retain_pointer_access(access, span)?;
         reference.constant = constant;
         Ok(reference)
     }
@@ -1000,15 +1030,9 @@ impl<'a> Parser<'a> {
                 if !earlier.is_discardable {
                     if let Reference::PointerAccess(access) = reference.reference {
                         self.charge_pointer_access_clone(access, reference.span)?;
-                        let access = self.function.pointers.accesses[access].clone();
-                        let mut pointer = access.pointer;
-                        pointer.constant = pointer.constant.after(earlier);
-                        let sequenced = self.retain_pointer_access(
-                            pointer,
-                            access.projections,
-                            access.ty,
-                            reference.span,
-                        )?;
+                        let mut access = self.function.pointers.accesses[access].clone();
+                        access.pointer.constant = access.pointer.constant.after(earlier);
+                        let sequenced = self.retain_pointer_access(access, reference.span)?;
                         reference.reference = sequenced.reference;
                     }
                 }
@@ -1260,37 +1284,65 @@ impl<'a> Parser<'a> {
     fn pointer_origin_is_known(
         &mut self,
         expression: Handle<PointerExpression>,
+        requires_read_only_storage: bool,
         span: Span,
     ) -> Result<bool, ParseError> {
         self.parameter_expansion_budget.charge_work(1, span)?;
         match self.function.pointers.expressions[expression].kind.clone() {
+            PointerExpressionKind::Null if requires_read_only_storage => {
+                Err(read_only_storage_error(span))
+            }
             PointerExpressionKind::Null
             | PointerExpressionKind::Parameter(_)
             | PointerExpressionKind::Object(_)
             | PointerExpressionKind::Snapshot(_) => Ok(false),
             PointerExpressionKind::Offset { base, .. }
-            | PointerExpressionKind::ArrayView { base } => self.pointer_origin_is_known(base, span),
+            | PointerExpressionKind::ArrayView { base } => {
+                self.pointer_origin_is_known(base, requires_read_only_storage, span)
+            }
             PointerExpressionKind::Select { accept, reject, .. } => Ok(self
-                .pointer_origin_is_known(accept, span)?
-                && self.pointer_origin_is_known(reject, span)?),
+                .pointer_origin_is_known(accept, requires_read_only_storage, span)?
+                && self.pointer_origin_is_known(reject, requires_read_only_storage, span)?),
             PointerExpressionKind::Array(binding) | PointerExpressionKind::Address(binding) => {
                 let view = self.bound_reference_view(binding, span)?;
+                if requires_read_only_storage && view.is_nullable {
+                    return Err(read_only_storage_error(span));
+                }
                 for target in view.targets {
                     let root = self.function.bound_addresses[target.address].root;
                     match self.function.ir.expressions[root] {
-                        Expression::GlobalVariable(_) => {}
+                        Expression::GlobalVariable(global) => {
+                            if requires_read_only_storage
+                                && !self.is_read_only_kernel_buffer(global)
+                            {
+                                return Err(read_only_storage_error(span));
+                            }
+                        }
                         Expression::LocalVariable(local)
                             if !self
                                 .function
                                 .pointers
                                 .validation_addresses
-                                .contains_key(&local) => {}
+                                .contains_key(&local) =>
+                        {
+                            if requires_read_only_storage {
+                                return Err(read_only_storage_error(span));
+                            }
+                        }
                         _ => return Ok(false),
                     }
                 }
                 Ok(true)
             }
         }
+    }
+
+    fn is_read_only_kernel_buffer(&self, global: Handle<GlobalVariable>) -> bool {
+        self.module.global_variables[global].space
+            == AddressSpace::Storage {
+                access: StorageAccess::LOAD,
+            }
+            && !self.constant_memory.globals.contains(&global)
     }
 
     pub(super) fn materialize_pointer_reference(
@@ -1302,7 +1354,11 @@ impl<'a> Parser<'a> {
         };
         self.charge_pointer_access_clone(access, reference.span)?;
         let access = self.function.pointers.accesses[access].clone();
-        if !self.pointer_origin_is_known(access.pointer.expression, reference.span)? {
+        if !self.pointer_origin_is_known(
+            access.pointer.expression,
+            access.requires_read_only_storage,
+            reference.span,
+        )? {
             return Ok(reference);
         }
         let PointerValueCategory::Value { position } = access.pointer.category else {
