@@ -66,7 +66,7 @@ fn cuda_sizeof_static_casts_reject_unsupported_forms_and_clear_zero_provenance()
         "static_cast<int>(1,)",
         "static_cast<int(value)",
         "(int)value",
-        "int(value)",
+        "int(value, value)",
     ] {
         reject(&format!(
             "using Pointer = int *; using Row = int[2];
@@ -182,6 +182,103 @@ fn queries(source: &str, expected: &[u64]) -> naga::Module {
     );
     let _ = info;
     module
+}
+
+#[test]
+fn cuda_sizeof_functional_casts_resolve_types_without_evaluating_operands() {
+    let compile = |body| {
+        queries(
+            &format!(
+                "#define CAST_TYPE Narrow\n#define TO_INT(arg) int(arg)\n
+        using Narrow = const short; using Big = unsigned long long; using Flag = bool;
+        __global__ void kernel(unsigned long *out, volatile int *input) {{
+            bool flag; int grid[2][3]; {body}
+        }}"
+            ),
+            &[2, 2, 2, 1, 1, 1, 8, 4, 12, 8, 4],
+        )
+    };
+    let module = compile(
+        "out[0] = sizeof(Narrow);
+        out[1] = sizeof(Narrow(input[99]));
+        out[2] = sizeof CAST_TYPE(input[99]);
+        out[3] = sizeof(bool(input));
+        out[4] = sizeof(Flag(nullptr));
+        out[5] = sizeof(bool(grid));
+        out[6] = sizeof(Big((input[99], 1 / 0)));
+        out[7] = sizeof(TO_INT((flag ? input[99], 1 : 0)));
+        out[8] = sizeof(grid[int(static_cast<bool>(input))]);
+        out[9] = sizeof(long(unsigned(0)));
+        { int Narrow; out[10] = sizeof(Narrow); }
+        static_assert(sizeof short(input[99]) + 1 == 3);",
+    );
+    let baseline = compile(
+        "out[0] = sizeof(Narrow); out[1] = 2UL; out[2] = 2UL;
+        out[3] = 1UL; out[4] = 1UL; out[5] = 1UL; out[6] = 8UL; out[7] = 4UL;
+        out[8] = 12UL; out[9] = 8UL; { int Narrow; out[10] = sizeof(Narrow); }
+        static_assert(2UL + 1 == 3);",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .eq(baseline.entry_points[0].function.expressions.iter()));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+}
+
+#[test]
+fn cuda_sizeof_functional_casts_reject_other_forms_and_clear_zero_provenance() {
+    for operand in [
+        "int()",
+        "(int())",
+        "int(value, value)",
+        "int(value,)",
+        "int{value}",
+        "const int(value)",
+        "unsigned int(value)",
+        "long long(value)",
+        "(int)value",
+        "decltype(value)(1)",
+        "Pointer(value)",
+        "Row(value)",
+        "Record(value)",
+        "int2(value)",
+        "int(pointer)",
+        "int(nullptr)",
+        "int(values)",
+        "bool(record)",
+        "int(value++)",
+        "int(value = 1)",
+        "int(helper())",
+    ] {
+        reject(&format!(
+            "using Pointer = int *; using Row = int[2];
+            struct Record {{ int value; }}; __device__ int helper() {{ return 1; }}
+            __global__ void kernel(unsigned long *out) {{
+                int value; int *pointer; int values[2]; Record record;
+                out[0] = sizeof({operand});
+            }}"
+        ));
+    }
+    reject(
+        "using Small = short; __global__ void kernel(unsigned long *out) {
+        int Small; out[0] = sizeof(Small(0));
+    }",
+    );
+    let error = parse_str(
+        "__global__ void kernel(unsigned long *out) {
+        int *pointer; out[0] = sizeof(true ? pointer : int(0));
+    }",
+        &Options::default(),
+    )
+    .unwrap_err();
+    assert!(
+        error.message.contains("sizeof conditional requires"),
+        "{error}"
+    );
 }
 
 fn reject(source: &str) {
@@ -317,7 +414,7 @@ fn cuda_sizeof_binary_keeps_unsupported_expression_and_type_boundaries() {
         "vector + vector",
         "record + record",
         "value(1)",
-        "int(1)",
+        "int(1, 2)",
         "helper() + 1",
         "value++ + 1",
         "value = 1",

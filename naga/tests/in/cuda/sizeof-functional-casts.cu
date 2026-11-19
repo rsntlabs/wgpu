@@ -1,0 +1,32 @@
+__global__ void sizeof_functional_casts(const int *input, unsigned *output) {
+    unsigned lane = threadIdx.x;
+    unsigned base = 4u + lane * 16u;
+    int seed = input[lane];
+    int counter = 7;
+    int matrix[2][3]{};
+    using Number = unsigned;
+    using Truth = const bool;
+    using Wide = unsigned long long;
+    constexpr unsigned Integer = unsigned(sizeof(Number(seed)));
+    constexpr unsigned Short = unsigned(sizeof(short(seed)));
+    constexpr unsigned WideAlias = unsigned(sizeof(Wide(seed)));
+    constexpr unsigned Real = unsigned(sizeof(float(seed)));
+    constexpr unsigned Pointer = unsigned(sizeof(bool(input)));
+    constexpr unsigned Array = unsigned(sizeof(bool(matrix)));
+    constexpr unsigned Null = unsigned(sizeof(Truth(nullptr)));
+    constexpr unsigned Group = unsigned(sizeof(int((input[counter], seed))));
+    constexpr unsigned Nested = unsigned(sizeof(short(static_cast<unsigned>(int(seed)))));
+    constexpr unsigned Middle = unsigned(sizeof(bool(seed ? counter, seed : counter)));
+    constexpr unsigned Row = unsigned(sizeof(matrix[int(seed ? counter : seed)]));
+    constexpr unsigned Range = unsigned(sizeof(unsigned(-1.0f)));
+    constexpr unsigned Binding = unsigned(sizeof short(seed) + 1);
+    constexpr unsigned Shift = unsigned(sizeof(unsigned(seed) >> 1));
+    output[base] = Integer; output[base + 1u] = Short;
+    output[base + 2u] = WideAlias; output[base + 3u] = Real;
+    output[base + 4u] = Pointer; output[base + 5u] = Array;
+    output[base + 6u] = Null; output[base + 7u] = Group;
+    output[base + 8u] = Nested; output[base + 9u] = Middle;
+    output[base + 10u] = Row; output[base + 11u] = Range;
+    output[base + 12u] = Binding; output[base + 13u] = Shift;
+    output[base + 14u] = unsigned(counter); output[base + 15u] = unsigned(input[lane]);
+}

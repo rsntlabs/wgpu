@@ -178,6 +178,7 @@ mod sizeof_binary;
 mod sizeof_bool_casts;
 mod sizeof_comma;
 mod sizeof_conditionals;
+mod sizeof_functional_casts;
 mod sizeof_pointer_arms;
 mod sizeof_pointer_conditions;
 mod sizeof_pointer_pairs;
@@ -343,6 +344,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_SIZEOF_BOOL_CASTS,
         CUDA_SIZEOF_COMMA,
         CUDA_SIZEOF_CONDITIONALS,
+        CUDA_SIZEOF_FUNCTIONAL_CASTS,
         CUDA_SIZEOF_POINTER_ARMS,
         CUDA_SIZEOF_POINTER_CONDITIONS,
         CUDA_SIZEOF_POINTER_PAIRS,
@@ -1345,3 +1347,7 @@ static CUDA_SIZEOF_STATIC_CASTS: GpuTestConfiguration = configuration(sizeof_sta
 
 #[apply(gpu_test!)]
 static CUDA_SIZEOF_BOOL_CASTS: GpuTestConfiguration = configuration(sizeof_bool_casts::cases);
+
+#[apply(gpu_test!)]
+static CUDA_SIZEOF_FUNCTIONAL_CASTS: GpuTestConfiguration =
+    configuration(sizeof_functional_casts::cases);

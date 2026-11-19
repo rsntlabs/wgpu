@@ -128,6 +128,21 @@ fn cuda_sizeof_bool_casts_cli_emit_all_backends() {
     );
 }
 
+#[test]
+fn cuda_sizeof_functional_casts_cli_emit_all_backends() {
+    emits_all_backends(
+        r#"using Narrow = const short;
+    __global__ void kernel(const int *input, unsigned *output) {
+        int grid[2][3];
+        constexpr unsigned NarrowWidth=unsigned(sizeof(Narrow(input[99])));
+        constexpr unsigned Boolean=unsigned(sizeof(bool((input[99],nullptr))));
+        constexpr unsigned Row=unsigned(sizeof(grid[int(bool(input))]));
+        output[0]=NarrowWidth+Boolean+Row;
+        output[1]=unsigned(input[0]);
+    }"#,
+    );
+}
+
 fn emits_all_backends(source: &str) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);

@@ -15,11 +15,23 @@ impl Parser<'_> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         if name == "sizeof" {
-            let expression_operand = match self.lexer.peek()?.0 {
+            let (token, operand_span) = self.lexer.peek()?;
+            let expression_operand = match token {
                 Token::Operation('*' | '+' | '-' | '~' | '!')
                 | Token::Paren('(')
                 | Token::Number(_)
                 | Token::Word("true" | "false" | "nullptr" | "static_cast") => true,
+                Token::Word(operand)
+                    if self
+                        .type_name(operand)
+                        .is_some_and(|ty| ty.ty.source_scalar().is_some()) =>
+                {
+                    self.parameter_expansion_budget
+                        .charge_work(1, operand_span)?;
+                    let mut lookahead = self.lexer.clone();
+                    lookahead.next()?;
+                    lookahead.peek()?.0 == Token::Paren('(')
+                }
                 Token::Word(operand) => self.lookup_symbol(operand).is_some_and(|symbol| {
                     !matches!(
                         symbol,
@@ -373,11 +385,21 @@ impl Parser<'_> {
             Token::Word("nullptr") => (SizeofOperand::NullPointer, start),
             Token::Word("static_cast") => self.sizeof_static_cast(start)?,
             Token::Word(name) => {
-                let symbol = self.lookup_symbol(name).ok_or_else(|| ParseError {
-                    message: String::from("sizeof requires a supported named object"),
-                    span: start,
-                })?;
-                (self.named_sizeof_operand(symbol, start)?, start)
+                let target = if self.lexer.peek()?.0 == Token::Paren('(') {
+                    self.parameter_expansion_budget.charge_work(1, start)?;
+                    self.type_name(name).and_then(|ty| ty.ty.source_scalar())
+                } else {
+                    None
+                };
+                if let Some(scalar) = target {
+                    self.sizeof_functional_cast(scalar, start)?
+                } else {
+                    let symbol = self.lookup_symbol(name).ok_or_else(|| ParseError {
+                        message: String::from("sizeof requires a supported named object"),
+                        span: start,
+                    })?;
+                    (self.named_sizeof_operand(symbol, start)?, start)
+                }
             }
             _ => {
                 return Err(ParseError {
@@ -437,34 +459,57 @@ impl Parser<'_> {
         self.parameter_expansion_budget.charge_work(5, start)?;
         self.lexer.expect_span(Token::Paren('<'))?;
         let target_span = self.lexer.peek()?.1;
-        let scalar = match self.parse_type()?.ty {
-            TypeSpecifier::Scalar(scalar) => SourceScalar::Scalar(scalar),
-            TypeSpecifier::Long { kind } => SourceScalar::Long(kind),
-            _ => {
-                return Err(ParseError {
-                    message: String::from(
-                        "sizeof static_cast requires an arithmetic scalar target",
-                    ),
-                    span: target_span,
-                })
-            }
-        };
+        let scalar = self
+            .parse_type()?
+            .ty
+            .source_scalar()
+            .ok_or_else(|| ParseError {
+                message: String::from("sizeof static_cast requires an arithmetic scalar target"),
+                span: target_span,
+            })?;
         self.lexer.expect_span(Token::Paren('>'))?;
         self.lexer.expect_span(Token::Paren('('))?;
         let (operand, operand_span) = self.sizeof_comma_expression()?;
         let end = self.lexer.expect_span(Token::Paren(')'))?;
+        Ok((
+            self.sizeof_scalar_cast_result(scalar, &operand, operand_span)?,
+            start.until(&end),
+        ))
+    }
+
+    fn sizeof_functional_cast(
+        &mut self,
+        scalar: SourceScalar,
+        start: Span,
+    ) -> Result<(SizeofOperand, Span), ParseError> {
+        self.parameter_expansion_budget.charge_work(2, start)?;
+        self.lexer.expect_span(Token::Paren('('))?;
+        let (operand, operand_span) = self.sizeof_conditional_expression()?;
+        let end = self.lexer.expect_span(Token::Paren(')'))?;
+        Ok((
+            self.sizeof_scalar_cast_result(scalar, &operand, operand_span)?,
+            start.until(&end),
+        ))
+    }
+
+    fn sizeof_scalar_cast_result(
+        &self,
+        scalar: SourceScalar,
+        operand: &SizeofOperand,
+        operand_span: Span,
+    ) -> Result<SizeofOperand, ParseError> {
         let valid_operand = if scalar == SourceScalar::Scalar(Scalar::BOOL) {
-            self.sizeof_bool_convertible(&operand)
+            self.sizeof_bool_convertible(operand)
         } else {
-            self.sizeof_source_scalar(&operand).is_some()
+            self.sizeof_source_scalar(operand).is_some()
         };
         if !valid_operand {
             return Err(ParseError {
-                message: String::from("invalid operand type for sizeof static_cast"),
+                message: String::from("invalid operand type for sizeof scalar cast"),
                 span: operand_span,
             });
         }
-        Ok((SizeofOperand::Scalar(scalar), start.until(&end)))
+        Ok(SizeofOperand::Scalar(scalar))
     }
 
     fn sizeof_integral_operand(&self, operand: &SizeofOperand) -> bool {
@@ -769,6 +814,27 @@ mod tests {
             "static_cast<const long>(1 / 0, static_cast<short>(3u))",
             SourceScalar::Long(ScalarKind::Sint),
         );
+    }
+
+    #[test]
+    fn sizeof_functional_casts_preserve_source_long_without_allocations() {
+        check_sizeof_metadata_budget(
+            "long((1 / 0, short(3u)))",
+            SourceScalar::Long(ScalarKind::Sint),
+        );
+    }
+
+    #[test]
+    fn sizeof_functional_casts_bound_nesting_and_restore_depth() {
+        let source = format!("{}1{}", "int(".repeat(70), ")".repeat(70));
+        let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
+        let Err(error) = parser.sizeof_operand() else {
+            panic!("expected expression nesting error");
+        };
+        assert_eq!(error.message, "CUDA expression nesting limit exceeded");
+        assert_eq!(parser.function.expression_depth, 0);
+        assert!(parser.function.ir.expressions.is_empty());
+        assert!(parser.module.types.is_empty());
     }
 
     #[test]

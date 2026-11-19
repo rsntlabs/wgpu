@@ -548,6 +548,12 @@ incomplete arrays, and `nullptr`. The query checks the operand type without
 evaluating the value or performing the conversion. The argument may be a
 supported comma expression.
 
+Functional casts such as `sizeof(short(value))` also use the destination
+type's size. They accept a single parenthesized argument and a single-word
+arithmetic type name or visible scalar alias. A grouped comma expression
+such as `int((left, right))` counts as one argument. Functional casts in these
+queries use the same type conversion rules as `static_cast`.
+
 `static_assert(condition);` declarations are accepted at global, function, and
 record scope, including local records in instantiated function templates.
 Record assertions may use `sizeof` on previously declared members, preserving
