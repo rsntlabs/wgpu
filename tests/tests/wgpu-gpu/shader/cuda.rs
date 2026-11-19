@@ -176,6 +176,7 @@ mod signed_saturating_arithmetic;
 mod single_component_vectors;
 mod sizeof_binary;
 mod sizeof_conditionals;
+mod sizeof_pointer_arms;
 mod sizeof_pointer_conditions;
 mod specifiers;
 mod sqrt;
@@ -335,6 +336,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_MULTIDIMENSIONAL_PARAMETERS,
         CUDA_SIZEOF_BINARY,
         CUDA_SIZEOF_CONDITIONALS,
+        CUDA_SIZEOF_POINTER_ARMS,
         CUDA_SIZEOF_POINTER_CONDITIONS,
         CUDA_INTEGRAL_TEMPLATES,
         CUDA_LAUNCH_BOUNDS,
@@ -1315,3 +1317,6 @@ static CUDA_SIZEOF_CONDITIONALS: GpuTestConfiguration = configuration(sizeof_con
 #[apply(gpu_test!)]
 static CUDA_SIZEOF_POINTER_CONDITIONS: GpuTestConfiguration =
     configuration(sizeof_pointer_conditions::cases);
+
+#[apply(gpu_test!)]
+static CUDA_SIZEOF_POINTER_ARMS: GpuTestConfiguration = configuration(sizeof_pointer_arms::cases);

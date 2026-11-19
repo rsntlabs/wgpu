@@ -1,0 +1,34 @@
+struct Record { int first; unsigned second; float third; };
+__global__ void sizeof_pointer_arms(const int *input, unsigned *output) {
+    unsigned lane = threadIdx.x;
+    unsigned base = 4u + lane * 16u;
+    int seed = input[lane];
+    bool flag = seed != 0;
+    int counter = 7;
+    auto empty = nullptr;
+    using Row = int[3];
+    Row *row = nullptr;
+    Record *record = nullptr;
+    constexpr unsigned Pointer = unsigned(sizeof(flag ? input : nullptr));
+    constexpr unsigned Reverse = unsigned(sizeof(flag ? nullptr : input));
+    constexpr unsigned Named = unsigned(sizeof(flag ? input : empty));
+    constexpr unsigned Nulls = unsigned(sizeof(flag ? nullptr : empty));
+    constexpr unsigned Dereference = unsigned(sizeof(*(flag ? input : nullptr)));
+    constexpr unsigned Subscript = unsigned(sizeof((flag ? nullptr : input)[counter]));
+    constexpr unsigned Nested = unsigned(sizeof(flag ? input : flag ? nullptr : empty));
+    constexpr unsigned NestedReverse = unsigned(sizeof(flag ? flag ? empty : input : nullptr));
+    constexpr unsigned RowPointer = unsigned(sizeof(flag ? row : nullptr));
+    constexpr unsigned RowValue = unsigned(sizeof(*(flag ? nullptr : row)));
+    constexpr unsigned RowElement = unsigned(sizeof((flag ? row : empty)[counter][seed]));
+    constexpr unsigned Member = unsigned(sizeof((flag ? record : nullptr)->third));
+    constexpr unsigned Bool = unsigned(sizeof(flag ? true : false));
+    constexpr unsigned Scalar = unsigned(sizeof(flag ? counter : 1.0f));
+    output[base] = Pointer; output[base + 1u] = Reverse;
+    output[base + 2u] = Named; output[base + 3u] = Nulls;
+    output[base + 4u] = Dereference; output[base + 5u] = Subscript;
+    output[base + 6u] = Nested; output[base + 7u] = NestedReverse;
+    output[base + 8u] = RowPointer; output[base + 9u] = RowValue;
+    output[base + 10u] = RowElement; output[base + 11u] = Member;
+    output[base + 12u] = Bool; output[base + 13u] = Scalar;
+    output[base + 14u] = unsigned(counter); output[base + 15u] = unsigned(input[lane]);
+}

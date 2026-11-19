@@ -516,10 +516,16 @@ indices, so `sizeof(1 / 0)` is four.
 
 A grouped conditional operand such as `sizeof(flag ? left : right)` uses
 the types of its condition and both arms without evaluating them. Conditions
-may be scalar values, pointers, arrays, or `nullptr`. Both arms must be scalar.
-Matching arm types retain their source type, including `short` and `bool`.
-Mixed arm types use the usual arithmetic conversions. Conditional expressions
-also work in integral subscript indices within a query.
+may be scalar values, pointers, arrays, or `nullptr`. Matching scalar arms
+retain their source type, including `short` and `bool`. Mixed scalar arms use
+the usual arithmetic conversions. A typed pointer paired with a `nullptr`
+operand retains the pointer's source type, so
+`sizeof(*(flag ? pointer : nullptr))` gives the pointee size. Two `nullptr`
+arms give the size of `decltype(nullptr)`. Conditional expressions also work
+in integral subscript indices within a query.
+
+Pointer and integer arms, including literal `0`, pointer pairs, and array
+arms are unsupported in these queries.
 
 Pointer, array, record, and vector binary operators remain unsupported within
 these queries. Calls, casts, updates, assignments, comma expressions, and

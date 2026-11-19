@@ -292,6 +292,66 @@ fn cuda_sizeof_pointer_conditions_accept_incomplete_arrays_without_launch_storag
 }
 
 #[test]
+fn cuda_sizeof_pointer_arms_preserve_layouts_without_evaluation() {
+    let compile = |body| {
+        queries(
+            &format!(
+                "using Row = int[3]; struct Record {{ int values[3]; }};
+        __global__ void kernel(unsigned long *out, volatile int *input) {{
+            bool flag; auto empty = nullptr; Row *row; Record *record;
+            {body}
+        }}"
+            ),
+            &[8, 4, 12, 12, 8, 4, 1],
+        )
+    };
+    let module = compile(
+        "out[0] = sizeof(flag ? input : nullptr);
+        out[1] = sizeof(*(flag ? empty : input));
+        out[2] = sizeof((flag ? row : empty)[99]);
+        out[3] = sizeof((flag ? nullptr : record)->values);
+        out[4] = sizeof(flag ? nullptr : empty);
+        out[5] = sizeof(*(flag ? flag ? input : nullptr : empty));
+        out[6] = sizeof((flag ? nullptr : input) ? true : false);",
+    );
+    let baseline = compile(
+        "out[0] = 8UL; out[1] = 4UL; out[2] = 12UL; out[3] = 12UL;
+        out[4] = 8UL; out[5] = 4UL; out[6] = 1UL;",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .eq(baseline.entry_points[0].function.expressions.iter()));
+    assert!(module
+        .global_variables
+        .iter()
+        .all(|(_, global)| global.memory_decorations.is_empty()));
+}
+
+#[test]
+fn cuda_sizeof_pointer_arms_preserve_incomplete_pointee_checks() {
+    queries(
+        "using Values = int[];
+        __global__ void kernel(unsigned long *out, Values *view) {
+            out[0] = sizeof(true ? view : nullptr);
+            out[1] = sizeof((*(true ? nullptr : view))[0]);
+        }",
+        &[8, 4],
+    );
+    for operand in ["*(true ? view : nullptr)", "(true ? nullptr : view)[0]"] {
+        let source = format!(
+            "using Values = int[];
+            __global__ void kernel(unsigned long *out, Values *view) {{
+                out[0] = sizeof({operand});
+            }}"
+        );
+        let error = parse_str(&source, &Options::default()).unwrap_err();
+        assert!(error.message.contains("complete"), "{error}");
+    }
+}
+
+#[test]
 fn cuda_sizeof_conditional_checks_both_arms_and_keeps_unsupported_boundaries() {
     for operand in [
         "record ? value : 1",
@@ -306,6 +366,13 @@ fn cuda_sizeof_conditional_checks_both_arms_and_keeps_unsupported_boundaries() {
         "true ? value : record",
         "true ? value : values",
         "true ? value : nullptr",
+        "true ? pointer : 0",
+        "true ? pointer : false",
+        "true ? pointer : pointer",
+        "true ? values : nullptr",
+        "true ? values : values",
+        "*(true ? nullptr : nullptr)",
+        "(true ? nullptr : nullptr)[0]",
         "true ? value : missing",
         "true ? value : (1.0f % 2)",
         "values[true ? 1 : 2.0f]",
