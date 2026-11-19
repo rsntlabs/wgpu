@@ -8,6 +8,43 @@ pub(super) struct Structure {
 }
 
 impl<'a> Parser<'a> {
+    pub(super) fn check_kernel_record_value_parameter(
+        &mut self,
+        ty: Handle<Type>,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        let TypeInner::Struct {
+            ref members,
+            span: size,
+        } = self.module.types[ty].inner
+        else {
+            unreachable!();
+        };
+        let count = members.len();
+        self.parameter_expansion_budget
+            .charge_work(count.min(4), span)?;
+        if (1..=4).contains(&count)
+            && size == count as u32 * 4
+            && self
+                .structures
+                .get(&ty)
+                .is_some_and(|record| !record.requires_default_constructor)
+            && members.iter().enumerate().all(|(index, member)| {
+                member.offset == index as u32 * 4
+                    && matches!(
+                        self.module.types[member.ty].inner,
+                        TypeInner::Scalar(Scalar::I32 | Scalar::U32 | Scalar::F32)
+                    )
+            })
+        {
+            return Ok(());
+        }
+        Err(ParseError {
+            message: String::from("kernel record value parameters require one to four tightly packed 32-bit numeric scalar fields"),
+            span,
+        })
+    }
+
     pub(super) fn structure_declaration(&mut self, global: bool) -> Result<(), ParseError> {
         self.structure_definition(global, false)?;
         self.lexer.expect_span(Token::Separator(';'))?;

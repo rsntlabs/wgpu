@@ -360,7 +360,7 @@ fn cuda_structures_storage_pointers_preserve_resource_bindings_and_source_abi() 
         assert_eq!(global.space, naga::AddressSpace::Storage { access });
         assert_eq!(storage_record(&module, binding).1, 80);
     }
-    rejected("struct Record { int value; }; __global__ void kernel(Record value) {}");
+    rejected("struct Record { int value[2]; }; __global__ void kernel(Record value) {}");
     validate("struct Record { int value; }; __device__ void helper(Record *value) {} __global__ void kernel() {}");
 }
 

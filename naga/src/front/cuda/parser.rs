@@ -533,6 +533,7 @@ impl<'a> Parser<'a> {
             && matches!(
                 specifier,
                 TypeSpecifier::Dim3
+                    | TypeSpecifier::Structure(_)
                     | TypeSpecifier::Vector {
                         component_count: 1..=4,
                         scalar: Scalar::I32 | Scalar::U32 | Scalar::F32,
@@ -778,6 +779,9 @@ impl<'a> Parser<'a> {
     ) -> Result<(), ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
+        if let TypeSpecifier::Structure(ty) = specifier {
+            self.check_kernel_record_value_parameter(ty, span)?;
+        }
         let budget = &mut self.parameter_expansion_budget;
         let members = match specifier {
             TypeSpecifier::Dim3 => 3,

@@ -194,6 +194,51 @@ mod tests {
     }
 
     #[test]
+    fn cuda_kernel_record_values_preflight_after_existing_parameter() {
+        let source = "struct R { int x; unsigned y; float z; }; using Alias = R; unsigned prior, Alias value)";
+        let prepare = || {
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
+            parser.structure_declaration(true).unwrap();
+            parser.alias_declaration(true).unwrap();
+            parser.parameter(0).unwrap();
+            parser.lexer.expect_span(Token::Separator(',')).unwrap();
+            parser
+        };
+        let span = Span::new(0, 1);
+        let mut complete = prepare();
+        complete.parameter(1).unwrap();
+        let used = &complete.parameter_expansion_budget;
+        for (nodes, bytes, work) in [
+            (NODE_LIMIT - used.nodes + 1, 0, 0),
+            (0, BYTE_LIMIT - used.bytes + 1, 0),
+            (0, 0, WORK_LIMIT - used.work + 1),
+        ] {
+            let mut parser = prepare();
+            let type_count = parser.module.types.len();
+            let structure_count = parser.structures.len();
+            let expressions = parser.function.ir.expressions.len();
+            let statements = parser.function.ir.body.len();
+            let budget = &mut parser.parameter_expansion_budget;
+            budget.activate();
+            budget.charge_nodes(nodes, span).unwrap();
+            budget.charge_bytes(bytes, span).unwrap();
+            budget.charge_work(work, span).unwrap();
+
+            let error = parser.parameter(1).unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_eq!(parser.module.types.len(), type_count);
+            assert_eq!(parser.structures.len(), structure_count);
+            assert_eq!(parser.module.global_variables.len(), 1);
+            assert_eq!(parser.function.ir.local_variables.len(), 1);
+            assert_eq!(parser.function.ir.expressions.len(), expressions);
+            assert_eq!(parser.function.ir.body.len(), statements);
+            assert!(parser.function.symbol_table.lookup("prior").is_some());
+            assert!(parser.function.symbol_table.lookup("value").is_none());
+        }
+    }
+
+    #[test]
     fn multidimensional_parameter_row_types_check_budgets_before_allocation() {
         for prepared in [false, true] {
             for resource in 0..3 {

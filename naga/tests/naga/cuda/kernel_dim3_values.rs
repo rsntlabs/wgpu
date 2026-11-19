@@ -136,7 +136,6 @@ fn cuda_kernel_dim3_values_do_not_broaden_const_record_or_storage_rules() {
     for source in [
         "__global__ void kernel(const dim3 shape) { shape.x = 1u; }",
         "__global__ void kernel(const dim3 shape) { shape = dim3(1u); }",
-        "struct Record { unsigned x, y, z; }; __global__ void kernel(Record shape) {}",
         "struct Record { dim3 shape; }; __global__ void kernel(Record record) {}",
         "__global__ void kernel(dim3 shape);",
         "__global__ void kernel(dim3 shape = dim3()) {}",

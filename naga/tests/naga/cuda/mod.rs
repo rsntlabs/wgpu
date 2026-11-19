@@ -96,6 +96,7 @@ mod integral_template_defaults;
 mod integral_templates;
 mod kernel_dim3_values;
 mod kernel_named_vector_values;
+mod kernel_record_values;
 mod kernel_vector_values;
 mod launch_bounds;
 mod list_initialization;

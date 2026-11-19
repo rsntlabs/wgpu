@@ -132,14 +132,7 @@ fn cuda_kernel_vector_values_route_fixed_and_deduced_template_instances() {
 
 #[test]
 fn cuda_kernel_vector_values_keep_other_aggregate_value_families_out_of_scope() {
-    for ty in [
-        "short2",
-        "ushort4",
-        "long2",
-        "ulong4",
-        "longlong2",
-        "Record",
-    ] {
+    for ty in ["short2", "ushort4", "long2", "ulong4", "longlong2"] {
         reject(&format!(
             "struct Record {{ unsigned value; }}; __global__ void kernel({ty} value) {{}}"
         ));

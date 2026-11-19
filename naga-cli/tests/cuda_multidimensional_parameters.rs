@@ -112,7 +112,7 @@ fn cuda_multidimensional_parameters_cli_rejects_invalid_rows_and_unsupported_tem
         "__device__ void f(int &values[2][3]){ } __global__ void kernel(){}",
         "template<class T> __device__ int f(T values[][3]){return 1;} __global__ void kernel(){}",
         "template<int N> __global__ void kernel(int values[][3]){}",
-        "struct R{int x;}; __global__ void kernel(R value){}",
+        "struct R{int x[2];}; __global__ void kernel(R value){}",
     ] {
         let files = TestFiles::new("cu", source);
         let result = files.translate(&[]);

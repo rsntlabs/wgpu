@@ -542,6 +542,13 @@ the four-byte size of a one-component vector and the 12-byte size of a
 three-component vector. Other kernel vector parameters require pointers or
 adjusted array declarators.
 
+Kernels can take a record by value when it has one to four tightly packed
+`int`, `unsigned int`, or `float` fields and requires no default constructor.
+Each record uses a 16-byte uniform buffer at its source binding index. Write
+its fields in declaration order at offsets 0, 4, 8, and 12 as applicable, and
+leave the remaining bytes as padding. The source record keeps its natural
+size and alignment. The kernel receives a separate copy in every invocation.
+
 Scalar parameters use 16-byte uniform buffers containing the two-, four-, or eight-byte
 numeric value at byte offset 0. Boolean value parameters use a `u32` field at offset
 0: its low byte is decoded as false when zero and true otherwise; the upper three
