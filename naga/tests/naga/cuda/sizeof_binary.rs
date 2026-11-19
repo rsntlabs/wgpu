@@ -174,7 +174,7 @@ fn cuda_sizeof_binary_keeps_unsupported_expression_and_type_boundaries() {
         "helper() + 1",
         "value++ + 1",
         "value = 1",
-        "value, 1",
+        "value,",
         "value + sizeof(int)",
         "1.0 + value",
         "double",
@@ -517,11 +517,109 @@ fn cuda_sizeof_conditional_checks_both_arms_and_keeps_unsupported_boundaries() {
         "true ? value : (1.0f % 2)",
         "values[true ? 1 : 2.0f]",
         "true ? value++, value : 1",
-        "true ? value, 1 : 2",
+        "true ? value, : 2",
         "true ? value : (value = 1)",
         "true ? value",
         "true ? value :",
     ] {
         reject(&format!("// π UTF-8 prefix\nstruct Record {{ int value; }}; __global__ void kernel(unsigned long *out) {{ int value; int *pointer; int values[2]; int2 vector; Record record; out[0] = sizeof({operand}); }}"));
+    }
+}
+
+#[test]
+fn cuda_sizeof_comma_keeps_the_final_operand_type_and_shape_without_evaluation() {
+    let compile = |body| {
+        queries(
+            &format!(
+                "struct Record {{ int values[3]; }};
+        __global__ void kernel(unsigned long *out, volatile int *input) {{
+            bool flag; short small; short other; int grid[2][3]; Record record;
+            {body}
+        }}"
+            ),
+            &[2, 1, 24, 12, 4, 2, 24, 8, 4, 9, 12],
+        )
+    };
+    let module = compile(
+        "out[0] = sizeof((input[0], small));
+        out[1] = sizeof((input[0], flag));
+        out[2] = sizeof((input[0], grid));
+        out[3] = sizeof(grid[input[0], 0]);
+        out[4] = sizeof(grid[flag ? input[0], 0 : 1][input[0], 0]);
+        out[5] = sizeof(flag ? 1 / 0, small : other);
+        out[6] = sizeof(flag ? 1 : 2, grid);
+        out[7] = sizeof(flag ? (1, nullptr) : input);
+        out[8] = sizeof((true, input)[99]);
+        out[9] = (sizeof small, 9UL);
+        out[10] = sizeof((input[0], record).values);",
+    );
+    let baseline = compile(
+        "out[0] = 2UL; out[1] = 1UL; out[2] = 24UL;
+        out[3] = 12UL; out[4] = 4UL; out[5] = 2UL; out[6] = 24UL;
+        out[7] = 8UL; out[8] = 4UL; out[9] = (sizeof small, 9UL); out[10] = 12UL;",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .eq(baseline.entry_points[0].function.expressions.iter()));
+}
+
+#[test]
+fn cuda_sizeof_comma_keeps_incomplete_array_metadata_without_launch_storage() {
+    let module = queries(
+        "extern __shared__ int scratch[];
+        __global__ void kernel(unsigned long *out) {
+            out[0] = sizeof((scratch, 4u));
+            out[1] = sizeof((true, scratch)[99]);
+        }",
+        &[4, 4],
+    );
+    assert_eq!(module.global_variables.len(), 1);
+    let error = parse_str(
+        "extern __shared__ int scratch[];
+        __global__ void kernel(unsigned long *out) { out[0] = sizeof((0, scratch)); }",
+        &Options::default(),
+    )
+    .unwrap_err();
+    assert!(error.message.contains("complete"), "{error}");
+}
+
+#[test]
+fn cuda_sizeof_comma_checks_discarded_operands_and_clears_zero_literal_provenance() {
+    for operand in [
+        "(missing, 1)",
+        "(1, missing)",
+        "(1.0f % 2, 4)",
+        "(helper(), 4)",
+        "(value++, 4)",
+        "(value = 1, 4)",
+        "(sizeof(int), 4)",
+        "(1,)",
+        "(,1)",
+        "(1,,2)",
+    ] {
+        reject(&format!(
+            "__device__ int helper() {{ return 1; }}
+            __global__ void kernel(unsigned long *out) {{
+                int value; out[0] = sizeof({operand});
+            }}"
+        ));
+    }
+    for operand in [
+        "true ? pointer : (1, 0)",
+        "true ? (0, 0u) : pointer",
+        "true ? pointer, 0 : pointer",
+    ] {
+        let source = format!(
+            "__global__ void kernel(unsigned long *out) {{
+            int *pointer; out[0] = sizeof({operand});
+        }}"
+        );
+        let error = parse_str(&source, &Options::default()).unwrap_err();
+        assert!(
+            error.message.contains("sizeof conditional requires"),
+            "{error}"
+        );
     }
 }

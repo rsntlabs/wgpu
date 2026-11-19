@@ -593,7 +593,7 @@ fn cuda_sizeof_named_objects_rejects_nonobjects_and_unsupported_operands() {
         "group",
         "value++",
         "value + pointer",
-        "value, value",
+        "value, value++",
     ] {
         rejected(&format!(
             "__device__ int helper() {{ return 1; }}
@@ -799,7 +799,7 @@ fn cuda_sizeof_members_rejects_invalid_access_and_unsupported_expressions() {
         "record.vector.x++",
         "pointer->vector.x % 1",
         "pointer->vector()",
-        "record.vector.x, scalar",
+        "record.missing, scalar",
     ] {
         rejected(&format!(
             "struct Record {{ float3 vector; int matrix[2][3]; }};
@@ -865,7 +865,7 @@ fn cuda_sizeof_dereference_rejects_invalid_operands() {
         "*null_value",
         "*pointer++",
         "*pointer + pointer",
-        "*pointer, value",
+        "*value, value",
     ] {
         rejected(&format!(
             "__global__ void kernel(unsigned long *output) {{

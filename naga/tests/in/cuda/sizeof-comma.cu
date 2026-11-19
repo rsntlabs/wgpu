@@ -1,0 +1,32 @@
+struct Record { int first; unsigned second; float third; };
+__global__ void sizeof_comma(const int *input, unsigned *output) {
+    unsigned lane = threadIdx.x;
+    unsigned base = 4u + lane * 16u;
+    int seed = input[lane];
+    bool flag = seed != 0;
+    int counter = 7;
+    int matrix[2][3]{};
+    Record record{};
+    constexpr unsigned Scalar = unsigned(sizeof((flag, seed)));
+    constexpr unsigned Boolean = unsigned(sizeof((seed, flag)));
+    constexpr unsigned Array = unsigned(sizeof((seed, matrix)));
+    constexpr unsigned Row = unsigned(sizeof((seed, matrix)[counter]));
+    constexpr unsigned Element = unsigned(sizeof(matrix[counter, seed][seed, counter]));
+    constexpr unsigned Member = unsigned(sizeof((input, record).third));
+    constexpr unsigned Pointer = unsigned(sizeof((seed, input)));
+    constexpr unsigned Null = unsigned(sizeof((seed, nullptr)));
+    constexpr unsigned Middle = unsigned(sizeof(flag ? seed, flag : true));
+    constexpr unsigned Outer = unsigned(sizeof(flag ? seed : counter, flag));
+    constexpr unsigned Nested = unsigned(sizeof(flag ? flag ? counter, flag : true : false));
+    constexpr unsigned NoRead = unsigned(sizeof((input[counter], input[seed], seed)));
+    constexpr unsigned InvalidMath = unsigned(sizeof((1 / 0, 1 << -1, flag)));
+    constexpr unsigned NullArm = unsigned(sizeof(flag ? input : (seed, nullptr)));
+    output[base] = Scalar; output[base + 1u] = Boolean;
+    output[base + 2u] = Array; output[base + 3u] = Row;
+    output[base + 4u] = Element; output[base + 5u] = Member;
+    output[base + 6u] = Pointer; output[base + 7u] = Null;
+    output[base + 8u] = Middle; output[base + 9u] = Outer;
+    output[base + 10u] = Nested; output[base + 11u] = NoRead;
+    output[base + 12u] = InvalidMath; output[base + 13u] = NullArm;
+    output[base + 14u] = unsigned(counter); output[base + 15u] = unsigned(input[lane]);
+}

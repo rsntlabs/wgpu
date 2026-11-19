@@ -530,9 +530,16 @@ null pointer constant. A zero literal keeps its integer type in scalar
 queries such as `sizeof(0u)`. Pointer pairs with different pointee types or
 pointer-to-pointer types and array arms are unsupported in these queries.
 
+Built-in comma expressions type-check each operand and use the final operand's
+type and array extents without evaluating any operand. They are supported in
+grouped queries, subscript indices, and the middle arm of a conditional.
+For example, `sizeof((value, matrix))` gives the full size of `matrix`.
+A comma expression ending in `0` has integer type and cannot serve as a null
+pointer constant.
+
 Pointer, array, record, and vector binary operators remain unsupported within
-these queries. Calls, casts, updates, assignments, comma expressions, and
-nested type queries also remain unsupported.
+these queries. Calls, casts, updates, assignments, and nested type queries
+also remain unsupported.
 
 `static_assert(condition);` declarations are accepted at global, function, and
 record scope, including local records in instantiated function templates.

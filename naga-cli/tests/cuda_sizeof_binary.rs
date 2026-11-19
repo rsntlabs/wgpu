@@ -86,6 +86,20 @@ fn cuda_sizeof_zero_arms_cli_emit_all_backends() {
     );
 }
 
+#[test]
+fn cuda_sizeof_comma_cli_emit_all_backends() {
+    emits_all_backends(
+        r#"__global__ void kernel(const int *input, unsigned *output) {
+        int grid[2][3]; bool flag;
+        constexpr unsigned Whole=unsigned(sizeof((input[99],grid)));
+        constexpr unsigned Row=unsigned(sizeof(grid[input[99],0]));
+        constexpr unsigned Boolean=unsigned(sizeof(flag ? input[99],true : false));
+        output[0]=Whole+Row+Boolean;
+        output[1]=unsigned(input[0]);
+    }"#,
+    );
+}
+
 fn emits_all_backends(source: &str) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);
@@ -160,7 +174,7 @@ fn cuda_sizeof_binary_cli_rejects_invalid_types_and_out_of_scope_expressions() {
         "int value=1;unsigned n=sizeof(value+sizeof(int));",
         "int *p=nullptr; unsigned n=sizeof(p+1);",
         "float2 value{}; unsigned n=sizeof(value+value);",
-        "int value=1; unsigned n=sizeof((value,2));",
+        "int value=1; unsigned n=sizeof((value,,2));",
         "int value=1; unsigned n=sizeof(value=2);",
         "int value=1; unsigned n=sizeof(value++);",
         "float value=1; unsigned n=sizeof(value%2);",
@@ -181,7 +195,8 @@ fn cuda_sizeof_conditional_cli_rejects_invalid_arms() {
         "true?p:+0",
         "true?nullptr:0",
         "true?p:f",
-        "true?1,2:3",
+        "true?1,:3",
+        "true?p:(1,0)",
         "true?1:",
         "true?1:1.0f%2",
     ] {

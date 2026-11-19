@@ -138,6 +138,21 @@ impl Parser<'_> {
         result
     }
 
+    fn sizeof_comma_expression(&mut self) -> Result<(SizeofOperand, Span), ParseError> {
+        let (mut operand, mut span) = self.sizeof_conditional_expression()?;
+        while let (Token::Separator(','), comma_span) = self.lexer.peek()? {
+            self.lexer.next()?;
+            self.parameter_expansion_budget.charge_work(1, comma_span)?;
+            let (right, right_span) = self.sizeof_conditional_expression()?;
+            operand = match right {
+                SizeofOperand::IntegerZeroLiteral(scalar) => SizeofOperand::Scalar(scalar),
+                other => other,
+            };
+            span = span.until(&right_span);
+        }
+        Ok((operand, span))
+    }
+
     fn sizeof_conditional_expression(&mut self) -> Result<(SizeofOperand, Span), ParseError> {
         let (condition, condition_span) = self.sizeof_binary_expression(0)?;
         let (token, question_span) = self.lexer.peek()?;
@@ -172,7 +187,7 @@ impl Parser<'_> {
                     span: condition_span,
                 });
             }
-            let (accept, accept_span) = self.sizeof_conditional_expression()?;
+            let (accept, accept_span) = self.sizeof_comma_expression()?;
             let colon_span = self.lexer.expect_span(Token::Separator(':'))?;
             self.parameter_expansion_budget.charge_work(1, colon_span)?;
             let (reject, reject_span) = self.sizeof_conditional_expression()?;
@@ -331,7 +346,7 @@ impl Parser<'_> {
                     .map(|operand| (operand, span));
             }
             Token::Paren('(') => {
-                let (operand, _) = self.sizeof_conditional_expression()?;
+                let (operand, _) = self.sizeof_comma_expression()?;
                 let closing = self.lexer.expect_span(Token::Paren(')'))?;
                 (operand, start.until(&closing))
             }
@@ -372,7 +387,7 @@ impl Parser<'_> {
             Token::Separator('.') | Token::Arrow | Token::Paren('[')
         ) {
             if self.lexer.next_if(Token::Paren('['))? {
-                let (index, _) = self.sizeof_conditional_expression()?;
+                let (index, _) = self.sizeof_comma_expression()?;
                 end = self.lexer.expect_span(Token::Paren(']'))?;
                 operand = self.sizeof_subscript(operand, index, start.until(&end))?;
                 continue;
@@ -707,6 +722,27 @@ mod tests {
     #[test]
     fn sizeof_pointer_conditions_metadata_needs_no_node_or_byte_allocation_budget() {
         check_sizeof_metadata_budget("(nullptr ? 1L : 1u)");
+    }
+
+    #[test]
+    fn sizeof_comma_metadata_handles_flat_chains_without_allocations() {
+        let source = format!("({}1L)", "1,".repeat(96));
+        check_sizeof_metadata_budget(&source);
+
+        let span = Span::new(0, 1);
+        let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
+        parser.parameter_expansion_budget.activate();
+        parser.prepare_parameter_bindings(span).unwrap();
+        for bit in (4..usize::BITS).rev() {
+            let _ = parser
+                .parameter_expansion_budget
+                .charge_work(1usize << bit, span);
+        }
+        assert!(parser.sizeof_operand().is_err());
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+        assert_eq!(parser.function.expression_depth, 0);
+        assert!(parser.function.ir.expressions.is_empty());
+        assert!(parser.module.types.is_empty());
     }
 
     #[test]
