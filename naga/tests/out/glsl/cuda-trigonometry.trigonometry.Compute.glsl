@@ -413,13 +413,13 @@ float cosine_value(float value_3) {
 }
 
 int sinf(bool value_4) {
-    int local_4 = 0;
+    int local_7 = 0;
     if (value_4) {
-        local_4 = 17;
+        local_7 = 17;
     } else {
-        local_4 = 19;
+        local_7 = 19;
     }
-    int _e6 = local_4;
+    int _e6 = local_7;
     return _e6;
 }
 
@@ -465,6 +465,9 @@ void main() {
     int repeated = 0;
     int index = 0;
     float local_3 = 0.0;
+    uint local_4 = 0u;
+    uint local_5 = 0u;
+    uint local_6 = 0u;
     uint _e3 = _naga_trigonometry(floatBitsToUint(0.0), 0u);
     _group_0_binding_0_cs[uint(0)] = floatBitsToUint(uintBitsToFloat(_e3));
     uint _e14 = _naga_trigonometry(floatBitsToUint(-(0.0)), 0u);
@@ -613,5 +616,33 @@ void main() {
     _group_0_binding_0_cs[uint(27)] = uint(_e329);
     float _e336 = cosine_value(float(false));
     _group_0_binding_0_cs[uint(28)] = floatBitsToUint(_e336);
+    uint _e344 = _naga_trigonometry(floatBitsToUint(0.0), 0u);
+    _group_0_binding_0_cs[uint(29)] = floatBitsToUint(uintBitsToFloat((((_e344 & 2139095040u) == 0u) ? (_e344 & 2147483648u) : _e344)));
+    uint _e361 = _naga_trigonometry(floatBitsToUint(-(0.0)), 0u);
+    _group_0_binding_0_cs[uint(30)] = floatBitsToUint(uintBitsToFloat((((_e361 & 2139095040u) == 0u) ? (_e361 & 2147483648u) : _e361)));
+    local_4 = 1u;
+    uint _e376 = local_4;
+    uint _e380 = _naga_trigonometry(floatBitsToUint(uintBitsToFloat(_e376)), 0u);
+    _group_0_binding_0_cs[uint(31)] = floatBitsToUint(uintBitsToFloat((((_e380 & 2139095040u) == 0u) ? (_e380 & 2147483648u) : _e380)));
+    local_5 = 2147483649u;
+    uint _e395 = local_5;
+    uint _e399 = _naga_trigonometry(floatBitsToUint(uintBitsToFloat(_e395)), 0u);
+    _group_0_binding_0_cs[uint(32)] = floatBitsToUint(uintBitsToFloat((((_e399 & 2139095040u) == 0u) ? (_e399 & 2147483648u) : _e399)));
+    local_6 = 1u;
+    uint _e414 = local_6;
+    uint _e418 = _naga_trigonometry(floatBitsToUint(uintBitsToFloat(_e414)), 1u);
+    _group_0_binding_0_cs[uint(33)] = floatBitsToUint(uintBitsToFloat(_e418));
+    value = 0.0;
+    float _e425 = value;
+    value = (_e425 + float(1));
+    uint _e431 = _naga_trigonometry(floatBitsToUint(_e425), 0u);
+    _group_0_binding_0_cs[uint(34)] = floatBitsToUint(uintBitsToFloat((((_e431 & 2139095040u) == 0u) ? (_e431 & 2147483648u) : _e431)));
+    float _e444 = value;
+    _group_0_binding_0_cs[uint(35)] = floatBitsToUint(_e444);
+    float _e449 = value;
+    value = (_e449 - float(1));
+    float _e453 = value;
+    uint _e456 = _naga_trigonometry(floatBitsToUint(_e453), 1u);
+    _group_0_binding_0_cs[uint(36)] = floatBitsToUint(uintBitsToFloat(_e456));
 }
 

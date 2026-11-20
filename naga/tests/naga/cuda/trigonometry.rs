@@ -299,9 +299,7 @@ fn cuda_trigonometry_rejects_non_scalar_arguments_and_unsupported_variants() {
             rejected(&format!("__global__ void kernel(float *out) {{ {body} }}"));
         }
     }
-    for name in [
-        "sin", "cos", "__sinf", "__cosf", "sinpi", "cospi", "sincosf",
-    ] {
+    for name in ["sin", "cos", "sinpi", "cospi", "sincosf"] {
         rejected(&format!("__global__ void kernel() {{ {name}(0.0f); }}"));
     }
 }

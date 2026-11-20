@@ -21,11 +21,58 @@ impl Parser<'_> {
         cosine: bool,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
+        let result = self.trigonometry_bits(value, cosine, span)?;
+        self.bitcast_scalar(result, Scalar::F32, span)
+    }
+
+    pub(super) fn lower_fast_trigonometry_call(
+        &mut self,
+        arguments: Vec<Value>,
+        cosine: bool,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        use BinaryOperator as Op;
+
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let argument = arguments.into_iter().next().unwrap();
+        let converts = self.source_scalar(&argument.ty) != Some(SourceScalar::Scalar(Scalar::F32));
+        // Two bitcasts, the mode, the call result, and seven optional flush expressions.
+        let expressions = usize::from(converts) + 4 + if cosine { 0 } else { 7 };
+        self.parameter_expansion_budget
+            .preflight_expressions(expressions, span)?;
+        let argument = self.convert_scalar(argument.into(), Scalar::F32)?;
+        let bits = self.trigonometry_bits(argument.handle, cosine, span)?;
+        let result = if cosine {
+            bits
+        } else {
+            let exponent = self.trig_binary_literal(Op::And, bits, 0x7f80_0000, span)?;
+            let flush = self.trig_binary_literal(Op::Equal, exponent, 0, span)?;
+            let sign = self.trig_binary_literal(Op::And, bits, 0x8000_0000, span)?;
+            self.trig_select(flush, sign, bits, span)?
+        };
+        let handle = self.bitcast_scalar(result, Scalar::F32, span)?;
+        Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
+            constant: ConstantValue::default(),
+            handle,
+            ty: scalar_resolution(Scalar::F32),
+            span,
+        }
+        .into())
+    }
+
+    fn trigonometry_bits(
+        &mut self,
+        value: Handle<Expression>,
+        cosine: bool,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
         let function = self.trigonometry_function(span)?;
         let bits = self.bitcast_scalar(value, Scalar::U32, span)?;
         let mode = self.trig_literal(u32::from(cosine), span)?;
-        let result = self.trig_call(function, &[bits, mode], span)?;
-        self.bitcast_scalar(result, Scalar::F32, span)
+        self.trig_call(function, &[bits, mode], span)
     }
 
     fn trigonometry_function(&mut self, span: Span) -> Result<Handle<Function>, ParseError> {

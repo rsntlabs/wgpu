@@ -100,7 +100,16 @@ fn finite_results() -> ShaderTest {
         assert!(cosine & 0x7fff_ffff <= 0x3f80_0000);
         exponent_bands[(input >> 31) as usize][((input >> 23) & 0xff) as usize] = true;
         inputs.push(input);
-        expected.extend_from_slice(&[sine, cosine]);
+        expected.extend_from_slice(&[
+            sine,
+            cosine,
+            if sine & 0x7fff_ffff < 0x0080_0000 {
+                sine & 0x8000_0000
+            } else {
+                sine
+            },
+            cosine,
+        ]);
     }
     assert_eq!(inputs.len(), 3072);
     assert!(exponent_bands.iter().flatten().all(|&covered| covered));
@@ -113,8 +122,10 @@ fn finite_results() -> ShaderTest {
             unsigned index = blockIdx.x * blockDim.x + threadIdx.x;
             if (index >= {count}u) return;
             float value = __uint_as_float(input[index]);
-            out[2u * index] = __float_as_uint(sinf(value));
-            out[2u * index + 1u] = __float_as_uint(cosf(value));
+            out[4u * index] = __float_as_uint(sinf(value));
+            out[4u * index + 1u] = __float_as_uint(cosf(value));
+            out[4u * index + 2u] = __float_as_uint(__sinf(value));
+            out[4u * index + 3u] = __float_as_uint(__cosf(value));
         }}"
     );
     let mut test = module_case(
@@ -166,9 +177,18 @@ fn special_results() -> ShaderTest {
     let mut expected = Vec::new();
     for &input in &inputs {
         if input & 0x7fff_ffff >= 0x7f80_0000 {
-            expected.extend_from_slice(&[CANONICAL_NAN; 2]);
+            expected.extend_from_slice(&[CANONICAL_NAN; 4]);
         } else {
-            expected.extend_from_slice(&[input, 1.0_f32.to_bits()]);
+            expected.extend_from_slice(&[
+                input,
+                1.0_f32.to_bits(),
+                if input & 0x7fff_ffff < 0x0080_0000 {
+                    input & 0x8000_0000
+                } else {
+                    input
+                },
+                1.0_f32.to_bits(),
+            ]);
         }
     }
     expected.extend_from_slice(&[SENTINEL; 16]);
@@ -179,8 +199,10 @@ fn special_results() -> ShaderTest {
             unsigned index = blockIdx.x * blockDim.x + threadIdx.x;
             if (index >= 26u) return;
             float value = __uint_as_float(input[index]);
-            out[2u * index] = __float_as_uint(sinf(value));
-            out[2u * index + 1u] = __float_as_uint(cosf(value));
+            out[4u * index] = __float_as_uint(sinf(value));
+            out[4u * index + 1u] = __float_as_uint(cosf(value));
+            out[4u * index + 2u] = __float_as_uint(__sinf(value));
+            out[4u * index + 3u] = __float_as_uint(__cosf(value));
         }",
         [32, 1, 1],
         &expected,
@@ -206,7 +228,7 @@ fn special_results() -> ShaderTest {
 }
 
 fn conversions_and_side_effects() -> ShaderTest {
-    let mut expected = [SENTINEL; 32];
+    let mut expected = [SENTINEL; 40];
     expected[..29].copy_from_slice(&[
         0x0000_0000,
         0x8000_0000,
@@ -238,13 +260,23 @@ fn conversions_and_side_effects() -> ShaderTest {
         1,
         0x3f80_0000,
     ]);
+    expected[29..37].copy_from_slice(&[
+        0,
+        0x8000_0000,
+        0,
+        0x8000_0000,
+        0x3f80_0000,
+        0,
+        0x3f80_0000,
+        0x3f80_0000,
+    ]);
     module_case(
         "sinf and cosf aliases, conversions, overloads, sequenced calls, selected branches, pending arrays and loop updates",
         include_str!("../../../../../naga/tests/in/cuda/trigonometry.cu"),
         [1, 1, 1],
         &expected,
     ).module_buffers(
-        vec![ShaderBuffer::new(0, wgpu::BufferBindingType::Storage { read_only: false }, &[SENTINEL; 32])],
+        vec![ShaderBuffer::new(0, wgpu::BufferBindingType::Storage { read_only: false }, &[SENTINEL; 40])],
         0,
         [1, 1, 1],
     )
@@ -263,9 +295,9 @@ fn tiny_exact_results() -> ShaderTest {
         0x3900_0000,
         0xb900_0000,
     ];
-    let mut expected = [SENTINEL; 128];
+    let mut expected = [SENTINEL; 188];
     for (index, bits) in INPUT.into_iter().enumerate() {
-        expected[4 + index * 12..16 + index * 12].copy_from_slice(&[
+        expected[4 + index * 18..22 + index * 18].copy_from_slice(&[
             bits,
             0x3f80_0000,
             bits,
@@ -278,6 +310,20 @@ fn tiny_exact_results() -> ShaderTest {
             0x3f80_0000,
             1,
             2,
+            if bits & 0x7fff_ffff < 0x0080_0000 {
+                bits & 0x8000_0000
+            } else {
+                bits
+            },
+            0x3f80_0000,
+            if bits & 0x7fff_ffff < 0x0080_0000 {
+                bits & 0x8000_0000
+            } else {
+                bits
+            },
+            1,
+            0x3f80_0000,
+            2,
         ]);
     }
     module_case(
@@ -287,7 +333,7 @@ fn tiny_exact_results() -> ShaderTest {
         __global__ void tiny_trig(const unsigned *input, unsigned *output) {
             unsigned index = threadIdx.x;
             unsigned bits = input[index];
-            unsigned base = 4u + index * 12u;
+            unsigned base = 4u + index * 18u;
             output[base] = __float_as_uint(sinf(__uint_as_float(bits)));
             output[base + 1u] = __float_as_uint(cosf(__uint_as_float(bits)));
             output[base + 2u] = __float_as_uint(sine_value(__uint_as_float(bits)));
@@ -301,10 +347,17 @@ fn tiny_exact_results() -> ShaderTest {
             output[base + 9u] = __float_as_uint(cosine_value(float(cursor++ - 1)));
             output[base + 10u] = unsigned(cursor - 1);
             output[base + 11u] = unsigned(cursor);
+            output[base + 12u] = __float_as_uint(__sinf(__uint_as_float(bits)));
+            output[base + 13u] = __float_as_uint(__cosf(__uint_as_float(bits)));
+            cursor = 0;
+            output[base + 14u] = __float_as_uint(__sinf(__uint_as_float(input[index + unsigned(cursor++)])));
+            output[base + 15u] = unsigned(cursor);
+            output[base + 16u] = __float_as_uint(__cosf(float(cursor++ - 1)));
+            output[base + 17u] = unsigned(cursor);
         }",
         [10, 1, 1], &expected,
     ).module_buffers(vec![
         ShaderBuffer::new(0, wgpu::BufferBindingType::Storage { read_only: true }, &INPUT),
-        ShaderBuffer::new(1, wgpu::BufferBindingType::Storage { read_only: false }, &[SENTINEL; 128]),
+        ShaderBuffer::new(1, wgpu::BufferBindingType::Storage { read_only: false }, &[SENTINEL; 188]),
     ], 1, [1, 1, 1])
 }

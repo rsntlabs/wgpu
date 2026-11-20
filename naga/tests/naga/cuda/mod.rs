@@ -532,3 +532,5 @@ mod ffma2;
 mod fadd2;
 
 mod fmul2;
+
+mod fast_trigonometry;

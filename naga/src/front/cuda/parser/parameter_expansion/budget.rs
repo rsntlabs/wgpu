@@ -4061,6 +4061,44 @@ mod tests {
     }
 
     #[test]
+    fn fast_trigonometry_checks_expression_budget_before_converting_arguments() {
+        for name in ["__sinf", "__cosf"] {
+            for exhaust_bytes in [false, true] {
+                let (mut parser, [marker, _, _], span) = fns_budget_parser();
+                let arguments = alloc::vec![parser.number("1", span).unwrap()];
+                parser.parameter_expansion_budget.activate();
+                parser.prepare_parameter_bindings(span).unwrap();
+                let caller = format!("{:?}", parser.function.ir);
+                let depths = parser.function.expression_graph_depths.clone();
+                if exhaust_bytes {
+                    let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+                    let expression_bytes = size_of::<Expression>() + size_of::<u32>();
+                    parser
+                        .parameter_expansion_budget
+                        .charge_bytes(remaining - expression_bytes, span)
+                        .unwrap();
+                } else {
+                    let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                    parser
+                        .parameter_expansion_budget
+                        .charge_nodes(remaining - 1, span)
+                        .unwrap();
+                }
+                let error = parser
+                    .call_with_arguments(name, arguments, span, span)
+                    .unwrap_err();
+                assert_eq!(error.message, limit_error(span).message);
+                assert_eq!(error.span, span);
+                assert_fns_budget_caller(&parser, marker);
+                assert_eq!(format!("{:?}", parser.function.ir), caller);
+                assert_eq!(parser.function.expression_graph_depths, depths);
+                assert!(parser.module.functions.is_empty());
+                assert!(parser.trigonometry_function.is_none());
+            }
+        }
+    }
+
+    #[test]
     fn ldexpf_budget_failure_preserves_caller_and_cache() {
         for cached in [false, true] {
             let (mut parser, [bits, other_bits, exponent], span) = fns_budget_parser();

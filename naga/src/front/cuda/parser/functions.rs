@@ -1285,6 +1285,8 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
     for &name in &[
+        "__sinf",
+        "__cosf",
         "__fadd_rz",
         "__fadd_rn",
         "__fsub_rn",
@@ -1440,6 +1442,9 @@ pub(super) enum FunctionCandidate {
     VectorFusedMultiplyAdd(FmaRounding),
     DivideRoundNearest,
     DivideApproximate,
+    FastTrigonometry {
+        cosine: bool,
+    },
     DivideRoundZero,
     DivideRoundDown,
     DivideRoundUp,
@@ -2042,6 +2047,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Bitcast { .. }
                         | FunctionCandidate::Unary { .. }
                         | FunctionCandidate::FloatMath(_)
+                        | FunctionCandidate::FastTrigonometry { .. }
                         | FunctionCandidate::FloatClassification(_)
                         | FunctionCandidate::FixedFloatClassification(_)
                         | FunctionCandidate::FloatExponent(_)
@@ -2374,6 +2380,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::PackedUnary(_) => TypeSpecifier::Scalar(Scalar::U32),
             FunctionCandidate::IntegralDouble { .. } => unreachable!(),
             FunctionCandidate::FloatMath(_)
+            | FunctionCandidate::FastTrigonometry { .. }
             | FunctionCandidate::IntegerToFloat { .. }
             | FunctionCandidate::SqrtRoundZero
             | FunctionCandidate::SqrtRoundUp
@@ -2896,6 +2903,9 @@ impl<'a> Parser<'a> {
         }
         if let FunctionCandidate::FloatRemainder(mode) = candidate {
             return self.lower_float_remainder_call(mode, arguments, span);
+        }
+        if let FunctionCandidate::FastTrigonometry { cosine } = candidate {
+            return self.lower_fast_trigonometry_call(arguments, cosine, span);
         }
         if let FunctionCandidate::FloatMath(operation) = candidate {
             return self.lower_float_math_call(operation, arguments, span);
@@ -3550,6 +3560,8 @@ impl<'a> Parser<'a> {
                 (true, "remainderf") => Some(FunctionCandidate::FloatRemainder(
                     RemainderMode::NearestEven,
                 )),
+                (true, "__sinf") => Some(FunctionCandidate::FastTrigonometry { cosine: false }),
+                (true, "__cosf") => Some(FunctionCandidate::FastTrigonometry { cosine: true }),
                 (true, "__fadd2_rn") => {
                     Some(FunctionCandidate::VectorAdd(AddRounding::NearestEven))
                 }
@@ -3827,6 +3839,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::PackedUnary(_)
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::FloatMath(_)
+            | FunctionCandidate::FastTrigonometry { .. }
             | FunctionCandidate::FloatClassification(_)
             | FunctionCandidate::FixedFloatClassification(_)
             | FunctionCandidate::FloatExponent(_)
@@ -3900,6 +3913,7 @@ impl<'a> Parser<'a> {
                 }))
             }
             FunctionCandidate::FloatMath(_)
+            | FunctionCandidate::FastTrigonometry { .. }
             | FunctionCandidate::FloatClassification(_)
             | FunctionCandidate::FixedFloatClassification(_)
             | FunctionCandidate::FloatExponent(_)

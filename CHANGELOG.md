@@ -400,6 +400,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA `__ffma2_rn`, `__ffma2_rz`, `__ffma2_rd`, and `__ffma2_ru` for two-lane fused multiply-add.
 - Support CUDA `__fadd2_rn`, `__fadd2_rz`, `__fadd2_rd`, and `__fadd2_ru` for two-lane addition.
 - Support CUDA `__fmul2_rn`, `__fmul2_rz`, `__fmul2_rd`, and `__fmul2_ru` for two-lane multiplication.
+- Support CUDA `__sinf` and `__cosf`, including signed subnormal flushing for `__sinf` results.
 - Support CUDA `nextafterf` with exact single-precision steps, including signed zeros and subnormals.
 - Support CUDA `fdimf` with correctly rounded single-precision positive differences.
 - Support CUDA `ilogbf` with exact exponents for finite and subnormal inputs.

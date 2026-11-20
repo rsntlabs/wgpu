@@ -522,14 +522,14 @@ float cosine_value(float value_3)
 
 int sinf(bool value_4)
 {
-    int local_4 = (int)0;
+    int local_7 = (int)0;
 
     if (value_4) {
-        local_4 = int(17);
+        local_7 = int(17);
     } else {
-        local_4 = int(19);
+        local_7 = int(19);
     }
-    int _e6 = local_4;
+    int _e6 = local_7;
     return _e6;
 }
 
@@ -597,6 +597,9 @@ void trigonometry()
     int repeated = (int)0;
     int index = (int)0;
     float local_3 = (float)0;
+    uint local_4 = (uint)0;
+    uint local_5 = (uint)0;
+    uint local_6 = (uint)0;
 
     const uint _e3 = _naga_trigonometry(asuint(0.0), 0u);
     out_.Store(uint(int(0))*4, asuint(asuint(asfloat(_e3))));
@@ -749,4 +752,32 @@ void trigonometry()
     out_.Store(uint(int(27))*4, asuint(naga_f2u32(_e329)));
     const float _e336 = cosine_value(float(false));
     out_.Store(uint(int(28))*4, asuint(asuint(_e336)));
+    const uint _e344 = _naga_trigonometry(asuint(0.0), 0u);
+    out_.Store(uint(int(29))*4, asuint(asuint(asfloat((((_e344 & 2139095040u) == 0u) ? (_e344 & 2147483648u) : _e344)))));
+    const uint _e361 = _naga_trigonometry(asuint(-(0.0)), 0u);
+    out_.Store(uint(int(30))*4, asuint(asuint(asfloat((((_e361 & 2139095040u) == 0u) ? (_e361 & 2147483648u) : _e361)))));
+    local_4 = 1u;
+    uint _e376 = local_4;
+    const uint _e380 = _naga_trigonometry(asuint(asfloat(_e376)), 0u);
+    out_.Store(uint(int(31))*4, asuint(asuint(asfloat((((_e380 & 2139095040u) == 0u) ? (_e380 & 2147483648u) : _e380)))));
+    local_5 = 2147483649u;
+    uint _e395 = local_5;
+    const uint _e399 = _naga_trigonometry(asuint(asfloat(_e395)), 0u);
+    out_.Store(uint(int(32))*4, asuint(asuint(asfloat((((_e399 & 2139095040u) == 0u) ? (_e399 & 2147483648u) : _e399)))));
+    local_6 = 1u;
+    uint _e414 = local_6;
+    const uint _e418 = _naga_trigonometry(asuint(asfloat(_e414)), 1u);
+    out_.Store(uint(int(33))*4, asuint(asuint(asfloat(_e418))));
+    value = 0.0;
+    float _e425 = value;
+    value = (_e425 + float(int(1)));
+    const uint _e431 = _naga_trigonometry(asuint(_e425), 0u);
+    out_.Store(uint(int(34))*4, asuint(asuint(asfloat((((_e431 & 2139095040u) == 0u) ? (_e431 & 2147483648u) : _e431)))));
+    float _e444 = value;
+    out_.Store(uint(int(35))*4, asuint(asuint(_e444)));
+    float _e449 = value;
+    value = (_e449 - float(int(1)));
+    float _e453 = value;
+    const uint _e456 = _naga_trigonometry(asuint(_e453), 1u);
+    out_.Store(uint(int(36))*4, asuint(asuint(asfloat(_e456))));
 }
