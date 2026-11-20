@@ -5,7 +5,21 @@ use naga::{AddressSpace, ResourceBinding, Scalar, StorageAccess, TypeInner};
 
 #[test]
 fn cuda_ldg_cli_emits_read_only_loads_for_all_backends() {
-    let source = include_str!("../../naga/tests/in/cuda/ldg.cu");
+    emits_all_backends(
+        include_str!("../../naga/tests/in/cuda/ldg.cu"),
+        &[Scalar::U32],
+    );
+}
+
+#[test]
+fn cuda_ldg_cli_emits_signed_and_float_loads_for_all_backends() {
+    emits_all_backends(
+        include_str!("../../naga/tests/in/cuda/ldg-signed-float.cu"),
+        &[Scalar::I32, Scalar::F32],
+    );
+}
+
+fn emits_all_backends(source: &str, input_scalars: &[Scalar]) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);
         let outputs: Vec<_> = ["wgsl", "spv", "hlsl", "metal", "comp"]
@@ -27,15 +41,19 @@ fn cuda_ldg_cli_emits_read_only_loads_for_all_backends() {
             .iter()
             .all(|output| std::fs::metadata(output).unwrap().len() > 0));
         let module = files.read_module();
-        assert_eq!(module.global_variables.len(), 2);
+        assert_eq!(module.global_variables.len(), input_scalars.len() + 1);
+        let mut seen_bindings = vec![false; input_scalars.len() + 1];
         for (_, global) in module.global_variables.iter() {
             let Some(ResourceBinding { group: 0, binding }) = global.binding else {
                 panic!("expected CUDA buffer binding");
             };
-            let access = match binding {
-                0 => StorageAccess::LOAD,
-                1 => StorageAccess::LOAD | StorageAccess::STORE,
-                _ => panic!("unexpected CUDA buffer binding {binding}"),
+            let binding = binding as usize;
+            assert!(!seen_bindings[binding], "duplicate CUDA buffer binding");
+            seen_bindings[binding] = true;
+            let (scalar, access) = if binding == input_scalars.len() {
+                (Scalar::U32, StorageAccess::LOAD | StorageAccess::STORE)
+            } else {
+                (input_scalars[binding], StorageAccess::LOAD)
             };
             assert_eq!(global.space, AddressSpace::Storage { access });
             let TypeInner::Array {
@@ -44,9 +62,9 @@ fn cuda_ldg_cli_emits_read_only_loads_for_all_backends() {
                 stride: 4,
             } = module.types[global.ty].inner
             else {
-                panic!("expected packed CUDA unsigned buffer");
+                panic!("expected packed CUDA scalar buffer");
             };
-            assert_eq!(module.types[base].inner, TypeInner::Scalar(Scalar::U32));
+            assert_eq!(module.types[base].inner, TypeInner::Scalar(scalar));
         }
     }
 }

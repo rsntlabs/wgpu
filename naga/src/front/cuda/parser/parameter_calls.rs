@@ -390,7 +390,7 @@ impl Parser<'_> {
             debug_assert!(matches!(order, ArgumentEvaluationOrder::LeftToRight));
             return self.atomic_call(arguments, candidate, span);
         }
-        if candidate == functions::FunctionCandidate::LoadReadOnlyU32 {
+        if matches!(candidate, functions::FunctionCandidate::LoadReadOnly(_)) {
             let [argument] = arguments.try_into().ok().unwrap();
             return self.read_only_storage_load(argument, span).map(Into::into);
         }

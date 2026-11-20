@@ -1323,7 +1323,7 @@ pub(super) enum FunctionCandidate {
     },
     AtomicCompareExchange(Scalar),
     WrappingAtomic(WrappingAtomicFunction),
-    LoadReadOnlyU32,
+    LoadReadOnly(Scalar),
     Bitcast {
         source: Scalar,
         result: Scalar,
@@ -1950,7 +1950,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Atomic { .. }
                         | FunctionCandidate::AtomicCompareExchange(_)
                         | FunctionCandidate::WrappingAtomic(_)
-                        | FunctionCandidate::LoadReadOnlyU32
+                        | FunctionCandidate::LoadReadOnly(_)
                         | FunctionCandidate::Bitcast { .. }
                         | FunctionCandidate::Unary { .. }
                         | FunctionCandidate::FloatMath(_)
@@ -2235,12 +2235,12 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::HalfAdd(HalfAddBuiltin { scalar: result, .. })
             | FunctionCandidate::Atomic { scalar: result, .. }
             | FunctionCandidate::AtomicCompareExchange(result)
+            | FunctionCandidate::LoadReadOnly(result)
             | FunctionCandidate::Bitcast { result, .. }
             | FunctionCandidate::FloatToIntegerRoundZero(result)
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
             FunctionCandidate::FloatClassification(_) => TypeSpecifier::Scalar(Scalar::I32),
             FunctionCandidate::WrappingAtomic(_)
-            | FunctionCandidate::LoadReadOnlyU32
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
             | FunctionCandidate::BytePerm
@@ -3179,6 +3179,7 @@ impl<'a> Parser<'a> {
                 (builtin_visible && name == candidate).then_some(function)
             });
         let compare_exchange_visible = builtin_visible && name == "atomicCAS";
+        let read_only_load_visible = builtin_visible && name == "__ldg";
         let dot4_visible = builtin_visible && name == "__dp4a";
         let dot2_half = match (builtin_visible, name) {
             (true, "__dp2a_lo") => Some(false),
@@ -3412,7 +3413,10 @@ impl<'a> Parser<'a> {
                     .map(|(_, function)| FunctionCandidate::WrappingAtomic(function)),
             )
             .chain(
-                (builtin_visible && name == "__ldg").then_some(FunctionCandidate::LoadReadOnlyU32),
+                [Scalar::I32, Scalar::U32, Scalar::F32]
+                    .into_iter()
+                    .filter(move |_| read_only_load_visible)
+                    .map(FunctionCandidate::LoadReadOnly),
             )
             .chain(
                 vector_constructor(name)
@@ -3458,7 +3462,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FusedMultiplyAddRoundZero
             | FunctionCandidate::FusedMultiplyAddRoundNearest => 3,
             FunctionCandidate::Bitcast { .. }
-            | FunctionCandidate::LoadReadOnlyU32
+            | FunctionCandidate::LoadReadOnly(_)
             | FunctionCandidate::ByteSwap32
             | FunctionCandidate::PackedUnary(_)
             | FunctionCandidate::Unary { .. }
@@ -3586,10 +3590,10 @@ impl<'a> Parser<'a> {
                     scalar_resolution(Scalar::U32)
                 })
             }
-            FunctionCandidate::LoadReadOnlyU32 => {
+            FunctionCandidate::LoadReadOnly(scalar) => {
                 return Some(TypeResolution::Value(TypeInner::ValuePointer {
                     size: None,
-                    scalar: Scalar::U32,
+                    scalar,
                     space: AddressSpace::Function,
                 }));
             }
@@ -3610,7 +3614,7 @@ impl<'a> Parser<'a> {
                     declaration.parameters[logical_index].mode()
                 }),
             FunctionCandidate::Current => self.function.parameters[logical_index].mode(),
-            FunctionCandidate::LoadReadOnlyU32 => ParameterMode::Pointer {
+            FunctionCandidate::LoadReadOnly(_) => ParameterMode::Pointer {
                 qualifiers: Qualifiers::CONST,
             },
             FunctionCandidate::Atomic { .. }
@@ -3651,9 +3655,9 @@ impl<'a> Parser<'a> {
         if argument.is_thread_block() {
             return None;
         }
-        if candidate == FunctionCandidate::LoadReadOnlyU32 {
+        if let FunctionCandidate::LoadReadOnly(scalar) = candidate {
             return self.pointer_argument_conversion(
-                &scalar_resolution(Scalar::U32),
+                &scalar_resolution(scalar),
                 Qualifiers::CONST,
                 argument,
             );
