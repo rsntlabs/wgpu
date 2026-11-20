@@ -8,6 +8,11 @@ enum SizeofOperand {
     NullPointer,
 }
 
+struct RecordOffsetIndex {
+    value: i128,
+    scalar: SourceScalar,
+}
+
 impl Parser<'_> {
     pub(super) fn record_offset_query(&mut self, span: Span) -> Result<Value, ParseError> {
         self.lexer.expect_span(Token::Paren('('))?;
@@ -66,18 +71,9 @@ impl Parser<'_> {
         array: Handle<Type>,
         offset: u32,
     ) -> Result<(Handle<Type>, u32), ParseError> {
-        let (literal, span) = self.record_offset_index(self.function.expression_depth)?;
-        let index = match literal {
-            Literal::Bool(value) => Some(u32::from(value)),
-            Literal::I16(value) => u32::try_from(value).ok(),
-            Literal::U16(value) => Some(u32::from(value)),
-            Literal::I32(value) => u32::try_from(value).ok(),
-            Literal::U32(value) => Some(value),
-            Literal::I64(value) => u32::try_from(value).ok(),
-            Literal::U64(value) => u32::try_from(value).ok(),
-            _ => None,
-        }
-        .ok_or_else(|| Self::invalid_record_offset_index(span))?;
+        let (index, span) = self.record_offset_index(self.function.expression_depth)?;
+        let index =
+            u32::try_from(index.value).map_err(|_| Self::invalid_record_offset_index(span))?;
         self.lexer.expect_span(Token::Paren(']'))?;
         let TypeInner::Array {
             base,
@@ -100,9 +96,31 @@ impl Parser<'_> {
         Ok((base, Self::checked_record_offset(offset, bytes, span)?))
     }
 
-    fn record_offset_index(&mut self, depth: u32) -> Result<(Literal, Span), ParseError> {
+    fn record_offset_index(&mut self, depth: u32) -> Result<(RecordOffsetIndex, Span), ParseError> {
+        let (mut left, mut span) = self.record_offset_index_prefix(depth)?;
+        while let (Token::Operation(operator @ ('+' | '-')), operator_span) = self.lexer.peek()? {
+            self.lexer.next()?;
+            self.parameter_expansion_budget
+                .charge_work(1, operator_span)?;
+            let (right, right_span) = self.record_offset_index_prefix(depth)?;
+            let scalar = Self::arithmetic_scalar(left.scalar, right.scalar);
+            let value = if operator == '+' {
+                left.value + right.value
+            } else {
+                left.value - right.value
+            };
+            left = Self::record_offset_arithmetic(value, scalar, operator_span)?;
+            span = span.until(&right_span);
+        }
+        Ok((left, span))
+    }
+
+    fn record_offset_index_prefix(
+        &mut self,
+        depth: u32,
+    ) -> Result<(RecordOffsetIndex, Span), ParseError> {
         let (token, span) = self.lexer.next()?;
-        let literal = match token {
+        let number = match token {
             Token::Paren('(') | Token::Operation('+' | '-' | '~' | '!') => {
                 if depth >= 64 {
                     return Err(ParseError {
@@ -111,11 +129,12 @@ impl Parser<'_> {
                     });
                 }
                 self.parameter_expansion_budget.charge_work(1, span)?;
-                let (operand, operand_span) = self.record_offset_index(depth + 1)?;
                 if let Token::Operation(operator) = token {
-                    let literal = Self::record_offset_unary(operator, operand, span)?;
-                    return Ok((literal, span.until(&operand_span)));
+                    let (operand, operand_span) = self.record_offset_index_prefix(depth + 1)?;
+                    let result = Self::record_offset_unary(operator, operand, span)?;
+                    return Ok((result, span.until(&operand_span)));
                 }
+                let (operand, _) = self.record_offset_index(depth + 1)?;
                 let closing = self.lexer.expect_span(Token::Paren(')'))?;
                 self.parameter_expansion_budget.charge_work(1, closing)?;
                 return Ok((operand, span.until(&closing)));
@@ -127,7 +146,7 @@ impl Parser<'_> {
                     self.parameter_expansion_budget
                         .charge_bytes(text.len(), span)?;
                 }
-                number::parse_integer(text).map(|number| number.literal)
+                number::parse_integer(text)
             }
             Token::Word(name) => {
                 self.parameter_expansion_budget
@@ -135,52 +154,69 @@ impl Parser<'_> {
                 self.record_offset_named_constant(name)
             }
             _ => None,
-        };
-        match literal {
-            Some(
-                literal @ (Literal::Bool(_)
-                | Literal::I16(_)
-                | Literal::U16(_)
-                | Literal::I32(_)
-                | Literal::U32(_)
-                | Literal::I64(_)
-                | Literal::U64(_)),
-            ) => Ok((literal, span)),
-            _ => Err(Self::invalid_record_offset_index(span)),
         }
+        .ok_or_else(|| Self::invalid_record_offset_index(span))?;
+        let value = match number.literal {
+            Literal::Bool(value) => i128::from(value),
+            Literal::I16(value) => i128::from(value),
+            Literal::U16(value) => i128::from(value),
+            Literal::I32(value) => i128::from(value),
+            Literal::U32(value) => i128::from(value),
+            Literal::I64(value) => i128::from(value),
+            Literal::U64(value) => i128::from(value),
+            _ => return Err(Self::invalid_record_offset_index(span)),
+        };
+        Ok((
+            RecordOffsetIndex {
+                value,
+                scalar: number.scalar,
+            },
+            span,
+        ))
     }
 
     fn record_offset_unary(
         operator: char,
-        operand: Literal,
+        operand: RecordOffsetIndex,
         span: Span,
-    ) -> Result<Literal, ParseError> {
-        let operand = match operand {
-            Literal::Bool(value) => Literal::I32(i32::from(value)),
-            Literal::I16(value) => Literal::I32(i32::from(value)),
-            Literal::U16(value) => Literal::I32(i32::from(value)),
-            other => other,
-        };
-        let result = match (operator, operand) {
-            ('+', value) => Some(value),
-            ('!', value) => Some(Literal::Bool(matches!(
-                value,
-                Literal::I32(0) | Literal::U32(0) | Literal::I64(0) | Literal::U64(0)
-            ))),
-            ('-', Literal::I32(value)) => value.checked_neg().map(Literal::I32),
-            ('-', Literal::I64(value)) => value.checked_neg().map(Literal::I64),
-            ('-', Literal::U32(value)) => Some(Literal::U32(value.wrapping_neg())),
-            ('-', Literal::U64(value)) => Some(Literal::U64(value.wrapping_neg())),
-            ('~', Literal::I32(value)) => Some(Literal::I32(!value)),
-            ('~', Literal::U32(value)) => Some(Literal::U32(!value)),
-            ('~', Literal::I64(value)) => Some(Literal::I64(!value)),
-            ('~', Literal::U64(value)) => Some(Literal::U64(!value)),
+    ) -> Result<RecordOffsetIndex, ParseError> {
+        let value = match operator {
+            '+' => operand.value,
+            '-' => -operand.value,
+            '~' => !operand.value,
+            '!' => {
+                return Ok(RecordOffsetIndex {
+                    value: i128::from(operand.value == 0),
+                    scalar: SourceScalar::Scalar(Scalar::BOOL),
+                });
+            }
             _ => unreachable!(),
         };
-        result.ok_or_else(|| ParseError {
+        Self::record_offset_arithmetic(
+            value,
+            Self::promoted_type_query_scalar(operand.scalar),
+            span,
+        )
+    }
+
+    fn record_offset_arithmetic(
+        value: i128,
+        scalar: SourceScalar,
+        span: Span,
+    ) -> Result<RecordOffsetIndex, ParseError> {
+        // Reducing the result modulo the unsigned width also accounts for operand conversion.
+        let value = match scalar.scalar() {
+            Scalar::I32 => i32::try_from(value).ok().map(i128::from),
+            Scalar::I64 => i64::try_from(value).ok().map(i128::from),
+            Scalar::U32 => Some(i128::from(value as u32)),
+            Scalar::U64 => Some(i128::from(value as u64)),
+            _ => unreachable!(),
+        }
+        .ok_or_else(|| ParseError {
             message: String::from("__builtin_offsetof index has signed overflow"),
             span,
-        })
+        })?;
+        Ok(RecordOffsetIndex { value, scalar })
     }
 
     fn invalid_record_offset_index(span: Span) -> ParseError {
@@ -192,26 +228,33 @@ impl Parser<'_> {
         }
     }
 
-    fn record_offset_named_constant(&self, name: &str) -> Option<Literal> {
+    fn record_offset_named_constant(&self, name: &str) -> Option<number::Number> {
         if (self.function.parsing_default || self.function.parsing_exception_specification)
             && self.function.symbol_table.lookup(name).is_some()
         {
             return None;
         }
-        match self.lookup_symbol(name)? {
-            Symbol::Constant { literal, .. } | Symbol::TemplateParameter { literal, .. } => literal,
+        let (literal, scalar) = match self.lookup_symbol(name)? {
+            Symbol::Constant { literal, ty, .. } => (literal?, self.source_scalar(&ty)?),
+            Symbol::TemplateParameter {
+                literal, scalar, ..
+            } => (literal?, scalar),
             Symbol::Variable {
                 pointer,
                 qualifiers,
-                ..
+                ty,
             } if qualifiers.is_const && !qualifiers.is_volatile => {
                 let Expression::LocalVariable(local) = self.function.ir.expressions[pointer] else {
                     return None;
                 };
-                self.function.constant_locals.get(&local).copied()
+                (
+                    *self.function.constant_locals.get(&local)?,
+                    self.source_scalar(&ty)?,
+                )
             }
-            _ => None,
-        }
+            _ => return None,
+        };
+        Some(number::Number { literal, scalar })
     }
 
     fn checked_record_offset(offset: u32, bytes: u64, span: Span) -> Result<u32, ParseError> {
@@ -499,7 +542,7 @@ impl Parser<'_> {
         }
     }
 
-    const fn sizeof_promoted_scalar(scalar: SourceScalar) -> SourceScalar {
+    const fn promoted_type_query_scalar(scalar: SourceScalar) -> SourceScalar {
         if matches!(scalar.scalar(), Scalar::BOOL | Scalar::I16 | Scalar::U16) {
             SourceScalar::Scalar(Scalar::I32)
         } else {
@@ -545,7 +588,7 @@ impl Parser<'_> {
                 if !integral(left) || !integral(right) {
                     return Err(invalid());
                 }
-                Self::sizeof_promoted_scalar(left)
+                Self::promoted_type_query_scalar(left)
             }
             BinaryOperator::Equal
             | BinaryOperator::NotEqual
@@ -834,7 +877,9 @@ impl Parser<'_> {
                 if operator == '~' && scalar.scalar().kind == ScalarKind::Float {
                     return Err(invalid());
                 }
-                return Ok(SizeofOperand::Scalar(Self::sizeof_promoted_scalar(scalar)));
+                return Ok(SizeofOperand::Scalar(Self::promoted_type_query_scalar(
+                    scalar,
+                )));
             }
             SizeofOperand::NullPointer if operator == '!' => {
                 return Ok(SizeofOperand::Object(scalar_resolution(Scalar::BOOL)));
@@ -1001,12 +1046,15 @@ mod tests {
 
     #[test]
     fn offsetof_indices_respect_expression_depth_without_allocating() {
+        let chain = format!("{}1]", "0 + ".repeat(128));
         for (source, exhaust_bytes, succeeds) in [
             ("((((1ULL))))]", false, true),
             ("((((1ULL))))]", true, true),
             ("(((((1ULL)))))]", false, false),
             ("+(!!1ULL)]", true, true),
             ("+(!!!1ULL)]", false, false),
+            ("((1 + 0) + (0))]", true, true),
+            (chain.as_str(), false, true),
         ] {
             let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             let span = Span::new(0, 1);

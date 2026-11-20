@@ -228,6 +228,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support named integral constants as CUDA `offsetof` array indices.
 - Support parenthesized literals and named constants as CUDA `offsetof` array indices.
 - Support unary integral operators in CUDA `offsetof` array indices.
+- Support integral addition and subtraction in CUDA `offsetof` array indices.
 - Support CUDA `__ldg` loads of unsigned 32-bit values from read-only kernel buffers.
 - Support signed 32-bit and `float` CUDA `__ldg` loads from read-only kernel buffers.
 - Support `float2` CUDA `__ldg` loads from read-only kernel buffers.

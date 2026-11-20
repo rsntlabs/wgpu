@@ -180,12 +180,12 @@ fn cuda_record_offsetof_rejects_invalid_array_indices_without_evaluating_them() 
         ("row[()]", "integer literal"),
         ("row[((1)]", "expected"),
         ("row[(1))]", "expected"),
-        ("row[(1+1)]", "expected"),
+        ("row[(1*1)]", "expected"),
         ("row[(1,2)]", "expected"),
         ("row[index]", "integer literal"),
         ("row[helper()]", "integer literal"),
         ("row[index++]", "integer literal"),
-        ("row[0+1]", "expected"),
+        ("row[0*1]", "expected"),
         ("row[0,1]", "expected"),
         ("row[1", "expected"),
         ("row[3]", "out of bounds"),
@@ -249,7 +249,7 @@ fn cuda_record_offsetof_rejects_invalid_unary_indices() {
         ("--Zero", "integer literal"),
         ("++Zero", "integer literal"),
         ("+Zero++", "expected"),
-        ("+Zero+1", "expected"),
+        ("+Zero*1", "expected"),
         ("+dynamic", "integer literal"),
     ] {
         let source = format!(
@@ -263,6 +263,64 @@ fn cuda_record_offsetof_rejects_invalid_unary_indices() {
              }}"
         );
         let error = rejected(&source);
+        assert!(error.message.contains(message), "{index}: {error}");
+    }
+}
+
+#[test]
+fn cuda_record_offsetof_evaluates_additive_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        #define ADJUST(value) ((value) + 1)
+        struct Record { int head; int row[3]; };
+        constexpr unsigned All = 0xffffffffu;
+        constexpr unsigned long Wide = 0xfffffffffffffffful;
+        constexpr bool Flag = true;
+        constexpr unsigned short Narrow = 65535;
+        template<int Index> __device__ size_t index_offset() {
+            return offsetof(Record, row[Index - 1]);
+        }
+        __global__ void kernel(unsigned long *output) {
+            output[0] = offsetof(Record, row[2 - 1 - 1]);
+            output[1] = offsetof(Record, row[2 - (2 - 1)]);
+            output[2] = offsetof(Record, row[0 - 2 + 4]);
+            output[3] = offsetof(Record, row[ADJUST(-1)]);
+            output[4] = offsetof(Record, row[All + 2]);
+            output[5] = offsetof(Record, row[Wide + 2ll]);
+            output[6] = offsetof(Record, row[+Flag + !0]);
+            output[7] = offsetof(Record, row[0 - Narrow + 65536]);
+            output[8] = offsetof(Record, row[1 + -1]);
+            output[9] = offsetof(Record, row[(0u - 1) + 2u]);
+            output[10] = offsetof(Record, row[-(1l + 1u) + 3]);
+            size_t instantiated = index_offset<2>();
+        }",
+        &[4, 8, 12, 4, 8, 8, 12, 8, 4, 8, 8],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_invalid_additive_indices() {
+    for (index, message) in [
+        ("2147483647 + 1 - 2147483647", "signed overflow"),
+        ("-2147483647 - 2 + 2147483647", "signed overflow"),
+        (
+            "9223372036854775807l + 1u - 9223372036854775807l",
+            "signed overflow",
+        ),
+        ("-1 + 0u", "out of bounds"),
+        ("-4294967296l + 1u", "nonnegative"),
+        ("1 + 2", "out of bounds"),
+        ("1 + runtime", "integer literal"),
+        ("1 + 1.0f", "integer literal"),
+        ("1 +", "integer literal"),
+        ("0 += 1", "expected"),
+    ] {
+        let error = rejected(&format!(
+            "struct Record {{ int row[3]; }};
+             __global__ void kernel(unsigned *out, int runtime) {{
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
         assert!(error.message.contains(message), "{index}: {error}");
     }
 }
@@ -332,8 +390,8 @@ fn cuda_record_offsetof_rejects_nonconstant_and_invalid_named_indices() {
         ("const auto Index = __builtin_offsetof(Record, row[Index]);", "integral constant"),
         ("__builtin_offsetof(Record, row[input]);", "integral constant"),
         ("__builtin_offsetof(Record, row[StorageIndex]);", "integral constant"),
-        ("__builtin_offsetof(Record, row[Index+1]);", "expected"),
-        ("__builtin_offsetof(Record, row[(Index+1)]);", "expected"),
+        ("__builtin_offsetof(Record, row[Index + input]);", "integral constant"),
+        ("__builtin_offsetof(Record, row[(Index << 1)]);", "expected"),
         ("__builtin_offsetof(Record, row[::Index]);", "integral constant"),
     ] {
         let error = rejected(&format!(

@@ -475,10 +475,12 @@ Designators can also index fixed array fields, as in `grid[1][2]` or
 `leaves[1].value`. Index operands can be integer literals or unqualified
 integral constant names, including global `constexpr` values, local integral
 constants and instantiated integral template parameters. Indices may use
-parentheses and the unary operators `+`, `-`, `~` and `!`. Unary arithmetic
-applies integer promotions, rejects signed overflow and wraps unsigned
-negation at the promoted width. The final index must be nonnegative and in
-bounds. The offset uses the declared stride of each array dimension.
+parentheses, unary `+`, `-`, `~` and `!`, and binary `+` and `-`. Binary
+operators associate left to right and apply the usual arithmetic conversions
+after integer promotion. Arithmetic rejects signed overflow and wraps
+unsigned results at the operation's width. The final index must be
+nonnegative and in bounds. The offset uses the declared stride of each
+array dimension.
 The synthetic `<cstddef>` and `<stddef.h>` headers define the function-like
 macro `offsetof(Record, member)` on the first active inclusion of either
 header. The macro follows the normal `#undef` and redefinition rules.
