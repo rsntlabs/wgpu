@@ -61,6 +61,7 @@ mod float2int_rn;
 mod float2int_ru;
 mod float2int_rz;
 mod float2uint_rd;
+mod float2uint_ru;
 mod float2uint_rz;
 mod float_classification;
 mod float_division;
@@ -318,6 +319,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_FLOAT2INT_RU,
         CUDA_FLOAT2INT_RZ,
         CUDA_FLOAT2UINT_RD,
+        CUDA_FLOAT2UINT_RU,
         CUDA_FLOAT2UINT_RZ,
         CUDA_FLOAT_CLASSIFICATION,
         CUDA_FRSQRT_RN,
@@ -1447,3 +1449,6 @@ static CUDA_FLOAT2INT_RN: GpuTestConfiguration = configuration(float2int_rn::cas
 
 #[apply(gpu_test!)]
 static CUDA_FLOAT2UINT_RD: GpuTestConfiguration = configuration(float2uint_rd::cases);
+
+#[apply(gpu_test!)]
+static CUDA_FLOAT2UINT_RU: GpuTestConfiguration = configuration(float2uint_ru::cases);

@@ -394,6 +394,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA `__float2int_ru` for single-precision conversion to signed integers rounded up.
 - Support CUDA `__float2int_rn` for single-precision conversion to signed integers with ties-to-even rounding.
 - Support CUDA `__float2uint_rd` for single-precision conversion to unsigned integers rounded down.
+- Support CUDA `__float2uint_ru` for single-precision conversion to unsigned integers rounded up.
 - Reject incompatible return qualifiers in CUDA builtin prototypes.
 - Support all ten CUDA compound assignment operator functions with right-before-left operand sequencing.
 - Support CUDA constant-memory declarations as host-updated read-only storage bindings.

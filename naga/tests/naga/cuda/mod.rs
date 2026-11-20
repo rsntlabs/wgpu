@@ -493,3 +493,5 @@ mod float2int_ru;
 mod float2int_rn;
 
 mod float2uint_rd;
+
+mod float2uint_ru;
