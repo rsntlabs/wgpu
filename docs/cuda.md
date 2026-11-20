@@ -544,6 +544,8 @@ as standalone `sizeof` and emits no conversion.
 Arithmetic C-style casts also work in grouped operands such as
 `sizeof((short)value)`. The cast binds to its next operand, so
 `sizeof((short)value + 1)` uses the promoted type of the sum.
+Functional-style casts such as `sizeof(short(value))` accept a single
+operand and use a scalar type name or alias as the target.
 Pointer type queries, including `void*`, use the CUDA source ABI size and
 alignment of eight bytes. Reference type queries use the referent's layout.
 Array type operands can include dimensions such as `int[2][3]`. Every

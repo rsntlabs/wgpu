@@ -3341,7 +3341,6 @@ fn cuda_record_offsetof_nested_sizeof_conditionals_reject_invalid_types_even_whe
         "flag ? value :",
         "flag ? : value",
         "flag ? value",
-        "flag ? int(value) : value",
     ] {
         rejected(&format!(
             "struct Offsets {{ int bytes[64]; }}; struct Record {{ int field; }};
@@ -3632,4 +3631,115 @@ fn cuda_record_offsetof_nested_sizeof_cstyle_casts_reject_invalid_forms() {
             ));
         }
     }
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_functional_casts_match_single_argument_type_rules() {
+    for (operand, size) in [
+        ("short(value)", 2),
+        ("unsigned(value)", 4),
+        ("long(value)", 8),
+        ("Wide(value)", 8),
+        ("float(value)", 4),
+        ("Number(value)", 4),
+        ("bool(pointer)", 1),
+        ("Truth(grid)", 1),
+        ("bool(nullptr)", 1),
+        ("short(value ? value : 1 / 0)", 2),
+        ("short((value, value))", 2),
+        ("short(unsigned(value))", 2),
+        ("short(value) + 1", 4),
+        ("value ? short(value) : short(1)", 2),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{
+                int value; int *pointer; int grid[2][3];
+                using Wide = unsigned long long; using Number = const unsigned; using Truth = bool;
+                output[0] = __builtin_offsetof(Offsets, bytes[sizeof({operand})]);
+            }}"
+            ),
+            &[size * 4],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            int value;
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof short(value) + 1]);
+            output[1] = __builtin_offsetof(Offsets, bytes[sizeof(short(value) + 1)]);
+        }",
+        &[12, 16],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_functional_casts_do_not_emit_narrow_values_or_reads() {
+    let source = |query: &str| {
+        format!(
+            "struct Offsets {{ int bytes[64]; }};
+        __global__ void kernel(unsigned long *output, volatile int *input) {{
+            output[0] = __builtin_offsetof(Offsets, bytes[{query}]);
+        }}"
+        )
+    };
+    let cast = roundtrip(&source("sizeof(short(*input))"));
+    let control = roundtrip(&source("sizeof(short)"));
+    let expressions = &cast.entry_points[0].function.expressions;
+    assert_eq!(
+        expressions.iter().collect::<Vec<_>>(),
+        control.entry_points[0]
+            .function
+            .expressions
+            .iter()
+            .collect::<Vec<_>>(),
+    );
+    assert!(expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    assert!(cast.types.iter().all(|(_, ty)| !matches!(
+        ty.inner,
+        naga::TypeInner::Scalar(naga::Scalar { width: 2, .. })
+    )));
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_functional_casts_reject_broader_syntax_and_shadowed_types() {
+    for operand in [
+        "int()",
+        "(int())",
+        "int(value, value)",
+        "int(value,)",
+        "int{value}",
+        "unsigned int(value)",
+        "const int(value)",
+        "long long(value)",
+        "std::size_t(value)",
+        "decltype(value)(value)",
+        "Record(value)",
+        "float2(value)",
+        "int(pointer)",
+        "bool(record)",
+        "bool(vector)",
+        "int(helper())",
+        "flag ? pointer : int(0)",
+    ] {
+        for prefix in ["", "true || "] {
+            rejected(&format!(
+                "#include <cstddef>\nstruct Offsets {{ int bytes[64]; }}; struct Record {{ int field; }};
+                __device__ int helper() {{ return 0; }}
+                __global__ void kernel(unsigned long *output) {{
+                    int value; bool flag; int *pointer; Record record; float2 vector;
+                    output[0] = __builtin_offsetof(Offsets, bytes[{prefix}sizeof({operand})]);
+                }}"));
+        }
+    }
+    rejected(
+        "struct Offsets { int bytes[64]; }; using Alias = unsigned;
+        __global__ void kernel(unsigned long *output) {
+            int Alias; int value;
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof(Alias(value))]);
+        }",
+    );
 }

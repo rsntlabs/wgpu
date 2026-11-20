@@ -414,24 +414,8 @@ impl Parser<'_> {
             self.lexer.expect_span(Token::Paren('('))?;
             true
         };
-        let (token, target_span) = self.lexer.peek()?;
-        let expression_operand = name == "sizeof"
-            && match token {
-                Token::Operation('*' | '+' | '-' | '~' | '!')
-                | Token::Paren('(')
-                | Token::Number(_)
-                | Token::Word("true" | "false" | "nullptr" | "static_cast") => true,
-                Token::Word(word) => self.lookup_symbol(word).is_some_and(|symbol| {
-                    !matches!(
-                        symbol,
-                        Symbol::Type(_)
-                            | Symbol::TemplateTypeParameter { .. }
-                            | Symbol::Namespace(_)
-                    )
-                }),
-                _ => false,
-            };
-        let (size, end) = if expression_operand {
+        let (_, target_span) = self.lexer.peek()?;
+        let (size, end) = if name == "sizeof" && self.sizeof_starts_expression()? {
             self.lexer = operand_start;
             let (operand, span) = self.record_offset_sizeof_operand(depth)?;
             let size = self.record_offset_sizeof_operand_size(operand, span)?;
@@ -614,7 +598,7 @@ impl Parser<'_> {
             });
         }
         let invalid = || ParseError {
-            message: String::from("nested sizeof requires a supported literal or named object"),
+            message: String::from("nested sizeof expected a supported literal or named object"),
             span: start,
         };
         let (mut operand, mut end) = match token {
@@ -654,8 +638,20 @@ impl Parser<'_> {
             Token::Word(word) => {
                 self.parameter_expansion_budget
                     .charge_work(word.len() + 1, start)?;
-                let symbol = self.lookup_symbol(word).ok_or_else(invalid)?;
-                (self.named_sizeof_operand(symbol, start)?, start)
+                if let Some(scalar) = self.sizeof_functional_cast_target(word, start)? {
+                    if depth >= 64 {
+                        return Err(ParseError {
+                            message: String::from("CUDA expression nesting limit exceeded"),
+                            span: start,
+                        });
+                    }
+                    self.sizeof_functional_cast(scalar, start, |parser| {
+                        parser.record_offset_sizeof_conditional(depth + 1)
+                    })?
+                } else {
+                    let symbol = self.lookup_symbol(word).ok_or_else(invalid)?;
+                    (self.named_sizeof_operand(symbol, start)?, start)
+                }
             }
             _ => return Err(invalid()),
         };
@@ -1191,41 +1187,12 @@ impl Parser<'_> {
         let parenthesized = self.lexer.next_if(Token::Paren('('))?;
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
-        if name == "sizeof" {
-            let (token, operand_span) = self.lexer.peek()?;
-            let expression_operand = match token {
-                Token::Operation('*' | '+' | '-' | '~' | '!')
-                | Token::Paren('(')
-                | Token::Number(_)
-                | Token::Word("true" | "false" | "nullptr" | "static_cast") => true,
-                Token::Word(operand)
-                    if self
-                        .type_name(operand)
-                        .is_some_and(|ty| ty.ty.source_scalar().is_some()) =>
-                {
-                    self.parameter_expansion_budget
-                        .charge_work(1, operand_span)?;
-                    let mut lookahead = self.lexer.clone();
-                    lookahead.next()?;
-                    lookahead.peek()?.0 == Token::Paren('(')
-                }
-                Token::Word(operand) => self.lookup_symbol(operand).is_some_and(|symbol| {
-                    !matches!(
-                        symbol,
-                        Symbol::Type(_)
-                            | Symbol::TemplateTypeParameter { .. }
-                            | Symbol::Namespace(_)
-                    )
-                }),
-                _ => false,
-            };
-            if expression_operand {
-                self.lexer = operand_start;
-                let (operand, operand_span) = self.sizeof_operand()?;
-                let span = span.until(&operand_span);
-                let value = self.sizeof_operand_size(operand, span)?;
-                return self.type_query_result(value, span);
-            }
+        if name == "sizeof" && self.sizeof_starts_expression()? {
+            self.lexer = operand_start;
+            let (operand, operand_span) = self.sizeof_operand()?;
+            let span = span.until(&operand_span);
+            let value = self.sizeof_operand_size(operand, span)?;
+            return self.type_query_result(value, span);
         }
         if !parenthesized {
             return self.fail("type queries require a parenthesized type or sizeof a named object");
@@ -1244,6 +1211,33 @@ impl Parser<'_> {
         };
         let closing = self.lexer.expect_span(Token::Paren(')'))?;
         self.type_query_result(value, span.until(&closing))
+    }
+
+    fn sizeof_starts_expression(&mut self) -> Result<bool, ParseError> {
+        let (token, span) = self.lexer.peek()?;
+        Ok(match token {
+            Token::Operation('*' | '+' | '-' | '~' | '!')
+            | Token::Paren('(')
+            | Token::Number(_)
+            | Token::Word("true" | "false" | "nullptr" | "static_cast") => true,
+            Token::Word(word)
+                if self
+                    .type_name(word)
+                    .is_some_and(|ty| ty.ty.source_scalar().is_some()) =>
+            {
+                self.parameter_expansion_budget.charge_work(1, span)?;
+                let mut lookahead = self.lexer.clone();
+                lookahead.next()?;
+                lookahead.peek()?.0 == Token::Paren('(')
+            }
+            Token::Word(word) => self.lookup_symbol(word).is_some_and(|symbol| {
+                !matches!(
+                    symbol,
+                    Symbol::Type(_) | Symbol::TemplateTypeParameter { .. } | Symbol::Namespace(_)
+                )
+            }),
+            _ => false,
+        })
     }
 
     fn type_query_type_id(&mut self, span: Span) -> Result<TypeQueryType, ParseError> {
@@ -1594,14 +1588,8 @@ impl Parser<'_> {
                 self.sizeof_static_cast(start, Self::sizeof_conditional_expression)?
             }
             Token::Word(name) => {
-                let target = if self.lexer.peek()?.0 == Token::Paren('(') {
-                    self.parameter_expansion_budget.charge_work(1, start)?;
-                    self.type_name(name).and_then(|ty| ty.ty.source_scalar())
-                } else {
-                    None
-                };
-                if let Some(scalar) = target {
-                    self.sizeof_functional_cast(scalar, start)?
+                if let Some(scalar) = self.sizeof_functional_cast_target(name, start)? {
+                    self.sizeof_functional_cast(scalar, start, Self::sizeof_conditional_expression)?
                 } else {
                     let symbol = self.lookup_symbol(name).ok_or_else(|| ParseError {
                         message: String::from("sizeof requires a supported named object"),
@@ -1725,14 +1713,27 @@ impl Parser<'_> {
         ))
     }
 
+    fn sizeof_functional_cast_target(
+        &mut self,
+        name: &str,
+        span: Span,
+    ) -> Result<Option<SourceScalar>, ParseError> {
+        if self.lexer.peek()?.0 != Token::Paren('(') {
+            return Ok(None);
+        }
+        self.parameter_expansion_budget.charge_work(1, span)?;
+        Ok(self.type_name(name).and_then(|ty| ty.ty.source_scalar()))
+    }
+
     fn sizeof_functional_cast(
         &mut self,
         scalar: SourceScalar,
         start: Span,
+        parse_conditional: impl FnOnce(&mut Self) -> Result<(SizeofOperand, Span), ParseError>,
     ) -> Result<(SizeofOperand, Span), ParseError> {
         self.parameter_expansion_budget.charge_work(2, start)?;
         self.lexer.expect_span(Token::Paren('('))?;
-        let (operand, operand_span) = self.sizeof_conditional_expression()?;
+        let (operand, operand_span) = parse_conditional(self)?;
         let end = self.lexer.expect_span(Token::Paren(')'))?;
         Ok((
             self.sizeof_scalar_cast_result(scalar, &operand, operand_span)?,
@@ -2075,6 +2076,8 @@ mod tests {
             ("sizeof static_cast<unsigned long>(0) / 8]", true, true),
             ("sizeof((short)(+One)) / 2]", true, true),
             ("sizeof((short)(short)(short)(short)1) / 2]", false, false),
+            ("sizeof short(One) / 2]", true, true),
+            ("sizeof(short(short(short(short(1))))) / 2]", false, false),
             ("sizeof(static_cast<short>(static_cast<short>(static_cast<short>(static_cast<short>(1))))) / 2]", false, false),
             (
                 "sizeof(true ? 1 : true ? 1 : true ? 1 : true ? 1 : 1) / 4]",
