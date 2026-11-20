@@ -1416,6 +1416,14 @@ infinity, and NaNs produce the canonical quiet NaN `0x7fc00000`.
 Calls execute at runtime. See NVIDIA's
 [`logbf` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__SINGLE.html).
 
+`ldexpf(float, int)` multiplies the first argument by two raised to the
+second argument. Scalar arguments convert to `float` and `int` before
+scaling. An integer helper preserves both signs of zero and infinity,
+normalizes subnormal inputs, and rounds underflow to nearest with ties
+to even. Overflow produces infinity with the input sign. NaNs produce
+the canonical quiet NaN `0x7fc00000`. Calls execute at runtime.
+See NVIDIA's [`ldexpf` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__SINGLE.html).
+
 `isfinite(float)`, `isinf(float)`, `isnan(float)`, and `signbit(float)` classify
 the received single-precision representation using integer bit operations.
 They return `int`, following NVIDIA's default
@@ -1584,7 +1592,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fsub_rn`, `__fsub_rz`, `__fmul_rn`, `__fmul_rz`, `__fdiv_rn`, `__fdiv_rz`, `__frcp_rn`, `__frcp_rz`, `__fsqrt_rn`, `__fsqrt_rz`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fsub_rn`, `__fsub_rz`, `__fmul_rn`, `__fmul_rz`, `__fdiv_rn`, `__fdiv_rz`, `__frcp_rn`, `__frcp_rz`, `__fsqrt_rn`, `__fsqrt_rz`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 

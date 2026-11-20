@@ -34,6 +34,7 @@ mod initializers;
 mod int_to_float;
 mod integer_intrinsics;
 mod launch_bounds;
+mod ldexpf;
 mod loops;
 mod nextafterf;
 mod null_pointer;
@@ -388,6 +389,7 @@ pub(super) struct Parser<'a> {
     division_rz_function: Option<Handle<Function>>,
     fmodf_function: Option<Handle<Function>>,
     nextafterf_function: Option<Handle<Function>>,
+    ldexpf_function: Option<Handle<Function>>,
     fadd_rn_function: Option<Handle<Function>>,
     fadd_rz_function: Option<Handle<Function>>,
     fmul_rn_function: Option<Handle<Function>>,
@@ -435,6 +437,7 @@ impl<'a> Parser<'a> {
             division_rz_function: None,
             fmodf_function: None,
             nextafterf_function: None,
+            ldexpf_function: None,
             fadd_rn_function: None,
             fadd_rz_function: None,
             fmul_rn_function: None,

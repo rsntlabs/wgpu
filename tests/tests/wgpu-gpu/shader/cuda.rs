@@ -118,6 +118,7 @@ mod kernel_record_values;
 mod kernel_vector_values;
 mod kernels;
 mod launch_bounds;
+mod ldexpf;
 mod ldg;
 mod ldg_float2;
 mod ldg_native_vectors;
@@ -263,6 +264,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_COPYSIGNF,
         CUDA_FDIMF,
         CUDA_ILOGBF,
+        CUDA_LDEXPF,
         CUDA_LOGBF,
         CUDA_NEXTAFTERF,
         CUDA_CEILF,
@@ -1457,3 +1459,6 @@ static CUDA_FLOAT2UINT_RU: GpuTestConfiguration = configuration(float2uint_ru::c
 
 #[apply(gpu_test!)]
 static CUDA_FLOAT2UINT_RN: GpuTestConfiguration = configuration(float2uint_rn::cases);
+
+#[apply(gpu_test!)]
+static CUDA_LDEXPF: GpuTestConfiguration = configuration(ldexpf::cases);

@@ -4026,6 +4026,46 @@ mod tests {
     }
 
     #[test]
+    fn ldexpf_budget_failure_preserves_caller_and_cache() {
+        for cached in [false, true] {
+            let (mut parser, [bits, other_bits, exponent], span) = fns_budget_parser();
+            parser.parameter_expansion_budget.activate();
+            parser.prepare_parameter_bindings(span).unwrap();
+            if cached {
+                let result = parser.call_ldexpf_bits(bits, exponent, span).unwrap();
+                parser
+                    .append(
+                        Expression::Binary {
+                            op: BinaryOperator::Add,
+                            left: result,
+                            right: other_bits,
+                        },
+                        span,
+                    )
+                    .unwrap();
+            }
+            let helper = parser.ldexpf_function;
+            let caller = format!("{:?}", parser.function.ir);
+            let depths = parser.function.expression_graph_depths.clone();
+            let available = if cached { 0 } else { 16 };
+            let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+            parser
+                .parameter_expansion_budget
+                .charge_nodes(remaining - available, span)
+                .unwrap();
+            let error = parser.call_ldexpf_bits(bits, exponent, span).unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert_eq!(error.span, span);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_fns_budget_caller(&parser, bits);
+            assert_eq!(format!("{:?}", parser.function.ir), caller);
+            assert_eq!(parser.function.expression_graph_depths, depths);
+            assert_eq!(parser.module.functions.len(), usize::from(cached));
+            assert_eq!(parser.ldexpf_function, helper);
+        }
+    }
+
+    #[test]
     fn nextafterf_partial_helper_failure_preserves_caller_and_does_not_publish_helper() {
         for available_nodes in [0, 8, 20, 32] {
             let (mut parser, [from, toward, _], span) = fns_budget_parser();

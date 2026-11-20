@@ -390,6 +390,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA `fdimf` with correctly rounded single-precision positive differences.
 - Support CUDA `ilogbf` with exact exponents for finite and subnormal inputs.
 - Support CUDA `logbf` with exact single-precision exponents and special values.
+- Support CUDA `ldexpf` with exact power-of-two scaling and ties-to-even underflow.
 - Support CUDA `__float2int_rd` for single-precision conversion to signed integers rounded down.
 - Support CUDA `__float2int_ru` for single-precision conversion to signed integers rounded up.
 - Support CUDA `__float2int_rn` for single-precision conversion to signed integers with ties-to-even rounding.

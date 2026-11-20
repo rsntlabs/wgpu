@@ -19,7 +19,7 @@ fn cuda_uniform_math_barriers_accept_floor_result_as_uniform_control() {
     );
 }
 
-const EXPRESSIONS: [&str; 19] = [
+const EXPRESSIONS: [&str; 20] = [
     "floorf(value)",
     "__float2int_rd(value)",
     "__float2uint_rd(value)",
@@ -36,6 +36,7 @@ const EXPRESSIONS: [&str; 19] = [
     "nextafterf(value, 2.0f)",
     "fdimf(value, 2.0f)",
     "logbf(value)",
+    "ldexpf(value, 2)",
     "value / 2.0f",
     "sinf(value)",
     "cosf(value)",
@@ -92,6 +93,7 @@ fn cuda_uniform_math_barriers_reject_each_varying_input_and_synchronizing_argume
     }
     for expression in [
         "fmodf(value, float(threadIdx.x + 1u))",
+        "ldexpf(value, int(threadIdx.x))",
         "nextafterf(value, float(threadIdx.x + 1u))",
         "fdimf(value, float(threadIdx.x + 1u))",
         "value / float(threadIdx.x + 1u)",

@@ -1172,7 +1172,14 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__ldg",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
-    for name in ["copysignf", "nextafterf", "fdimf", "ilogbf", "logbf"] {
+    for &name in &[
+        "copysignf",
+        "nextafterf",
+        "fdimf",
+        "ilogbf",
+        "logbf",
+        "ldexpf",
+    ] {
         declarations.insert(
             name,
             GlobalDeclaration::Functions(FunctionOverloads::default()),
@@ -1358,6 +1365,7 @@ pub(super) enum FunctionCandidate {
     CopySign,
     NextAfter,
     PositiveDifference,
+    ScaleByPowerOfTwo,
     FloatToInteger {
         destination: Scalar,
         rounding: Option<FloatMathFunction>,
@@ -1981,6 +1989,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::CopySign
                         | FunctionCandidate::NextAfter
                         | FunctionCandidate::PositiveDifference
+                        | FunctionCandidate::ScaleByPowerOfTwo
                         | FunctionCandidate::FloatToInteger { .. }
                         | FunctionCandidate::IntegerToFloat { .. }
                         | FunctionCandidate::AddRoundZero
@@ -2286,6 +2295,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::CopySign
             | FunctionCandidate::NextAfter
             | FunctionCandidate::PositiveDifference
+            | FunctionCandidate::ScaleByPowerOfTwo
             | FunctionCandidate::AddRoundZero
             | FunctionCandidate::AddRoundNearest
             | FunctionCandidate::SubtractRoundNearest
@@ -2586,6 +2596,9 @@ impl<'a> Parser<'a> {
         }
         if candidate == FunctionCandidate::PositiveDifference {
             return self.lower_fdimf_call(arguments, span);
+        }
+        if candidate == FunctionCandidate::ScaleByPowerOfTwo {
+            return self.lower_ldexpf_call(arguments, span);
         }
         if let FunctionCandidate::FloatToInteger {
             destination,
@@ -3335,6 +3348,7 @@ impl<'a> Parser<'a> {
                 (true, "copysignf") => Some(FunctionCandidate::CopySign),
                 (true, "nextafterf") => Some(FunctionCandidate::NextAfter),
                 (true, "fdimf") => Some(FunctionCandidate::PositiveDifference),
+                (true, "ldexpf") => Some(FunctionCandidate::ScaleByPowerOfTwo),
                 (true, "ilogbf") => Some(FunctionCandidate::FloatExponent(ExponentResult::Integer)),
                 (true, "logbf") => Some(FunctionCandidate::FloatExponent(ExponentResult::Float)),
                 (true, "__float2int_rz") => Some(FunctionCandidate::FloatToInteger {
@@ -3537,6 +3551,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::CopySign
             | FunctionCandidate::NextAfter
             | FunctionCandidate::PositiveDifference
+            | FunctionCandidate::ScaleByPowerOfTwo
             | FunctionCandidate::AddRoundZero
             | FunctionCandidate::AddRoundNearest
             | FunctionCandidate::SubtractRoundNearest
@@ -3616,6 +3631,9 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::IntegralDouble { source }
             | FunctionCandidate::IntegerToFloat { source, .. } => {
                 return Some(scalar_resolution(source))
+            }
+            FunctionCandidate::ScaleByPowerOfTwo => {
+                return Some(scalar_resolution([Scalar::F32, Scalar::I32][logical_index]))
             }
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::FloatClassification(_)
