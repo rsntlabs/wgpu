@@ -42,6 +42,14 @@ pub(super) fn cases() -> Vec<ShaderTest> {
             3,
             upward,
             3,
+            nearest,
+            3,
+            toward_zero,
+            3,
+            downward,
+            3,
+            upward,
+            3,
         ]);
     }
     assert_eq!(input.len(), 12288);

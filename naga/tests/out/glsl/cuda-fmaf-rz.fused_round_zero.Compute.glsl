@@ -166,13 +166,13 @@ float truncate_fused(float first, float second, float third) {
 }
 
 int _fmaf_rz(bool first_1, bool second_1, bool third_1) {
-    int local_28 = 0;
+    int local_48 = 0;
     if (first_1) {
-        local_28 = 7;
+        local_48 = 7;
     } else {
-        local_28 = 9;
+        local_48 = 9;
     }
-    int _e6 = local_28;
+    int _e6 = local_48;
     return _e6;
 }
 
@@ -674,11 +674,31 @@ void main() {
     uint local_25 = 0u;
     uint local_26 = 0u;
     uint local_27 = 0u;
+    uint local_28 = 0u;
+    uint local_29 = 0u;
+    uint local_30 = 0u;
+    uint local_31 = 0u;
+    uint local_32 = 0u;
+    uint local_33 = 0u;
+    uint local_34 = 0u;
+    uint local_35 = 0u;
+    uint local_36 = 0u;
+    uint local_37 = 0u;
+    uint local_38 = 0u;
+    uint local_39 = 0u;
+    uint local_40 = 0u;
+    uint local_41 = 0u;
+    uint local_42 = 0u;
+    uint local_43 = 0u;
+    uint local_44 = 0u;
+    uint local_45 = 0u;
+    uint local_46 = 0u;
+    uint local_47 = 0u;
     uint index = (threadIdx.x + (blockIdx.x * 32u));
     if ((index >= 4096u)) {
         return;
     }
-    uint base = (4u + (index * 14u));
+    uint base = (4u + (index * 22u));
     local = uint((index * 3u));
     uint _e17 = local;
     uint _e20 = _group_0_binding_0_cs[_e17];
@@ -819,5 +839,101 @@ void main() {
     local_27 = uint((base + 13u));
     uint _e360 = local_27;
     _group_0_binding_1_cs[_e360] = uint(_e354);
+    directed_cursor = 0;
+    int _e365 = directed_cursor;
+    directed_cursor = (_e365 + 1);
+    local_29 = uint(((index * 3u) + uint(_e365)));
+    uint _e372 = local_29;
+    uint _e374 = _group_0_binding_0_cs[_e372];
+    int _e378 = directed_cursor;
+    directed_cursor = (_e378 + 1);
+    local_30 = uint(((index * 3u) + uint(_e378)));
+    uint _e385 = local_30;
+    uint _e387 = _group_0_binding_0_cs[_e385];
+    int _e391 = directed_cursor;
+    directed_cursor = (_e391 + 1);
+    local_31 = uint(((index * 3u) + uint(_e391)));
+    uint _e398 = local_31;
+    uint _e400 = _group_0_binding_0_cs[_e398];
+    uint _e405 = _naga_fmaf_rn(floatBitsToUint(uintBitsToFloat(_e374)), floatBitsToUint(uintBitsToFloat(_e387)), floatBitsToUint(uintBitsToFloat(_e400)));
+    local_28 = uint((base + 14u));
+    uint _e412 = local_28;
+    _group_0_binding_1_cs[_e412] = floatBitsToUint(uintBitsToFloat(_e405));
+    int _e414 = directed_cursor;
+    local_32 = uint((base + 15u));
+    uint _e420 = local_32;
+    _group_0_binding_1_cs[_e420] = uint(_e414);
+    directed_cursor = 0;
+    int _e425 = directed_cursor;
+    directed_cursor = (_e425 + 1);
+    local_34 = uint(((index * 3u) + uint(_e425)));
+    uint _e432 = local_34;
+    uint _e434 = _group_0_binding_0_cs[_e432];
+    int _e438 = directed_cursor;
+    directed_cursor = (_e438 + 1);
+    local_35 = uint(((index * 3u) + uint(_e438)));
+    uint _e445 = local_35;
+    uint _e447 = _group_0_binding_0_cs[_e445];
+    int _e451 = directed_cursor;
+    directed_cursor = (_e451 + 1);
+    local_36 = uint(((index * 3u) + uint(_e451)));
+    uint _e458 = local_36;
+    uint _e460 = _group_0_binding_0_cs[_e458];
+    uint _e465 = _naga_fmaf_rz(floatBitsToUint(uintBitsToFloat(_e434)), floatBitsToUint(uintBitsToFloat(_e447)), floatBitsToUint(uintBitsToFloat(_e460)));
+    local_33 = uint((base + 16u));
+    uint _e472 = local_33;
+    _group_0_binding_1_cs[_e472] = floatBitsToUint(uintBitsToFloat(_e465));
+    int _e474 = directed_cursor;
+    local_37 = uint((base + 17u));
+    uint _e480 = local_37;
+    _group_0_binding_1_cs[_e480] = uint(_e474);
+    directed_cursor = 0;
+    int _e485 = directed_cursor;
+    directed_cursor = (_e485 + 1);
+    local_39 = uint(((index * 3u) + uint(_e485)));
+    uint _e492 = local_39;
+    uint _e494 = _group_0_binding_0_cs[_e492];
+    int _e498 = directed_cursor;
+    directed_cursor = (_e498 + 1);
+    local_40 = uint(((index * 3u) + uint(_e498)));
+    uint _e505 = local_40;
+    uint _e507 = _group_0_binding_0_cs[_e505];
+    int _e511 = directed_cursor;
+    directed_cursor = (_e511 + 1);
+    local_41 = uint(((index * 3u) + uint(_e511)));
+    uint _e518 = local_41;
+    uint _e520 = _group_0_binding_0_cs[_e518];
+    uint _e525 = _naga_fmaf_rd(floatBitsToUint(uintBitsToFloat(_e494)), floatBitsToUint(uintBitsToFloat(_e507)), floatBitsToUint(uintBitsToFloat(_e520)));
+    local_38 = uint((base + 18u));
+    uint _e532 = local_38;
+    _group_0_binding_1_cs[_e532] = floatBitsToUint(uintBitsToFloat(_e525));
+    int _e534 = directed_cursor;
+    local_42 = uint((base + 19u));
+    uint _e540 = local_42;
+    _group_0_binding_1_cs[_e540] = uint(_e534);
+    directed_cursor = 0;
+    int _e545 = directed_cursor;
+    directed_cursor = (_e545 + 1);
+    local_44 = uint(((index * 3u) + uint(_e545)));
+    uint _e552 = local_44;
+    uint _e554 = _group_0_binding_0_cs[_e552];
+    int _e558 = directed_cursor;
+    directed_cursor = (_e558 + 1);
+    local_45 = uint(((index * 3u) + uint(_e558)));
+    uint _e565 = local_45;
+    uint _e567 = _group_0_binding_0_cs[_e565];
+    int _e571 = directed_cursor;
+    directed_cursor = (_e571 + 1);
+    local_46 = uint(((index * 3u) + uint(_e571)));
+    uint _e578 = local_46;
+    uint _e580 = _group_0_binding_0_cs[_e578];
+    uint _e585 = _naga_fmaf_ru(floatBitsToUint(uintBitsToFloat(_e554)), floatBitsToUint(uintBitsToFloat(_e567)), floatBitsToUint(uintBitsToFloat(_e580)));
+    local_43 = uint((base + 20u));
+    uint _e592 = local_43;
+    _group_0_binding_1_cs[_e592] = floatBitsToUint(uintBitsToFloat(_e585));
+    int _e594 = directed_cursor;
+    local_47 = uint((base + 21u));
+    uint _e600 = local_47;
+    _group_0_binding_1_cs[_e600] = uint(_e594);
 }
 

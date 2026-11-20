@@ -520,3 +520,5 @@ mod fmul_ru;
 mod fmaf_directed;
 
 mod fdividef;
+
+mod fmaf_ieee;

@@ -160,14 +160,14 @@ fn truncate_fused(first: f32, second: f32, third: f32) -> f32 {
 }
 
 fn _fmaf_rz(first_1: bool, second_1: bool, third_1: bool) -> i32 {
-    var local_28: i32;
+    var local_48: i32;
 
     if first_1 {
-        local_28 = 7i;
+        local_48 = 7i;
     } else {
-        local_28 = 9i;
+        local_48 = 9i;
     }
-    let _e6 = local_28;
+    let _e6 = local_48;
     return _e6;
 }
 
@@ -671,12 +671,32 @@ fn fused_round_zero(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin
     var local_25: u32;
     var local_26: u32;
     var local_27: u32;
+    var local_28: u32;
+    var local_29: u32;
+    var local_30: u32;
+    var local_31: u32;
+    var local_32: u32;
+    var local_33: u32;
+    var local_34: u32;
+    var local_35: u32;
+    var local_36: u32;
+    var local_37: u32;
+    var local_38: u32;
+    var local_39: u32;
+    var local_40: u32;
+    var local_41: u32;
+    var local_42: u32;
+    var local_43: u32;
+    var local_44: u32;
+    var local_45: u32;
+    var local_46: u32;
+    var local_47: u32;
 
     let index = (threadIdx.x + (blockIdx.x * 32u));
     if (index >= 4096u) {
         return;
     }
-    let base = (4u + (index * 14u));
+    let base = (4u + (index * 22u));
     local = u32((index * 3u));
     let _e17 = local;
     let _e20 = input[_e17];
@@ -817,4 +837,100 @@ fn fused_round_zero(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin
     local_27 = u32((base + 13u));
     let _e360 = local_27;
     output[_e360] = u32(_e354);
+    directed_cursor = 0i;
+    let _e365 = directed_cursor;
+    directed_cursor = (_e365 + 1i);
+    local_29 = u32(((index * 3u) + u32(_e365)));
+    let _e372 = local_29;
+    let _e374 = input[_e372];
+    let _e378 = directed_cursor;
+    directed_cursor = (_e378 + 1i);
+    local_30 = u32(((index * 3u) + u32(_e378)));
+    let _e385 = local_30;
+    let _e387 = input[_e385];
+    let _e391 = directed_cursor;
+    directed_cursor = (_e391 + 1i);
+    local_31 = u32(((index * 3u) + u32(_e391)));
+    let _e398 = local_31;
+    let _e400 = input[_e398];
+    let _e405 = gen__naga_fmaf_rn(bitcast<u32>(bitcast<f32>(_e374)), bitcast<u32>(bitcast<f32>(_e387)), bitcast<u32>(bitcast<f32>(_e400)));
+    local_28 = u32((base + 14u));
+    let _e412 = local_28;
+    output[_e412] = bitcast<u32>(bitcast<f32>(_e405));
+    let _e414 = directed_cursor;
+    local_32 = u32((base + 15u));
+    let _e420 = local_32;
+    output[_e420] = u32(_e414);
+    directed_cursor = 0i;
+    let _e425 = directed_cursor;
+    directed_cursor = (_e425 + 1i);
+    local_34 = u32(((index * 3u) + u32(_e425)));
+    let _e432 = local_34;
+    let _e434 = input[_e432];
+    let _e438 = directed_cursor;
+    directed_cursor = (_e438 + 1i);
+    local_35 = u32(((index * 3u) + u32(_e438)));
+    let _e445 = local_35;
+    let _e447 = input[_e445];
+    let _e451 = directed_cursor;
+    directed_cursor = (_e451 + 1i);
+    local_36 = u32(((index * 3u) + u32(_e451)));
+    let _e458 = local_36;
+    let _e460 = input[_e458];
+    let _e465 = gen__naga_fmaf_rz(bitcast<u32>(bitcast<f32>(_e434)), bitcast<u32>(bitcast<f32>(_e447)), bitcast<u32>(bitcast<f32>(_e460)));
+    local_33 = u32((base + 16u));
+    let _e472 = local_33;
+    output[_e472] = bitcast<u32>(bitcast<f32>(_e465));
+    let _e474 = directed_cursor;
+    local_37 = u32((base + 17u));
+    let _e480 = local_37;
+    output[_e480] = u32(_e474);
+    directed_cursor = 0i;
+    let _e485 = directed_cursor;
+    directed_cursor = (_e485 + 1i);
+    local_39 = u32(((index * 3u) + u32(_e485)));
+    let _e492 = local_39;
+    let _e494 = input[_e492];
+    let _e498 = directed_cursor;
+    directed_cursor = (_e498 + 1i);
+    local_40 = u32(((index * 3u) + u32(_e498)));
+    let _e505 = local_40;
+    let _e507 = input[_e505];
+    let _e511 = directed_cursor;
+    directed_cursor = (_e511 + 1i);
+    local_41 = u32(((index * 3u) + u32(_e511)));
+    let _e518 = local_41;
+    let _e520 = input[_e518];
+    let _e525 = gen__naga_fmaf_rd(bitcast<u32>(bitcast<f32>(_e494)), bitcast<u32>(bitcast<f32>(_e507)), bitcast<u32>(bitcast<f32>(_e520)));
+    local_38 = u32((base + 18u));
+    let _e532 = local_38;
+    output[_e532] = bitcast<u32>(bitcast<f32>(_e525));
+    let _e534 = directed_cursor;
+    local_42 = u32((base + 19u));
+    let _e540 = local_42;
+    output[_e540] = u32(_e534);
+    directed_cursor = 0i;
+    let _e545 = directed_cursor;
+    directed_cursor = (_e545 + 1i);
+    local_44 = u32(((index * 3u) + u32(_e545)));
+    let _e552 = local_44;
+    let _e554 = input[_e552];
+    let _e558 = directed_cursor;
+    directed_cursor = (_e558 + 1i);
+    local_45 = u32(((index * 3u) + u32(_e558)));
+    let _e565 = local_45;
+    let _e567 = input[_e565];
+    let _e571 = directed_cursor;
+    directed_cursor = (_e571 + 1i);
+    local_46 = u32(((index * 3u) + u32(_e571)));
+    let _e578 = local_46;
+    let _e580 = input[_e578];
+    let _e585 = gen__naga_fmaf_ru(bitcast<u32>(bitcast<f32>(_e554)), bitcast<u32>(bitcast<f32>(_e567)), bitcast<u32>(bitcast<f32>(_e580)));
+    local_43 = u32((base + 20u));
+    let _e592 = local_43;
+    output[_e592] = bitcast<u32>(bitcast<f32>(_e585));
+    let _e594 = directed_cursor;
+    local_47 = u32((base + 21u));
+    let _e600 = local_47;
+    output[_e600] = u32(_e594);
 }

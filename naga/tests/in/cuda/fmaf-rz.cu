@@ -3,7 +3,7 @@ __device__ int __fmaf_rz(bool first, bool second, bool third) { return first ? 7
 __global__ void fused_round_zero(const unsigned *input, unsigned *output) {
     unsigned index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= 4096u) return;
-    unsigned base = 4u + index * 14u;
+    unsigned base = 4u + index * 22u;
     float first = __uint_as_float(input[index * 3u]);
     float second = __uint_as_float(input[index * 3u + 1u]);
     float third = __uint_as_float(input[index * 3u + 2u]);
@@ -27,4 +27,16 @@ __global__ void fused_round_zero(const unsigned *input, unsigned *output) {
     output[base + 12u] = __float_as_uint(__fmaf_ru(__uint_as_float(input[index * 3u + unsigned(directed_cursor++)]), __uint_as_float(input[index * 3u + unsigned(directed_cursor++)]), __uint_as_float(input[index * 3u + unsigned(directed_cursor++)])));
     output[base + 13u] = unsigned(directed_cursor);
 
+    directed_cursor = 0;
+    output[base + 14u] = __float_as_uint(__fmaf_ieee_rn(__uint_as_float(input[index * 3u + unsigned(directed_cursor++)]), __uint_as_float(input[index * 3u + unsigned(directed_cursor++)]), __uint_as_float(input[index * 3u + unsigned(directed_cursor++)])));
+    output[base + 15u] = unsigned(directed_cursor);
+    directed_cursor = 0;
+    output[base + 16u] = __float_as_uint(__fmaf_ieee_rz(__uint_as_float(input[index * 3u + unsigned(directed_cursor++)]), __uint_as_float(input[index * 3u + unsigned(directed_cursor++)]), __uint_as_float(input[index * 3u + unsigned(directed_cursor++)])));
+    output[base + 17u] = unsigned(directed_cursor);
+    directed_cursor = 0;
+    output[base + 18u] = __float_as_uint(__fmaf_ieee_rd(__uint_as_float(input[index * 3u + unsigned(directed_cursor++)]), __uint_as_float(input[index * 3u + unsigned(directed_cursor++)]), __uint_as_float(input[index * 3u + unsigned(directed_cursor++)])));
+    output[base + 19u] = unsigned(directed_cursor);
+    directed_cursor = 0;
+    output[base + 20u] = __float_as_uint(__fmaf_ieee_ru(__uint_as_float(input[index * 3u + unsigned(directed_cursor++)]), __uint_as_float(input[index * 3u + unsigned(directed_cursor++)]), __uint_as_float(input[index * 3u + unsigned(directed_cursor++)])));
+    output[base + 21u] = unsigned(directed_cursor);
 }

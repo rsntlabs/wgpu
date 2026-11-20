@@ -931,7 +931,24 @@ const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 12] = [
 ];
 
 const SQRT_BUILTINS: [&str; 3] = ["sqrtf", "sqrt", "__fsqrt_rn"];
-const FMA_BUILTINS: [&str; 2] = ["__fmaf_rn", "fmaf"];
+const FMA_BUILTINS: [(&str, FunctionCandidate); 9] = {
+    use FunctionCandidate::{
+        FusedMultiplyAddRoundDown, FusedMultiplyAddRoundNearest, FusedMultiplyAddRoundUp,
+        FusedMultiplyAddRoundZero,
+    };
+
+    [
+        ("__fmaf_rz", FusedMultiplyAddRoundZero),
+        ("__fmaf_rd", FusedMultiplyAddRoundDown),
+        ("__fmaf_ru", FusedMultiplyAddRoundUp),
+        ("__fmaf_rn", FusedMultiplyAddRoundNearest),
+        ("fmaf", FusedMultiplyAddRoundNearest),
+        ("__fmaf_ieee_rz", FusedMultiplyAddRoundZero),
+        ("__fmaf_ieee_rd", FusedMultiplyAddRoundDown),
+        ("__fmaf_ieee_ru", FusedMultiplyAddRoundUp),
+        ("__fmaf_ieee_rn", FusedMultiplyAddRoundNearest),
+    ]
+};
 const INTEGRAL_DOUBLE_BUILTINS: [&str; 2] = ["fabs", "sqrt"];
 
 #[derive(Clone, Copy, PartialEq)]
@@ -1260,16 +1277,13 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__fdiv_ru",
         "__frcp_rd",
         "__frcp_ru",
-        "__fmaf_rz",
-        "__fmaf_rd",
-        "__fmaf_ru",
     ] {
         declarations.insert(
             name,
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         );
     }
-    declarations.extend(FMA_BUILTINS.into_iter().map(|name| {
+    declarations.extend(FMA_BUILTINS.iter().map(|&(name, _)| {
         (
             name,
             GlobalDeclaration::Functions(FunctionOverloads::default()),
@@ -3417,8 +3431,6 @@ impl<'a> Parser<'a> {
                 (true, "remainderf") => Some(FunctionCandidate::FloatRemainder(
                     RemainderMode::NearestEven,
                 )),
-                (true, "__fmaf_rd") => Some(FunctionCandidate::FusedMultiplyAddRoundDown),
-                (true, "__fmaf_ru") => Some(FunctionCandidate::FusedMultiplyAddRoundUp),
                 (true, "__fadd_rd") => Some(FunctionCandidate::AddRoundDown),
                 (true, "__fadd_ru") => Some(FunctionCandidate::AddRoundUp),
                 (true, "__fsub_rd") => Some(FunctionCandidate::SubtractRoundDown),
@@ -3541,12 +3553,11 @@ impl<'a> Parser<'a> {
                     .then_some(FunctionCandidate::ReciprocalRoundZero),
             )
             .chain(
-                (builtin_visible && name == "__fmaf_rz")
-                    .then_some(FunctionCandidate::FusedMultiplyAddRoundZero),
-            )
-            .chain(
-                (builtin_visible && FMA_BUILTINS.contains(&name))
-                    .then_some(FunctionCandidate::FusedMultiplyAddRoundNearest),
+                FMA_BUILTINS
+                    .iter()
+                    .find(|&&(candidate, _)| candidate == name)
+                    .filter(move |_| builtin_visible)
+                    .map(|&(_, candidate)| candidate),
             )
             .chain(
                 (builtin_visible && name == "__frsqrt_rn")
