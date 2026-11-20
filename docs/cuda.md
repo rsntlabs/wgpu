@@ -493,6 +493,9 @@ invalid in a constant index.
 Indices also support `static_cast<T>(expression)` between integral scalar
 types, including Boolean types and aliases. Integral casts wrap at the
 destination width, and conversions to `bool` test for a nonzero value.
+An unqualified integral type name or alias also accepts functional cast
+syntax, such as `int(value)` or `bool()`. Empty parentheses produce the
+type's zero value.
 Arithmetic rejects signed overflow and zero divisors, and wraps unsigned
 results at the operation's width. Shift counts must be nonnegative and less
 than the promoted left operand's bit width. Left shifts wrap at that width
