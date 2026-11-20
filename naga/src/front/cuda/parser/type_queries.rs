@@ -287,8 +287,8 @@ impl Parser<'_> {
             Token::Word("static_cast") => {
                 return self.record_offset_static_cast(depth, evaluate, span);
             }
-            Token::Word("sizeof" | "alignof") => {
-                return self.record_offset_scalar_layout(depth, evaluate, span);
+            Token::Word(name @ ("sizeof" | "alignof")) => {
+                return self.record_offset_type_query(name, depth, evaluate, span);
             }
             Token::Word("decltype") => {
                 self.parameter_expansion_budget.charge_work(4, span)?;
@@ -351,8 +351,9 @@ impl Parser<'_> {
         })
     }
 
-    fn record_offset_scalar_layout(
+    fn record_offset_type_query(
         &mut self,
+        name: &str,
         depth: u32,
         evaluate: bool,
         start: Span,
@@ -366,23 +367,52 @@ impl Parser<'_> {
         self.parameter_expansion_budget.charge_work(3, start)?;
         self.lexer.expect_span(Token::Paren('('))?;
         let target_span = self.lexer.peek()?.1;
-        let scalar = self
-            .parse_type()?
-            .ty
-            .source_scalar()
-            .ok_or_else(|| ParseError {
+        let ty = self.parse_type()?.ty;
+        let size = if let Some(scalar) = ty.source_scalar() {
+            // The supported scalar types have natural alignment equal to their size.
+            u32::from(scalar.scalar().width)
+        } else if name == "sizeof" {
+            self.record_offset_aggregate_size(ty).ok_or_else(|| ParseError {
                 message: String::from(
-                    "__builtin_offsetof nested type query requires a scalar type",
+                    "__builtin_offsetof nested sizeof requires a scalar, vector, complete record, or fixed-array type",
                 ),
                 span: target_span,
-            })?;
+            })?
+        } else {
+            return Err(ParseError {
+                message: String::from("__builtin_offsetof nested alignof requires a scalar type"),
+                span: target_span,
+            });
+        };
         let end = self.lexer.expect_span(Token::Paren(')'))?;
-        // The supported scalar types have natural alignment equal to their size.
-        let value = evaluate.then_some(i128::from(scalar.scalar().width));
+        let value = evaluate.then_some(i128::from(size));
         Ok((
             RecordOffsetIndex::prvalue(SourceScalar::Long(ScalarKind::Uint), value),
             start.until(&end),
         ))
+    }
+
+    fn record_offset_aggregate_size(&self, ty: TypeSpecifier) -> Option<u32> {
+        let handle = match ty {
+            TypeSpecifier::Vector {
+                component_count,
+                scalar,
+            } => {
+                return Some(u32::from(component_count) * u32::from(scalar.width));
+            }
+            TypeSpecifier::Structure(handle) if self.structures.contains_key(&handle) => handle,
+            TypeSpecifier::Array(handle) => handle,
+            _ => return None,
+        };
+        let inner = &self.module.types[handle].inner;
+        match *inner {
+            TypeInner::Struct { .. }
+            | TypeInner::Array {
+                size: ArraySize::Constant(_),
+                ..
+            } => inner.try_size(self.module.to_ctx()),
+            _ => None,
+        }
     }
 
     fn record_offset_static_cast(
@@ -1572,6 +1602,8 @@ mod tests {
             ("decltype(One)(((((1))))) ]", false, false),
             ("true || decltype(One)(1 / 0)]", true, true),
             ("sizeof(bool) * alignof(bool)]", true, true),
+            ("sizeof(float3) / 12]", true, true),
+            ("sizeof(Fixed) / 8]", false, true),
             ("true || (sizeof(float) / alignof(long))]", false, true),
             ("((((sizeof(bool)))))]", false, false),
         ] {
@@ -1594,6 +1626,13 @@ mod tests {
                     },
                 },
                 span,
+            );
+            parser.global_declarations.insert(
+                "Fixed",
+                GlobalDeclaration::Type(QualifiedType {
+                    ty: TypeSpecifier::Array(array),
+                    qualifiers: Qualifiers::NONE,
+                }),
             );
             parser.global_declarations.insert(
                 "Index",

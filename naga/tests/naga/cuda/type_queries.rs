@@ -1036,9 +1036,9 @@ fn cuda_record_offsetof_evaluates_scalar_layout_queries_in_indices() {
 #[test]
 fn cuda_record_offsetof_rejects_unsupported_scalar_layout_queries_in_indices() {
     for (index, message) in [
-        ("sizeof(Record)", "scalar type"),
+        ("alignof(Record)", "scalar type"),
         ("alignof(Array)", "scalar type"),
-        ("sizeof(float2)", "scalar type"),
+        ("alignof(float2)", "scalar type"),
         ("true || alignof(Pointer)", "scalar type"),
         ("sizeof(int *)", "expected"),
         ("alignof(int &)", "expected"),
@@ -1063,6 +1063,65 @@ fn cuda_record_offsetof_rejects_unsupported_scalar_layout_queries_in_indices() {
              }}"
         ));
         assert!(error.message.contains(message), "{index}: {error}");
+    }
+}
+
+#[test]
+fn cuda_record_offsetof_evaluates_aggregate_sizeof_in_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        struct Record { int head; int row[5]; };
+        struct Padded { short first; int middle; short last; };
+        using Pair = Padded[2];
+        using Grid = int[2][3];
+        using Packed = float3[2];
+        template<class T> __device__ size_t selected() {
+            return offsetof(Record, row[sizeof(T) / sizeof(int)]);
+        }
+        __global__ void kernel(unsigned long *output) {
+            Padded object;
+            short local[4];
+            output[0] = offsetof(Record, row[sizeof(float1) / 4]);
+            output[1] = offsetof(Record, row[sizeof(float2) / 4]);
+            output[2] = offsetof(Record, row[sizeof(float3) / 4]);
+            output[3] = offsetof(Record, row[sizeof(float4) / 4]);
+            output[4] = offsetof(Record, row[sizeof(short3) / 2]);
+            output[5] = offsetof(Record, row[sizeof(const Padded) / 4]);
+            output[6] = offsetof(Record, row[sizeof(Pair) / 8]);
+            output[7] = offsetof(Record, row[sizeof(Grid) / 6]);
+            output[8] = offsetof(Record, row[sizeof(Packed) / 8]);
+            output[9] = offsetof(Record, row[sizeof(decltype(object)) / 4]);
+            output[10] = offsetof(Record, row[sizeof(decltype(local)) / 4]);
+            output[11] = offsetof(Record, row[(true ? -1 : sizeof(Pair)) == 0xffffffffffffffffULL]);
+            output[12] = offsetof(Record, row[true || sizeof(Pair) / 0]);
+            size_t instantiated = selected<Padded>();
+        }",
+        &[8, 12, 16, 20, 16, 16, 16, 20, 16, 16, 12, 8, 8],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_incomplete_or_unsupported_sizeof_in_indices() {
+    for index in [
+        "sizeof(Incomplete)",
+        "true || sizeof(Incomplete)",
+        "sizeof(Pointer)",
+        "sizeof(dim3)",
+        "sizeof(std::nullptr_t)",
+    ] {
+        let error = rejected(&format!(
+            "#include <cstddef>
+             struct Record {{ int row[4]; }};
+             using Incomplete = int[];
+             using Pointer = int *;
+             __global__ void kernel(unsigned *out) {{
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
+        assert!(
+            error.message.contains("complete record"),
+            "{index}: {error}"
+        );
     }
 }
 
