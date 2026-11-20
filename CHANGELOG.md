@@ -248,6 +248,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support grouped pointer-to-array types in CUDA `sizeof` and `alignof` queries.
 - Support grouped array-reference types in CUDA `sizeof` and `alignof` queries.
 - Support grouped pointer chains to arrays in CUDA `sizeof` and `alignof` queries.
+- Support references to array pointers in CUDA `sizeof` and `alignof` queries.
 - Support array type dimensions in CUDA `offsetof` layout queries.
 - Support named member paths in CUDA `offsetof` size queries.
 - Support unevaluated array and pointer subscripts in CUDA `offsetof` size queries.

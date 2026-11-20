@@ -1433,6 +1433,11 @@ impl Parser<'_> {
             Token::Operation('*') => {
                 budget.charge_work(2, span)?;
                 Self::scan_type_query_pointer_chain(&mut lookahead, budget, 0)?;
+                let (token, reference_span) = lookahead.peek()?;
+                if matches!(token, Token::Operation('&') | Token::LogicalOperation('&')) {
+                    budget.charge_work(1, reference_span)?;
+                    lookahead.next()?;
+                }
                 ArrayIndirection::Pointer
             }
             Token::Operation('&') | Token::LogicalOperation('&') => {

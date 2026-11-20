@@ -558,6 +558,8 @@ alignment of eight bytes. Reference type queries use the referent's layout.
 Grouped type operands such as `int (*)[3]` and `int (**)[3]` also use the
 pointer layout. Both queries accept an omitted outer bound in the array,
 as in `sizeof(int (*)[])`.
+References to those pointers, such as `int (*&)[3]` and `int (*&&)[3]`,
+have the same layout for both queries.
 Grouped array references such as `int (&)[3]` and `int (&&)[3]` follow the
 array's layout. `alignof` also accepts references to arrays with omitted
 outer bounds.

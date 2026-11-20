@@ -4495,3 +4495,55 @@ fn cuda_layout_queries_grouped_pointer_chains_are_bounded_and_validate_array_sha
         }
     }
 }
+
+#[test]
+fn cuda_layout_queries_grouped_references_to_array_pointers_use_pointer_layout() {
+    for query in [
+        "sizeof(int(*&)[3])",
+        "alignof(int(*&)[3])",
+        "sizeof(int(*const &&)[][3])",
+        "alignof(int(*const &&)[][3])",
+        "sizeof(int(**&)[2][3])",
+        "alignof(int(*const *volatile &&)[3])",
+        "sizeof(Row(*&)[2])",
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; using Row = int[3];
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = {query};
+                output[1] = __builtin_offsetof(Offsets, bytes[{query}]);
+            }}"
+            ),
+            &[8, 32],
+        );
+    }
+}
+
+#[test]
+fn cuda_layout_queries_grouped_references_to_array_pointers_reject_invalid_chains_and_bounds() {
+    for query in [
+        "sizeof(int(*& &)[3])",
+        "sizeof(int(*&& &)[3])",
+        "sizeof(int(*& &&)[3])",
+        "sizeof(int(*& const)[3])",
+        "alignof(int(*&& volatile)[3])",
+        "sizeof(int(&*)[3])",
+        "sizeof(int(*&)[0])",
+        "sizeof(int(*&&)[-1])",
+        "sizeof(int(*&)[index])",
+        "sizeof(int(*&)[2][])",
+        "sizeof(int(*&)(int))",
+    ] {
+        for nested in [false, true] {
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query.to_owned()
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int index; output[0] = {expression}; }}"));
+        }
+    }
+}
