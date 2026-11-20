@@ -1269,7 +1269,9 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__frcp_rn",
         "__frcp_rz",
         "__fdiv_rd",
+        "__fdiv_ru",
         "__frcp_rd",
+        "__frcp_ru",
     ] {
         declarations.insert(
             name,
@@ -1385,9 +1387,11 @@ pub(super) enum FunctionCandidate {
     DivideRoundNearest,
     DivideRoundZero,
     DivideRoundDown,
+    DivideRoundUp,
     ReciprocalRoundNearest,
     ReciprocalRoundZero,
     ReciprocalRoundDown,
+    ReciprocalRoundUp,
     ReciprocalSqrtRoundNearest,
     Constructor {
         component_count: u8,
@@ -2003,10 +2007,12 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::MultiplyRoundZero
                         | FunctionCandidate::MultiplyRoundNearest
                         | FunctionCandidate::DivideRoundDown
+                        | FunctionCandidate::DivideRoundUp
                         | FunctionCandidate::DivideRoundZero
                         | FunctionCandidate::DivideRoundNearest
                         | FunctionCandidate::ReciprocalRoundNearest
                         | FunctionCandidate::ReciprocalRoundDown
+                        | FunctionCandidate::ReciprocalRoundUp
                         | FunctionCandidate::ReciprocalRoundZero
                         | FunctionCandidate::ReciprocalSqrtRoundNearest
                         | FunctionCandidate::Constructor { .. }
@@ -2309,10 +2315,12 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::MultiplyRoundZero
             | FunctionCandidate::MultiplyRoundNearest
             | FunctionCandidate::DivideRoundDown
+            | FunctionCandidate::DivideRoundUp
             | FunctionCandidate::DivideRoundZero
             | FunctionCandidate::DivideRoundNearest
             | FunctionCandidate::ReciprocalRoundNearest
             | FunctionCandidate::ReciprocalRoundDown
+            | FunctionCandidate::ReciprocalRoundUp
             | FunctionCandidate::ReciprocalRoundZero
             | FunctionCandidate::ReciprocalSqrtRoundNearest => TypeSpecifier::Scalar(Scalar::F32),
             FunctionCandidate::Constructor {
@@ -2640,6 +2648,9 @@ impl<'a> Parser<'a> {
         if candidate == FunctionCandidate::MultiplyRoundNearest {
             return self.lower_fmul_rn_call(arguments, span);
         }
+        if candidate == FunctionCandidate::DivideRoundUp {
+            return self.lower_fdiv_ru_call(arguments, span);
+        }
         if candidate == FunctionCandidate::DivideRoundDown {
             return self.lower_fdiv_rd_call(arguments, span);
         }
@@ -2651,6 +2662,9 @@ impl<'a> Parser<'a> {
         }
         if candidate == FunctionCandidate::ReciprocalRoundNearest {
             return self.lower_frcp_rn_call(arguments, span);
+        }
+        if candidate == FunctionCandidate::ReciprocalRoundUp {
+            return self.lower_frcp_ru_call(arguments, span);
         }
         if candidate == FunctionCandidate::ReciprocalRoundDown {
             return self.lower_frcp_rd_call(arguments, span);
@@ -3349,7 +3363,9 @@ impl<'a> Parser<'a> {
                     RemainderMode::NearestEven,
                 )),
                 (true, "__fdiv_rd") => Some(FunctionCandidate::DivideRoundDown),
+                (true, "__fdiv_ru") => Some(FunctionCandidate::DivideRoundUp),
                 (true, "__frcp_rd") => Some(FunctionCandidate::ReciprocalRoundDown),
+                (true, "__frcp_ru") => Some(FunctionCandidate::ReciprocalRoundUp),
                 (true, "copysignf") => Some(FunctionCandidate::CopySign),
                 (true, "nextafterf") => Some(FunctionCandidate::NextAfter),
                 (true, "fdimf") => Some(FunctionCandidate::PositiveDifference),
@@ -3564,6 +3580,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::MultiplyRoundZero
             | FunctionCandidate::MultiplyRoundNearest
             | FunctionCandidate::DivideRoundDown
+            | FunctionCandidate::DivideRoundUp
             | FunctionCandidate::DivideRoundZero
             | FunctionCandidate::DivideRoundNearest => 2,
             FunctionCandidate::AtomicCompareExchange(_)
@@ -3590,6 +3607,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Sqrt
             | FunctionCandidate::ReciprocalRoundNearest
             | FunctionCandidate::ReciprocalRoundDown
+            | FunctionCandidate::ReciprocalRoundUp
             | FunctionCandidate::ReciprocalRoundZero
             | FunctionCandidate::ReciprocalSqrtRoundNearest => 1,
             FunctionCandidate::Constructor {
@@ -3661,10 +3679,12 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::MultiplyRoundZero
             | FunctionCandidate::MultiplyRoundNearest
             | FunctionCandidate::DivideRoundDown
+            | FunctionCandidate::DivideRoundUp
             | FunctionCandidate::DivideRoundZero
             | FunctionCandidate::DivideRoundNearest
             | FunctionCandidate::ReciprocalRoundNearest
             | FunctionCandidate::ReciprocalRoundDown
+            | FunctionCandidate::ReciprocalRoundUp
             | FunctionCandidate::ReciprocalRoundZero
             | FunctionCandidate::ReciprocalSqrtRoundNearest => {
                 return Some(scalar_resolution(Scalar::F32))

@@ -5,6 +5,7 @@ enum DivisionRounding {
     NearestEven,
     TowardZero,
     TowardNegative,
+    TowardPositive,
 }
 
 impl Parser<'_> {
@@ -32,6 +33,14 @@ impl Parser<'_> {
         self.lower_fdiv_call(arguments, DivisionRounding::TowardNegative, span)
     }
 
+    pub(super) fn lower_fdiv_ru_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lower_fdiv_call(arguments, DivisionRounding::TowardPositive, span)
+    }
+
     fn lower_fdiv_call(
         &mut self,
         arguments: Vec<Value>,
@@ -50,7 +59,7 @@ impl Parser<'_> {
             DivisionRounding::TowardZero => {
                 self.divide_f32_rz(numerator.handle, denominator.handle, span)?
             }
-            DivisionRounding::TowardNegative => {
+            DivisionRounding::TowardNegative | DivisionRounding::TowardPositive => {
                 self.divide_f32_with_rounding(numerator.handle, denominator.handle, rounding, span)?
             }
         };
@@ -89,6 +98,14 @@ impl Parser<'_> {
         self.lower_frcp_call(arguments, DivisionRounding::TowardNegative, span)
     }
 
+    pub(super) fn lower_frcp_ru_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lower_frcp_call(arguments, DivisionRounding::TowardPositive, span)
+    }
+
     fn lower_frcp_call(
         &mut self,
         arguments: Vec<Value>,
@@ -103,7 +120,7 @@ impl Parser<'_> {
         let handle = match rounding {
             DivisionRounding::NearestEven => self.divide_f32(one, argument.handle, span)?,
             DivisionRounding::TowardZero => self.divide_f32_rz(one, argument.handle, span)?,
-            DivisionRounding::TowardNegative => {
+            DivisionRounding::TowardNegative | DivisionRounding::TowardPositive => {
                 self.divide_f32_with_rounding(one, argument.handle, rounding, span)?
             }
         };
@@ -148,7 +165,9 @@ impl Parser<'_> {
         let numerator_bits = self.bitcast_scalar(numerator, Scalar::U32, span)?;
         let denominator_bits = self.bitcast_scalar(denominator, Scalar::U32, span)?;
         let result = match rounding {
-            DivisionRounding::NearestEven | DivisionRounding::TowardNegative => {
+            DivisionRounding::NearestEven
+            | DivisionRounding::TowardNegative
+            | DivisionRounding::TowardPositive => {
                 self.call_division_bits(numerator_bits, denominator_bits, rounding, span)?
             }
             DivisionRounding::TowardZero => {
@@ -214,6 +233,7 @@ impl Parser<'_> {
             DivisionRounding::NearestEven => self.division_function,
             DivisionRounding::TowardZero => self.division_rz_function,
             DivisionRounding::TowardNegative => self.division_rd_function,
+            DivisionRounding::TowardPositive => self.division_ru_function,
         };
         if let Some(function) = cached {
             return Ok(function);
@@ -235,6 +255,7 @@ impl Parser<'_> {
             DivisionRounding::NearestEven => self.division_function = Some(function),
             DivisionRounding::TowardZero => self.division_rz_function = Some(function),
             DivisionRounding::TowardNegative => self.division_rd_function = Some(function),
+            DivisionRounding::TowardPositive => self.division_ru_function = Some(function),
         }
         Ok(function)
     }
@@ -250,6 +271,7 @@ impl Parser<'_> {
             DivisionRounding::NearestEven => "_naga_divide_f32",
             DivisionRounding::TowardZero => "_naga_divide_f32_rz",
             DivisionRounding::TowardNegative => "_naga_divide_f32_rd",
+            DivisionRounding::TowardPositive => "_naga_divide_f32_ru",
         };
         let argument_names = ["numerator_bits", "denominator_bits"];
         self.parameter_expansion_budget.charge_nodes(2, span)?;
@@ -387,13 +409,17 @@ impl Parser<'_> {
         let minimum_exponent = self.append(Expression::Literal(Literal::I32(-150)), span)?;
         let too_small =
             self.division_binary(BinaryOperator::Less, exponent, minimum_exponent, span)?;
-        let negative = if matches!(rounding, DivisionRounding::TowardNegative) {
-            Some(self.division_binary(BinaryOperator::NotEqual, sign, zero, span)?)
-        } else {
-            None
+        let round_away = match rounding {
+            DivisionRounding::TowardNegative => {
+                Some(self.division_binary(BinaryOperator::NotEqual, sign, zero, span)?)
+            }
+            DivisionRounding::TowardPositive => {
+                Some(self.division_binary(BinaryOperator::Equal, sign, zero, span)?)
+            }
+            _ => None,
         };
-        let tiny = if let Some(negative) = negative {
-            let minimum = self.division_cast(negative, Scalar::U32, span)?;
+        let tiny = if let Some(round_away) = round_away {
+            let minimum = self.division_cast(round_away, Scalar::U32, span)?;
             self.division_binary(BinaryOperator::InclusiveOr, sign, minimum, span)?
         } else {
             sign
@@ -557,7 +583,7 @@ impl Parser<'_> {
                 DivisionRounding::TowardZero => {
                     parser.division_binary(BinaryOperator::ShiftRight, quotient, shift, span)?
                 }
-                DivisionRounding::TowardNegative => {
+                DivisionRounding::TowardNegative | DivisionRounding::TowardPositive => {
                     use BinaryOperator as Op;
 
                     let unit = parser.division_binary(Op::ShiftLeft, one, shift, span)?;
@@ -566,8 +592,12 @@ impl Parser<'_> {
                     let lost_bits =
                         parser.division_binary(Op::InclusiveOr, discarded, remainder, span)?;
                     let inexact = parser.division_binary(Op::NotEqual, lost_bits, zero, span)?;
-                    let increment =
-                        parser.division_binary(Op::LogicalAnd, negative.unwrap(), inexact, span)?;
+                    let increment = parser.division_binary(
+                        Op::LogicalAnd,
+                        round_away.unwrap(),
+                        inexact,
+                        span,
+                    )?;
                     let increment = parser.division_cast(increment, Scalar::U32, span)?;
                     let truncated =
                         parser.division_binary(Op::ShiftRight, quotient, shift, span)?;
@@ -593,11 +623,13 @@ impl Parser<'_> {
             span,
         )?;
         let (normalized, exponent) = match rounding {
-            DivisionRounding::NearestEven | DivisionRounding::TowardNegative => {
-                let rounds_up = if let Some(negative) = negative {
+            DivisionRounding::NearestEven
+            | DivisionRounding::TowardNegative
+            | DivisionRounding::TowardPositive => {
+                let rounds_up = if let Some(round_away) = round_away {
                     let inexact =
                         self.division_binary(BinaryOperator::NotEqual, remainder, zero, span)?;
-                    self.division_binary(BinaryOperator::LogicalAnd, negative, inexact, span)?
+                    self.division_binary(BinaryOperator::LogicalAnd, round_away, inexact, span)?
                 } else {
                     let twice_remainder =
                         self.division_binary(BinaryOperator::ShiftLeft, remainder, one, span)?;
@@ -650,7 +682,11 @@ impl Parser<'_> {
             }
             DivisionRounding::TowardNegative => {
                 let maximum = self.division_literal(0x7f7f_ffff, span)?;
-                self.division_select(negative.unwrap(), signed_infinity, maximum, span)?
+                self.division_select(round_away.unwrap(), signed_infinity, maximum, span)?
+            }
+            DivisionRounding::TowardPositive => {
+                let maximum = self.division_literal(0xff7f_ffff, span)?;
+                self.division_select(round_away.unwrap(), signed_infinity, maximum, span)?
             }
         };
         self.division_return_if(overflow, signed_overflow, span)?;
@@ -884,6 +920,7 @@ mod tests {
             DivisionRounding::NearestEven,
             DivisionRounding::TowardZero,
             DivisionRounding::TowardNegative,
+            DivisionRounding::TowardPositive,
         ] {
             for cached_helper in [false, true] {
                 for exhaust_bytes in [false, true] {
@@ -918,6 +955,7 @@ mod tests {
                     assert_eq!(parser.division_function, None);
                     assert_eq!(parser.division_rz_function, None);
                     assert_eq!(parser.division_rd_function, None);
+                    assert_eq!(parser.division_ru_function, None);
                 }
             }
         }

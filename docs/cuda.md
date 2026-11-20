@@ -1193,8 +1193,7 @@ algorithm through a separate cached helper, preserving received subnormal inputs
 and truncating inexact results toward signed zero. Finite overflow saturates to
 the signed largest finite value. Actual infinity inputs, zero denominators,
 NaNs, and signed-zero cases follow `__fdiv_rn`. Calls execute at runtime and are
-not source constant expressions. The `__fdiv_ru` and approximate
-`__fdividef` intrinsics remain unsupported.
+not source constant expressions. The approximate `__fdividef` intrinsic remains unsupported.
 
 `__fdiv_rd(float, float)` rounds the single-precision quotient toward negative
 infinity. Finite positive overflow returns the largest finite `float`, and
@@ -1202,6 +1201,14 @@ finite negative overflow returns negative infinity. A finite negative quotient
 too small for a subnormal rounds to the smallest negative subnormal.
 Zero, infinity, and NaN operands follow `__fdiv_rn`. See NVIDIA's
 [`__fdiv_rd` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SINGLE.html).
+
+`__fdiv_ru(float, float)` rounds the single-precision quotient toward positive
+infinity. Finite positive overflow returns positive infinity, and finite
+negative overflow returns the most negative finite `float`. A finite
+positive quotient too small for a subnormal rounds to the smallest positive
+subnormal. A negative quotient of that magnitude rounds to negative zero.
+Zero, infinity, and NaN operands follow `__fdiv_rn`. See NVIDIA's
+[`__fdiv_ru` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SINGLE.html).
 
 `__frcp_rn(float)` computes the correctly rounded single-precision reciprocal,
 following NVIDIA's
@@ -1220,13 +1227,17 @@ Its scalar argument converts to `float` before the cached `__fdiv_rz` helper
 computes `1.0f / x`. Received subnormal inputs and subnormal results are
 preserved. Finite overflow saturates to the signed largest finite value;
 signed-zero, infinity, and canonical-NaN cases follow `__frcp_rn`. Calls execute
-at runtime and are not source constant expressions. The `__frcp_ru` mode
-remains unsupported.
+at runtime and are not source constant expressions.
 
 `__frcp_rd(float)` converts its scalar argument to `float` and shares the
 `__fdiv_rd` helper for `1.0f / x`, including its subnormal, overflow, and
 exceptional-value rules. Both downward-rounding intrinsics execute at runtime.
 See NVIDIA's [`__frcp_rd` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SINGLE.html).
+
+`__frcp_ru(float)` converts its scalar argument to `float` and shares the
+`__fdiv_ru` helper for `1.0f / x`, including its subnormal, overflow, and
+exceptional-value rules. Both upward-rounding intrinsics execute at runtime.
+See NVIDIA's [`__frcp_ru` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SINGLE.html).
 
 ## Mathematical functions
 
@@ -1616,7 +1627,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fsub_rn`, `__fsub_rz`, `__fmul_rn`, `__fmul_rz`, `__fdiv_rn`, `__fdiv_rz`, `__fdiv_rd`, `__frcp_rn`, `__frcp_rz`, `__frcp_rd`, `__fsqrt_rn`, `__fsqrt_rz`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fsub_rn`, `__fsub_rz`, `__fmul_rn`, `__fmul_rz`, `__fdiv_rn`, `__fdiv_rz`, `__fdiv_rd`, `__fdiv_ru`, `__frcp_rn`, `__frcp_rz`, `__frcp_rd`, `__frcp_ru`, `__fsqrt_rn`, `__fsqrt_rz`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 

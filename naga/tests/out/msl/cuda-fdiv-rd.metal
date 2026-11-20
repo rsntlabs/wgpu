@@ -17,7 +17,7 @@ struct type_6 {
 };
 
 uint kind(
-    float value_3
+    float value_6
 ) {
     return 1u;
 }
@@ -117,6 +117,101 @@ uint _naga_divide_f32_rd(
     return _e11 | ((static_cast<uint>(as_type<int>(as_type<uint>(_e125) + as_type<uint>(127))) << 23u) | ((_e120 >> _e122) & 8388607u));
 }
 
+uint _naga_divide_f32_ru(
+    uint numerator_bits_1,
+    uint denominator_bits_1
+) {
+    uint numerator_significand_1 = {};
+    int numerator_exponent_1 = {};
+    uint denominator_significand_1 = {};
+    int denominator_exponent_1 = {};
+    uint quotient_1 = {};
+    uint remainder_1 = {};
+    uint iteration_1 = {};
+    uint _e8 = numerator_bits_1 & 2147483647u;
+    uint _e9 = denominator_bits_1 & 2147483647u;
+    uint _e11 = (numerator_bits_1 ^ denominator_bits_1) & 2147483648u;
+    uint _e12 = _e11 | 2139095040u;
+    bool _e16 = _e8 == 0u;
+    bool _e17 = _e9 == 0u;
+    bool _e19 = _e8 == 2139095040u;
+    bool _e20 = _e9 == 2139095040u;
+    if ((((_e8 > 2139095040u) || (_e9 > 2139095040u)) || (_e16 && _e17)) || (_e19 && _e20)) {
+        return 2143289344u;
+    }
+    if (_e19 || _e17) {
+        return _e12;
+    }
+    if (_e16 || _e20) {
+        return _e11;
+    }
+    uint _e30 = _e8 & 8388607u;
+    uint _e31 = _e8 >> 23u;
+    numerator_significand_1 = _e30 | 8388608u;
+    numerator_exponent_1 = as_type<int>(as_type<uint>(static_cast<int>(_e31)) - as_type<uint>(127));
+    if (_e31 == 0u) {
+        uint _e41 = metal::clz(_e30) - 8u;
+        numerator_significand_1 = _e30 << _e41;
+        numerator_exponent_1 = as_type<int>(as_type<uint>(-126) - as_type<uint>(static_cast<int>(_e41)));
+    }
+    uint _e46 = numerator_significand_1;
+    int _e47 = numerator_exponent_1;
+    uint _e52 = _e9 & 8388607u;
+    uint _e53 = _e9 >> 23u;
+    denominator_significand_1 = _e52 | 8388608u;
+    denominator_exponent_1 = as_type<int>(as_type<uint>(static_cast<int>(_e53)) - as_type<uint>(127));
+    if (_e53 == 0u) {
+        uint _e63 = metal::clz(_e52) - 8u;
+        denominator_significand_1 = _e52 << _e63;
+        denominator_exponent_1 = as_type<int>(as_type<uint>(-126) - as_type<uint>(static_cast<int>(_e63)));
+    }
+    uint _e68 = denominator_significand_1;
+    int _e69 = denominator_exponent_1;
+    bool _e70 = _e46 < _e68;
+    int _e75 = as_type<int>(as_type<uint>(as_type<int>(as_type<uint>(_e47) - as_type<uint>(_e69))) - as_type<uint>(static_cast<int>(_e70)));
+    bool _e78 = _e11 == 0u;
+    if (_e75 < -150) {
+        return _e11 | static_cast<uint>(_e78);
+    }
+    quotient_1 = 1u;
+    remainder_1 = (_e70 ? (_e46 << 1u) : _e46) - _e68;
+    iteration_1 = 0u;
+    uint2 loop_bound_1 = uint2(4294967295u);
+    bool loop_init_1 = true;
+    while(true) {
+        if (metal::all(loop_bound_1 == uint2(0u))) { break; }
+        loop_bound_1 -= uint2(loop_bound_1.y == 0u, 1u);
+        if (!loop_init_1) {
+            uint _e97 = iteration_1;
+            iteration_1 = _e97 + 1u;
+        }
+        loop_init_1 = false;
+        uint _e86 = iteration_1;
+        if (_e86 >= 23u) {
+            break;
+        }
+        uint _e88 = remainder_1;
+        uint _e89 = quotient_1;
+        uint _e90 = _e88 << 1u;
+        bool _e91 = _e90 >= _e68;
+        remainder_1 = _e91 ? (_e90 - _e68) : _e90;
+        quotient_1 = (_e89 << 1u) | (_e91 ? 1u : 0u);
+    }
+    uint _e99 = quotient_1;
+    uint _e100 = remainder_1;
+    if (_e75 < -126) {
+        uint _e106 = static_cast<uint>(as_type<int>(as_type<uint>(-126) - as_type<uint>(_e75))) & 31u;
+        return _e11 | ((_e99 >> _e106) + static_cast<uint>(_e78 && (((_e99 & ((1u << _e106) - 1u)) | _e100) != 0u)));
+    }
+    uint _e120 = _e99 + ((_e78 && (_e100 != 0u)) ? 1u : 0u);
+    uint _e122 = _e120 >> 24u;
+    int _e125 = as_type<int>(as_type<uint>(_e75) + as_type<uint>(static_cast<int>(_e122)));
+    if (_e125 > 127) {
+        return _e78 ? _e12 : 4286578687u;
+    }
+    return _e11 | ((static_cast<uint>(as_type<int>(as_type<uint>(_e125) + as_type<uint>(127))) << 23u) | ((_e120 >> _e122) & 8388607u));
+}
+
 struct divide_valuesInput {
 };
 kernel void divide_values(
@@ -135,15 +230,26 @@ kernel void divide_values(
     uint local_4 = {};
     uint local_5 = {};
     uint local_6 = {};
+    uint local_7 = {};
+    uint local_8 = {};
+    uint local_9 = {};
+    uint local_10 = {};
+    uint local_11 = {};
+    uint local_12 = {};
+    uint local_13 = {};
+    uint local_14 = {};
     float value = {};
     float value_1 = {};
     float value_2 = {};
+    float value_3 = {};
+    float value_4 = {};
+    float value_5 = {};
     uint count_1 = count.value;
     uint index = threadIdx.x + (blockIdx.x * 4u);
     if (index >= count_1) {
         return;
     }
-    uint base = 4u + (index * 8u);
+    uint base = 4u + (index * 16u);
     uint _e18 = input[index].x;
     float x = as_type<float>(_e18);
     uint _e22 = input[index].y;
@@ -196,4 +302,53 @@ kernel void divide_values(
     local_6 = static_cast<uint>(base + 7u);
     uint _e127 = local_6;
     output[_e127] = _e122;
+    uint _e131 = _naga_divide_f32_ru(as_type<uint>(x), as_type<uint>(y));
+    local_7 = static_cast<uint>(base + 8u);
+    uint _e138 = local_7;
+    output[_e138] = as_type<uint>(as_type<float>(_e131));
+    value_3 = float {};
+    value_3 = x;
+    uint _e143 = counter;
+    counter = _e143 + static_cast<uint>(1);
+    float _e147 = value_3;
+    value_4 = float {};
+    value_4 = y;
+    uint _e151 = counter;
+    counter = _e151 + static_cast<uint>(1);
+    float _e155 = value_4;
+    uint _e158 = _naga_divide_f32_ru(as_type<uint>(_e147), as_type<uint>(_e155));
+    local_8 = static_cast<uint>(base + 9u);
+    uint _e165 = local_8;
+    output[_e165] = as_type<uint>(as_type<float>(_e158));
+    uint _e167 = counter;
+    local_9 = static_cast<uint>(base + 10u);
+    uint _e172 = local_9;
+    output[_e172] = _e167;
+    uint _e177 = _naga_divide_f32_ru(as_type<uint>(1.0), as_type<uint>(y));
+    local_10 = static_cast<uint>(base + 11u);
+    uint _e184 = local_10;
+    output[_e184] = as_type<uint>(as_type<float>(_e177));
+    value_5 = float {};
+    value_5 = y;
+    uint _e189 = counter;
+    counter = _e189 + static_cast<uint>(1);
+    float _e193 = value_5;
+    uint _e197 = _naga_divide_f32_ru(as_type<uint>(1.0), as_type<uint>(_e193));
+    local_11 = static_cast<uint>(base + 12u);
+    uint _e204 = local_11;
+    output[_e204] = as_type<uint>(as_type<float>(_e197));
+    uint _e206 = counter;
+    local_12 = static_cast<uint>(base + 13u);
+    uint _e211 = local_12;
+    output[_e211] = _e206;
+    uint _e215 = _naga_divide_f32_ru(as_type<uint>(x), as_type<uint>(y));
+    uint _e217 = kind(as_type<float>(_e215));
+    local_13 = static_cast<uint>(base + 14u);
+    uint _e222 = local_13;
+    output[_e222] = _e217;
+    uint _e227 = _naga_divide_f32_ru(as_type<uint>(1.0), as_type<uint>(y));
+    uint _e229 = kind(as_type<float>(_e227));
+    local_14 = static_cast<uint>(base + 15u);
+    uint _e234 = local_14;
+    output[_e234] = _e229;
 }

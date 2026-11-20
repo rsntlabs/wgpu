@@ -15,6 +15,19 @@ fn divide_down(x: u32, y: u32) -> u32 {
     }
 }
 
+fn divide_up(x: u32, y: u32) -> u32 {
+    let exact = f64::from(f32::from_bits(x)) / f64::from(f32::from_bits(y));
+    if exact.is_nan() {
+        return 0x7fc0_0000;
+    }
+    let nearest = exact as f32;
+    if f64::from(nearest) < exact {
+        nearest.next_up().to_bits()
+    } else {
+        nearest.to_bits()
+    }
+}
+
 pub(super) fn cases() -> Vec<ShaderTest> {
     let mut input = Vec::new();
     for pair in [
@@ -46,17 +59,37 @@ pub(super) fn cases() -> Vec<ShaderTest> {
     assert_eq!(divide_down(0xff7f_ffff, 0x3f00_0000), 0xff80_0000);
     assert_eq!(divide_down(1, 0x4000_0000), 0);
     assert_eq!(divide_down(0x8000_0001, 0x4000_0000), 0x8000_0001);
-    let mut expected = vec![SENTINEL; input.len() * 8 + 8];
+    assert_eq!(divide_up(0x7f7f_ffff, 0x3f00_0000), 0x7f80_0000);
+    assert_eq!(divide_up(0xff7f_ffff, 0x3f00_0000), 0xff7f_ffff);
+    assert_eq!(divide_up(1, 0x4000_0000), 1);
+    assert_eq!(divide_up(0x8000_0001, 0x4000_0000), 0x8000_0000);
+    let mut expected = vec![SENTINEL; input.len() * 16 + 8];
     for (index, &[x, y]) in input.iter().enumerate() {
         let quotient = divide_down(x, y);
         let reciprocal = divide_down(0x3f80_0000, y);
-        expected[4 + index * 8..12 + index * 8]
-            .copy_from_slice(&[quotient, quotient, 2, reciprocal, reciprocal, 3, 1, 1]);
+        expected[4 + index * 16..20 + index * 16].copy_from_slice(&[
+            quotient,
+            quotient,
+            2,
+            reciprocal,
+            reciprocal,
+            3,
+            1,
+            1,
+            divide_up(x, y),
+            divide_up(x, y),
+            5,
+            divide_up(0x3f80_0000, y),
+            divide_up(0x3f80_0000, y),
+            6,
+            1,
+            1,
+        ]);
     }
     let initial = vec![SENTINEL; expected.len()];
     let count = input.len() as u32;
     let test = module_case(
-        "downward division and reciprocal share exact directed rounding with once-only arguments",
+        "downward and upward division and reciprocal preserve directed rounding with once-only arguments",
         include_str!("../../../../../naga/tests/in/cuda/fdiv-rd.cu"),
         [4, 1, 1],
         &expected,

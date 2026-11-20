@@ -4,7 +4,7 @@ __device__ unsigned kind(int value) { return 2u; }
 __global__ void divide_values(const uint2 *input, unsigned *output, unsigned count) {
     unsigned index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= count) return;
-    unsigned base = 4u + index * 8u;
+    unsigned base = 4u + index * 16u;
     float x = __uint_as_float(input[index].x);
     float y = __uint_as_float(input[index].y);
     unsigned counter = 0u;
@@ -16,4 +16,12 @@ __global__ void divide_values(const uint2 *input, unsigned *output, unsigned cou
     output[base + 5u] = counter;
     output[base + 6u] = kind(__fdiv_rd(x, y));
     output[base + 7u] = kind(__frcp_rd(y));
+    output[base + 8u] = __float_as_uint(__fdiv_ru(x, y));
+    output[base + 9u] = __float_as_uint(__fdiv_ru(counted(x, counter), counted(y, counter)));
+    output[base + 10u] = counter;
+    output[base + 11u] = __float_as_uint(__frcp_ru(y));
+    output[base + 12u] = __float_as_uint(__frcp_ru(counted(y, counter)));
+    output[base + 13u] = counter;
+    output[base + 14u] = kind(__fdiv_ru(x, y));
+    output[base + 15u] = kind(__frcp_ru(y));
 }

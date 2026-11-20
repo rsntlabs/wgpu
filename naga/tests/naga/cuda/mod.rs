@@ -506,3 +506,6 @@ mod remainderf;
 
 mod fdiv_rd;
 mod frcp_rd;
+
+mod fdiv_ru;
+mod frcp_ru;
