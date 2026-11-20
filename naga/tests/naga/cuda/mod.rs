@@ -536,3 +536,5 @@ mod fmul2;
 mod fast_trigonometry;
 
 mod sincosf;
+
+mod fast_sincosf;

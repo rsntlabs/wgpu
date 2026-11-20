@@ -1288,6 +1288,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__sinf",
         "__cosf",
         "sincosf",
+        "__sincosf",
         "__fadd_rz",
         "__fadd_rn",
         "__fsub_rn",
@@ -1446,7 +1447,9 @@ pub(super) enum FunctionCandidate {
     FastTrigonometry {
         cosine: bool,
     },
-    SinCos,
+    SinCos {
+        flush_subnormals: bool,
+    },
     DivideRoundZero,
     DivideRoundDown,
     DivideRoundUp,
@@ -2050,7 +2053,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Unary { .. }
                         | FunctionCandidate::FloatMath(_)
                         | FunctionCandidate::FastTrigonometry { .. }
-                        | FunctionCandidate::SinCos
+                        | FunctionCandidate::SinCos { .. }
                         | FunctionCandidate::FloatClassification(_)
                         | FunctionCandidate::FixedFloatClassification(_)
                         | FunctionCandidate::FloatExponent(_)
@@ -2346,7 +2349,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::Current => {
                 return Ok(self.function.ir.result.as_ref().map(|result| result.ty))
             }
-            FunctionCandidate::SinCos => return Ok(None),
+            FunctionCandidate::SinCos { .. } => return Ok(None),
             FunctionCandidate::Builtin(builtin) => TypeSpecifier::from_scalar(builtin.result),
             FunctionCandidate::Multiply24(result)
             | FunctionCandidate::MultiplyHigh(result)
@@ -3566,7 +3569,12 @@ impl<'a> Parser<'a> {
                 )),
                 (true, "__sinf") => Some(FunctionCandidate::FastTrigonometry { cosine: false }),
                 (true, "__cosf") => Some(FunctionCandidate::FastTrigonometry { cosine: true }),
-                (true, "sincosf") => Some(FunctionCandidate::SinCos),
+                (true, "sincosf") => Some(FunctionCandidate::SinCos {
+                    flush_subnormals: false,
+                }),
+                (true, "__sincosf") => Some(FunctionCandidate::SinCos {
+                    flush_subnormals: true,
+                }),
                 (true, "__fadd2_rn") => {
                     Some(FunctionCandidate::VectorAdd(AddRounding::NearestEven))
                 }
@@ -3838,7 +3846,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FusedMultiplyAddRoundUp
             | FunctionCandidate::FusedMultiplyAddRoundNearest
             | FunctionCandidate::VectorFusedMultiplyAdd(_)
-            | FunctionCandidate::SinCos => 3,
+            | FunctionCandidate::SinCos { .. } => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::LoadReadOnly { .. }
             | FunctionCandidate::ByteSwap32
@@ -3910,7 +3918,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::ScaleByPowerOfTwo => {
                 return Some(scalar_resolution([Scalar::F32, Scalar::I32][logical_index]))
             }
-            FunctionCandidate::SinCos => {
+            FunctionCandidate::SinCos { .. } => {
                 return if logical_index == 0 {
                     Some(scalar_resolution(Scalar::F32))
                 } else {
@@ -4045,7 +4053,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::LoadReadOnly { .. } => ParameterMode::Pointer {
                 qualifiers: Qualifiers::CONST,
             },
-            FunctionCandidate::SinCos if logical_index != 0 => ParameterMode::Pointer {
+            FunctionCandidate::SinCos { .. } if logical_index != 0 => ParameterMode::Pointer {
                 qualifiers: Qualifiers::NONE,
             },
             FunctionCandidate::Atomic { .. }
@@ -4067,7 +4075,7 @@ impl<'a> Parser<'a> {
         logical_index: usize,
         argument: &impl CallArgument,
     ) -> Option<u8> {
-        if candidate == FunctionCandidate::SinCos && logical_index != 0 {
+        if matches!(candidate, FunctionCandidate::SinCos { .. }) && logical_index != 0 {
             if argument.is_null_pointer_constant() {
                 return None;
             }

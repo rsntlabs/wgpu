@@ -381,8 +381,8 @@ impl Parser<'_> {
         order: ArgumentEvaluationOrder,
     ) -> Result<ExpressionResult, ParseError> {
         self.check_float_classification_argument(candidate, &arguments, span)?;
-        if candidate == functions::FunctionCandidate::SinCos {
-            return self.lower_sincos_call(arguments, span, order);
+        if let functions::FunctionCandidate::SinCos { flush_subnormals } = candidate {
+            return self.lower_sincos_call(arguments, span, order, flush_subnormals);
         }
         if matches!(
             candidate,

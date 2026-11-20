@@ -4,13 +4,22 @@ const SENTINEL: u32 = 0xdead_beef;
 const CANONICAL_NAN: u32 = 0x7fc0_0000;
 
 pub(super) fn cases() -> Vec<ShaderTest> {
-    vec![
+    let mut cases = vec![
         finite_results(),
         special_results(),
         tiny_exact_results(),
         conversions_and_side_effects(),
-        paired_output_effects(),
-    ]
+    ];
+    cases.extend(paired_output_effects());
+    cases
+}
+
+fn flush_subnormal(bits: u32) -> u32 {
+    if bits & 0x7fff_ffff < 0x0080_0000 {
+        bits & 0x8000_0000
+    } else {
+        bits
+    }
 }
 
 fn ordered_bits(bits: u32) -> u32 {
@@ -104,14 +113,12 @@ fn finite_results() -> ShaderTest {
         expected.extend_from_slice(&[
             sine,
             cosine,
-            if sine & 0x7fff_ffff < 0x0080_0000 {
-                sine & 0x8000_0000
-            } else {
-                sine
-            },
+            flush_subnormal(sine),
             cosine,
             sine,
             cosine,
+            flush_subnormal(sine),
+            flush_subnormal(cosine),
         ]);
     }
     assert_eq!(inputs.len(), 3072);
@@ -125,14 +132,17 @@ fn finite_results() -> ShaderTest {
             unsigned index = blockIdx.x * blockDim.x + threadIdx.x;
             if (index >= {count}u) return;
             float value = __uint_as_float(input[index]);
-            out[6u * index] = __float_as_uint(sinf(value));
-            out[6u * index + 1u] = __float_as_uint(cosf(value));
-            out[6u * index + 2u] = __float_as_uint(__sinf(value));
-            out[6u * index + 3u] = __float_as_uint(__cosf(value));
+            out[8u * index] = __float_as_uint(sinf(value));
+            out[8u * index + 1u] = __float_as_uint(cosf(value));
+            out[8u * index + 2u] = __float_as_uint(__sinf(value));
+            out[8u * index + 3u] = __float_as_uint(__cosf(value));
             float sine; float cosine;
             sincosf(value, &sine, &cosine);
-            out[6u * index + 4u] = __float_as_uint(sine);
-            out[6u * index + 5u] = __float_as_uint(cosine);
+            out[8u * index + 4u] = __float_as_uint(sine);
+            out[8u * index + 5u] = __float_as_uint(cosine);
+            __sincosf(value, &sine, &cosine);
+            out[8u * index + 6u] = __float_as_uint(sine);
+            out[8u * index + 7u] = __float_as_uint(cosine);
         }}"
     );
     let mut test = module_case(
@@ -184,19 +194,17 @@ fn special_results() -> ShaderTest {
     let mut expected = Vec::new();
     for &input in &inputs {
         if input & 0x7fff_ffff >= 0x7f80_0000 {
-            expected.extend_from_slice(&[CANONICAL_NAN; 6]);
+            expected.extend_from_slice(&[CANONICAL_NAN; 8]);
         } else {
             expected.extend_from_slice(&[
                 input,
                 1.0_f32.to_bits(),
-                if input & 0x7fff_ffff < 0x0080_0000 {
-                    input & 0x8000_0000
-                } else {
-                    input
-                },
+                flush_subnormal(input),
                 1.0_f32.to_bits(),
                 input,
                 1.0_f32.to_bits(),
+                flush_subnormal(input),
+                0x3f80_0000,
             ]);
         }
     }
@@ -208,14 +216,17 @@ fn special_results() -> ShaderTest {
             unsigned index = blockIdx.x * blockDim.x + threadIdx.x;
             if (index >= 26u) return;
             float value = __uint_as_float(input[index]);
-            out[6u * index] = __float_as_uint(sinf(value));
-            out[6u * index + 1u] = __float_as_uint(cosf(value));
-            out[6u * index + 2u] = __float_as_uint(__sinf(value));
-            out[6u * index + 3u] = __float_as_uint(__cosf(value));
+            out[8u * index] = __float_as_uint(sinf(value));
+            out[8u * index + 1u] = __float_as_uint(cosf(value));
+            out[8u * index + 2u] = __float_as_uint(__sinf(value));
+            out[8u * index + 3u] = __float_as_uint(__cosf(value));
             float sine; float cosine;
             sincosf(value, &sine, &cosine);
-            out[6u * index + 4u] = __float_as_uint(sine);
-            out[6u * index + 5u] = __float_as_uint(cosine);
+            out[8u * index + 4u] = __float_as_uint(sine);
+            out[8u * index + 5u] = __float_as_uint(cosine);
+            __sincosf(value, &sine, &cosine);
+            out[8u * index + 6u] = __float_as_uint(sine);
+            out[8u * index + 7u] = __float_as_uint(cosine);
         }",
         [32, 1, 1],
         &expected,
@@ -323,17 +334,9 @@ fn tiny_exact_results() -> ShaderTest {
             0x3f80_0000,
             1,
             2,
-            if bits & 0x7fff_ffff < 0x0080_0000 {
-                bits & 0x8000_0000
-            } else {
-                bits
-            },
+            flush_subnormal(bits),
             0x3f80_0000,
-            if bits & 0x7fff_ffff < 0x0080_0000 {
-                bits & 0x8000_0000
-            } else {
-                bits
-            },
+            flush_subnormal(bits),
             1,
             0x3f80_0000,
             2,
@@ -375,42 +378,40 @@ fn tiny_exact_results() -> ShaderTest {
     ], 1, [1, 1, 1])
 }
 
-fn paired_output_effects() -> ShaderTest {
-    const INPUT: [u32; 4] = [0, 0x8000_0000, 1, 0x8000_0001];
-    let mut expected = [SENTINEL; 40];
-    for (lane, bits) in INPUT.into_iter().enumerate() {
-        let base = 4 + lane * 8;
-        expected[base..base + 8].copy_from_slice(&[
-            bits,
-            0x3f80_0000,
-            bits,
-            0x3f80_0000,
-            ((base + 4) as f32).to_bits(),
-            0x3f80_0000,
-            0x3f80_0000,
-            0x3f80_0000,
-        ]);
+fn paired_output_effects() -> Vec<ShaderTest> {
+    let mut cases = Vec::new();
+    for input in [
+        [0u32, 0x8000_0000, 1, 0x8000_0001],
+        [0x007f_ffff, 0x807f_ffff, 0x0080_0000, 0x8080_0000],
+    ] {
+        let mut expected = [SENTINEL; 72];
+        for (lane, bits) in input.into_iter().enumerate() {
+            let base = 4 + lane * 16;
+            let fast = flush_subnormal(bits);
+            expected[base..base + 16].copy_from_slice(&[
+                bits,
+                0x3f80_0000,
+                bits,
+                0x3f80_0000,
+                ((base + 4) as f32).to_bits(),
+                0x3f80_0000,
+                0x3f80_0000,
+                0x3f80_0000,
+                fast,
+                0x3f80_0000,
+                fast,
+                0x3f80_0000,
+                ((base + 12) as f32).to_bits(),
+                0x3f80_0000,
+                0x3f80_0000,
+                0x3f80_0000,
+            ]);
+        }
+        cases.push(module_case("sincosf and fast sincosf preserve pointer effects signs and distinct subnormal policy",
+            include_str!("../../../../../naga/tests/in/cuda/sincosf.cu"),[4,1,1],&expected).module_buffers(vec![
+                ShaderBuffer::new(0,wgpu::BufferBindingType::Storage { read_only:true },&input),
+                ShaderBuffer::new(1,wgpu::BufferBindingType::Storage { read_only:false },&[SENTINEL;72]),
+            ],1,[1,1,1]));
     }
-    module_case(
-        "sincosf writes local and storage outputs with once-only input and pointer effects",
-        include_str!("../../../../../naga/tests/in/cuda/sincosf.cu"),
-        [4, 1, 1],
-        &expected,
-    )
-    .module_buffers(
-        vec![
-            ShaderBuffer::new(
-                0,
-                wgpu::BufferBindingType::Storage { read_only: true },
-                &INPUT,
-            ),
-            ShaderBuffer::new(
-                1,
-                wgpu::BufferBindingType::Storage { read_only: false },
-                &[SENTINEL; 40],
-            ),
-        ],
-        1,
-        [1, 1, 1],
-    )
+    cases
 }

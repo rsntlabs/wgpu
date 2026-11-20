@@ -5,6 +5,7 @@ const DIGITS: u32 = 12;
 const FRACTION_DIGITS: u32 = 11;
 const DIGIT_BITS: u32 = 16;
 const DIGIT_MASK: u32 = 0xffff;
+const SUBNORMAL_FLUSH_EXPRESSIONS: usize = 7;
 // The constants have 320 and 176 fractional bits, respectively.
 const TWO_OVER_PI: [u32; 20] = [
     53984, 16973, 28218, 46884, 50529, 57019, 25515, 65105, 36929, 15427, 38297, 56162, 56768,
@@ -20,6 +21,7 @@ impl Parser<'_> {
         arguments: Vec<CapturedArgument>,
         span: Span,
         order: parameter_calls::ArgumentEvaluationOrder,
+        flush_subnormals: bool,
     ) -> Result<ExpressionResult, ParseError> {
         if arguments.len() != 3 {
             return Err(ParseError {
@@ -31,8 +33,14 @@ impl Parser<'_> {
         self.prepare_parameter_bindings(span)?;
         let converts_input = arguments[0].ty().and_then(|ty| self.source_scalar(ty))
             != Some(SourceScalar::Scalar(Scalar::F32));
+        // Fast sincos shares the input bitcast and flushes the input and both results.
+        let expressions = if flush_subnormals {
+            7 + 3 * SUBNORMAL_FLUSH_EXPRESSIONS
+        } else {
+            8
+        };
         self.parameter_expansion_budget
-            .preflight_expressions(8 + usize::from(converts_input), span)?;
+            .preflight_expressions(expressions + usize::from(converts_input), span)?;
         self.parameter_expansion_budget.charge_nodes(4, span)?;
         self.parameter_expansion_budget
             .charge_slice::<(Statement, Span)>(4, span)?;
@@ -52,7 +60,10 @@ impl Parser<'_> {
                 input = Some(self.convert_scalar(value, Scalar::F32)?.handle);
             } else {
                 let target = self
-                    .candidate_type(functions::FunctionCandidate::SinCos, index)
+                    .candidate_type(
+                        functions::FunctionCandidate::SinCos { flush_subnormals },
+                        index,
+                    )
                     .ok_or_else(|| ParseError {
                         message: String::from("invalid sincosf output pointer type"),
                         span,
@@ -72,9 +83,15 @@ impl Parser<'_> {
             message: String::from("invalid sincosf argument count"),
             span,
         })?;
-        let sine = self.trigonometry(input, false, span)?;
-        let cosine = self.trigonometry(input, true, span)?;
-        for (output, value) in outputs.into_iter().zip([sine, cosine]) {
+        let results = if flush_subnormals {
+            self.fast_sincos_results(input, span)?
+        } else {
+            [
+                self.trigonometry(input, false, span)?,
+                self.trigonometry(input, true, span)?,
+            ]
+        };
+        for (output, value) in outputs.into_iter().zip(results) {
             let mut output = output.ok_or_else(|| ParseError {
                 message: String::from("invalid sincosf argument count"),
                 span,
@@ -103,14 +120,17 @@ impl Parser<'_> {
         cosine: bool,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
-        use BinaryOperator as Op;
-
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         let argument = arguments.into_iter().next().unwrap();
         let converts = self.source_scalar(&argument.ty) != Some(SourceScalar::Scalar(Scalar::F32));
-        // Two bitcasts, the mode, the call result, and seven optional flush expressions.
-        let expressions = usize::from(converts) + 4 + if cosine { 0 } else { 7 };
+        // Two bitcasts, the mode, the call result, and optional flush expressions.
+        let flush_expressions = if cosine {
+            0
+        } else {
+            SUBNORMAL_FLUSH_EXPRESSIONS
+        };
+        let expressions = usize::from(converts) + 4 + flush_expressions;
         self.parameter_expansion_budget
             .preflight_expressions(expressions, span)?;
         let argument = self.convert_scalar(argument.into(), Scalar::F32)?;
@@ -118,10 +138,7 @@ impl Parser<'_> {
         let result = if cosine {
             bits
         } else {
-            let exponent = self.trig_binary_literal(Op::And, bits, 0x7f80_0000, span)?;
-            let flush = self.trig_binary_literal(Op::Equal, exponent, 0, span)?;
-            let sign = self.trig_binary_literal(Op::And, bits, 0x8000_0000, span)?;
-            self.trig_select(flush, sign, bits, span)?
+            self.flush_trig_subnormal_bits(bits, span)?
         };
         let handle = self.bitcast_scalar(result, Scalar::F32, span)?;
         Ok(Value {
@@ -135,6 +152,37 @@ impl Parser<'_> {
         .into())
     }
 
+    fn fast_sincos_results(
+        &mut self,
+        input: Handle<Expression>,
+        span: Span,
+    ) -> Result<[Handle<Expression>; 2], ParseError> {
+        let function = self.trigonometry_function(span)?;
+        let input = self.bitcast_scalar(input, Scalar::U32, span)?;
+        let input = self.flush_trig_subnormal_bits(input, span)?;
+        let sine = self.call_trigonometry_bits(function, input, false, span)?;
+        let cosine = self.call_trigonometry_bits(function, input, true, span)?;
+        let sine = self.flush_trig_subnormal_bits(sine, span)?;
+        let cosine = self.flush_trig_subnormal_bits(cosine, span)?;
+        Ok([
+            self.bitcast_scalar(sine, Scalar::F32, span)?,
+            self.bitcast_scalar(cosine, Scalar::F32, span)?,
+        ])
+    }
+
+    fn flush_trig_subnormal_bits(
+        &mut self,
+        bits: Handle<Expression>,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
+        use BinaryOperator as Op;
+
+        let exponent = self.trig_binary_literal(Op::And, bits, 0x7f80_0000, span)?;
+        let flush = self.trig_binary_literal(Op::Equal, exponent, 0, span)?;
+        let sign = self.trig_binary_literal(Op::And, bits, 0x8000_0000, span)?;
+        self.trig_select(flush, sign, bits, span)
+    }
+
     fn trigonometry_bits(
         &mut self,
         value: Handle<Expression>,
@@ -143,6 +191,16 @@ impl Parser<'_> {
     ) -> Result<Handle<Expression>, ParseError> {
         let function = self.trigonometry_function(span)?;
         let bits = self.bitcast_scalar(value, Scalar::U32, span)?;
+        self.call_trigonometry_bits(function, bits, cosine, span)
+    }
+
+    fn call_trigonometry_bits(
+        &mut self,
+        function: Handle<Function>,
+        bits: Handle<Expression>,
+        cosine: bool,
+        span: Span,
+    ) -> Result<Handle<Expression>, ParseError> {
         let mode = self.trig_literal(u32::from(cosine), span)?;
         self.trig_call(function, &[bits, mode], span)
     }
