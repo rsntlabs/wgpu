@@ -28,6 +28,7 @@ __device__ void check_member_size(Outer *layout, unsigned index)
              || (sizeof decltype(RowIndex)(index) != 4u)
              || (sizeof((short())) != 2u) || (sizeof ::size_t() != 8u)
              || (sizeof(sizeof layout->grid) != 8u) || (sizeof(alignof(::size_t)) != 8u)
+             || (sizeof(FixedRow (*)[]) != 8u) || (alignof(short (*const)[2][3]) != 8u)
              || (sizeof(index[layout->grid]) != 12u)
              || (sizeof(layout->grid[layout->prefix < 1.0f]) != 12u)]) == 48u);
 

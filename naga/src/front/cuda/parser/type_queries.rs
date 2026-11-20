@@ -10,6 +10,7 @@ enum SizeofOperand {
 
 enum TypeQueryType {
     Pointer,
+    PointerToArray(QualifiedType),
     Object { ty: QualifiedType, reference: bool },
 }
 
@@ -434,14 +435,20 @@ impl Parser<'_> {
         depth: u32,
         target_span: Span,
     ) -> Result<u32, ParseError> {
-        let TypeQueryType::Object { ty, .. } = self.type_query_type_id(target_span)? else {
-            return Ok(8);
-        };
-        let ty = ty.ty;
-        if self.lexer.peek()?.0 == Token::Paren('[') {
-            self.record_offset_array_layout(name, ty, depth, target_span)
-        } else {
-            self.record_offset_layout_value(name, ty, target_span)
+        match self.type_query_type_id(target_span)? {
+            TypeQueryType::Pointer => Ok(8),
+            TypeQueryType::PointerToArray(ty) => {
+                // The pointee may have an omitted outer bound.
+                self.record_offset_array_layout("alignof", ty.ty, depth, target_span)?;
+                Ok(8)
+            }
+            TypeQueryType::Object { ty, .. } => {
+                if self.lexer.peek()?.0 == Token::Paren('[') {
+                    self.record_offset_array_layout(name, ty.ty, depth, target_span)
+                } else {
+                    self.record_offset_layout_value(name, ty.ty, target_span)
+                }
+            }
         }
     }
 
@@ -1212,6 +1219,10 @@ impl Parser<'_> {
 
         let value = match self.type_query_type_id(span)? {
             TypeQueryType::Pointer => 8,
+            TypeQueryType::PointerToArray(ty) => {
+                self.array_alias_declarator(ty, span)?;
+                8
+            }
             TypeQueryType::Object { ty, reference } => {
                 let ty = if reference {
                     ty.ty
@@ -1241,6 +1252,9 @@ impl Parser<'_> {
         let mut lookahead = self.lexer.clone();
         if self.scan_sizeof_cast_type(&mut lookahead)? {
             if lookahead.peek()?.0 != Token::Paren('(') {
+                return Ok(false);
+            }
+            if parenthesized && self.scan_array_pointer_declarator(&mut lookahead)? {
                 return Ok(false);
             }
             // In sizeof(type-id), a function declarator takes precedence over an expression.
@@ -1333,6 +1347,16 @@ impl Parser<'_> {
             Some(self.parse_type()?)
         };
 
+        let mut lookahead = self.lexer.clone();
+        if self.scan_array_pointer_declarator(&mut lookahead)? {
+            let ty = operand.ok_or_else(|| ParseError {
+                message: String::from("array elements require a complete type"),
+                span,
+            })?;
+            self.lexer = lookahead;
+            return Ok(TypeQueryType::PointerToArray(ty));
+        }
+
         let mut pointer_depth = usize::from(matches!(
             operand,
             Some(QualifiedType {
@@ -1374,6 +1398,27 @@ impl Parser<'_> {
                 reference,
             }
         })
+    }
+
+    fn scan_array_pointer_declarator(&mut self, lexer: &mut Lexer<'_>) -> Result<bool, ParseError> {
+        let (token, span) = lexer.peek()?;
+        if token != Token::Paren('(') {
+            return Ok(false);
+        }
+        let mut lookahead = lexer.clone();
+        lookahead.next()?;
+        if !lookahead.next_if(Token::Operation('*'))? {
+            return Ok(false);
+        }
+        self.parameter_expansion_budget.charge_work(3, span)?;
+        types::declaration_qualifiers_with_work(&mut lookahead, Qualifiers::NONE, true, |span| {
+            self.parameter_expansion_budget.charge_work(1, span)
+        })?;
+        if !lookahead.next_if(Token::Paren(')'))? || lookahead.peek()?.0 != Token::Paren('[') {
+            return Ok(false);
+        }
+        *lexer = lookahead;
+        Ok(true)
     }
 
     fn type_query_result(&mut self, value: u32, span: Span) -> Result<Value, ParseError> {

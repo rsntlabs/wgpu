@@ -555,6 +555,9 @@ or `sizeof int()`. The form `sizeof(int())` selects a function type,
 which these size queries reject.
 Pointer type queries, including `void*`, use the CUDA source ABI size and
 alignment of eight bytes. Reference type queries use the referent's layout.
+Grouped pointer-to-array type operands such as `int (*)[3]` also use the
+pointer layout. Both queries accept an omitted outer bound in the pointee,
+as in `sizeof(int (*)[])`.
 Array type operands can include dimensions such as `int[2][3]`. Every
 explicit bound must be a positive integral constant, even in a skipped
 query. Only `alignof` accepts an omitted outer bound in this syntax.
