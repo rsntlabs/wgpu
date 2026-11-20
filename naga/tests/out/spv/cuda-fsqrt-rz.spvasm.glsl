@@ -158,80 +158,165 @@ uint _168(uint _167)
     return ((_171 >> 1u) << 23u) | (((_179 > _177) ? (_177 + 1u) : _177) & 8388607u);
 }
 
+uint _267(uint _266)
+{
+    uint _276 = 0u;
+    uint _270 = 0u;
+    uint _274 = 0u;
+    uint _268 = 0u;
+    uint _278 = 0u;
+    uint _272 = 0u;
+    uvec2 _318 = uvec2(4294967295u);
+    uint _283 = _266 & 2147483647u;
+    if ((_283 == 0u) || (_266 == 2139095040u))
+    {
+        return _266;
+    }
+    if (((_266 & 2147483648u) != 0u) || (_283 > 2139095040u))
+    {
+        return 2143289344u;
+    }
+    uint _295 = _266 & 8388607u;
+    uint _296 = _283 >> 23u;
+    _268 = _295 | 8388608u;
+    _270 = _296 + 127u;
+    if (_296 == 0u)
+    {
+        uint _304 = (31u - uint(findMSB(_295))) - 8u;
+        _268 = _295 << _304;
+        _270 = 128u - _304;
+    }
+    uint _309 = _270 & 1u;
+    _272 = _268 >> (9u - _309);
+    _274 = _268 << (23u + _309);
+    _276 = 0u;
+    _278 = 0u;
+    uint _280 = 0u;
+    for (;;)
+    {
+        if (all(equal(uvec2(0u), _318)))
+        {
+            break;
+        }
+        _318 -= uvec2(uint(_318.y == 0u), 1u);
+        if (_280 >= 24u)
+        {
+            break;
+        }
+        uint _333 = _272;
+        uint _336 = _278;
+        uint _344 = (_336 << 2u) | (_333 >> 14u);
+        uint _346 = (_276 << 2u) | 1u;
+        bool _347 = _344 >= _346;
+        uint _350 = _276 << 1u;
+        _272 = ((_333 << 2u) | (_274 >> 30u)) & 65535u;
+        _274 = _274 << 2u;
+        _278 = _347 ? (_344 - _346) : _344;
+        _276 = _347 ? (_350 | 1u) : _350;
+        _280++;
+        continue;
+    }
+    uint _359 = (_278 > 0u) ? (_276 + 1u) : _276;
+    return (((_270 >> 1u) + (_359 >> 24u)) << 23u) | (_359 & 8388607u);
+}
+
 void main()
 {
-    float _316 = 0.0;
-    uint _310 = 0u;
-    uint _304 = 0u;
-    bool _297 = false;
-    int _291 = 0;
-    uint _314 = 0u;
-    uint _308 = 0u;
-    uint _302 = 0u;
-    uint _295 = 0u;
-    uint _289 = 0u;
-    uint _319 = 0u;
-    uint _312 = 0u;
-    uint _306 = 0u;
-    bool _300 = false;
-    uint _293 = 0u;
-    uint _325 = gl_LocalInvocationID.x + (gl_WorkGroupID.x * 32u);
-    if (_325 >= 4096u)
+    uint _433 = 0u;
+    uint _427 = 0u;
+    float _420 = 0.0;
+    uint _414 = 0u;
+    uint _408 = 0u;
+    bool _401 = false;
+    int _395 = 0;
+    uint _437 = 0u;
+    uint _431 = 0u;
+    int _425 = 0;
+    uint _418 = 0u;
+    uint _412 = 0u;
+    uint _406 = 0u;
+    uint _399 = 0u;
+    uint _393 = 0u;
+    uint _435 = 0u;
+    uint _429 = 0u;
+    uint _423 = 0u;
+    uint _416 = 0u;
+    uint _410 = 0u;
+    bool _404 = false;
+    uint _397 = 0u;
+    uint _443 = gl_LocalInvocationID.x + (gl_WorkGroupID.x * 32u);
+    if (_443 >= 4096u)
     {
         return;
     }
-    uint _330 = 4u + (_325 * 10u);
-    uint _333 = _9._m0[_325];
-    float _334 = uintBitsToFloat(_333);
-    _12._m0[_330] = floatBitsToUint(uintBitsToFloat(_17(floatBitsToUint(_334))));
-    _289 = _330 + 1u;
-    _12._m0[_289] = floatBitsToUint(_139(_334));
-    _291 = 0;
-    int _345 = _291;
-    _291 = _345 + 1;
-    _295 = _325 + uint(_345);
-    _293 = _330 + 2u;
-    _12._m0[_293] = floatBitsToUint(_139(uintBitsToFloat(_9._m0[_295])));
-    _297 = false;
+    uint _448 = 4u + (_443 * 14u);
+    uint _451 = _9._m0[_443];
+    float _452 = uintBitsToFloat(_451);
+    _12._m0[_448] = floatBitsToUint(uintBitsToFloat(_17(floatBitsToUint(_452))));
+    _393 = _448 + 1u;
+    _12._m0[_393] = floatBitsToUint(_139(_452));
+    _395 = 0;
+    int _463 = _395;
+    _395 = _463 + 1;
+    _399 = _443 + uint(_463);
+    _397 = _448 + 2u;
+    _12._m0[_397] = floatBitsToUint(_139(uintBitsToFloat(_9._m0[_399])));
+    _401 = false;
     if (false)
     {
-        int _360 = _291;
-        _291 = _360 + 1;
-        _297 = _161(floatBitsToUint(uintBitsToFloat(_17(floatBitsToUint(float(_360)))))) != 0u;
+        int _478 = _395;
+        _395 = _478 + 1;
+        _401 = _161(floatBitsToUint(uintBitsToFloat(_17(floatBitsToUint(float(_478)))))) != 0u;
     }
-    _300 = true;
+    _404 = true;
     if (!true)
     {
-        int _371 = _291;
-        _291 = _371 + 1;
-        _300 = _161(floatBitsToUint(uintBitsToFloat(_17(floatBitsToUint(float(_371)))))) != 0u;
+        int _489 = _395;
+        _395 = _489 + 1;
+        _404 = _161(floatBitsToUint(uintBitsToFloat(_17(floatBitsToUint(float(_489)))))) != 0u;
     }
-    _302 = _330 + 3u;
-    _12._m0[_302] = uint(_291);
-    float _385 = -0.0;
-    _304 = _330 + 4u;
-    _12._m0[_304] = floatBitsToUint(uintBitsToFloat(_17(floatBitsToUint(_385))));
-    _308 = 2139095040u;
-    _306 = _330 + 5u;
-    _12._m0[_306] = floatBitsToUint(uintBitsToFloat(_17(floatBitsToUint(uintBitsToFloat(_308)))));
-    float _402 = float(4u);
-    _310 = _330 + 6u;
-    _12._m0[_310] = floatBitsToUint(_139(_402));
-    _312 = _330 + 7u;
-    _12._m0[_312] = uint(_147(true));
+    _406 = _448 + 3u;
+    _12._m0[_406] = uint(_395);
+    float _503 = -0.0;
+    _408 = _448 + 4u;
+    _12._m0[_408] = floatBitsToUint(uintBitsToFloat(_17(floatBitsToUint(_503))));
+    _412 = 2139095040u;
+    _410 = _448 + 5u;
+    _12._m0[_410] = floatBitsToUint(uintBitsToFloat(_17(floatBitsToUint(uintBitsToFloat(_412)))));
+    float _520 = float(4u);
+    _414 = _448 + 6u;
+    _12._m0[_414] = floatBitsToUint(_139(_520));
+    _416 = _448 + 7u;
+    _12._m0[_416] = uint(_147(true));
     if (true)
     {
-        _316 = uintBitsToFloat(_17(floatBitsToUint(_334)));
+        _420 = uintBitsToFloat(_17(floatBitsToUint(_452)));
     }
     else
     {
-        int _419 = _291;
-        _291 = _419 + 1;
-        _316 = uintBitsToFloat(_17(floatBitsToUint(float(_419))));
+        int _537 = _395;
+        _395 = _537 + 1;
+        _420 = uintBitsToFloat(_17(floatBitsToUint(float(_537))));
     }
-    _314 = _330 + 8u;
-    _12._m0[_314] = floatBitsToUint(_316);
-    _319 = _330 + 9u;
-    _12._m0[_319] = floatBitsToUint(uintBitsToFloat(_168(floatBitsToUint(_334))));
+    _418 = _448 + 8u;
+    _12._m0[_418] = floatBitsToUint(_420);
+    _423 = _448 + 9u;
+    _12._m0[_423] = floatBitsToUint(uintBitsToFloat(_168(floatBitsToUint(_452))));
+    _425 = 0;
+    int _555 = _425;
+    _425 = _555 + 1;
+    _429 = _443 + uint(_555);
+    _427 = _448 + 10u;
+    _12._m0[_427] = floatBitsToUint(uintBitsToFloat(_17(floatBitsToUint(uintBitsToFloat(_9._m0[_429])))));
+    _431 = _448 + 11u;
+    _12._m0[_431] = uint(_425);
+    _425 = 0;
+    int _575 = _425;
+    _425 = _575 + 1;
+    _435 = _443 + uint(_575);
+    _433 = _448 + 12u;
+    _12._m0[_433] = floatBitsToUint(uintBitsToFloat(_267(floatBitsToUint(uintBitsToFloat(_9._m0[_435])))));
+    _437 = _448 + 13u;
+    _12._m0[_437] = uint(_425);
 }
 

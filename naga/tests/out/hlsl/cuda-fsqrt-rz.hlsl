@@ -74,14 +74,14 @@ float truncated_sqrt(float value)
 
 int _fsqrt_rz(bool value_1)
 {
-    int local_14 = (int)0;
+    int local_20 = (int)0;
 
     if (value_1) {
-        local_14 = int(7);
+        local_20 = int(7);
     } else {
-        local_14 = int(9);
+        local_20 = int(9);
     }
-    int _e6 = local_14;
+    int _e6 = local_20;
     return _e6;
 }
 
@@ -157,6 +157,73 @@ uint _naga_sqrtf(uint input_bits_2)
     return (((_e33 >> 1u) << 23u) | (((_e75 > _e74) ? (_e74 + 1u) : _e74) & 8388607u));
 }
 
+uint _naga_sqrtf_ru(uint input_bits_3)
+{
+    uint significand_2 = (uint)0;
+    uint adjusted_exponent_2 = (uint)0;
+    uint upper_word_2 = (uint)0;
+    uint lower_word_2 = (uint)0;
+    uint root_2 = (uint)0;
+    uint remainder_2 = (uint)0;
+    uint iteration_2 = (uint)0;
+
+    uint _e5 = (input_bits_3 & 2147483647u);
+    if (((_e5 == 0u) || (input_bits_3 == 2139095040u))) {
+        return input_bits_3;
+    }
+    if ((((input_bits_3 & 2147483648u) != 0u) || (_e5 > 2139095040u))) {
+        return 2143289344u;
+    }
+    uint _e19 = (input_bits_3 & 8388607u);
+    uint _e20 = (_e5 >> 23u);
+    significand_2 = (_e19 | 8388608u);
+    adjusted_exponent_2 = (_e20 + 127u);
+    if ((_e20 == 0u)) {
+        uint _e28 = ((31u - firstbithigh(_e19)) - 8u);
+        significand_2 = (_e19 << _e28);
+        adjusted_exponent_2 = (128u - _e28);
+    }
+    uint _e32 = significand_2;
+    uint _e33 = adjusted_exponent_2;
+    uint _e34 = (_e33 & 1u);
+    upper_word_2 = (_e32 >> (9u - _e34));
+    lower_word_2 = (_e32 << (23u + _e34));
+    root_2 = 0u;
+    remainder_2 = 0u;
+    iteration_2 = 0u;
+    uint2 loop_bound_2 = uint2(4294967295u, 4294967295u);
+    bool loop_init_2 = true;
+    while(true) {
+        if (all(loop_bound_2 == uint2(0u, 0u))) { break; }
+        loop_bound_2 -= uint2(loop_bound_2.y == 0u, 1u);
+        if (!loop_init_2) {
+            uint _e72 = iteration_2;
+            iteration_2 = (_e72 + 1u);
+        }
+        loop_init_2 = false;
+        uint _e50 = iteration_2;
+        if ((_e50 >= 24u)) {
+            break;
+        }
+        uint _e52 = upper_word_2;
+        uint _e53 = lower_word_2;
+        uint _e54 = root_2;
+        uint _e55 = remainder_2;
+        uint _e63 = ((_e55 << 2u) | (_e52 >> 14u));
+        uint _e65 = ((_e54 << 2u) | 1u);
+        bool _e66 = (_e63 >= _e65);
+        uint _e69 = (_e54 << 1u);
+        upper_word_2 = (((_e52 << 2u) | (_e53 >> 30u)) & 65535u);
+        lower_word_2 = (_e53 << 2u);
+        remainder_2 = (_e66 ? (_e63 - _e65) : _e63);
+        root_2 = (_e66 ? (_e69 | 1u) : _e69);
+    }
+    uint _e74 = root_2;
+    uint _e75 = remainder_2;
+    uint _e78 = ((_e75 > 0u) ? (_e74 + 1u) : _e74);
+    return ((((_e33 >> 1u) + (_e78 >> 24u)) << 23u) | (_e78 & 8388607u));
+}
+
 [numthreads(32, 1, 1)]
 void sqrt_round_zero(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_GroupID)
 {
@@ -175,12 +242,19 @@ void sqrt_round_zero(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_Gro
     uint local_11 = (uint)0;
     float local_12 = (float)0;
     uint local_13 = (uint)0;
+    int directed_cursor = (int)0;
+    uint local_14 = (uint)0;
+    uint local_15 = (uint)0;
+    uint local_16 = (uint)0;
+    uint local_17 = (uint)0;
+    uint local_18 = (uint)0;
+    uint local_19 = (uint)0;
 
     uint index = (threadIdx.x + (blockIdx.x * 32u));
     if ((index >= 4096u)) {
         return;
     }
-    uint base = (4u + (index * 10u));
+    uint base = (4u + (index * 14u));
     uint _e15 = asuint(input.Load(index*4));
     float value_2 = asfloat(_e15);
     const uint _e18 = _naga_sqrtf_rz(asuint(value_2));
@@ -255,4 +329,32 @@ void sqrt_round_zero(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_Gro
     local_13 = uint((base + 9u));
     uint _e161 = local_13;
     output.Store(_e161*4, asuint(asuint(asfloat(_e154))));
+    directed_cursor = int(0);
+    int _e165 = directed_cursor;
+    directed_cursor = asint(asuint(_e165) + asuint(int(1)));
+    local_15 = uint((index + uint(_e165)));
+    uint _e172 = local_15;
+    uint _e174 = asuint(input.Load(_e172*4));
+    const uint _e177 = _naga_sqrtf_rz(asuint(asfloat(_e174)));
+    local_14 = uint((base + 10u));
+    uint _e184 = local_14;
+    output.Store(_e184*4, asuint(asuint(asfloat(_e177))));
+    int _e186 = directed_cursor;
+    local_16 = uint((base + 11u));
+    uint _e192 = local_16;
+    output.Store(_e192*4, asuint(uint(_e186)));
+    directed_cursor = int(0);
+    int _e195 = directed_cursor;
+    directed_cursor = asint(asuint(_e195) + asuint(int(1)));
+    local_18 = uint((index + uint(_e195)));
+    uint _e202 = local_18;
+    uint _e204 = asuint(input.Load(_e202*4));
+    const uint _e207 = _naga_sqrtf_ru(asuint(asfloat(_e204)));
+    local_17 = uint((base + 12u));
+    uint _e214 = local_17;
+    output.Store(_e214*4, asuint(asuint(asfloat(_e207))));
+    int _e216 = directed_cursor;
+    local_19 = uint((base + 13u));
+    uint _e222 = local_19;
+    output.Store(_e222*4, asuint(uint(_e216)));
 }

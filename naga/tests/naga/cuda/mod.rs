@@ -509,3 +509,6 @@ mod frcp_rd;
 
 mod fdiv_ru;
 mod frcp_ru;
+
+mod fsqrt_rd;
+mod fsqrt_ru;

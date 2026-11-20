@@ -4,6 +4,7 @@ use super::*;
 enum SqrtRounding {
     NearestEven,
     TowardZero,
+    TowardPositive,
 }
 
 impl Parser<'_> {
@@ -23,6 +24,14 @@ impl Parser<'_> {
         self.lower_sqrt_with_rounding(arguments, SqrtRounding::TowardZero, span)
     }
 
+    pub(super) fn lower_sqrt_ru_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lower_sqrt_with_rounding(arguments, SqrtRounding::TowardPositive, span)
+    }
+
     fn lower_sqrt_with_rounding(
         &mut self,
         arguments: Vec<Value>,
@@ -36,6 +45,9 @@ impl Parser<'_> {
         let handle = match rounding {
             SqrtRounding::NearestEven => self.call_sqrtf(argument.handle, span)?,
             SqrtRounding::TowardZero => self.call_sqrtf_rz(argument.handle, span)?,
+            SqrtRounding::TowardPositive => {
+                self.call_sqrtf_with_rounding(argument.handle, rounding, span)?
+            }
         };
         Ok(Value {
             category: ValueCategory::Prvalue,
@@ -76,6 +88,7 @@ impl Parser<'_> {
         let result = match rounding {
             SqrtRounding::NearestEven => self.call_sqrtf_bits(bits, rounding, span)?,
             SqrtRounding::TowardZero => self.call_sqrtf_rz_bits(bits, span)?,
+            SqrtRounding::TowardPositive => self.call_sqrtf_bits(bits, rounding, span)?,
         };
         self.bitcast_scalar(result, Scalar::F32, span)
     }
@@ -104,7 +117,9 @@ impl Parser<'_> {
             .charge_slice::<(Statement, Span)>(1, span)?;
         let function = match rounding {
             SqrtRounding::NearestEven => self.sqrtf_function(span)?,
-            SqrtRounding::TowardZero => self.cached_sqrtf_function(rounding, span)?,
+            SqrtRounding::TowardZero | SqrtRounding::TowardPositive => {
+                self.cached_sqrtf_function(rounding, span)?
+            }
         };
         self.function
             .ir
@@ -135,6 +150,7 @@ impl Parser<'_> {
         let cached = match rounding {
             SqrtRounding::NearestEven => self.sqrtf_function,
             SqrtRounding::TowardZero => self.sqrtf_rz_function,
+            SqrtRounding::TowardPositive => self.sqrtf_ru_function,
         };
         if let Some(function) = cached {
             return Ok(function);
@@ -155,6 +171,7 @@ impl Parser<'_> {
         match rounding {
             SqrtRounding::NearestEven => self.sqrtf_function = Some(function),
             SqrtRounding::TowardZero => self.sqrtf_rz_function = Some(function),
+            SqrtRounding::TowardPositive => self.sqrtf_ru_function = Some(function),
         }
         Ok(function)
     }
@@ -169,6 +186,7 @@ impl Parser<'_> {
         let name = match rounding {
             SqrtRounding::NearestEven => "_naga_sqrtf",
             SqrtRounding::TowardZero => "_naga_sqrtf_rz",
+            SqrtRounding::TowardPositive => "_naga_sqrtf_ru",
         };
         self.parameter_expansion_budget.charge_nodes(1, span)?;
         self.parameter_expansion_budget
@@ -414,11 +432,16 @@ impl Parser<'_> {
 
         let floor_root = self.sqrtf_load(root, span)?;
         let rounded_root = match rounding {
-            SqrtRounding::NearestEven => {
+            SqrtRounding::NearestEven | SqrtRounding::TowardPositive => {
                 let final_remainder = self.sqrtf_load(remainder, span)?;
-                // Integer radicands cannot tie; the nearest root rounds up iff remainder > root.
+                // Integer radicands cannot tie. Upward rounding increments any inexact root.
+                let threshold = if matches!(rounding, SqrtRounding::TowardPositive) {
+                    zero
+                } else {
+                    floor_root
+                };
                 let round_up =
-                    self.sqrtf_binary(BinaryOperator::Greater, final_remainder, floor_root, span)?;
+                    self.sqrtf_binary(BinaryOperator::Greater, final_remainder, threshold, span)?;
                 let incremented_root =
                     self.sqrtf_binary(BinaryOperator::Add, floor_root, one, span)?;
                 self.append(
@@ -434,6 +457,13 @@ impl Parser<'_> {
         };
         let result_exponent =
             self.sqrtf_binary(BinaryOperator::ShiftRight, normalized_exponent, one, span)?;
+        let result_exponent = if matches!(rounding, SqrtRounding::TowardPositive) {
+            let width = self.sqrtf_literal(24, span)?;
+            let carry = self.sqrtf_binary(BinaryOperator::ShiftRight, rounded_root, width, span)?;
+            self.sqrtf_binary(BinaryOperator::Add, result_exponent, carry, span)?
+        } else {
+            result_exponent
+        };
         let fraction_bits =
             self.sqrtf_binary(BinaryOperator::And, rounded_root, fraction_mask, span)?;
         let exponent_bits = self.sqrtf_binary(
@@ -556,7 +586,11 @@ mod tests {
 
     #[test]
     fn sqrtf_local_and_first_cache_build_preflight_exhausted_budgets() {
-        for rounding in [SqrtRounding::NearestEven, SqrtRounding::TowardZero] {
+        for rounding in [
+            SqrtRounding::NearestEven,
+            SqrtRounding::TowardZero,
+            SqrtRounding::TowardPositive,
+        ] {
             for build_helper in [false, true] {
                 for exhaust_bytes in [false, true] {
                     let span = Span::new(0, 1);
@@ -585,6 +619,7 @@ mod tests {
                     assert!(parser.module.functions.is_empty());
                     assert_eq!(parser.sqrtf_function, None);
                     assert_eq!(parser.sqrtf_rz_function, None);
+                    assert_eq!(parser.sqrtf_ru_function, None);
                 }
             }
         }

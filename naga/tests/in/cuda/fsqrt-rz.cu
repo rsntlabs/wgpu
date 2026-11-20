@@ -3,7 +3,7 @@ __device__ int __fsqrt_rz(bool value) { return value ? 7 : 9; }
 __global__ void sqrt_round_zero(const unsigned *input, unsigned *output) {
     unsigned index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= 4096u) return;
-    unsigned base = 4u + index * 10u;
+    unsigned base = 4u + index * 14u;
     float value = __uint_as_float(input[index]);
     output[base] = __float_as_uint(__fsqrt_rz(value));
     output[base + 1u] = __float_as_uint(truncated_sqrt(value));
@@ -18,4 +18,10 @@ __global__ void sqrt_round_zero(const unsigned *input, unsigned *output) {
     output[base + 7u] = unsigned(__fsqrt_rz(true));
     output[base + 8u] = __float_as_uint(true ? __fsqrt_rz(value) : __fsqrt_rz(float(cursor++)));
     output[base + 9u] = __float_as_uint(__fsqrt_rn(value));
+    int directed_cursor = 0;
+    output[base + 10u] = __float_as_uint(__fsqrt_rd(__uint_as_float(input[index + unsigned(directed_cursor++)])));
+    output[base + 11u] = unsigned(directed_cursor);
+    directed_cursor = 0;
+    output[base + 12u] = __float_as_uint(__fsqrt_ru(__uint_as_float(input[index + unsigned(directed_cursor++)])));
+    output[base + 13u] = unsigned(directed_cursor);
 }

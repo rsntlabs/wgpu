@@ -24,6 +24,18 @@ pub(super) fn cases() -> Vec<ShaderTest> {
                 host
             }
         );
+        let root = f64::from(f32::from_bits(toward_zero));
+        let upward = if root * root < f64::from(f32::from_bits(bits)) {
+            toward_zero + 1
+        } else {
+            toward_zero
+        };
+        if bits == 0x407f_ffff {
+            assert_eq!(upward, 0x4000_0000);
+        }
+        if bits == 0x7f7f_ffff {
+            assert_eq!(upward, 0x5f80_0000);
+        }
         input.push(bits);
         expected.extend_from_slice(&[
             toward_zero,
@@ -36,13 +48,17 @@ pub(super) fn cases() -> Vec<ShaderTest> {
             7,
             toward_zero,
             nearest,
+            toward_zero,
+            1,
+            upward,
+            1,
         ]);
     }
     assert_eq!(input.len(), 4096);
     expected.extend_from_slice(&[SENTINEL; 4]);
     let initial = vec![SENTINEL; expected.len()];
     vec![module_case(
-        "__fsqrt_rz exact squared-midpoint references preserve sqrt classes rounding and one argument snapshots",
+        "directed sqrt exact squared-midpoint references preserve sqrt classes rounding and one argument snapshots",
         include_str!("../../../../../naga/tests/in/cuda/fsqrt-rz.cu"), [32,1,1], &expected,
     ).module_buffers(vec![
         ShaderBuffer::new(0,wgpu::BufferBindingType::Storage { read_only:true },&input),

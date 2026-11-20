@@ -1259,11 +1259,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__fmul_rn",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
-    declarations.insert(
-        "__fsqrt_rz",
-        GlobalDeclaration::Functions(Default::default()),
-    );
     for &name in &[
+        "__fsqrt_rz",
+        "__fsqrt_rd",
+        "__fsqrt_ru",
         "__fdiv_rz",
         "__fdiv_rn",
         "__frcp_rn",
@@ -1363,6 +1362,7 @@ pub(super) enum FunctionCandidate {
     },
     Sqrt,
     SqrtRoundZero,
+    SqrtRoundUp,
     FloatRemainder(RemainderMode),
     CopySign,
     NextAfter,
@@ -1990,6 +1990,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::FloatClassification(_)
                         | FunctionCandidate::FloatExponent(_)
                         | FunctionCandidate::SqrtRoundZero
+                        | FunctionCandidate::SqrtRoundUp
                         | FunctionCandidate::Sqrt
                         | FunctionCandidate::FloatRemainder(_)
                         | FunctionCandidate::CopySign
@@ -2300,6 +2301,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::IntegerToFloat { .. }
             | FunctionCandidate::SqrtRoundZero
+            | FunctionCandidate::SqrtRoundUp
             | FunctionCandidate::Sqrt
             | FunctionCandidate::FloatRemainder(_)
             | FunctionCandidate::CopySign
@@ -2714,6 +2716,9 @@ impl<'a> Parser<'a> {
         }
         if let FunctionCandidate::FloatMath(operation) = candidate {
             return self.lower_float_math_call(operation, arguments, span);
+        }
+        if candidate == FunctionCandidate::SqrtRoundUp {
+            return self.lower_sqrt_ru_call(arguments, span);
         }
         if candidate == FunctionCandidate::SqrtRoundZero {
             return self.lower_sqrt_rz_call(arguments, span);
@@ -3350,7 +3355,7 @@ impl<'a> Parser<'a> {
                     .map(|&(_, operation)| FunctionCandidate::FloatClassification(operation)),
             )
             .chain(
-                (builtin_visible && name == "__fsqrt_rz")
+                (builtin_visible && matches!(name, "__fsqrt_rz" | "__fsqrt_rd"))
                     .then_some(FunctionCandidate::SqrtRoundZero),
             )
             .chain(
@@ -3362,6 +3367,7 @@ impl<'a> Parser<'a> {
                 (true, "remainderf") => Some(FunctionCandidate::FloatRemainder(
                     RemainderMode::NearestEven,
                 )),
+                (true, "__fsqrt_ru") => Some(FunctionCandidate::SqrtRoundUp),
                 (true, "__fdiv_rd") => Some(FunctionCandidate::DivideRoundDown),
                 (true, "__fdiv_ru") => Some(FunctionCandidate::DivideRoundUp),
                 (true, "__frcp_rd") => Some(FunctionCandidate::ReciprocalRoundDown),
@@ -3604,6 +3610,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FloatToInteger { .. }
             | FunctionCandidate::IntegerToFloat { .. }
             | FunctionCandidate::SqrtRoundZero
+            | FunctionCandidate::SqrtRoundUp
             | FunctionCandidate::Sqrt
             | FunctionCandidate::ReciprocalRoundNearest
             | FunctionCandidate::ReciprocalRoundDown
@@ -3665,6 +3672,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FloatExponent(_)
             | FunctionCandidate::FloatToInteger { .. }
             | FunctionCandidate::SqrtRoundZero
+            | FunctionCandidate::SqrtRoundUp
             | FunctionCandidate::Sqrt
             | FunctionCandidate::FloatRemainder(_)
             | FunctionCandidate::CopySign
