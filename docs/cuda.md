@@ -584,6 +584,8 @@ pointer layout. Both queries accept an omitted outer bound in the array,
 as in `sizeof(int (*)[])`.
 An array of pointers to arrays, such as `int (*[2])[3]`, uses the outer
 shape to compute the layout and validates the pointee shape independently.
+A reference to either kind of pointer array, such as `int (*(&)[2])[3]`
+or `int (*(&)[2])(int)`, uses the referred array's layout.
 References to those pointers, such as `int (*&)[3]` and `int (*&&)[3]`,
 have the same layout for both queries.
 Grouped array references such as `int (&)[3]` and `int (&&)[3]` follow the

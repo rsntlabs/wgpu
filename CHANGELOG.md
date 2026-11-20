@@ -262,6 +262,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support arrays of function pointers in CUDA layout queries.
 - Support arrays of pointers to arrays in CUDA layout queries.
 - Support pointers and references to arrays of pointers in CUDA layout queries.
+- Support references to arrays of array or function pointers in CUDA layout queries.
 - Support array type dimensions in CUDA `offsetof` layout queries.
 - Support named member paths in CUDA `offsetof` size queries.
 - Support unevaluated array and pointer subscripts in CUDA `offsetof` size queries.

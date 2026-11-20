@@ -5378,3 +5378,73 @@ fn cuda_layout_queries_grouped_pointer_array_elements_reject_invalid_refs_and_bo
         }
     }
 }
+
+#[test]
+fn cuda_layout_queries_references_to_arrays_of_array_and_function_pointers_preserve_array_size() {
+    for ty in [
+        "int(*(&)[2])[3]",
+        "int(*(&&)[2])[3]",
+        "int(*const(&)[2])[3]",
+        "Row(*(&)[2])[3]",
+        "int*(*(&)[2])[]",
+        "int(*(&)[2])(int)",
+        "void(*(&&)[2])(...) noexcept",
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; using Row = int[3];
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof({ty}); output[1] = alignof({ty});
+                output[2] = __builtin_offsetof(Offsets, bytes[sizeof({ty})]);
+            }}"
+            ),
+            &[16, 8, 64],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = alignof(int(*(&)[])[3]);
+            output[1] = __builtin_offsetof(Offsets, bytes[alignof(int(*(&&)[])(int))]);
+            output[2] = sizeof(int(*)(int(*(&)[])[3]));
+        }",
+        &[8, 32, 8],
+    );
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output, int *pointer) {
+            output[0] = sizeof(int(*(pointer)));
+            output[1] = __builtin_offsetof(Offsets, bytes[sizeof(int(*(pointer)))]);
+        }",
+        &[4, 16],
+    );
+}
+
+#[test]
+fn cuda_layout_queries_references_to_pointer_arrays_validate_all_declarator_layers() {
+    for ty in [
+        "int(*(&)[0])[3]",
+        "int(*(&)[2])[0]",
+        "int(*(&)[runtime])[3]",
+        "int(*(&const)[2])[3]",
+        "int(*(&& &)[2])[3]",
+        "int(*(&)[])[3]",
+        "int(*(&)[2])(Missing)",
+        "int(*(&)[2])(void, int)",
+        "int(*(&)[2])[3",
+        "int(*(&[2]))[3]",
+        "int(*(&)[2]])[3]",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof({ty})");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
+    }
+}

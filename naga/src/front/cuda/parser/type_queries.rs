@@ -1705,6 +1705,16 @@ impl Parser<'_> {
             Token::Operation('*') => {
                 budget.charge_work(2, span)?;
                 Self::scan_type_query_pointer_chain(&mut lookahead, budget, 0)?;
+                if lookahead.next_if(Token::Paren('('))? {
+                    let (token, span) = lookahead.next()?;
+                    if !matches!(token, Token::Operation('&') | Token::LogicalOperation('&'))
+                        || !lookahead.next_if(Token::Paren(')'))?
+                        || lookahead.peek()?.0 != Token::Paren('[')
+                    {
+                        return Ok(None);
+                    }
+                    budget.charge_work(3, span)?;
+                }
                 let (token, reference_span) = lookahead.peek()?;
                 if token == Token::Paren('[') {
                     *lexer = lookahead;
