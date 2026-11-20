@@ -449,11 +449,7 @@ impl Parser<'_> {
                 self.record_offset_array_layout("alignof", ty.ty, depth, target_span)?;
                 Ok(8)
             }
-            TypeQueryType::ArrayOfPointers => {
-                self.type_query_array_layout(name, 8, 8, 0, |parser| {
-                    parser.record_offset_array_bound(depth)
-                })
-            }
+            TypeQueryType::ArrayOfPointers => self.record_offset_pointer_array_layout(name, depth),
             TypeQueryType::Object(ty) => {
                 if self.lexer.peek()?.0 == Token::Paren('[') {
                     self.record_offset_array_layout(name, ty.ty, depth, target_span)
@@ -528,6 +524,16 @@ impl Parser<'_> {
                 span,
             })?;
         Ok((count, span))
+    }
+
+    fn record_offset_pointer_array_layout(
+        &mut self,
+        name: &str,
+        depth: u32,
+    ) -> Result<u32, ParseError> {
+        self.type_query_array_layout(name, 8, 8, 0, |parser| {
+            parser.record_offset_array_bound(depth)
+        })
     }
 
     fn type_query_array_size_limit(span: Span) -> ParseError {
@@ -1383,7 +1389,7 @@ impl Parser<'_> {
                 {
                     return self.fail("function types cannot return arrays");
                 }
-                self.type_query_function_parameters()?;
+                self.type_query_function_parameters(depth)?;
                 self.type_query_function_noexcept(depth)?;
                 return Ok(TypeQueryType::Pointer);
             }
@@ -1451,7 +1457,7 @@ impl Parser<'_> {
         )
     }
 
-    fn type_query_function_parameters(&mut self) -> Result<(), ParseError> {
+    fn type_query_function_parameters(&mut self, depth: u32) -> Result<(), ParseError> {
         let open = self.lexer.expect_span(Token::Paren('('))?;
         self.parameter_expansion_budget.charge_work(2, open)?;
         if self.lexer.next_if(Token::Paren(')'))? {
@@ -1463,23 +1469,40 @@ impl Parser<'_> {
             return Ok(());
         }
         loop {
-            let (token, span) = self.lexer.peek()?;
+            let (token, parameter_span) = self.lexer.peek()?;
             if token == Token::Ellipsis {
-                self.parameter_expansion_budget.charge_work(2, span)?;
+                self.parameter_expansion_budget
+                    .charge_work(2, parameter_span)?;
                 self.lexer.next()?;
                 self.lexer.expect_span(Token::Paren(')'))?;
                 return Ok(());
             }
-            self.parameter_expansion_budget.charge_work(1, span)?;
+            self.parameter_expansion_budget
+                .charge_work(1, parameter_span)?;
             let operand = self.type_query_base()?;
             let pointer_depth = self.type_query_pointer_depth(operand.as_ref())?;
             if operand.is_none() && pointer_depth == 0 {
                 return self.fail("void must be the only function parameter");
             }
             let (token, span) = self.lexer.peek()?;
-            if matches!(token, Token::Operation('&') | Token::LogicalOperation('&')) {
+            let reference = matches!(token, Token::Operation('&') | Token::LogicalOperation('&'));
+            if reference {
                 self.parameter_expansion_budget.charge_work(1, span)?;
                 self.lexer.next()?;
+            }
+            if self.lexer.peek()?.0 == Token::Paren('[') {
+                if reference {
+                    return self.fail("direct arrays of references are unsupported");
+                }
+                if depth >= 64 {
+                    return self.fail("CUDA expression nesting limit exceeded");
+                }
+                // Validate the type before array-to-pointer parameter adjustment.
+                if pointer_depth != 0 {
+                    self.record_offset_pointer_array_layout("alignof", depth + 1)?;
+                } else if let Some(ty) = operand {
+                    self.record_offset_array_layout("alignof", ty.ty, depth + 1, parameter_span)?;
+                }
             }
             if self.lexer.next_if(Token::Paren(')'))? {
                 return Ok(());

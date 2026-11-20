@@ -253,6 +253,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support function pointers with simple signatures in CUDA `sizeof` and `alignof` queries.
 - Support `noexcept` function pointer types in CUDA `sizeof` and `alignof` queries.
 - Support variadic function pointer types in CUDA `sizeof` and `alignof` queries.
+- Support direct array parameters in CUDA function pointer layout queries.
 - Support array type dimensions in CUDA `offsetof` layout queries.
 - Support named member paths in CUDA `offsetof` size queries.
 - Support unevaluated array and pointer subscripts in CUDA `offsetof` size queries.

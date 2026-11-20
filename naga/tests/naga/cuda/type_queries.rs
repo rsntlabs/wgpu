@@ -4785,3 +4785,68 @@ fn cuda_layout_queries_variadic_function_pointers_reject_malformed_parameter_lis
         }
     }
 }
+
+#[test]
+fn cuda_layout_queries_function_pointer_array_parameters_adjust_once_without_runtime_layout() {
+    for signature in [
+        "(int[3])",
+        "(const int[][3])",
+        "(Row[2])",
+        "(void*[2])",
+        "(Pointer[2])",
+        "(int[Bound])",
+        "(int[sizeof(int(*)(int[2]))])",
+        "(int[][3], ...) noexcept(true)",
+        "(int[2][3], unsigned&) noexcept(false)",
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; using Row = int[3]; using Pointer = int*;
+            constexpr unsigned Bound = 3u;
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof(int(*){signature});
+                output[1] = __builtin_offsetof(Offsets, bytes[alignof(int(*){signature})]);
+            }}"
+            ),
+            &[8, 32],
+        );
+    }
+}
+
+#[test]
+fn cuda_layout_queries_function_pointer_array_parameters_validate_declared_element_shapes() {
+    for parameter in [
+        "int[0]",
+        "int[-1]",
+        "int[1.0f]",
+        "int[runtime]",
+        "int[2][]",
+        "void[2]",
+        "int&[2]",
+        "Unknown[2]",
+        "int[2][4294967295u]",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof(int(*)({parameter}))");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }}; using Unknown = int[];
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
+    }
+    rejected(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = __builtin_offsetof(Offsets, bytes[true || sizeof(int(*)(int[0]))]);
+        }",
+    );
+    let query = format!("{}1{}", "sizeof(int(*)(int[".repeat(40), "]))".repeat(40));
+    let error = rejected(&format!(
+        "__global__ void kernel(unsigned long *output) {{ output[0] = {query}; }}"
+    ));
+    assert!(error.message.contains("nesting limit"), "{error}");
+}
