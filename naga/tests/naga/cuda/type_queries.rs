@@ -5287,7 +5287,6 @@ fn cuda_layout_queries_arrays_of_array_pointers_validate_both_array_layers() {
         "void(*[2])[3]",
         "int&(*[2])[3]",
         "int(&[2])[3]",
-        "int*(*[2])[3]",
         "int(*[])[3]",
     ] {
         for nested in [false, true] {
@@ -5311,5 +5310,71 @@ fn cuda_layout_queries_arrays_of_array_pointers_validate_both_array_layers() {
             "__global__ void kernel(unsigned long *output) {{ output[0] = alignof({ty}); }}"
         ));
         assert!(error.message.contains("array rank limit"), "{error}");
+    }
+}
+
+#[test]
+fn cuda_layout_queries_grouped_pointers_and_references_to_pointer_arrays_use_referred_layout() {
+    for (ty, size, alignment) in [
+        ("int*(&)[3]", 24, 8),
+        ("int*(&&)[3]", 24, 8),
+        ("int*(*)[3]", 8, 8),
+        ("int*(*[2])[3]", 16, 8),
+        ("const int*const(&)[2]", 16, 8),
+        ("P(&)[3]", 24, 8),
+        ("void*(&)[2]", 16, 8),
+        ("void*(*)[]", 8, 8),
+        ("void*(*[2])[]", 16, 8),
+        ("int(*)(int*(&)[][3], P(*)[2])", 8, 8),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; using P = int*;
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof({ty}); output[1] = alignof({ty});
+                output[2] = __builtin_offsetof(Offsets, bytes[sizeof({ty})]);
+            }}"
+            ),
+            &[size, alignment, size * 4],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = alignof(int*(&)[]);
+            output[1] = __builtin_offsetof(Offsets, bytes[alignof(void*(&&)[][3])]);
+        }",
+        &[8, 32],
+    );
+}
+
+#[test]
+fn cuda_layout_queries_grouped_pointer_array_elements_reject_invalid_refs_and_bounds() {
+    for ty in [
+        "int*(&)[0]",
+        "int*(*)[-1]",
+        "int*(&)[runtime]",
+        "int*(&)[2][]",
+        "int*(&const)[3]",
+        "int*(&&volatile)[3]",
+        "int*(& &)[3]",
+        "int&(*)[3]",
+        "void(&)[3]",
+        "int*(&)[]",
+        "int*(*[2])[0]",
+        "int*(*)[268435456u]",
+        "int*(&)[268435456u]",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof({ty})");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
     }
 }

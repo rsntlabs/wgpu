@@ -22,12 +22,26 @@ enum TypeQueryContext<'a> {
     FunctionParameter,
 }
 
+impl TypeQueryContext<'_> {
+    const fn array_query_name(&self) -> &str {
+        match *self {
+            Self::Operand(name) => name,
+            Self::FunctionParameter => "alignof",
+        }
+    }
+}
+
 enum GroupedTypeQuery {
     PointerToArray,
     ArrayReference,
     FunctionPointer,
     FunctionReference,
     PointerArray,
+}
+
+enum GroupedArrayElement {
+    Pointer,
+    Value(QualifiedType),
 }
 
 struct RecordOffsetIndex {
@@ -1426,16 +1440,20 @@ impl Parser<'_> {
             return self.fail("CUDA expression nesting limit exceeded");
         }
         let array_layout = if pointer_array {
-            let name = match context {
-                TypeQueryContext::Operand(name) => name,
-                TypeQueryContext::FunctionParameter => "alignof",
-            };
-            let layout = self.record_offset_pointer_array_layout(name, depth + 1)?;
+            let layout =
+                self.record_offset_pointer_array_layout(context.array_query_name(), depth + 1)?;
             self.lexer.expect_span(Token::Paren(')'))?;
             if self.lexer.peek()?.0 == Token::Paren('[') {
-                let ty =
+                let element =
                     self.type_query_grouped_array_element(operand, pointer_depth, reference, span)?;
-                self.record_offset_array_layout("alignof", ty.ty, depth + 1, span)?;
+                match element {
+                    GroupedArrayElement::Pointer => {
+                        self.record_offset_pointer_array_layout("alignof", depth + 1)?;
+                    }
+                    GroupedArrayElement::Value(ty) => {
+                        self.record_offset_array_layout("alignof", ty.ty, depth + 1, span)?;
+                    }
+                }
                 return Ok(TypeQueryType::PointerArrayLayout(layout));
             }
             Some(layout)
@@ -1464,12 +1482,28 @@ impl Parser<'_> {
             });
         }
         if let Some(declarator) = declarator {
-            let ty =
+            let element =
                 self.type_query_grouped_array_element(operand, pointer_depth, reference, span)?;
-            return Ok(if matches!(declarator, GroupedTypeQuery::PointerToArray) {
-                TypeQueryType::PointerToArray(ty)
-            } else {
-                TypeQueryType::Object(ty)
+            let pointer = matches!(declarator, GroupedTypeQuery::PointerToArray);
+            return Ok(match element {
+                GroupedArrayElement::Value(ty) if pointer => TypeQueryType::PointerToArray(ty),
+                GroupedArrayElement::Value(ty) => TypeQueryType::Object(ty),
+                GroupedArrayElement::Pointer => {
+                    if depth >= 64 {
+                        return self.fail("CUDA expression nesting limit exceeded");
+                    }
+                    let name = if pointer {
+                        "alignof"
+                    } else {
+                        context.array_query_name()
+                    };
+                    let layout = self.record_offset_pointer_array_layout(name, depth + 1)?;
+                    if pointer {
+                        TypeQueryType::Pointer
+                    } else {
+                        TypeQueryType::PointerArrayLayout(layout)
+                    }
+                }
             });
         }
 
@@ -1506,18 +1540,19 @@ impl Parser<'_> {
         pointer_depth: usize,
         reference: bool,
         span: Span,
-    ) -> Result<QualifiedType, ParseError> {
+    ) -> Result<GroupedArrayElement, ParseError> {
         if reference {
             return self.fail("arrays of references are unsupported");
         }
-        let ty = operand.ok_or_else(|| ParseError {
-            message: String::from("array elements require a complete type"),
-            span,
-        })?;
         if pointer_depth != 0 {
-            return self.fail("grouped declarators with pointer array elements are unsupported");
+            return Ok(GroupedArrayElement::Pointer);
         }
-        Ok(ty)
+        operand
+            .map(GroupedArrayElement::Value)
+            .ok_or_else(|| ParseError {
+                message: String::from("array elements require a complete type"),
+                span,
+            })
     }
 
     fn type_query_base(&mut self) -> Result<Option<QualifiedType>, ParseError> {

@@ -589,6 +589,8 @@ have the same layout for both queries.
 Grouped array references such as `int (&)[3]` and `int (&&)[3]` follow the
 array's layout. `alignof` also accepts references to arrays with omitted
 outer bounds.
+Grouped declarators also accept pointer elements, as in `int *(&)[3]` or
+`int *(*)[3]`. The same array bound rules apply to these types.
 Array type operands can include dimensions such as `int[2][3]`. Every
 explicit bound must be a positive integral constant, even in a skipped
 query. Only `alignof` accepts an omitted outer bound in this syntax.
