@@ -1178,10 +1178,11 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         );
     }
-    for name in [
+    for &name in &[
         "__float2int_rz",
         "__float2uint_rz",
         "__float2int_rd",
+        "__float2uint_rd",
         "__float2int_ru",
         "__float2int_rn",
     ] {
@@ -3344,6 +3345,10 @@ impl<'a> Parser<'a> {
                 }),
                 (true, "__float2int_rd") => Some(FunctionCandidate::FloatToInteger {
                     destination: Scalar::I32,
+                    rounding: Some(FloatMathFunction::Floor),
+                }),
+                (true, "__float2uint_rd") => Some(FunctionCandidate::FloatToInteger {
+                    destination: Scalar::U32,
                     rounding: Some(FloatMathFunction::Floor),
                 }),
                 (true, "__float2int_ru") => Some(FunctionCandidate::FloatToInteger {

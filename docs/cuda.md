@@ -1638,6 +1638,10 @@ nearest `int`, choosing the even integer on a tie. It shares the integer
 rounding helper with `rintf`. For example, both `1.5f` and `2.5f`
 round to `2`, and both `-1.5f` and `-2.5f` round to `-2`.
 The same range, runtime, and overload rules apply.
+
+`__float2uint_rd(float)` uses the same rounding as `__float2int_rd` and
+returns `unsigned int`. Both zero signs produce zero. Any negative
+nonzero input rounds below zero and falls outside the unsigned range.
 See NVIDIA's [conversion intrinsics](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__CAST.html).
 
 `__int2float_rz(int)` and `__uint2float_rz(unsigned int)` convert the argument
