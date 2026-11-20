@@ -219,6 +219,13 @@ impl Parser<'_> {
         depth: u32,
         evaluate: bool,
     ) -> Result<(RecordOffsetIndex, Span), ParseError> {
+        if let Some(name) = self.qualified_item()? {
+            self.parameter_expansion_budget.charge_work(3, name.span)?;
+            let cooperative_groups::QualifiedItem::Type(target) = name.item else {
+                return Err(Self::invalid_record_offset_index(name.span));
+            };
+            return self.record_offset_functional_cast(target, depth, evaluate, name.span);
+        }
         let (token, span) = self.lexer.next()?;
         let invalid = || Self::invalid_record_offset_index(span);
         let number = match token {
@@ -280,6 +287,11 @@ impl Parser<'_> {
             Token::Word("static_cast") => {
                 return self.record_offset_static_cast(depth, evaluate, span);
             }
+            Token::Word("decltype") => {
+                self.parameter_expansion_budget.charge_work(4, span)?;
+                let (target, end) = self.decltype_operand_type()?;
+                return self.record_offset_functional_cast(target, depth, evaluate, span.until(&end));
+            }
             Token::Word(name) => {
                 self.parameter_expansion_budget
                     .charge_work(name.len() + 1, span)?;
@@ -289,17 +301,7 @@ impl Parser<'_> {
                     None
                 };
                 if let Some(target) = target {
-                    let scalar = target
-                        .ty
-                        .source_scalar()
-                        .filter(|&scalar| Self::record_offset_integral_scalar(scalar))
-                        .ok_or_else(|| ParseError {
-                            message: String::from(
-                                "__builtin_offsetof functional cast requires an integral scalar target",
-                            ),
-                            span,
-                        })?;
-                    return self.record_offset_functional_cast(scalar, depth, evaluate, span);
+                    return self.record_offset_functional_cast(target, depth, evaluate, span);
                 }
                 let symbol = self.record_offset_index_symbol(name).ok_or_else(invalid)?;
                 let (scalar, lvalue) = self
@@ -384,7 +386,7 @@ impl Parser<'_> {
 
     fn record_offset_functional_cast(
         &mut self,
-        scalar: SourceScalar,
+        target: QualifiedType,
         depth: u32,
         evaluate: bool,
         start: Span,
@@ -395,6 +397,16 @@ impl Parser<'_> {
                 span: start,
             });
         }
+        let scalar = target
+            .ty
+            .source_scalar()
+            .filter(|&scalar| Self::record_offset_integral_scalar(scalar))
+            .ok_or_else(|| ParseError {
+                message: String::from(
+                    "__builtin_offsetof functional cast requires an integral scalar target",
+                ),
+                span: start,
+            })?;
         self.parameter_expansion_budget.charge_work(2, start)?;
         self.lexer.expect_span(Token::Paren('('))?;
         let value = if self.lexer.peek()?.0 == Token::Paren(')') {
@@ -1519,6 +1531,9 @@ mod tests {
             ("(int)(short)(unsigned)(bool)1]", true, true),
             ("(int)(int)(short)(unsigned)(bool)1]", false, false),
             ("true || (int)(1 / 0)]", true, true),
+            ("::Index((((65537u))))]", true, true),
+            ("decltype(One)(((((1))))) ]", false, false),
+            ("true || decltype(One)(1 / 0)]", true, true),
         ] {
             let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             let span = Span::new(0, 1);
@@ -1539,6 +1554,21 @@ mod tests {
                     },
                 },
                 span,
+            );
+            parser.global_declarations.insert(
+                "Index",
+                GlobalDeclaration::Type(QualifiedType {
+                    ty: TypeSpecifier::Scalar(Scalar::U16),
+                    qualifiers: Qualifiers::NONE,
+                }),
+            );
+            parser.global_declarations.insert(
+                "One",
+                GlobalDeclaration::Constant {
+                    handle: None,
+                    ty: TypeResolution::Handle(element),
+                    literal: Some(Literal::I32(1)),
+                },
             );
             parser.function.expression_depth = 60;
             exhaust_query_allocation_budget(&mut parser, exhaust_bytes);

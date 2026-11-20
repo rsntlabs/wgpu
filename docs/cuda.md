@@ -493,9 +493,9 @@ invalid in a constant index.
 Indices also support `static_cast<T>(expression)` between integral scalar
 types, including Boolean types and aliases. Integral casts wrap at the
 destination width, and conversions to `bool` test for a nonzero value.
-An unqualified integral type name or alias also accepts functional cast
-syntax, such as `int(value)` or `bool()`. Empty parentheses produce the
-type's zero value.
+Integral type names and aliases also accept functional cast syntax, such as
+`int(value)`, `std::size_t(value)`, `decltype(count)(value)` or `bool()`.
+Empty parentheses produce the type's zero value.
 C-style casts such as `(unsigned short)value` use the same integral
 conversion rules and bind to the next unary operand.
 Arithmetic rejects signed overflow and zero divisors, and wraps unsigned

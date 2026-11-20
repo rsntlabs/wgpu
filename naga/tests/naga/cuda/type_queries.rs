@@ -853,7 +853,7 @@ fn cuda_record_offsetof_rejects_invalid_functional_cast_indices() {
         ("int(0, 1)", "expected"),
         ("int{1}", "integer literal"),
         ("unsigned int(1)", "integer literal"),
-        ("std::size_t(1)", "integer literal"),
+        ("signed long(1)", "integer literal"),
         ("Unknown(1)", "integer literal"),
         ("Shadowed(0)", "integral constant"),
         ("true || Shadowed(0)", "expected"),
@@ -945,6 +945,69 @@ fn cuda_record_offsetof_rejects_invalid_c_style_cast_indices() {
 }
 
 #[test]
+fn cuda_record_offsetof_evaluates_qualified_and_decltype_cast_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        #define INDEX_TYPE std::size_t
+        namespace S = std;
+        using Narrow = unsigned short;
+        constexpr short Count = 2;
+        struct Record { int head; int row[4]; };
+        __global__ void kernel(unsigned long *output, unsigned input) {
+            namespace Local = S;
+            const Narrow local = 1;
+            output[0] = offsetof(Record, row[std::size_t(1)]);
+            output[1] = offsetof(Record, row[::size_t(2)]);
+            output[2] = offsetof(Record, row[::Narrow(65539u)]);
+            output[3] = offsetof(Record, row[Local::size_t()]);
+            output[4] = offsetof(Record, row[decltype(Count)(65537u)]);
+            output[5] = offsetof(Record, row[decltype(Count)()]);
+            output[6] = offsetof(Record, row[decltype(input)(2)]);
+            output[7] = offsetof(Record, row[decltype(local)(65538u)]);
+            output[8] = offsetof(Record, row[(INDEX_TYPE(2))]);
+            output[9] = offsetof(Record, row[(true ? -1 : S::size_t(input)) == 0xffffffffffffffffULL]);
+            output[10] = offsetof(Record, row[true || decltype(input)(1 / 0)]);
+            output[11] = offsetof(Record, row[std::size_t(decltype(Count)(65537u))]);
+        }",
+        &[8, 12, 16, 4, 8, 4, 12, 12, 12, 8, 8, 8],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_invalid_qualified_and_decltype_cast_indices() {
+    for (index, message) in [
+        ("std::size_t(input)", "integral constant"),
+        ("decltype(input)(1 / 0)", "division by zero"),
+        ("true || std::nullptr_t(0)", "integral scalar target"),
+        ("decltype(nullptr)(0)", "integral scalar target"),
+        ("decltype(observed)(0)", "integral scalar target"),
+        ("decltype(real)(0)", "integral scalar target"),
+        ("decltype((input))(0)", "decltype"),
+        ("decltype(Missing)(0)", "decltype"),
+        ("decltype(reference)(0)", "decltype"),
+        ("Missing::size_t(0)", "unknown CUDA namespace"),
+        ("std::Missing(0)", "unsupported standard name"),
+        ("std::size_t const(1)", "expected"),
+        ("decltype(input) const(1)", "expected"),
+        ("std::size_t", "expected"),
+        ("decltype(input)", "expected"),
+        ("std::size_t(1, 0)", "expected"),
+        ("decltype(input){1}", "expected"),
+        ("std::size_t(4)", "out of bounds"),
+    ] {
+        let error = rejected(&format!(
+            "#include <cstddef>
+             struct Record {{ int row[4]; }};
+             __global__ void kernel(unsigned *out, unsigned input, float real, int *observed) {{
+                 const unsigned &reference = input;
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
+        assert!(error.message.contains(message), "{index}: {error}");
+    }
+}
+
+#[test]
 fn cuda_record_offsetof_resolves_named_integral_indices_in_scope() {
     assert_query_results(
         "#include <cstddef>\n#define COLUMN column\n
@@ -1011,7 +1074,7 @@ fn cuda_record_offsetof_rejects_nonconstant_and_invalid_named_indices() {
         ("__builtin_offsetof(Record, row[StorageIndex]);", "integral constant"),
         ("__builtin_offsetof(Record, row[Index + input]);", "integral constant"),
         ("__builtin_offsetof(Record, row[(Index, 1)]);", "expected"),
-        ("__builtin_offsetof(Record, row[::Index]);", "integral constant"),
+        ("__builtin_offsetof(Record, row[::Index]);", "unknown CUDA namespace or type qualifier"),
     ] {
         let error = rejected(&format!(
             "constexpr unsigned Index = 1u;
