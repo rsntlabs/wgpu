@@ -178,7 +178,11 @@ fn cuda_record_offsetof_rejects_invalid_array_indices_without_evaluating_them() 
         ("row[0b2]", "integer literal"),
         ("row[4294967296ULL]", "integer literal"),
         ("row[]", "integer literal"),
-        ("row[(1)]", "integer literal"),
+        ("row[()]", "integer literal"),
+        ("row[((1)]", "expected"),
+        ("row[(1))]", "expected"),
+        ("row[(1+1)]", "expected"),
+        ("row[(1,2)]", "expected"),
         ("row[index]", "integer literal"),
         ("row[helper()]", "integer literal"),
         ("row[index++]", "integer literal"),
@@ -235,20 +239,44 @@ fn cuda_record_offsetof_resolves_named_integral_indices_in_scope() {
 }
 
 #[test]
+fn cuda_record_offsetof_accepts_grouped_indices_and_parenthesizing_macros() {
+    assert_query_results(
+        "#include <cstddef>\n#define COLUMN (column)\n#define WRAP(value) ((value))\n
+        constexpr unsigned column = 2u;
+        struct Leaf { int first; int values[3]; };
+        struct Record { int prefix; Leaf leaves[2]; int grid[2][3]; };
+        template<unsigned Row> __device__ size_t offset() {
+            return offsetof(Record, grid[(Row)][COLUMN]);
+        }
+        __global__ void kernel(unsigned long *output) {
+            const unsigned row = 1u;
+            output[0] = offsetof(Record, leaves[WRAP(row)].values[((0x2ULL))]);
+            output[1] = __builtin_offsetof(Record, grid[((0U))][COLUMN]);
+            output[2] = offsetof(Record, leaves[(1)].values[(0)]);
+            size_t instantiated = offset<1u>();
+        }",
+        &[32, 44, 24],
+    );
+}
+
+#[test]
 fn cuda_record_offsetof_rejects_nonconstant_and_invalid_named_indices() {
     for (body, message) in [
         ("unsigned Index = 1u; __builtin_offsetof(Record, row[Index]);", "integral constant"),
+        ("unsigned Index = 1u; __builtin_offsetof(Record, row[((Index))]);", "integral constant"),
         ("const unsigned Index = input; __builtin_offsetof(Record, row[Index]);", "integral constant"),
         ("const unsigned value = 1u; const unsigned &Index = value; __builtin_offsetof(Record, row[Index]);", "integral constant"),
         ("constexpr float Index = 1.0f; __builtin_offsetof(Record, row[Index]);", "integral constant"),
         ("constexpr int Index = -1; __builtin_offsetof(Record, row[Index]);", "integral constant"),
         ("constexpr unsigned long long Index = 4294967296ULL; __builtin_offsetof(Record, row[Index]);", "integral constant"),
         ("constexpr unsigned Index = 3u; __builtin_offsetof(Record, row[Index]);", "out of bounds"),
+        ("constexpr unsigned Index = 3u; __builtin_offsetof(Record, row[((Index))]);", "out of bounds"),
         ("using Index = int; __builtin_offsetof(Record, row[Index]);", "integral constant"),
         ("const auto Index = __builtin_offsetof(Record, row[Index]);", "integral constant"),
         ("__builtin_offsetof(Record, row[input]);", "integral constant"),
         ("__builtin_offsetof(Record, row[StorageIndex]);", "integral constant"),
         ("__builtin_offsetof(Record, row[Index+1]);", "expected"),
+        ("__builtin_offsetof(Record, row[(Index+1)]);", "expected"),
         ("__builtin_offsetof(Record, row[::Index]);", "integral constant"),
     ] {
         let error = rejected(&format!(

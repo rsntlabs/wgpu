@@ -1,11 +1,11 @@
 #include <cstddef>
 constexpr unsigned RowIndex = 1u;
 constexpr int ColumnIndex = 2;
-#define COLUMN ColumnIndex
+#define COLUMN (ColumnIndex)
 struct Leaf { int first; int values[3]; };
 struct Outer { int prefix; Leaf leaves[2]; int grid[2][3]; };
 template<unsigned Index> __device__ unsigned selected_offset() {
-    constexpr unsigned offset = unsigned(offsetof(Outer, leaves[Index].values[ColumnIndex]));
+    constexpr unsigned offset = unsigned(offsetof(Outer, leaves[(Index)].values[ColumnIndex]));
     return offset;
 }
 __global__ void named_offsets(unsigned *output) {
@@ -18,7 +18,7 @@ __global__ void named_offsets(unsigned *output) {
     constexpr bool LastRow = true;
     constexpr unsigned Global = unsigned(offsetof(Outer, grid[RowIndex][ColumnIndex]));
     constexpr unsigned Local = unsigned(__builtin_offsetof(Outer, grid[LocalRow][LocalColumn]));
-    constexpr unsigned Mixed = unsigned(offsetof(Outer, leaves[RowIndex].values[LocalColumn]));
+    constexpr unsigned Mixed = unsigned(offsetof(Outer, leaves[(1u)].values[((LocalColumn))]));
     constexpr unsigned ZeroIndex = unsigned(offsetof(Outer, leaves[Zero].values[Zero]));
     constexpr unsigned BoolIndex = unsigned(offsetof(Outer, grid[LastRow][Zero]));
     constexpr unsigned Macro = unsigned(__builtin_offsetof(Outer, grid[RowIndex][COLUMN]));

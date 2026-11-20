@@ -66,7 +66,20 @@ impl Parser<'_> {
         array: Handle<Type>,
         offset: u32,
     ) -> Result<(Handle<Type>, u32), ParseError> {
-        let (token, span) = self.lexer.next()?;
+        let (mut token, mut span) = self.lexer.next()?;
+        let start = span;
+        let mut groups = 0;
+        while token == Token::Paren('(') {
+            groups += 1;
+            if self.function.expression_depth + groups > 64 {
+                return Err(ParseError {
+                    message: String::from("CUDA expression nesting limit exceeded"),
+                    span,
+                });
+            }
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            (token, span) = self.lexer.next()?;
+        }
         let invalid = || {
             ParseError {
             message: String::from(
@@ -103,6 +116,11 @@ impl Parser<'_> {
             _ => None,
         }
         .ok_or_else(invalid)?;
+        for _ in 0..groups {
+            span = self.lexer.expect_span(Token::Paren(')'))?;
+            self.parameter_expansion_budget.charge_work(1, span)?;
+        }
+        let span = start.until(&span);
         self.lexer.expect_span(Token::Paren(']'))?;
         let TypeInner::Array {
             base,
@@ -933,6 +951,51 @@ mod tests {
     use super::*;
 
     #[test]
+    fn offsetof_grouped_indices_respect_expression_depth_without_allocating() {
+        for (groups, exhaust_bytes, succeeds) in
+            [(4, false, true), (4, true, true), (5, false, false)]
+        {
+            let source = format!("{}1ULL{}]", "(".repeat(groups), ")".repeat(groups));
+            let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
+            let span = Span::new(0, 1);
+            let element = parser.module.types.insert(
+                Type {
+                    name: None,
+                    inner: TypeInner::Scalar(Scalar::I32),
+                },
+                span,
+            );
+            let array = parser.module.types.insert(
+                Type {
+                    name: None,
+                    inner: TypeInner::Array {
+                        base: element,
+                        size: ArraySize::Constant(core::num::NonZeroU32::new(2).unwrap()),
+                        stride: 4,
+                    },
+                },
+                span,
+            );
+            parser.function.expression_depth = 60;
+            exhaust_query_allocation_budget(&mut parser, exhaust_bytes);
+            let result = parser.record_offset_array_element(array, 8);
+            if succeeds {
+                assert_eq!(result.unwrap(), (element, 12));
+            } else {
+                assert_eq!(
+                    result.unwrap_err().message,
+                    "CUDA expression nesting limit exceeded"
+                );
+            }
+            assert_eq!(parser.function.expression_depth, 60);
+            assert_eq!(parser.module.types.len(), 2);
+            assert!(parser.function.ir.expressions.is_empty());
+            assert!(parser.function.ir.local_variables.is_empty());
+            assert!(parser.function.ir.body.is_empty());
+        }
+    }
+
+    #[test]
     fn sizeof_binary_scalar_types_preserve_source_identity_without_ir() {
         for (source, expected) in [
             ("(1L + 1u)", SourceScalar::Long(ScalarKind::Sint)),
@@ -1096,7 +1159,7 @@ mod tests {
                     span,
                 )
                 .unwrap();
-            exhaust_sizeof_allocation_budget(&mut parser, exhaust_bytes);
+            exhaust_query_allocation_budget(&mut parser, exhaust_bytes);
             let (operand, _) = parser.sizeof_operand().unwrap();
             assert!(
                 matches!(operand, SizeofOperand::Object(TypeResolution::Handle(handle)) if handle == pointer)
@@ -1136,7 +1199,7 @@ mod tests {
     fn check_sizeof_metadata_budget(source: &str, expected: SourceScalar) {
         for exhaust_bytes in [false, true] {
             let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
-            exhaust_sizeof_allocation_budget(&mut parser, exhaust_bytes);
+            exhaust_query_allocation_budget(&mut parser, exhaust_bytes);
             let (operand, _) = parser.sizeof_operand().unwrap();
             assert!(matches!(
                 operand,
@@ -1147,7 +1210,7 @@ mod tests {
         }
     }
 
-    fn exhaust_sizeof_allocation_budget(parser: &mut Parser<'_>, exhaust_bytes: bool) {
+    fn exhaust_query_allocation_budget(parser: &mut Parser<'_>, exhaust_bytes: bool) {
         let span = Span::new(0, 1);
         parser.parameter_expansion_budget.activate();
         parser.prepare_parameter_bindings(span).unwrap();

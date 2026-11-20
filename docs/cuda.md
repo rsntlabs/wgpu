@@ -475,8 +475,9 @@ Designators can also index fixed array fields, as in `grid[1][2]` or
 `leaves[1].value`. Each index must be an in-range, nonnegative integer
 literal or an unqualified integral constant name. Named constants include
 global `constexpr` values, local integral constants and instantiated
-integral template parameters. The offset uses the declared stride of each
-array dimension.
+integral template parameters. Parentheses may group either kind of index,
+including parentheses introduced by a macro. The offset uses the declared
+stride of each array dimension.
 The synthetic `<cstddef>` and `<stddef.h>` headers define the function-like
 macro `offsetof(Record, member)` on the first active inclusion of either
 header. The macro follows the normal `#undef` and redefinition rules.
