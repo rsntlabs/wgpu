@@ -475,14 +475,16 @@ Designators can also index fixed array fields, as in `grid[1][2]` or
 `leaves[1].value`. Index operands can be integer literals or unqualified
 integral constant names, including global `constexpr` values, local integral
 constants and instantiated integral template parameters. Indices may use
-parentheses, unary `+`, `-`, `~` and `!`, and binary `+`, `-`, `*`, `/`
-and `%`. Binary operators apply the usual arithmetic conversions after
-integer promotion. Multiplication, division and remainder bind more tightly
-than addition and subtraction. Operators of the same precedence associate
-left to right. Arithmetic rejects signed overflow and zero divisors, and
-wraps unsigned results at the operation's width. The final index must be
-nonnegative and in bounds. The offset uses the declared stride of each array
-dimension.
+parentheses, unary `+`, `-`, `~` and `!`, arithmetic `+`, `-`, `*`, `/`
+and `%`, and shifts `<<` and `>>`. Binary arithmetic applies the usual
+arithmetic conversions after integer promotion. Multiplication, division
+and remainder bind more tightly than addition and subtraction, and shifts
+bind more loosely. Operators of the same precedence associate left to right.
+Arithmetic rejects signed overflow and zero divisors, and wraps unsigned
+results at the operation's width. Shift counts must be nonnegative and less
+than the promoted left operand's bit width. Left shifts wrap at that width
+and signed right shifts are arithmetic. The final index must be nonnegative
+and in bounds. The offset uses the declared stride of each array dimension.
 The synthetic `<cstddef>` and `<stddef.h>` headers define the function-like
 macro `offsetof(Record, member)` on the first active inclusion of either
 header. The macro follows the normal `#undef` and redefinition rules.

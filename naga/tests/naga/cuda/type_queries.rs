@@ -180,7 +180,7 @@ fn cuda_record_offsetof_rejects_invalid_array_indices_without_evaluating_them() 
         ("row[()]", "integer literal"),
         ("row[((1)]", "expected"),
         ("row[(1))]", "expected"),
-        ("row[(1<<1)]", "expected"),
+        ("row[(1&1)]", "expected"),
         ("row[(1,2)]", "expected"),
         ("row[index]", "integer literal"),
         ("row[helper()]", "integer literal"),
@@ -249,7 +249,7 @@ fn cuda_record_offsetof_rejects_invalid_unary_indices() {
         ("--Zero", "integer literal"),
         ("++Zero", "integer literal"),
         ("+Zero++", "expected"),
-        ("+Zero<<1", "expected"),
+        ("+Zero&1", "expected"),
         ("+dynamic", "integer literal"),
     ] {
         let source = format!(
@@ -393,6 +393,69 @@ fn cuda_record_offsetof_rejects_invalid_multiplicative_indices() {
 }
 
 #[test]
+fn cuda_record_offsetof_evaluates_shift_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        #define SHIFT(value, count) ((value) << (count))
+        struct Record { int head; int row[5]; };
+        constexpr unsigned Max = 0xffffffffu;
+        constexpr unsigned long Wide = 0xfffffffffffffffful;
+        constexpr short Narrow = 1;
+        constexpr bool Flag = true;
+        constexpr int Min = -2147483647 - 1;
+        constexpr long WideMin = -9223372036854775807L - 1;
+        __global__ void kernel(unsigned long *output) {
+            output[0] = offsetof(Record, row[1 << 1 + 1]);
+            output[1] = offsetof(Record, row[1 + 3 >> 1]);
+            output[2] = offsetof(Record, row[8 >> 1 >> 1]);
+            output[3] = offsetof(Record, row[2 >> (1 >> 1)]);
+            output[4] = offsetof(Record, row[SHIFT(1, Flag)]);
+            output[5] = offsetof(Record, row[Max >> 31]);
+            output[6] = offsetof(Record, row[Wide >> 63]);
+            output[7] = offsetof(Record, row[(-3 >> 1ULL) + 3]);
+            output[8] = offsetof(Record, row[(-1 << 1) + 3]);
+            output[9] = offsetof(Record, row[(1 << 31) / Min]);
+            output[10] = offsetof(Record, row[(1L << 63) / WideMin]);
+            output[11] = offsetof(Record, row[(Narrow << 16) >> 16]);
+            output[12] = offsetof(Record, row[(Max << 31) >> 31]);
+            output[13] = offsetof(Record, row[(Wide << 63) >> 63]);
+            output[14] = offsetof(Record, row[+Flag << !Flag]);
+        }",
+        &[20, 12, 12, 12, 12, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_invalid_shift_indices() {
+    for (index, message) in [
+        ("1 << -1", "shift count"),
+        ("1 << 32ULL", "shift count"),
+        ("1u >> 32", "shift count"),
+        ("1ULL << 64", "shift count"),
+        ("1L >> 0x100000000ULL", "shift count"),
+        ("Narrow << 32", "shift count"),
+        ("(-3 >> 1)", "nonnegative"),
+        ("1 << 3", "out of bounds"),
+        ("1 >> runtime", "integral constant"),
+        ("1.0f << 1", "integer literal"),
+        ("1 << 1.0f", "integer literal"),
+        ("1 >>", "integer literal"),
+        ("1 <<= 1", "expected"),
+        ("1 >>= 1", "expected"),
+        ("1 > > 1", "expected"),
+    ] {
+        let error = rejected(&format!(
+            "struct Record {{ int row[5]; }};
+             constexpr unsigned short Narrow = 1;
+             __global__ void kernel(unsigned *out, int runtime) {{
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
+        assert!(error.message.contains(message), "{index}: {error}");
+    }
+}
+
+#[test]
 fn cuda_record_offsetof_resolves_named_integral_indices_in_scope() {
     assert_query_results(
         "#include <cstddef>\n#define COLUMN column\n
@@ -458,7 +521,7 @@ fn cuda_record_offsetof_rejects_nonconstant_and_invalid_named_indices() {
         ("__builtin_offsetof(Record, row[input]);", "integral constant"),
         ("__builtin_offsetof(Record, row[StorageIndex]);", "integral constant"),
         ("__builtin_offsetof(Record, row[Index + input]);", "integral constant"),
-        ("__builtin_offsetof(Record, row[(Index << 1)]);", "expected"),
+        ("__builtin_offsetof(Record, row[(Index | 1)]);", "expected"),
         ("__builtin_offsetof(Record, row[::Index]);", "integral constant"),
     ] {
         let error = rejected(&format!(

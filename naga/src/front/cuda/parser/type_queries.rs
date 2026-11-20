@@ -97,6 +97,22 @@ impl Parser<'_> {
     }
 
     fn record_offset_index(&mut self, depth: u32) -> Result<(RecordOffsetIndex, Span), ParseError> {
+        let (mut left, mut span) = self.record_offset_index_sum(depth)?;
+        while let (Token::ShiftOperation(operator), operator_span) = self.lexer.peek()? {
+            self.lexer.next()?;
+            self.parameter_expansion_budget
+                .charge_work(1, operator_span)?;
+            let (right, right_span) = self.record_offset_index_sum(depth)?;
+            left = Self::record_offset_shift(operator, left, right, operator_span)?;
+            span = span.until(&right_span);
+        }
+        Ok((left, span))
+    }
+
+    fn record_offset_index_sum(
+        &mut self,
+        depth: u32,
+    ) -> Result<(RecordOffsetIndex, Span), ParseError> {
         let (mut left, mut span) = self.record_offset_index_product(depth)?;
         while let (Token::Operation(operator @ ('+' | '-')), operator_span) = self.lexer.peek()? {
             self.lexer.next()?;
@@ -271,6 +287,32 @@ impl Parser<'_> {
             _ => unreachable!(),
         };
         Self::record_offset_arithmetic(value, scalar, span)
+    }
+
+    fn record_offset_shift(
+        operator: char,
+        left: RecordOffsetIndex,
+        right: RecordOffsetIndex,
+        span: Span,
+    ) -> Result<RecordOffsetIndex, ParseError> {
+        let scalar = Self::promoted_type_query_scalar(left.scalar);
+        let width = u32::from(scalar.scalar().width) * 8;
+        let count = u32::try_from(right.value)
+            .ok()
+            .filter(|&count| count < width)
+            .ok_or_else(|| ParseError {
+                message: String::from("__builtin_offsetof index has an out-of-range shift count"),
+                span,
+            })?;
+        let value = match (operator, scalar.scalar()) {
+            ('<', Scalar::I32) => i128::from((left.value as i32).wrapping_shl(count)),
+            ('<', Scalar::U32) => i128::from((left.value as u32).wrapping_shl(count)),
+            ('<', Scalar::I64) => i128::from((left.value as i64).wrapping_shl(count)),
+            ('<', Scalar::U64) => i128::from((left.value as u64).wrapping_shl(count)),
+            ('>', _) => left.value >> count,
+            _ => unreachable!(),
+        };
+        Ok(RecordOffsetIndex { value, scalar })
     }
 
     fn invalid_record_offset_index(span: Span) -> ParseError {
@@ -1102,6 +1144,7 @@ mod tests {
     fn offsetof_indices_respect_expression_depth_without_allocating() {
         let sum_chain = format!("{}1]", "0 + ".repeat(128));
         let product_chain = format!("{}1]", "1 * ".repeat(128));
+        let shift_chain = format!("1{}]", " >> 0".repeat(128));
         for (source, exhaust_bytes, succeeds) in [
             ("((((1ULL))))]", false, true),
             ("((((1ULL))))]", true, true),
@@ -1110,8 +1153,10 @@ mod tests {
             ("+(!!!1ULL)]", false, false),
             ("((1 + 0) + (0))]", true, true),
             ("((1 + 2) / (3))]", true, true),
+            ("((2 >> 1) << (0))]", true, true),
             (sum_chain.as_str(), false, true),
             (product_chain.as_str(), false, true),
+            (shift_chain.as_str(), false, true),
         ] {
             let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             let span = Span::new(0, 1);
