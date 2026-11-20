@@ -87,6 +87,7 @@ mod helper_builtins;
 mod helper_parameters;
 mod hex_float_literals;
 mod if_initializers;
+mod ilogbf;
 mod immutable_pointers;
 mod incomplete_array_aliases;
 mod incomplete_array_pointers;
@@ -254,6 +255,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_ROUNDING_ZERO_SIGNS,
         CUDA_COPYSIGNF,
         CUDA_FDIMF,
+        CUDA_ILOGBF,
         CUDA_NEXTAFTERF,
         CUDA_CEILF,
         CUDA_CLASS_VALUES,
@@ -1417,3 +1419,6 @@ static CUDA_OFFSETOF_NAMED_INDICES: GpuTestConfiguration =
 
 #[apply(gpu_test!)]
 static CUDA_FDIMF: GpuTestConfiguration = configuration(fdimf::cases);
+
+#[apply(gpu_test!)]
+static CUDA_ILOGBF: GpuTestConfiguration = configuration(ilogbf::cases);

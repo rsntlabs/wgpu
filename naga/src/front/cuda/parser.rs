@@ -28,6 +28,7 @@ mod fns;
 mod frsqrt_rn;
 mod function_declarations;
 mod functions;
+mod ilogbf;
 mod inferred_declarations;
 mod initializers;
 mod int_to_float;

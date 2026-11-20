@@ -1171,7 +1171,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__ldg",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
-    for name in ["copysignf", "nextafterf", "fdimf"] {
+    for name in ["copysignf", "nextafterf", "fdimf", "ilogbf"] {
         declarations.insert(
             name,
             GlobalDeclaration::Functions(FunctionOverloads::default()),
@@ -1340,6 +1340,7 @@ pub(super) enum FunctionCandidate {
     },
     FloatMath(FloatMathFunction),
     FloatClassification(FloatClassification),
+    FloatExponent,
     IntegralDouble {
         source: Scalar,
     },
@@ -1962,6 +1963,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Unary { .. }
                         | FunctionCandidate::FloatMath(_)
                         | FunctionCandidate::FloatClassification(_)
+                        | FunctionCandidate::FloatExponent
                         | FunctionCandidate::SqrtRoundZero
                         | FunctionCandidate::Sqrt
                         | FunctionCandidate::Fmodf
@@ -2251,7 +2253,9 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Bitcast { result, .. }
             | FunctionCandidate::FloatToIntegerRoundZero(result)
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
-            FunctionCandidate::FloatClassification(_) => TypeSpecifier::Scalar(Scalar::I32),
+            FunctionCandidate::FloatClassification(_) | FunctionCandidate::FloatExponent => {
+                TypeSpecifier::Scalar(Scalar::I32)
+            }
             FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
@@ -2557,6 +2561,9 @@ impl<'a> Parser<'a> {
         self.check_float_classification_argument(candidate, &arguments, span)?;
         if let FunctionCandidate::FloatClassification(classification) = candidate {
             return self.lower_float_classification_call(classification, arguments, span);
+        }
+        if candidate == FunctionCandidate::FloatExponent {
+            return self.lower_ilogbf_call(arguments, span);
         }
         if candidate == FunctionCandidate::CopySign {
             return self.lower_copysign_call(arguments, span);
@@ -3311,6 +3318,7 @@ impl<'a> Parser<'a> {
                 (true, "copysignf") => Some(FunctionCandidate::CopySign),
                 (true, "nextafterf") => Some(FunctionCandidate::NextAfter),
                 (true, "fdimf") => Some(FunctionCandidate::PositiveDifference),
+                (true, "ilogbf") => Some(FunctionCandidate::FloatExponent),
                 (true, "__float2int_rz") => {
                     Some(FunctionCandidate::FloatToIntegerRoundZero(Scalar::I32))
                 }
@@ -3509,6 +3517,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::FloatMath(_)
             | FunctionCandidate::FloatClassification(_)
+            | FunctionCandidate::FloatExponent
             | FunctionCandidate::IntegralDouble { .. }
             | FunctionCandidate::FloatToIntegerRoundZero(_)
             | FunctionCandidate::IntegerToFloat { .. }
@@ -3566,6 +3575,7 @@ impl<'a> Parser<'a> {
             }
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::FloatClassification(_)
+            | FunctionCandidate::FloatExponent
             | FunctionCandidate::FloatToIntegerRoundZero(_)
             | FunctionCandidate::SqrtRoundZero
             | FunctionCandidate::Sqrt
