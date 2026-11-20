@@ -379,10 +379,13 @@ impl Parser<'_> {
                 span: target_span,
             })?
         } else {
-            return Err(ParseError {
-                message: String::from("__builtin_offsetof nested alignof requires a scalar type"),
-                span: target_span,
-            });
+            self.record_offset_aggregate_alignment(ty, target_span)?
+                .ok_or_else(|| ParseError {
+                    message: String::from(
+                        "__builtin_offsetof nested alignof requires a scalar, vector, complete record, or array type with a supported element",
+                    ),
+                    span: target_span,
+                })?
         };
         let end = self.lexer.expect_span(Token::Paren(')'))?;
         let value = evaluate.then_some(i128::from(size));
@@ -412,6 +415,62 @@ impl Parser<'_> {
                 ..
             } => inner.try_size(self.module.to_ctx()),
             _ => None,
+        }
+    }
+
+    fn record_offset_aggregate_alignment(
+        &mut self,
+        ty: TypeSpecifier,
+        span: Span,
+    ) -> Result<Option<u32>, ParseError> {
+        Ok(match ty {
+            TypeSpecifier::Vector {
+                component_count,
+                scalar,
+            } => Some(Self::record_offset_vector_alignment(
+                component_count,
+                scalar,
+            )),
+            TypeSpecifier::Structure(handle) => self
+                .structures
+                .get(&handle)
+                .map(|record| record.alignment * 1),
+            TypeSpecifier::Array(handle) => {
+                let (element, _) = self.array_shape(handle, span)?;
+                let ty = &self.module.types[element];
+                match ty.inner {
+                    TypeInner::Scalar(scalar) => Some(u32::from(scalar.width)),
+                    TypeInner::Vector { size, scalar } => {
+                        Some(Self::record_offset_vector_alignment(u8::from(size), scalar))
+                    }
+                    TypeInner::Struct { .. } => {
+                        if let Some(record) = self.structures.get(&element) {
+                            Some(record.alignment * 1)
+                        } else {
+                            self.parameter_expansion_budget
+                                .charge_work(types::VECTOR_TYPES.len(), span)?;
+                            types::VECTOR_TYPES
+                                .iter()
+                                .find_map(|&(name, _, count, scalar)| {
+                                    (ty.name.as_deref() == Some(name)).then(|| {
+                                        Self::record_offset_vector_alignment(count, scalar)
+                                    })
+                                })
+                        }
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
+        })
+    }
+
+    const fn record_offset_vector_alignment(component_count: u8, scalar: Scalar) -> u32 {
+        // CUDA's one- and three-lane vectors use the alignment of a single lane.
+        match component_count {
+            1 | 3 => scalar.width as u32,
+            2 | 4 => component_count as u32 * scalar.width as u32,
+            _ => unreachable!(),
         }
     }
 
@@ -1604,6 +1663,8 @@ mod tests {
             ("sizeof(bool) * alignof(bool)]", true, true),
             ("sizeof(float3) / 12]", true, true),
             ("sizeof(Fixed) / 8]", false, true),
+            ("alignof(Fixed) / 4]", true, true),
+            ("alignof(float3) / 4]", false, true),
             ("true || (sizeof(float) / alignof(long))]", false, true),
             ("((((sizeof(bool)))))]", false, false),
         ] {

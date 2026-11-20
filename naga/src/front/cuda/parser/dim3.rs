@@ -27,6 +27,7 @@ impl Parser<'_> {
             ty,
             structures::Structure {
                 source_name: None,
+                alignment: crate::proc::Alignment::FOUR,
                 depth: 1,
                 requires_default_constructor: true,
                 const_default_constructible: true,

@@ -500,8 +500,10 @@ C-style casts such as `(unsigned short)value` use the same integral
 conversion rules and bind to the next unary operand.
 Nested `sizeof(T)` accepts scalar types, CUDA vectors, complete records, and
 fixed-array type names. Record sizes include padding and array sizes use the
-declared stride. Nested `alignof(T)` accepts scalar types. Both queries
-produce `size_t` values before the index is folded.
+declared stride. Nested `alignof(T)` accepts scalar types, CUDA vectors,
+complete records, and array type names with supported elements. Array
+alignment follows the element type, including for an unknown outer bound.
+Both queries produce `size_t` values before the index is folded.
 Arithmetic rejects signed overflow and zero divisors, and wraps unsigned
 results at the operation's width. Shift counts must be nonnegative and less
 than the promoted left operand's bit width. Left shifts wrap at that width

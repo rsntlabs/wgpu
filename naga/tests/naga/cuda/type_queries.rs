@@ -1034,12 +1034,8 @@ fn cuda_record_offsetof_evaluates_scalar_layout_queries_in_indices() {
 }
 
 #[test]
-fn cuda_record_offsetof_rejects_unsupported_scalar_layout_queries_in_indices() {
+fn cuda_record_offsetof_rejects_unsupported_layout_queries_in_indices() {
     for (index, message) in [
-        ("alignof(Record)", "scalar type"),
-        ("alignof(Array)", "scalar type"),
-        ("alignof(float2)", "scalar type"),
-        ("true || alignof(Pointer)", "scalar type"),
         ("sizeof(int *)", "expected"),
         ("alignof(int &)", "expected"),
         ("sizeof(int[2])", "expected"),
@@ -1054,8 +1050,6 @@ fn cuda_record_offsetof_rejects_unsupported_scalar_layout_queries_in_indices() {
     ] {
         let error = rejected(&format!(
             "struct Record {{ int row[4]; }};
-             using Array = int[2];
-             using Pointer = int *;
              using Shadowed = int;
              __global__ void kernel(unsigned *out, unsigned input) {{
                  int Shadowed = 0;
@@ -1113,6 +1107,66 @@ fn cuda_record_offsetof_rejects_incomplete_or_unsupported_sizeof_in_indices() {
             "#include <cstddef>
              struct Record {{ int row[4]; }};
              using Incomplete = int[];
+             using Pointer = int *;
+             __global__ void kernel(unsigned *out) {{
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
+        assert!(
+            error.message.contains("complete record"),
+            "{index}: {error}"
+        );
+    }
+}
+
+#[test]
+fn cuda_record_offsetof_evaluates_aggregate_alignof_in_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        struct Record { int head; int row[5]; };
+        struct Padded { short first; int middle; short last; };
+        struct Aligned { int tag; float4 value; };
+        using Packed = float3[2];
+        using Narrow = short3[2];
+        using Grid = Padded[2][3];
+        using Open = Aligned[][2];
+        using Native = float2[3];
+        template<class T> __device__ size_t selected() {
+            return offsetof(Record, row[alignof(T) / 4]);
+        }
+        __global__ void kernel(unsigned long *output) {
+            Aligned object;
+            output[0] = offsetof(Record, row[alignof(float1) / 4]);
+            output[1] = offsetof(Record, row[alignof(float2) / 4]);
+            output[2] = offsetof(Record, row[alignof(float3) / 4]);
+            output[3] = offsetof(Record, row[alignof(float4) / 4]);
+            output[4] = offsetof(Record, row[alignof(short3) / 2]);
+            output[5] = offsetof(Record, row[alignof(const Padded) / 4]);
+            output[6] = offsetof(Record, row[alignof(Grid) / 4]);
+            output[7] = offsetof(Record, row[alignof(Packed) / 4]);
+            output[8] = offsetof(Record, row[alignof(Narrow) / 2]);
+            output[9] = offsetof(Record, row[alignof(Open) / 4]);
+            output[10] = offsetof(Record, row[alignof(decltype(object)) / 4]);
+            output[11] = offsetof(Record, row[alignof(Native) / 4]);
+            output[12] = offsetof(Record, row[alignof(Padded) < sizeof(Padded)]);
+            output[13] = offsetof(Record, row[true || alignof(Grid) / 0]);
+            size_t instantiated = selected<Aligned>();
+        }",
+        &[8, 12, 8, 20, 8, 8, 8, 8, 8, 20, 20, 12, 8, 8],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_unsupported_aggregate_alignof_in_indices() {
+    for index in [
+        "alignof(Pointer)",
+        "true || alignof(Pointer)",
+        "alignof(dim3)",
+        "alignof(std::nullptr_t)",
+    ] {
+        let error = rejected(&format!(
+            "#include <cstddef>
+             struct Record {{ int row[4]; }};
              using Pointer = int *;
              __global__ void kernel(unsigned *out) {{
                  out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));

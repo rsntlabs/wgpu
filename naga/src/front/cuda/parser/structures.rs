@@ -2,6 +2,7 @@ use super::*;
 
 pub(super) struct Structure {
     pub(super) source_name: Option<String>,
+    pub(super) alignment: crate::proc::Alignment,
     pub(super) depth: u32,
     pub(super) requires_default_constructor: bool,
     pub(super) const_default_constructible: bool,
@@ -287,6 +288,7 @@ impl<'a> Parser<'a> {
             size,
             Structure {
                 source_name: None,
+                alignment,
                 depth,
                 requires_default_constructor,
                 const_default_constructible,
