@@ -584,6 +584,9 @@ pointer layout. Both queries accept an omitted outer bound in the array,
 as in `sizeof(int (*)[])`.
 An array of pointers to arrays, such as `int (*[2])[3]`, uses the outer
 shape to compute the layout and validates the pointee shape independently.
+With additional grouping, `int ((*[2])[3])[4]` still has two pointer
+elements. Both `[3]` and `[4]` belong to the pointee. A function signature
+may also appear inside an enclosing group, as in `int ((*[2])(int))`.
 A reference to either kind of pointer array, such as `int (*(&)[2])[3]`
 or `int (*(&)[2])(int)`, uses the referred array's layout.
 An additional pointer, as in `int (*(*)[2])[3]`, uses the pointer layout.

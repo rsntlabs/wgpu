@@ -1542,18 +1542,30 @@ impl Parser<'_> {
             } else {
                 TypeQueryType::PointerArrayLayout(layout)
             };
-            self.close_type_query_groups(groups)?;
+            // This close separates the array of pointers from the pointed-to type.
+            self.lexer.expect_span(Token::Paren(')'))?;
+            let mut groups = groups - 1;
+            while groups != 0 && self.lexer.next_if(Token::Paren(')'))? {
+                groups -= 1;
+            }
             let suffix = self.lexer.peek()?.0;
             if suffix == Token::Paren('[') {
                 let element =
                     self.type_query_grouped_array_element(operand, pointer_depth, reference, span)?;
-                self.record_offset_grouped_array_layout("alignof", element, depth + 1, span, 0)?;
+                self.record_offset_grouped_array_layout(
+                    "alignof",
+                    element,
+                    depth + 1,
+                    span,
+                    groups,
+                )?;
                 return Ok(ty);
             }
             if matches!(
                 suffix,
                 Token::Paren(')') | Token::Separator(',') | Token::Ellipsis
             ) {
+                self.close_type_query_groups(groups)?;
                 if reference {
                     return self.fail("arrays of references are unsupported");
                 }
@@ -1562,7 +1574,7 @@ impl Parser<'_> {
                 }
                 return Ok(ty);
             }
-            Some(ty)
+            Some((ty, groups))
         } else {
             None
         };
@@ -1579,7 +1591,8 @@ impl Parser<'_> {
             }
             self.type_query_function_parameters(depth + 1)?;
             self.type_query_function_noexcept(depth)?;
-            return Ok(if let Some(ty) = array_type {
+            return Ok(if let Some((ty, groups)) = array_type {
+                self.close_type_query_groups(groups)?;
                 ty
             } else if function_reference {
                 TypeQueryType::FunctionReference

@@ -268,6 +268,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support grouped pointer arrays without a following suffix in CUDA layout queries.
 - Support parenthesized array dimensions in CUDA layout queries.
 - Support array dimensions after parenthesized dimensions in CUDA layout queries.
+- Support grouped pointee dimensions and signatures in CUDA pointer-array layout queries.
 - Support array type dimensions in CUDA `offsetof` layout queries.
 - Support named member paths in CUDA `offsetof` size queries.
 - Support unevaluated array and pointer subscripts in CUDA `offsetof` size queries.
