@@ -110,6 +110,7 @@ mod kernel_vector_values;
 mod kernels;
 mod launch_bounds;
 mod ldg;
+mod ldg_float2;
 mod ldg_signed_float;
 mod list_initialization;
 mod literals;
@@ -288,6 +289,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_INT2FLOAT_RN,
         CUDA_INT2FLOAT_RZ,
         CUDA_LDG,
+        CUDA_LDG_FLOAT2,
         CUDA_LDG_SIGNED_FLOAT,
         CUDA_FLOAT2INT_RZ,
         CUDA_FLOAT2UINT_RZ,
@@ -1366,3 +1368,6 @@ static CUDA_LDG: GpuTestConfiguration = configuration(ldg::cases);
 
 #[apply(gpu_test!)]
 static CUDA_LDG_SIGNED_FLOAT: GpuTestConfiguration = configuration(ldg_signed_float::cases);
+
+#[apply(gpu_test!)]
+static CUDA_LDG_FLOAT2: GpuTestConfiguration = configuration(ldg_float2::cases);

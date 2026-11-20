@@ -1323,7 +1323,10 @@ pub(super) enum FunctionCandidate {
     },
     AtomicCompareExchange(Scalar),
     WrappingAtomic(WrappingAtomicFunction),
-    LoadReadOnly(Scalar),
+    LoadReadOnly {
+        size: Option<VectorSize>,
+        scalar: Scalar,
+    },
     Bitcast {
         source: Scalar,
         result: Scalar,
@@ -1950,7 +1953,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Atomic { .. }
                         | FunctionCandidate::AtomicCompareExchange(_)
                         | FunctionCandidate::WrappingAtomic(_)
-                        | FunctionCandidate::LoadReadOnly(_)
+                        | FunctionCandidate::LoadReadOnly { .. }
                         | FunctionCandidate::Bitcast { .. }
                         | FunctionCandidate::Unary { .. }
                         | FunctionCandidate::FloatMath(_)
@@ -2235,7 +2238,10 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::HalfAdd(HalfAddBuiltin { scalar: result, .. })
             | FunctionCandidate::Atomic { scalar: result, .. }
             | FunctionCandidate::AtomicCompareExchange(result)
-            | FunctionCandidate::LoadReadOnly(result)
+            | FunctionCandidate::LoadReadOnly {
+                size: None,
+                scalar: result,
+            }
             | FunctionCandidate::Bitcast { result, .. }
             | FunctionCandidate::FloatToIntegerRoundZero(result)
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
@@ -2273,6 +2279,13 @@ impl<'a> Parser<'a> {
                 scalar,
             } => TypeSpecifier::Vector {
                 component_count,
+                scalar,
+            },
+            FunctionCandidate::LoadReadOnly {
+                size: Some(size),
+                scalar,
+            } => TypeSpecifier::Vector {
+                component_count: size as u8,
                 scalar,
             },
         };
@@ -3413,10 +3426,15 @@ impl<'a> Parser<'a> {
                     .map(|(_, function)| FunctionCandidate::WrappingAtomic(function)),
             )
             .chain(
-                [Scalar::I32, Scalar::U32, Scalar::F32]
-                    .into_iter()
-                    .filter(move |_| read_only_load_visible)
-                    .map(FunctionCandidate::LoadReadOnly),
+                [
+                    (None, Scalar::I32),
+                    (None, Scalar::U32),
+                    (None, Scalar::F32),
+                    (Some(VectorSize::Bi), Scalar::F32),
+                ]
+                .into_iter()
+                .filter(move |_| read_only_load_visible)
+                .map(|(size, scalar)| FunctionCandidate::LoadReadOnly { size, scalar }),
             )
             .chain(
                 vector_constructor(name)
@@ -3462,7 +3480,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FusedMultiplyAddRoundZero
             | FunctionCandidate::FusedMultiplyAddRoundNearest => 3,
             FunctionCandidate::Bitcast { .. }
-            | FunctionCandidate::LoadReadOnly(_)
+            | FunctionCandidate::LoadReadOnly { .. }
             | FunctionCandidate::ByteSwap32
             | FunctionCandidate::PackedUnary(_)
             | FunctionCandidate::Unary { .. }
@@ -3590,9 +3608,9 @@ impl<'a> Parser<'a> {
                     scalar_resolution(Scalar::U32)
                 })
             }
-            FunctionCandidate::LoadReadOnly(scalar) => {
+            FunctionCandidate::LoadReadOnly { size, scalar } => {
                 return Some(TypeResolution::Value(TypeInner::ValuePointer {
-                    size: None,
+                    size,
                     scalar,
                     space: AddressSpace::Function,
                 }));
@@ -3614,7 +3632,7 @@ impl<'a> Parser<'a> {
                     declaration.parameters[logical_index].mode()
                 }),
             FunctionCandidate::Current => self.function.parameters[logical_index].mode(),
-            FunctionCandidate::LoadReadOnly(_) => ParameterMode::Pointer {
+            FunctionCandidate::LoadReadOnly { .. } => ParameterMode::Pointer {
                 qualifiers: Qualifiers::CONST,
             },
             FunctionCandidate::Atomic { .. }
@@ -3655,12 +3673,12 @@ impl<'a> Parser<'a> {
         if argument.is_thread_block() {
             return None;
         }
-        if let FunctionCandidate::LoadReadOnly(scalar) = candidate {
-            return self.pointer_argument_conversion(
-                &scalar_resolution(scalar),
-                Qualifiers::CONST,
-                argument,
-            );
+        if let FunctionCandidate::LoadReadOnly { size, scalar } = candidate {
+            let pointee = match size {
+                Some(size) => TypeResolution::Value(TypeInner::Vector { size, scalar }),
+                None => scalar_resolution(scalar),
+            };
+            return self.pointer_argument_conversion(&pointee, Qualifiers::CONST, argument);
         }
         let atomic_scalar = match candidate {
             FunctionCandidate::Atomic { scalar, .. }

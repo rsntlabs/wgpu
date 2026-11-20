@@ -223,6 +223,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support arithmetic C-style casts in CUDA `sizeof` operands.
 - Support CUDA `__ldg` loads of unsigned 32-bit values from read-only kernel buffers.
 - Support signed 32-bit and `float` CUDA `__ldg` loads from read-only kernel buffers.
+- Support `float2` CUDA `__ldg` loads from read-only kernel buffers.
 - Support CUDA `rintf` with portable rounding to the nearest even integer.
 - Support CUDA `nearbyintf` through the existing nearest-even rounding helper.
 - Support explicit scalar declaration conditions in CUDA `if` and `switch` statements.

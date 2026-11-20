@@ -142,6 +142,64 @@ fn cuda_ldg_rejects_ambiguous_null_calls_and_incompatible_declarations() {
 }
 
 #[test]
+fn cuda_ldg_resolves_float2_and_scalar_member_loads() {
+    let (module, info) = validate(
+        "using Pair = float2;
+        __device__ Pair __ldg(const Pair *const pointer);
+        __device__ Pair read_pair(const Pair *pointer) { return __ldg(pointer); }
+        __device__ unsigned kind(Pair value) { return __float_as_uint(value.y); }
+        __device__ unsigned kind(float value) { return __float_as_uint(value); }
+        __device__ unsigned __ldg(bool value) { return value ? 1u : 2u; }
+        __device__ Pair __ldg(Pair *pointer) { return *pointer; }
+        __global__ void kernel(const Pair *left, const Pair *right, unsigned *out) {
+            const Pair *choice = left;
+            if (threadIdx.x) { choice = right; }
+            Pair local = make_float2(1.0f, 2.0f);
+            out[0] = kind(read_pair(choice + 1));
+            out[1] = kind(__ldg(&left[1]));
+            out[2] = kind(__ldg(&right[1].x));
+            out[3] = kind(__ldg(&local));
+        }",
+    );
+    #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+    super::helpers::wgsl_roundtrip(
+        &module,
+        &info,
+        naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+    );
+    let _ = (module, info);
+}
+
+#[test]
+fn cuda_ldg_rejects_unsupported_float2_origins_and_redeclarations() {
+    for body in [
+        "float2 value{}; __ldg(&value);",
+        "__shared__ float2 value; __ldg(&value);",
+        "const float2 *alias = output; __ldg(alias);",
+        "const float2 *alias = input; if (threadIdx.x) alias = output; read_pair(alias);",
+        "__ldg((const float2 *)nullptr);",
+    ] {
+        let source = format!(
+            "__device__ float2 read_pair(const float2 *pointer) {{ return __ldg(pointer); }}
+             __global__ void kernel(const float2 *input, float2 *output) {{ {body} }}"
+        );
+        let error = parse_str(&source, &Options::default()).unwrap_err();
+        assert!(
+            error.message.contains("read-only storage"),
+            "{body}: {error}"
+        );
+    }
+    for source in [
+        "__device__ float __ldg(const float2 *pointer);",
+        "__device__ float4 __ldg(const float2 *pointer);",
+        "__device__ float2 __ldg(const float2 *pointer) { return make_float2(0.0f, 0.0f); }",
+    ] {
+        let error = parse_str(source, &Options::default()).unwrap_err();
+        assert!(error.message.contains("builtin"), "{source}: {error}");
+    }
+}
+
+#[test]
 fn cuda_ldg_rejects_non_read_only_storage_origins() {
     for body in [
         "out[0] = __ldg(out);",
@@ -189,7 +247,10 @@ fn cuda_ldg_rejects_invalid_overloads_and_constant_calls() {
         "short value = 0; out[0] = __ldg(&value);",
         "long value = 0; out[0] = __ldg(&value);",
         "bool value = false; out[0] = __ldg(&value);",
-        "float2 value{}; out[0] = __ldg(&value);",
+        "uint2 value{}; out[0] = __ldg(&value);",
+        "float3 value{}; out[0] = __ldg(&value);",
+        "float4 value{}; out[0] = __ldg(&value);",
+        "volatile float2 value{}; out[0] = __ldg(&value);",
         "volatile int value = 0; out[0] = __ldg(&value);",
         "volatile float value = 0.0f; out[0] = __ldg(&value);",
         "volatile unsigned value = 0u; out[0] = __ldg(&value);",

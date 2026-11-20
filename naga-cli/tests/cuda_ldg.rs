@@ -1,13 +1,14 @@
 mod common;
 
 use common::TestFiles;
-use naga::{AddressSpace, ResourceBinding, Scalar, StorageAccess, TypeInner};
+use naga::{AddressSpace, ResourceBinding, Scalar, StorageAccess, TypeInner, VectorSize};
 
 #[test]
 fn cuda_ldg_cli_emits_read_only_loads_for_all_backends() {
     emits_all_backends(
         include_str!("../../naga/tests/in/cuda/ldg.cu"),
-        &[Scalar::U32],
+        "load_values",
+        &[(TypeInner::Scalar(Scalar::U32), 4)],
     );
 }
 
@@ -15,11 +16,30 @@ fn cuda_ldg_cli_emits_read_only_loads_for_all_backends() {
 fn cuda_ldg_cli_emits_signed_and_float_loads_for_all_backends() {
     emits_all_backends(
         include_str!("../../naga/tests/in/cuda/ldg-signed-float.cu"),
-        &[Scalar::I32, Scalar::F32],
+        "load_values",
+        &[
+            (TypeInner::Scalar(Scalar::I32), 4),
+            (TypeInner::Scalar(Scalar::F32), 4),
+        ],
     );
 }
 
-fn emits_all_backends(source: &str, input_scalars: &[Scalar]) {
+#[test]
+fn cuda_ldg_cli_emits_float2_loads_for_all_backends() {
+    emits_all_backends(
+        include_str!("../../naga/tests/in/cuda/ldg-float2.cu"),
+        "load_pairs",
+        &[(
+            TypeInner::Vector {
+                size: VectorSize::Bi,
+                scalar: Scalar::F32,
+            },
+            8,
+        )],
+    );
+}
+
+fn emits_all_backends(source: &str, entry: &str, input_types: &[(TypeInner, u32)]) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);
         let outputs: Vec<_> = ["wgsl", "spv", "hlsl", "metal", "comp"]
@@ -27,7 +47,7 @@ fn emits_all_backends(source: &str, input_scalars: &[Scalar]) {
             .map(|extension| files.output.with_extension(extension))
             .collect();
         let paths: Vec<_> = outputs.iter().map(|path| path.as_path()).collect();
-        let mut args = vec!["--entry-point", "load_values"];
+        let mut args = vec!["--entry-point", entry];
         if compact {
             args.push("--compact");
         }
@@ -41,8 +61,8 @@ fn emits_all_backends(source: &str, input_scalars: &[Scalar]) {
             .iter()
             .all(|output| std::fs::metadata(output).unwrap().len() > 0));
         let module = files.read_module();
-        assert_eq!(module.global_variables.len(), input_scalars.len() + 1);
-        let mut seen_bindings = vec![false; input_scalars.len() + 1];
+        assert_eq!(module.global_variables.len(), input_types.len() + 1);
+        let mut seen_bindings = vec![false; input_types.len() + 1];
         for (_, global) in module.global_variables.iter() {
             let Some(ResourceBinding { group: 0, binding }) = global.binding else {
                 panic!("expected CUDA buffer binding");
@@ -50,21 +70,25 @@ fn emits_all_backends(source: &str, input_scalars: &[Scalar]) {
             let binding = binding as usize;
             assert!(!seen_bindings[binding], "duplicate CUDA buffer binding");
             seen_bindings[binding] = true;
-            let (scalar, access) = if binding == input_scalars.len() {
-                (Scalar::U32, StorageAccess::LOAD | StorageAccess::STORE)
+            let ((element_type, expected_stride), access) = if binding == input_types.len() {
+                (
+                    &(TypeInner::Scalar(Scalar::U32), 4),
+                    StorageAccess::LOAD | StorageAccess::STORE,
+                )
             } else {
-                (input_scalars[binding], StorageAccess::LOAD)
+                (&input_types[binding], StorageAccess::LOAD)
             };
             assert_eq!(global.space, AddressSpace::Storage { access });
             let TypeInner::Array {
                 base,
                 size: naga::ArraySize::Dynamic,
-                stride: 4,
+                stride,
             } = module.types[global.ty].inner
             else {
-                panic!("expected packed CUDA scalar buffer");
+                panic!("expected packed CUDA storage buffer");
             };
-            assert_eq!(module.types[base].inner, TypeInner::Scalar(scalar));
+            assert_eq!(stride, *expected_stride);
+            assert_eq!(&module.types[base].inner, element_type);
         }
     }
 }
