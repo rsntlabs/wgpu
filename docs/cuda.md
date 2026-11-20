@@ -1632,6 +1632,12 @@ For example, `__float2int_rd` rounds negative subnormals to `-1` and
 inputs and rounded values outside the signed integer range undefined.
 Both intrinsics follow the same runtime and overload rules as the
 round-toward-zero forms.
+
+`__float2int_rn(float)` converts its argument to `float` and returns the
+nearest `int`, choosing the even integer on a tie. It shares the integer
+rounding helper with `rintf`. For example, both `1.5f` and `2.5f`
+round to `2`, and both `-1.5f` and `-2.5f` round to `-2`.
+The same range, runtime, and overload rules apply.
 See NVIDIA's [conversion intrinsics](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__CAST.html).
 
 `__int2float_rz(int)` and `__uint2float_rz(unsigned int)` convert the argument

@@ -489,3 +489,5 @@ mod ilogbf;
 mod logbf;
 
 mod float2int_ru;
+
+mod float2int_rn;
