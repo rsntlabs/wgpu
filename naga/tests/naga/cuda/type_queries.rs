@@ -3534,3 +3534,102 @@ fn cuda_record_offsetof_nested_sizeof_static_casts_reject_invalid_targets_source
         }
     }
 }
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_cstyle_casts_preserve_unary_binding_and_alias_lookup() {
+    for (operand, size) in [
+        ("(short)value", 2),
+        ("(unsigned long long)value", 8),
+        ("(const volatile Number)value", 4),
+        ("(short)-value", 2),
+        ("(short)(value + 1)", 2),
+        ("(short)value + 1", 4),
+        ("(short)(value, value)", 2),
+        ("(bool)pointer", 1),
+        ("(bool)grid", 1),
+        ("(Truth)nullptr", 1),
+        ("(short)(unsigned)value", 2),
+        ("(short)static_cast<unsigned>(value)", 2),
+        ("static_cast<short>((unsigned)value)", 2),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{
+                int value; int *pointer; int grid[2][3];
+                using Number = unsigned; using Truth = bool;
+                output[0] = __builtin_offsetof(Offsets, bytes[sizeof({operand})]);
+            }}"
+            ),
+            &[size * 4],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; }; using Alias = short;
+        __global__ void kernel(unsigned long *output) {
+            int Alias; int value;
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof((Alias) + value)]);
+            output[1] = __builtin_offsetof(Offsets, bytes[sizeof(short) + 1]);
+        }",
+        &[16, 12],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_cstyle_casts_have_identical_ir_to_explicit_type_queries() {
+    let source = |query: &str| {
+        format!(
+            "struct Offsets {{ int bytes[64]; }};
+        __global__ void kernel(unsigned long *output, volatile int *input) {{
+            output[0] = __builtin_offsetof(Offsets, bytes[{query}]);
+        }}"
+        )
+    };
+    let cast = roundtrip(&source("sizeof((short)*input)"));
+    let control = roundtrip(&source("sizeof(short)"));
+    let expressions = &cast.entry_points[0].function.expressions;
+    assert_eq!(
+        expressions.iter().collect::<Vec<_>>(),
+        control.entry_points[0]
+            .function
+            .expressions
+            .iter()
+            .collect::<Vec<_>>(),
+    );
+    assert!(expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    assert!(cast.types.iter().all(|(_, ty)| !matches!(
+        ty.inner,
+        naga::TypeInner::Scalar(naga::Scalar { width: 2, .. })
+    )));
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_cstyle_casts_reject_invalid_forms() {
+    for query in [
+        "sizeof((void)value)",
+        "sizeof((int*)pointer)",
+        "sizeof((int&)value)",
+        "sizeof((Record)value)",
+        "sizeof((float2)value)",
+        "sizeof((int)pointer)",
+        "sizeof((bool)record)",
+        "sizeof((bool)vector)",
+        "sizeof((int))",
+        "sizeof((int)helper())",
+        "sizeof (short)value",
+        "sizeof(flag ? pointer : (int)0)",
+    ] {
+        for prefix in ["", "true || "] {
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }}; struct Record {{ int field; }};
+                __device__ int helper() {{ return 0; }}
+                __global__ void kernel(unsigned long *output) {{
+                    int value; bool flag; int *pointer; Record record; float2 vector;
+                    output[0] = __builtin_offsetof(Offsets, bytes[{prefix}{query}]);
+                }}"
+            ));
+        }
+    }
+}

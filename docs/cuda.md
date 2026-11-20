@@ -541,6 +541,9 @@ of an array. Every operand is type-checked without being evaluated.
 An arithmetic `static_cast` operand uses the cast target's size, as in
 `sizeof(static_cast<short>(value))`. It follows the same conversion rules
 as standalone `sizeof` and emits no conversion.
+Arithmetic C-style casts also work in grouped operands such as
+`sizeof((short)value)`. The cast binds to its next operand, so
+`sizeof((short)value + 1)` uses the promoted type of the sum.
 Pointer type queries, including `void*`, use the CUDA source ABI size and
 alignment of eight bytes. Reference type queries use the referent's layout.
 Array type operands can include dimensions such as `int[2][3]`. Every

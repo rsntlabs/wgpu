@@ -631,6 +631,11 @@ impl Parser<'_> {
             }
             Token::Paren('(') => {
                 self.parameter_expansion_budget.charge_work(2, start)?;
+                if let Some(scalar) = self.sizeof_c_style_cast_target(start)? {
+                    let (operand, end) = self.record_offset_sizeof_operand(depth + 1)?;
+                    let operand = self.sizeof_scalar_cast_result(scalar, &operand, end)?;
+                    return Ok((operand, start.until(&end)));
+                }
                 let (operand, _) = self.sizeof_comma_expression(|parser| {
                     parser.record_offset_sizeof_conditional(depth + 1)
                 })?;
@@ -1569,23 +1574,10 @@ impl Parser<'_> {
             }
             Token::Paren('(') => {
                 self.parameter_expansion_budget.charge_work(1, start)?;
-                if self.starts_type()? {
-                    self.parameter_expansion_budget.charge_work(2, start)?;
-                    let mut lookahead = self.lexer.clone();
-                    let target_span = lookahead.peek()?.1;
-                    let target = self.parse_type_from(&mut lookahead)?;
-                    if lookahead.next_if(Token::Paren(')'))? {
-                        let scalar = target.ty.source_scalar().ok_or_else(|| ParseError {
-                            message: String::from(
-                                "sizeof C-style cast requires an arithmetic scalar target",
-                            ),
-                            span: target_span,
-                        })?;
-                        self.lexer = lookahead;
-                        let (operand, end) = self.sizeof_operand()?;
-                        let operand = self.sizeof_scalar_cast_result(scalar, &operand, end)?;
-                        return Ok((operand, start.until(&end)));
-                    }
+                if let Some(scalar) = self.sizeof_c_style_cast_target(start)? {
+                    let (operand, end) = self.sizeof_operand()?;
+                    let operand = self.sizeof_scalar_cast_result(scalar, &operand, end)?;
+                    return Ok((operand, start.until(&end)));
                 }
                 let (operand, _) =
                     self.sizeof_comma_expression(Self::sizeof_conditional_expression)?;
@@ -1682,6 +1674,28 @@ impl Parser<'_> {
         };
         let (_, ty) = self.field_type(&ty, field, field_span)?;
         Ok((SizeofOperand::Object(ty), field_span))
+    }
+
+    fn sizeof_c_style_cast_target(
+        &mut self,
+        start: Span,
+    ) -> Result<Option<SourceScalar>, ParseError> {
+        if !self.starts_type()? {
+            return Ok(None);
+        }
+        self.parameter_expansion_budget.charge_work(2, start)?;
+        let mut lookahead = self.lexer.clone();
+        let target_span = lookahead.peek()?.1;
+        let target = self.parse_type_from(&mut lookahead)?;
+        if !lookahead.next_if(Token::Paren(')'))? {
+            return Ok(None);
+        }
+        let scalar = target.ty.source_scalar().ok_or_else(|| ParseError {
+            message: String::from("sizeof C-style cast requires an arithmetic scalar target"),
+            span: target_span,
+        })?;
+        self.lexer = lookahead;
+        Ok(Some(scalar))
     }
 
     fn sizeof_static_cast(
@@ -2059,6 +2073,8 @@ mod tests {
             ("sizeof(((((1 + 1))))) / 4]", false, false),
             ("sizeof(true ? 1 : false ? 0L : 4) / 8]", true, true),
             ("sizeof static_cast<unsigned long>(0) / 8]", true, true),
+            ("sizeof((short)(+One)) / 2]", true, true),
+            ("sizeof((short)(short)(short)(short)1) / 2]", false, false),
             ("sizeof(static_cast<short>(static_cast<short>(static_cast<short>(static_cast<short>(1))))) / 2]", false, false),
             (
                 "sizeof(true ? 1 : true ? 1 : true ? 1 : true ? 1 : 1) / 4]",
