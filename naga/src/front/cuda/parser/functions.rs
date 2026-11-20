@@ -1179,6 +1179,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "ilogbf",
         "logbf",
         "ldexpf",
+        "scalbnf",
     ] {
         declarations.insert(
             name,
@@ -3348,7 +3349,7 @@ impl<'a> Parser<'a> {
                 (true, "copysignf") => Some(FunctionCandidate::CopySign),
                 (true, "nextafterf") => Some(FunctionCandidate::NextAfter),
                 (true, "fdimf") => Some(FunctionCandidate::PositiveDifference),
-                (true, "ldexpf") => Some(FunctionCandidate::ScaleByPowerOfTwo),
+                (true, "ldexpf" | "scalbnf") => Some(FunctionCandidate::ScaleByPowerOfTwo),
                 (true, "ilogbf") => Some(FunctionCandidate::FloatExponent(ExponentResult::Integer)),
                 (true, "logbf") => Some(FunctionCandidate::FloatExponent(ExponentResult::Float)),
                 (true, "__float2int_rz") => Some(FunctionCandidate::FloatToInteger {

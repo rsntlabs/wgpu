@@ -9,7 +9,7 @@ var<storage, read_write> output: array<u32>;
 @group(0) @binding(2)
 var<uniform> count: type_6;
 
-fn kind(value_2: f32) -> u32 {
+fn kind(value_4: f32) -> u32 {
     return 1u;
 }
 
@@ -46,24 +46,30 @@ fn scale_values(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin(wor
     var local: u32;
     var local_1: u32;
     var local_2: u32;
+    var local_3: u32;
+    var local_4: u32;
+    var local_5: u32;
+    var local_6: u32;
     var value: f32;
     var value_1: i32;
+    var value_2: f32;
+    var value_3: i32;
 
     let count_1 = count.value;
     let index = (threadIdx.x + (blockIdx.x * 4u));
     if (index >= count_1) {
         return;
     }
-    let base = (4u + (index * 4u));
+    let base = (4u + (index * 8u));
     let _e18 = input[index].x;
-    let value_3 = bitcast<f32>(_e18);
+    let value_5 = bitcast<f32>(_e18);
     let _e22 = input[index].y;
     let power = i32(_e22);
     counter = 0u;
-    let _e27 = gen__naga_ldexpf(bitcast<u32>(value_3), power);
+    let _e27 = gen__naga_ldexpf(bitcast<u32>(value_5), power);
     output[base] = bitcast<u32>(bitcast<f32>(_e27));
     value = f32();
-    value = value_3;
+    value = value_5;
     let _e35 = counter;
     counter = (_e35 + u32(1i));
     let _e39 = value;
@@ -80,9 +86,36 @@ fn scale_values(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin(wor
     local_1 = u32((base + 2u));
     let _e63 = local_1;
     output[_e63] = _e58;
-    let _e66 = gen__naga_ldexpf(bitcast<u32>(value_3), power);
+    let _e66 = gen__naga_ldexpf(bitcast<u32>(value_5), power);
     let _e68 = kind(bitcast<f32>(_e66));
     local_2 = u32((base + 3u));
     let _e73 = local_2;
     output[_e73] = _e68;
+    let _e76 = gen__naga_ldexpf(bitcast<u32>(value_5), power);
+    local_3 = u32((base + 4u));
+    let _e83 = local_3;
+    output[_e83] = bitcast<u32>(bitcast<f32>(_e76));
+    value_2 = f32();
+    value_2 = value_5;
+    let _e88 = counter;
+    counter = (_e88 + u32(1i));
+    let _e92 = value_2;
+    value_3 = i32();
+    value_3 = power;
+    let _e96 = counter;
+    counter = (_e96 + u32(1i));
+    let _e100 = value_3;
+    let _e102 = gen__naga_ldexpf(bitcast<u32>(_e92), _e100);
+    local_4 = u32((base + 5u));
+    let _e109 = local_4;
+    output[_e109] = bitcast<u32>(bitcast<f32>(_e102));
+    let _e111 = counter;
+    local_5 = u32((base + 6u));
+    let _e116 = local_5;
+    output[_e116] = _e111;
+    let _e119 = gen__naga_ldexpf(bitcast<u32>(value_5), power);
+    let _e121 = kind(bitcast<f32>(_e119));
+    local_6 = u32((base + 7u));
+    let _e126 = local_6;
+    output[_e126] = _e121;
 }

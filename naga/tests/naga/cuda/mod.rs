@@ -499,3 +499,5 @@ mod float2uint_ru;
 mod float2uint_rn;
 
 mod ldexpf;
+
+mod scalbnf;

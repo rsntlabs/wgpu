@@ -15,7 +15,7 @@ layout(std430) buffer type_5_block_1Compute { uint _group_0_binding_1_cs[]; };
 layout(std140) uniform type_6_block_2Compute { type_6 _group_0_binding_2_cs; };
 
 
-uint kind(float value_2) {
+uint kind(float value_4) {
     return 1u;
 }
 
@@ -53,23 +53,29 @@ void main() {
     uint local = 0u;
     uint local_1 = 0u;
     uint local_2 = 0u;
+    uint local_3 = 0u;
+    uint local_4 = 0u;
+    uint local_5 = 0u;
+    uint local_6 = 0u;
     float value = 0.0;
     int value_1 = 0;
+    float value_2 = 0.0;
+    int value_3 = 0;
     uint count_1 = _group_0_binding_2_cs.value;
     uint index = (threadIdx.x + (blockIdx.x * 4u));
     if ((index >= count_1)) {
         return;
     }
-    uint base = (4u + (index * 4u));
+    uint base = (4u + (index * 8u));
     uint _e18 = _group_0_binding_0_cs[index].x;
-    float value_3 = uintBitsToFloat(_e18);
+    float value_5 = uintBitsToFloat(_e18);
     uint _e22 = _group_0_binding_0_cs[index].y;
     int power = int(_e22);
     counter = 0u;
-    uint _e27 = _naga_ldexpf(floatBitsToUint(value_3), power);
+    uint _e27 = _naga_ldexpf(floatBitsToUint(value_5), power);
     _group_0_binding_1_cs[base] = floatBitsToUint(uintBitsToFloat(_e27));
     value = 0.0;
-    value = value_3;
+    value = value_5;
     uint _e35 = counter;
     counter = (_e35 + uint(1));
     float _e39 = value;
@@ -86,10 +92,37 @@ void main() {
     local_1 = uint((base + 2u));
     uint _e63 = local_1;
     _group_0_binding_1_cs[_e63] = _e58;
-    uint _e66 = _naga_ldexpf(floatBitsToUint(value_3), power);
+    uint _e66 = _naga_ldexpf(floatBitsToUint(value_5), power);
     uint _e68 = kind(uintBitsToFloat(_e66));
     local_2 = uint((base + 3u));
     uint _e73 = local_2;
     _group_0_binding_1_cs[_e73] = _e68;
+    uint _e76 = _naga_ldexpf(floatBitsToUint(value_5), power);
+    local_3 = uint((base + 4u));
+    uint _e83 = local_3;
+    _group_0_binding_1_cs[_e83] = floatBitsToUint(uintBitsToFloat(_e76));
+    value_2 = 0.0;
+    value_2 = value_5;
+    uint _e88 = counter;
+    counter = (_e88 + uint(1));
+    float _e92 = value_2;
+    value_3 = 0;
+    value_3 = power;
+    uint _e96 = counter;
+    counter = (_e96 + uint(1));
+    int _e100 = value_3;
+    uint _e102 = _naga_ldexpf(floatBitsToUint(_e92), _e100);
+    local_4 = uint((base + 5u));
+    uint _e109 = local_4;
+    _group_0_binding_1_cs[_e109] = floatBitsToUint(uintBitsToFloat(_e102));
+    uint _e111 = counter;
+    local_5 = uint((base + 6u));
+    uint _e116 = local_5;
+    _group_0_binding_1_cs[_e116] = _e111;
+    uint _e119 = _naga_ldexpf(floatBitsToUint(value_5), power);
+    uint _e121 = kind(uintBitsToFloat(_e119));
+    local_6 = uint((base + 7u));
+    uint _e126 = local_6;
+    _group_0_binding_1_cs[_e126] = _e121;
 }
 

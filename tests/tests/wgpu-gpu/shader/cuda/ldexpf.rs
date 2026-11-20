@@ -43,10 +43,11 @@ pub(super) fn cases() -> Vec<ShaderTest> {
     assert_eq!(scaled(0x00ff_ffff, -1), 0x0080_0000);
     assert_eq!(scaled(0x3f80_0000, -150), 0);
     assert_eq!(scaled(0xbf80_0000, -150), 0x8000_0000);
-    let mut expected = vec![SENTINEL; input.len() * 4 + 8];
+    let mut expected = vec![SENTINEL; input.len() * 8 + 8];
     for (index, &[bits, power]) in input.iter().enumerate() {
         let result = scaled(bits, power as i32);
-        expected[4 + index * 4..8 + index * 4].copy_from_slice(&[result, result, 2, 1]);
+        expected[4 + index * 8..12 + index * 8]
+            .copy_from_slice(&[result, result, 2, 1, result, result, 4, 1]);
     }
     let initial = vec![SENTINEL; expected.len()];
     let count = input.len() as u32;
