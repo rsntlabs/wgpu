@@ -442,7 +442,7 @@ impl Parser<'_> {
         depth: u32,
         target_span: Span,
     ) -> Result<u32, ParseError> {
-        match self.type_query_type_id(target_span)? {
+        match self.type_query_type_id(target_span, depth)? {
             TypeQueryType::Pointer => Ok(8),
             TypeQueryType::PointerToArray(ty) => {
                 // The pointee may have an omitted outer bound.
@@ -1247,7 +1247,7 @@ impl Parser<'_> {
             return self.fail("type queries require a parenthesized type or sizeof a named object");
         }
 
-        let value = match self.type_query_type_id(span)? {
+        let value = match self.type_query_type_id(span, 0)? {
             TypeQueryType::Pointer => 8,
             TypeQueryType::PointerToArray(ty) => {
                 self.array_alias_declarator(ty, span)?;
@@ -1371,7 +1371,7 @@ impl Parser<'_> {
         }
     }
 
-    fn type_query_type_id(&mut self, span: Span) -> Result<TypeQueryType, ParseError> {
+    fn type_query_type_id(&mut self, span: Span, depth: u32) -> Result<TypeQueryType, ParseError> {
         let operand = self.type_query_base()?;
         let pointer_depth = self.type_query_pointer_depth(operand.as_ref())?;
         let mut lookahead = self.lexer.clone();
@@ -1384,6 +1384,7 @@ impl Parser<'_> {
                     return self.fail("function types cannot return arrays");
                 }
                 self.type_query_function_parameters()?;
+                self.type_query_function_noexcept(depth)?;
                 return Ok(TypeQueryType::Pointer);
             }
             let ty = operand.ok_or_else(|| ParseError {
@@ -1480,6 +1481,36 @@ impl Parser<'_> {
             let comma = self.lexer.expect_span(Token::Separator(','))?;
             self.parameter_expansion_budget.charge_work(1, comma)?;
         }
+    }
+
+    fn type_query_function_noexcept(&mut self, depth: u32) -> Result<(), ParseError> {
+        let (token, span) = self.lexer.peek()?;
+        if token != Token::Word("noexcept") {
+            return Ok(());
+        }
+        self.parameter_expansion_budget.charge_work(1, span)?;
+        self.lexer.next()?;
+        if self.lexer.next_if(Token::Paren('('))? {
+            if depth >= 64 {
+                return self.fail("CUDA expression nesting limit exceeded");
+            }
+            self.parameter_expansion_budget.charge_work(2, span)?;
+            let (condition, span) =
+                self.record_offset_index(depth + 1, 0, RecordOffsetIndexMode::Evaluate)?;
+            self.lexer.expect_span(Token::Paren(')'))?;
+            if !matches!(condition.value, Some(0 | 1)) {
+                return Err(ParseError {
+                    message: String::from(
+                        "noexcept requires a non-narrowing integral constant expression of bool",
+                    ),
+                    span,
+                });
+            }
+        }
+        if self.lexer.peek()?.0 == Token::Word("noexcept") {
+            return self.fail("duplicate noexcept specification");
+        }
+        Ok(())
     }
 
     fn scan_type_query_pointer_chain(

@@ -4659,3 +4659,72 @@ fn cuda_layout_queries_function_pointer_signatures_reject_invalid_types_and_malf
         }
     }
 }
+
+#[test]
+fn cuda_layout_queries_function_pointer_noexcept_specs_have_pointer_layout() {
+    for specification in [
+        "noexcept",
+        "noexcept(true)",
+        "noexcept(false)",
+        "noexcept(0)",
+        "noexcept(1)",
+        "noexcept(Global)",
+        "noexcept(Local)",
+        "noexcept(sizeof(int) == 4)",
+        "noexcept(true || 1 / 0)",
+        "noexcept(false && runtime)",
+    ] {
+        assert_query_results(&format!(
+            "struct Offsets {{ int bytes[64]; }}; constexpr bool Global = true;
+            __global__ void kernel(unsigned long *output) {{
+                constexpr bool Local = false; int runtime;
+                output[0] = sizeof(int(*)(int) {specification});
+                output[1] = __builtin_offsetof(Offsets, bytes[alignof(int(*)(int) {specification})]);
+            }}"), &[8, 32]);
+    }
+}
+
+#[test]
+fn cuda_layout_queries_function_pointer_noexcept_specs_validate_constants_even_in_skipped_queries()
+{
+    for specification in [
+        "noexcept noexcept",
+        "noexcept()",
+        "noexcept(runtime)",
+        "noexcept(2)",
+        "noexcept(-1)",
+        "noexcept(1.0f)",
+        "noexcept(Missing)",
+        "noexcept(1 / 0)",
+        "noexcept(true && runtime)",
+        "noexcept(false || runtime)",
+    ] {
+        rejected(&format!(
+            "__global__ void kernel(unsigned long *output) {{ int runtime;
+                output[0] = sizeof(int(*)() {specification});
+            }}"
+        ));
+        for prefix in ["", "true || "] {
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime;
+                    output[0] = __builtin_offsetof(Offsets, bytes[{prefix}sizeof(int(*)() {specification})]);
+                }}"));
+        }
+    }
+    for expression in [
+        format!("{}true{}", "(".repeat(65), ")".repeat(65)),
+        format!(
+            "{}true{}",
+            "sizeof(int(*)() noexcept(".repeat(40),
+            ")) == 8".repeat(40)
+        ),
+    ] {
+        let error = rejected(&format!(
+            "__global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof(int(*)() noexcept({expression}));
+            }}"
+        ));
+        assert!(error.message.contains("nesting limit"), "{error}");
+    }
+}

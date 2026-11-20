@@ -558,6 +558,9 @@ alignment of eight bytes. Reference type queries use the referent's layout.
 Function pointer queries such as `sizeof(int (*)(const int *, unsigned &))`
 also use the pointer layout. The parameter list may be empty, `(void)`, or
 a list of unnamed supported types with optional pointer or reference suffixes.
+The signature may end with `noexcept` or `noexcept(expression)`. The expression
+uses the integral constant expression rules for `offsetof` indices and must
+produce `false`, `true`, `0`, or `1`.
 Grouped type operands such as `int (*)[3]` and `int (**)[3]` also use the
 pointer layout. Both queries accept an omitted outer bound in the array,
 as in `sizeof(int (*)[])`.
