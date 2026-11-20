@@ -531,6 +531,10 @@ Parenthesized operands can also use scalar binary operators, as in
 `sizeof(value + 1)`. These expressions use the same type conversions
 and precedence as standalone `sizeof`. They are checked for operand type
 errors without evaluating their values.
+Parenthesized conditional expressions such as `sizeof(flag ? a : b)`
+use the same supported scalar and pointer arm types as standalone
+`sizeof`. Both arms are type-checked without evaluating the condition
+or either arm.
 Pointer type queries, including `void*`, use the CUDA source ABI size and
 alignment of eight bytes. Reference type queries use the referent's layout.
 Array type operands can include dimensions such as `int[2][3]`. Every

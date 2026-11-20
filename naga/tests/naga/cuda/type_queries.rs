@@ -3247,7 +3247,6 @@ fn cuda_record_offsetof_nested_sizeof_scalar_binary_rejects_invalid_types_and_br
         "value = 1",
         "value += 1",
         "value++ + 1",
-        "value ? 1 : 2",
         "value, 1",
         "value + helper()",
     ] {
@@ -3256,6 +3255,103 @@ fn cuda_record_offsetof_nested_sizeof_scalar_binary_rejects_invalid_types_and_br
             __device__ int helper() {{ return 0; }}
             __global__ void kernel(unsigned long *output) {{
                 int value; int *pointer; float real; Record record; float2 vector;
+                output[0] = __builtin_offsetof(Offsets, bytes[sizeof({operand})]);
+            }}"
+        ));
+    }
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_conditionals_preserve_scalar_and_pointer_arm_types() {
+    for (operand, size) in [
+        ("flag ? small : other", 2),
+        ("flag ? true : false", 1),
+        ("flag ? small : value", 4),
+        ("flag ? flag : small", 4),
+        ("flag ? value : 1.0f", 4),
+        ("flag ? small : flag ? other : small", 2),
+        ("flag ? flag ? small : other : small", 2),
+        ("flag ? pointer : nullptr", 8),
+        ("flag ? nullptr : pointer", 8),
+        ("flag ? pointer : 0u", 8),
+        ("flag ? 0 : pointer", 8),
+        ("flag ? pointer : another", 8),
+        ("flag ? nullptr : nullptr", 8),
+        ("*(flag ? pointer : nullptr)", 4),
+        ("(flag ? record : nullptr)->field", 4),
+        ("*(flag ? row : nullptr)", 12),
+        ("pointer ? small : other", 2),
+        ("nullptr ? true : false", 1),
+        ("grid ? small : other", 2),
+        ("flag ? 1 / 0 : value", 4),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; struct Record {{ int field; }};
+            __global__ void kernel(unsigned long *output) {{
+                short small; short other; bool flag; int value; int grid[2][3];
+                int *pointer = nullptr; const int *another = nullptr;
+                Record *record = nullptr; using Row = int[3]; Row *row = nullptr;
+                output[0] = __builtin_offsetof(Offsets, bytes[sizeof({operand})]);
+            }}"
+            ),
+            &[size * 4],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            bool flag;
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof flag ? 7 : 9]);
+        }",
+        &[28],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_conditionals_never_lower_volatile_operands() {
+    let module = roundtrip(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output, volatile int *input) {
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof(*input ? *input : *input)]);
+        }",
+    );
+    let function = &module.entry_points[0].function;
+    assert!(function.expressions.iter().all(|(_, expression)| !matches!(
+        expression,
+        naga::Expression::Load { .. } | naga::Expression::Select { .. }
+    )));
+    assert!(!naga::proc::any_statement(
+        &function.body,
+        &mut |statement| matches!(statement, naga::Statement::If { .. })
+    ));
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_conditionals_reject_invalid_types_even_when_unselected() {
+    for operand in [
+        "record ? 1 : 2",
+        "vector ? 1 : 2",
+        "true ? 1 : record",
+        "false ? vector : 1",
+        "flag ? pointer : 1",
+        "flag ? pointer : false",
+        "flag ? pointer : real_pointer",
+        "flag ? pointer : (1 - 1)",
+        "flag ? nullptr : 0",
+        "flag ? grid : grid",
+        "flag ? value :",
+        "flag ? : value",
+        "flag ? value",
+        "flag ? value, value : value",
+        "flag ? int(value) : value",
+        "flag ? static_cast<int>(value) : value",
+    ] {
+        rejected(&format!(
+            "struct Offsets {{ int bytes[64]; }}; struct Record {{ int field; }};
+            __global__ void kernel(unsigned long *output) {{
+                bool flag; int value; Record record; float2 vector; int grid[2][3];
+                int *pointer; float *real_pointer;
                 output[0] = __builtin_offsetof(Offsets, bytes[sizeof({operand})]);
             }}"
         ));

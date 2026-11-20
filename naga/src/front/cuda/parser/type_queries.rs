@@ -566,6 +566,35 @@ impl Parser<'_> {
         Ok(if name == "sizeof" { size } else { alignment })
     }
 
+    fn record_offset_sizeof_conditional(
+        &mut self,
+        depth: u32,
+    ) -> Result<(SizeofOperand, Span), ParseError> {
+        let (condition, condition_span) =
+            self.sizeof_binary_expression(0, |parser| parser.record_offset_sizeof_operand(depth))?;
+        let (token, question_span) = self.lexer.peek()?;
+        if token != Token::Operation('?') {
+            return Ok((condition, condition_span));
+        }
+        if depth >= 64 {
+            return Err(ParseError {
+                message: String::from("CUDA expression nesting limit exceeded"),
+                span: question_span,
+            });
+        }
+        self.lexer.next()?;
+        self.parameter_expansion_budget
+            .charge_work(1, question_span)?;
+        self.require_sizeof_condition(&condition, condition_span)?;
+        let accept = self.record_offset_sizeof_conditional(depth + 1)?;
+        let colon_span = self.lexer.expect_span(Token::Separator(':'))?;
+        self.parameter_expansion_budget.charge_work(1, colon_span)?;
+        let reject = self.record_offset_sizeof_conditional(depth + 1)?;
+        let span = condition_span.until(&reject.1);
+        let operand = self.sizeof_conditional_arm_type(accept, reject)?;
+        Ok((operand, span))
+    }
+
     fn record_offset_sizeof_operand(
         &mut self,
         depth: u32,
@@ -599,9 +628,7 @@ impl Parser<'_> {
             }
             Token::Paren('(') => {
                 self.parameter_expansion_budget.charge_work(2, start)?;
-                let (operand, _) = self.sizeof_binary_expression(0, |parser| {
-                    parser.record_offset_sizeof_operand(depth + 1)
-                })?;
+                let (operand, _) = self.record_offset_sizeof_conditional(depth + 1)?;
                 let end = self.lexer.expect_span(Token::Paren(')'))?;
                 (operand, end)
             }
@@ -1334,63 +1361,76 @@ impl Parser<'_> {
             }
             self.parameter_expansion_budget
                 .charge_work(1, question_span)?;
-            if !self.sizeof_bool_convertible(&condition) {
-                return Err(ParseError {
-                    message: String::from(
-                        "sizeof conditional requires a scalar, pointer, array, or nullptr condition",
-                    ),
-                    span: condition_span,
-                });
-            }
-            let (accept, accept_span) = self.sizeof_comma_expression()?;
+            self.require_sizeof_condition(&condition, condition_span)?;
+            let accept = self.sizeof_comma_expression()?;
             let colon_span = self.lexer.expect_span(Token::Separator(':'))?;
             self.parameter_expansion_budget.charge_work(1, colon_span)?;
-            let (reject, reject_span) = self.sizeof_conditional_expression()?;
-            let operand = match (accept, reject) {
-                (SizeofOperand::Object(left), SizeofOperand::Object(right))
-                    if self.source_pointer_pointee(&left).is_some_and(|pointee| {
-                        self.source_pointer_pointee(&right) == Some(pointee)
-                            && !matches!(
-                                self.module.types[pointee].inner,
-                                TypeInner::Pointer { .. }
-                            )
-                    }) =>
-                {
-                    SizeofOperand::Object(left)
-                }
-                (
-                    SizeofOperand::Object(ty),
-                    SizeofOperand::NullPointer | SizeofOperand::IntegerZeroLiteral(_),
-                )
-                | (
-                    SizeofOperand::NullPointer | SizeofOperand::IntegerZeroLiteral(_),
-                    SizeofOperand::Object(ty),
-                ) if self.source_pointer_pointee(&ty).is_some() => SizeofOperand::Object(ty),
-                (SizeofOperand::NullPointer, SizeofOperand::NullPointer) => {
-                    SizeofOperand::NullPointer
-                }
-                (accept, reject) => {
-                    let scalar_arm = |operand, span| {
-                        self.sizeof_source_scalar(operand).ok_or_else(|| ParseError {
-                            message: String::from(
-                                "sizeof conditional requires scalar arms, matching single-level pointer arms, a pointer with nullptr or literal integer zero, or two nullptr arms",
-                            ),
-                            span,
-                        })
-                    };
-                    let accept = scalar_arm(&accept, accept_span)?;
-                    let reject = scalar_arm(&reject, reject_span)?;
-                    SizeofOperand::Scalar(if accept == reject {
-                        accept
-                    } else {
-                        Self::arithmetic_scalar(accept, reject)
-                    })
-                }
-            };
-            Ok((operand, condition_span.until(&reject_span)))
+            let reject = self.sizeof_conditional_expression()?;
+            let span = condition_span.until(&reject.1);
+            let operand = self.sizeof_conditional_arm_type(accept, reject)?;
+            Ok((operand, span))
         })();
         self.function.expression_depth -= 1;
         result
+    }
+
+    fn require_sizeof_condition(
+        &self,
+        operand: &SizeofOperand,
+        span: Span,
+    ) -> Result<(), ParseError> {
+        if !self.sizeof_bool_convertible(operand) {
+            return Err(ParseError {
+                message: String::from(
+                    "sizeof conditional requires a scalar, pointer, array, or nullptr condition",
+                ),
+                span,
+            });
+        }
+        Ok(())
+    }
+
+    fn sizeof_conditional_arm_type(
+        &self,
+        (accept, accept_span): (SizeofOperand, Span),
+        (reject, reject_span): (SizeofOperand, Span),
+    ) -> Result<SizeofOperand, ParseError> {
+        Ok(match (accept, reject) {
+            (SizeofOperand::Object(left), SizeofOperand::Object(right))
+                if self.source_pointer_pointee(&left).is_some_and(|pointee| {
+                    self.source_pointer_pointee(&right) == Some(pointee)
+                        && !matches!(self.module.types[pointee].inner, TypeInner::Pointer { .. })
+                }) =>
+            {
+                SizeofOperand::Object(left)
+            }
+            (
+                SizeofOperand::Object(ty),
+                SizeofOperand::NullPointer | SizeofOperand::IntegerZeroLiteral(_),
+            )
+            | (
+                SizeofOperand::NullPointer | SizeofOperand::IntegerZeroLiteral(_),
+                SizeofOperand::Object(ty),
+            ) if self.source_pointer_pointee(&ty).is_some() => SizeofOperand::Object(ty),
+            (SizeofOperand::NullPointer, SizeofOperand::NullPointer) => SizeofOperand::NullPointer,
+            (accept, reject) => {
+                let scalar_arm = |operand, span| {
+                    self.sizeof_source_scalar(operand).ok_or_else(|| ParseError {
+                        message: String::from(
+                            "sizeof conditional requires scalar arms, matching single-level pointer arms, a pointer with nullptr or literal integer zero, or two nullptr arms",
+                        ),
+                        span,
+                    })
+                };
+                let accept = scalar_arm(&accept, accept_span)?;
+                let reject = scalar_arm(&reject, reject_span)?;
+                SizeofOperand::Scalar(if accept == reject {
+                    accept
+                } else {
+                    Self::arithmetic_scalar(accept, reject)
+                })
+            }
+        })
     }
 
     fn sizeof_binary_expression(
@@ -1995,6 +2035,17 @@ mod tests {
             ("sizeof(-~!!One) / 4]", false, false),
             (sizeof_sum_chain.as_str(), true, true),
             ("sizeof(((((1 + 1))))) / 4]", false, false),
+            ("sizeof(true ? 1 : false ? 0L : 4) / 8]", true, true),
+            (
+                "sizeof(true ? 1 : true ? 1 : true ? 1 : true ? 1 : 1) / 4]",
+                false,
+                false,
+            ),
+            (
+                "sizeof(true ? true ? true ? true ? 1 : 1 : 1 : 1 : 1) / 4]",
+                false,
+                false,
+            ),
             ("sizeof (((((*Items))))) / 4]", false, false),
             ("sizeof(void const * const * volatile) / 8]", true, true),
             ("alignof(Fixed &) / 4]", false, true),
