@@ -304,6 +304,8 @@ impl Parser<'_> {
             &mut self.ldexpf_function,
             &mut self.fadd_rn_function,
             &mut self.fadd_rz_function,
+            &mut self.fadd_rd_function,
+            &mut self.fadd_ru_function,
             &mut self.fmul_rn_function,
             &mut self.fmul_rz_function,
             &mut self.fmul_rd_function,

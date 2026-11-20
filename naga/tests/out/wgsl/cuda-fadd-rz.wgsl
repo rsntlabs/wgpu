@@ -59,14 +59,14 @@ fn truncate_value(first: f32, second: f32) -> f32 {
 }
 
 fn _fadd_rz(first_1: bool, second_1: bool) -> i32 {
-    var local_16: i32;
+    var local_32: i32;
 
     if first_1 {
-        local_16 = 7i;
+        local_32 = 7i;
     } else {
-        local_16 = 9i;
+        local_32 = 9i;
     }
-    let _e6 = local_16;
+    let _e6 = local_32;
     return _e6;
 }
 
@@ -130,6 +130,114 @@ fn gen__naga_fadd_rn(left_bits_1: u32, right_bits_1: u32) -> u32 {
     return (_e25 | ((select(0u, _e110, (_e108 >= 8388608u)) << 23u) | (_e108 & 8388607u)));
 }
 
+fn gen__naga_fadd_rd(left_bits_2: u32, right_bits_2: u32) -> u32 {
+    let _e9 = (left_bits_2 & 2147483647u);
+    let _e10 = (right_bits_2 & 2147483647u);
+    let _e11 = (left_bits_2 & 2147483648u);
+    let _e12 = (right_bits_2 & 2147483648u);
+    if ((_e9 > 2139095040u) || (_e10 > 2139095040u)) {
+        return 2143289344u;
+    }
+    let _e16 = (_e9 == 2139095040u);
+    let _e17 = (_e10 == 2139095040u);
+    if ((_e16 && _e17) && (_e11 != _e12)) {
+        return 2143289344u;
+    }
+    if _e16 {
+        return left_bits_2;
+    }
+    if _e17 {
+        return right_bits_2;
+    }
+    let _e22 = (_e9 >= _e10);
+    let _e23 = select(_e10, _e9, _e22);
+    let _e24 = select(_e9, _e10, _e22);
+    let _e25 = select(_e12, _e11, _e22);
+    let _e29 = (_e23 >> 23u);
+    let _e30 = (_e24 >> 23u);
+    let _e31 = (_e29 != 0u);
+    let _e32 = (_e30 != 0u);
+    let _e39 = (((_e23 & 8388607u) | select(0u, 8388608u, _e31)) << 3u);
+    let _e40 = (((_e24 & 8388607u) | select(0u, 8388608u, _e32)) << 3u);
+    let _e41 = select(1u, _e29, _e31);
+    let _e43 = (_e41 - select(1u, _e30, _e32));
+    let _e48 = (_e43 & 31u);
+    let _e59 = select(u32((_e40 != 0u)), ((_e40 >> _e48) | u32(((_e40 & ((1u << _e48) - 1u)) != 0u))), (_e43 < 32u));
+    let _e62 = select((_e39 - _e59), (_e39 + _e59), (_e11 == _e12));
+    if (_e62 == 0u) {
+        return (_e11 | _e12);
+    }
+    let _e66 = (_e62 >= 134217728u);
+    let _e71 = (1u & 31u);
+    let _e83 = select(_e62, select(u32((_e62 != 0u)), ((_e62 >> _e71) | u32(((_e62 & ((1u << _e71) - 1u)) != 0u))), (1u < 32u)), _e66);
+    let _e85 = (_e41 + u32(_e66));
+    let _e90 = min((countLeadingZeros(_e83) - 5u), (_e85 - 1u));
+    let _e91 = (_e83 << _e90);
+    let _e93 = (_e25 != 0u);
+    let _e100 = ((_e91 >> 3u) + u32((_e93 && ((_e91 & 7u) > 0u))));
+    let _e102 = (_e100 >= 16777216u);
+    let _e104 = select(_e100, (_e100 >> 1u), _e102);
+    let _e106 = ((_e85 - _e90) + u32(_e102));
+    if (_e106 >= 255u) {
+        return (_e25 | select(2139095039u, 2139095040u, _e93));
+    }
+    return (_e25 | ((select(0u, _e106, (_e104 >= 8388608u)) << 23u) | (_e104 & 8388607u)));
+}
+
+fn gen__naga_fadd_ru(left_bits_3: u32, right_bits_3: u32) -> u32 {
+    let _e9 = (left_bits_3 & 2147483647u);
+    let _e10 = (right_bits_3 & 2147483647u);
+    let _e11 = (left_bits_3 & 2147483648u);
+    let _e12 = (right_bits_3 & 2147483648u);
+    if ((_e9 > 2139095040u) || (_e10 > 2139095040u)) {
+        return 2143289344u;
+    }
+    let _e16 = (_e9 == 2139095040u);
+    let _e17 = (_e10 == 2139095040u);
+    if ((_e16 && _e17) && (_e11 != _e12)) {
+        return 2143289344u;
+    }
+    if _e16 {
+        return left_bits_3;
+    }
+    if _e17 {
+        return right_bits_3;
+    }
+    let _e22 = (_e9 >= _e10);
+    let _e23 = select(_e10, _e9, _e22);
+    let _e24 = select(_e9, _e10, _e22);
+    let _e25 = select(_e12, _e11, _e22);
+    let _e29 = (_e23 >> 23u);
+    let _e30 = (_e24 >> 23u);
+    let _e31 = (_e29 != 0u);
+    let _e32 = (_e30 != 0u);
+    let _e39 = (((_e23 & 8388607u) | select(0u, 8388608u, _e31)) << 3u);
+    let _e40 = (((_e24 & 8388607u) | select(0u, 8388608u, _e32)) << 3u);
+    let _e41 = select(1u, _e29, _e31);
+    let _e43 = (_e41 - select(1u, _e30, _e32));
+    let _e48 = (_e43 & 31u);
+    let _e59 = select(u32((_e40 != 0u)), ((_e40 >> _e48) | u32(((_e40 & ((1u << _e48) - 1u)) != 0u))), (_e43 < 32u));
+    let _e62 = select((_e39 - _e59), (_e39 + _e59), (_e11 == _e12));
+    if (_e62 == 0u) {
+        return (_e11 & _e12);
+    }
+    let _e66 = (_e62 >= 134217728u);
+    let _e71 = (1u & 31u);
+    let _e83 = select(_e62, select(u32((_e62 != 0u)), ((_e62 >> _e71) | u32(((_e62 & ((1u << _e71) - 1u)) != 0u))), (1u < 32u)), _e66);
+    let _e85 = (_e41 + u32(_e66));
+    let _e90 = min((countLeadingZeros(_e83) - 5u), (_e85 - 1u));
+    let _e91 = (_e83 << _e90);
+    let _e93 = (_e25 == 0u);
+    let _e100 = ((_e91 >> 3u) + u32((_e93 && ((_e91 & 7u) > 0u))));
+    let _e102 = (_e100 >= 16777216u);
+    let _e104 = select(_e100, (_e100 >> 1u), _e102);
+    let _e106 = ((_e85 - _e90) + u32(_e102));
+    if (_e106 >= 255u) {
+        return (_e25 | select(2139095039u, 2139095040u, _e93));
+    }
+    return (_e25 | ((select(0u, _e106, (_e104 >= 8388608u)) << 23u) | (_e104 & 8388607u)));
+}
+
 @compute @workgroup_size(32, 1, 1)
 fn add_round_zero(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin(workgroup_id) blockIdx: vec3<u32>) {
     var local: u32;
@@ -149,12 +257,29 @@ fn add_round_zero(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin(w
     var local_13: u32;
     var local_14: f32;
     var local_15: u32;
+    var directed_cursor: i32;
+    var local_16: u32;
+    var local_17: u32;
+    var local_18: u32;
+    var local_19: u32;
+    var local_20: u32;
+    var local_21: u32;
+    var local_22: u32;
+    var local_23: u32;
+    var local_24: u32;
+    var local_25: u32;
+    var local_26: u32;
+    var local_27: u32;
+    var local_28: u32;
+    var local_29: u32;
+    var local_30: u32;
+    var local_31: u32;
 
     let index = (threadIdx.x + (blockIdx.x * 32u));
     if (index >= 4096u) {
         return;
     }
-    let base = (4u + (index * 10u));
+    let base = (4u + (index * 18u));
     local = u32((index * 2u));
     let _e17 = local;
     let _e20 = input[_e17];
@@ -238,4 +363,80 @@ fn add_round_zero(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin(w
     local_15 = u32((base + 9u));
     let _e203 = local_15;
     output[_e203] = bitcast<u32>(bitcast<f32>(_e196));
+    directed_cursor = 0i;
+    let _e209 = directed_cursor;
+    directed_cursor = (_e209 + 1i);
+    local_17 = u32(((index * 2u) + u32(_e209)));
+    let _e216 = local_17;
+    let _e218 = input[_e216];
+    let _e222 = directed_cursor;
+    directed_cursor = (_e222 + 1i);
+    local_18 = u32(((index * 2u) + u32(_e222)));
+    let _e229 = local_18;
+    let _e231 = input[_e229];
+    let _e235 = gen__naga_fadd_rd(bitcast<u32>(bitcast<f32>(_e218)), bitcast<u32>(bitcast<f32>(_e231)));
+    local_16 = u32((base + 10u));
+    let _e242 = local_16;
+    output[_e242] = bitcast<u32>(bitcast<f32>(_e235));
+    let _e244 = directed_cursor;
+    local_19 = u32((base + 11u));
+    let _e250 = local_19;
+    output[_e250] = u32(_e244);
+    directed_cursor = 0i;
+    let _e255 = directed_cursor;
+    directed_cursor = (_e255 + 1i);
+    local_21 = u32(((index * 2u) + u32(_e255)));
+    let _e262 = local_21;
+    let _e264 = input[_e262];
+    let _e268 = directed_cursor;
+    directed_cursor = (_e268 + 1i);
+    local_22 = u32(((index * 2u) + u32(_e268)));
+    let _e275 = local_22;
+    let _e277 = input[_e275];
+    let _e281 = gen__naga_fadd_ru(bitcast<u32>(bitcast<f32>(_e264)), bitcast<u32>(bitcast<f32>(_e277)));
+    local_20 = u32((base + 12u));
+    let _e288 = local_20;
+    output[_e288] = bitcast<u32>(bitcast<f32>(_e281));
+    let _e290 = directed_cursor;
+    local_23 = u32((base + 13u));
+    let _e296 = local_23;
+    output[_e296] = u32(_e290);
+    directed_cursor = 0i;
+    let _e301 = directed_cursor;
+    directed_cursor = (_e301 + 1i);
+    local_25 = u32(((index * 2u) + u32(_e301)));
+    let _e308 = local_25;
+    let _e310 = input[_e308];
+    let _e314 = directed_cursor;
+    directed_cursor = (_e314 + 1i);
+    local_26 = u32(((index * 2u) + u32(_e314)));
+    let _e321 = local_26;
+    let _e323 = input[_e321];
+    let _e329 = gen__naga_fadd_rd(bitcast<u32>(bitcast<f32>(_e310)), (bitcast<u32>(bitcast<f32>(_e323)) ^ 2147483648u));
+    local_24 = u32((base + 14u));
+    let _e336 = local_24;
+    output[_e336] = bitcast<u32>(bitcast<f32>(_e329));
+    let _e338 = directed_cursor;
+    local_27 = u32((base + 15u));
+    let _e344 = local_27;
+    output[_e344] = u32(_e338);
+    directed_cursor = 0i;
+    let _e349 = directed_cursor;
+    directed_cursor = (_e349 + 1i);
+    local_29 = u32(((index * 2u) + u32(_e349)));
+    let _e356 = local_29;
+    let _e358 = input[_e356];
+    let _e362 = directed_cursor;
+    directed_cursor = (_e362 + 1i);
+    local_30 = u32(((index * 2u) + u32(_e362)));
+    let _e369 = local_30;
+    let _e371 = input[_e369];
+    let _e377 = gen__naga_fadd_ru(bitcast<u32>(bitcast<f32>(_e358)), (bitcast<u32>(bitcast<f32>(_e371)) ^ 2147483648u));
+    local_28 = u32((base + 16u));
+    let _e384 = local_28;
+    output[_e384] = bitcast<u32>(bitcast<f32>(_e377));
+    let _e386 = directed_cursor;
+    local_31 = u32((base + 17u));
+    let _e392 = local_31;
+    output[_e392] = u32(_e386);
 }

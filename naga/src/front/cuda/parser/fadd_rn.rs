@@ -4,6 +4,8 @@ use super::*;
 enum AddRounding {
     NearestEven,
     TowardZero,
+    TowardNegative,
+    TowardPositive,
 }
 
 impl Parser<'_> {
@@ -37,6 +39,24 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
         self.lower_add_sub_call(arguments, true, AddRounding::TowardZero, span)
+    }
+
+    pub(super) fn lower_fadd_rd_call(
+        &mut self,
+        arguments: Vec<Value>,
+        subtract: bool,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lower_add_sub_call(arguments, subtract, AddRounding::TowardNegative, span)
+    }
+
+    pub(super) fn lower_fadd_ru_call(
+        &mut self,
+        arguments: Vec<Value>,
+        subtract: bool,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lower_add_sub_call(arguments, subtract, AddRounding::TowardPositive, span)
     }
 
     pub(super) fn lower_fdimf_call(
@@ -111,6 +131,9 @@ impl Parser<'_> {
         let bits = match rounding {
             AddRounding::NearestEven => self.call_fadd_rn_bits(left, right, span)?,
             AddRounding::TowardZero => self.call_fadd_rz_bits(left, right, span)?,
+            AddRounding::TowardNegative | AddRounding::TowardPositive => {
+                self.call_fadd_bits(left, right, rounding, span)?
+            }
         };
         let handle = self.bitcast_scalar(bits, Scalar::F32, span)?;
         Ok(Value {
@@ -183,6 +206,8 @@ impl Parser<'_> {
         let cached = match rounding {
             AddRounding::NearestEven => self.fadd_rn_function,
             AddRounding::TowardZero => self.fadd_rz_function,
+            AddRounding::TowardNegative => self.fadd_rd_function,
+            AddRounding::TowardPositive => self.fadd_ru_function,
         };
         if let Some(function) = cached {
             return Ok(function);
@@ -203,6 +228,8 @@ impl Parser<'_> {
         match rounding {
             AddRounding::NearestEven => self.fadd_rn_function = Some(function),
             AddRounding::TowardZero => self.fadd_rz_function = Some(function),
+            AddRounding::TowardNegative => self.fadd_rd_function = Some(function),
+            AddRounding::TowardPositive => self.fadd_ru_function = Some(function),
         }
         Ok(function)
     }
@@ -225,6 +252,8 @@ impl Parser<'_> {
         let name = match rounding {
             AddRounding::NearestEven => "_naga_fadd_rn",
             AddRounding::TowardZero => "_naga_fadd_rz",
+            AddRounding::TowardNegative => "_naga_fadd_rd",
+            AddRounding::TowardPositive => "_naga_fadd_ru",
         };
         let argument_names = ["left_bits", "right_bits"];
         self.parameter_expansion_budget.charge_nodes(2, span)?;
@@ -342,7 +371,13 @@ impl Parser<'_> {
             self.fadd_binary(BinaryOperator::Subtract, larger_significand, aligned, span)?;
         let significand = self.fadd_select(same_sign, sum, difference, span)?;
         let is_zero = self.fadd_binary(BinaryOperator::Equal, significand, zero, span)?;
-        let zero_sign = self.fadd_binary(BinaryOperator::And, left_sign, right_sign, span)?;
+        // Exact cancellation yields negative zero only when rounding downward.
+        let zero_sign_op = if matches!(rounding, AddRounding::TowardNegative) {
+            BinaryOperator::InclusiveOr
+        } else {
+            BinaryOperator::And
+        };
+        let zero_sign = self.fadd_binary(zero_sign_op, left_sign, right_sign, span)?;
         self.fadd_return_if(is_zero, zero_sign, span)?;
 
         let carry_bit = self.fadd_literal(0x0800_0000, span)?;
@@ -378,20 +413,41 @@ impl Parser<'_> {
         let significand =
             self.fadd_binary(BinaryOperator::ShiftLeft, significand, normalization, span)?;
         let exponent = self.fadd_binary(BinaryOperator::Subtract, exponent, normalization, span)?;
+        let away_from_zero = match rounding {
+            AddRounding::TowardNegative => {
+                Some(self.fadd_binary(BinaryOperator::NotEqual, sign, zero, span)?)
+            }
+            AddRounding::TowardPositive => {
+                Some(self.fadd_binary(BinaryOperator::Equal, sign, zero, span)?)
+            }
+            AddRounding::NearestEven | AddRounding::TowardZero => None,
+        };
         let (rounded, exponent) = match rounding {
-            AddRounding::NearestEven => {
+            AddRounding::NearestEven
+            | AddRounding::TowardNegative
+            | AddRounding::TowardPositive => {
                 let seven = self.fadd_literal(7, span)?;
-                let four = self.fadd_literal(4, span)?;
+                let threshold = if away_from_zero.is_some() {
+                    zero
+                } else {
+                    self.fadd_literal(4, span)?
+                };
                 let tail = self.fadd_binary(BinaryOperator::And, significand, seven, span)?;
                 let rounded =
                     self.fadd_binary(BinaryOperator::ShiftRight, significand, three, span)?;
-                let odd = self.fadd_binary(BinaryOperator::And, rounded, one, span)?;
-                let odd = self.fadd_binary(BinaryOperator::NotEqual, odd, zero, span)?;
-                let tie = self.fadd_binary(BinaryOperator::Equal, tail, four, span)?;
-                let tie_up = self.fadd_binary(BinaryOperator::LogicalAnd, tie, odd, span)?;
-                let above_half = self.fadd_binary(BinaryOperator::Greater, tail, four, span)?;
-                let increment =
-                    self.fadd_binary(BinaryOperator::LogicalOr, above_half, tie_up, span)?;
+                let increment = if let Some(away) = away_from_zero {
+                    let inexact =
+                        self.fadd_binary(BinaryOperator::Greater, tail, threshold, span)?;
+                    self.fadd_binary(BinaryOperator::LogicalAnd, away, inexact, span)?
+                } else {
+                    let odd = self.fadd_binary(BinaryOperator::And, rounded, one, span)?;
+                    let odd = self.fadd_binary(BinaryOperator::NotEqual, odd, zero, span)?;
+                    let tie = self.fadd_binary(BinaryOperator::Equal, tail, threshold, span)?;
+                    let tie_up = self.fadd_binary(BinaryOperator::LogicalAnd, tie, odd, span)?;
+                    let above_half =
+                        self.fadd_binary(BinaryOperator::Greater, tail, threshold, span)?;
+                    self.fadd_binary(BinaryOperator::LogicalOr, above_half, tie_up, span)?
+                };
                 let increment = self.fadd_bool_as_uint(increment, span)?;
                 let rounded = self.fadd_binary(BinaryOperator::Add, rounded, increment, span)?;
                 let rounded_carry_bit = self.fadd_literal(0x0100_0000, span)?;
@@ -422,7 +478,14 @@ impl Parser<'_> {
         )?;
         let overflow_magnitude = match rounding {
             AddRounding::NearestEven => infinity,
-            AddRounding::TowardZero => self.fadd_literal(0x7f7f_ffff, span)?,
+            AddRounding::TowardZero | AddRounding::TowardNegative | AddRounding::TowardPositive => {
+                let maximum = self.fadd_literal(0x7f7f_ffff, span)?;
+                if let Some(away) = away_from_zero {
+                    self.fadd_select(away, infinity, maximum, span)?
+                } else {
+                    maximum
+                }
+            }
         };
         let signed_overflow =
             self.fadd_binary(BinaryOperator::InclusiveOr, sign, overflow_magnitude, span)?;

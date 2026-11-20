@@ -1305,7 +1305,16 @@ subnormal rounds to the representable value immediately below `1.0f`.
 Finite overflow saturates to the largest finite value with the result's sign.
 Actual infinity inputs, NaNs, and signed-zero cases retain the same special
 behavior as `__fadd_rn`. Calls execute at runtime and are not source constant
-expressions. The `__fadd_rd` and `__fadd_ru` modes remain unsupported.
+expressions.
+
+`__fadd_rd(float, float)` rounds the sum toward negative infinity and
+`__fadd_ru(float, float)` rounds it toward positive infinity. The helpers
+increment the magnitude of an inexact sum when rounding away from zero.
+Overflow in that direction returns signed infinity. Overflow in the other
+direction returns the signed largest finite value. Exact cancellation and
+mixed-sign zeros yield negative zero with `__fadd_rd` and positive zero with
+`__fadd_ru`. Same-sign zeros retain their sign. Argument conversion, infinity
+and NaN handling, and runtime evaluation follow `__fadd_rn`.
 
 `__fsub_rn(float, float)` computes a single-precision difference rounded once to
 nearest, with ties to even, following NVIDIA's
@@ -1326,8 +1335,10 @@ flipped. It shares the cached integer helper with `__fadd_rz`, preserving
 received subnormals and preventing contraction with preceding multiplication.
 Finite overflow saturates to the signed largest finite value. Infinity, NaN,
 and signed-zero cases follow `__fsub_rn`. Calls execute at runtime and are not
-source constant expressions. The `__fsub_rd` and `__fsub_ru` modes remain
-unsupported.
+source constant expressions.
+
+`__fsub_rd(float, float)` and `__fsub_ru(float, float)` reuse the corresponding
+directed addition helpers after flipping the second operand's sign bit.
 
 `__fmul_rn(float, float)` computes a single-precision product rounded once to
 nearest, with ties to even, following NVIDIA's
@@ -1643,7 +1654,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fsub_rn`, `__fsub_rz`, `__fmul_rn`, `__fmul_rz`, `__fmul_rd`, `__fmul_ru`, `__fdiv_rn`, `__fdiv_rz`, `__fdiv_rd`, `__fdiv_ru`, `__frcp_rn`, `__frcp_rz`, `__frcp_rd`, `__frcp_ru`, `__fsqrt_rn`, `__fsqrt_rz`, `__fsqrt_rd`, `__fsqrt_ru`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fadd_rd`, `__fadd_ru`, `__fsub_rn`, `__fsub_rz`, `__fsub_rd`, `__fsub_ru`, `__fmul_rn`, `__fmul_rz`, `__fmul_rd`, `__fmul_ru`, `__fdiv_rn`, `__fdiv_rz`, `__fdiv_rd`, `__fdiv_ru`, `__frcp_rn`, `__frcp_rz`, `__frcp_rd`, `__frcp_ru`, `__fsqrt_rn`, `__fsqrt_rz`, `__fsqrt_rd`, `__fsqrt_ru`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 

@@ -1235,23 +1235,15 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__uint2float_ru",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
-    declarations.insert(
-        "__fadd_rz",
-        GlobalDeclaration::Functions(Default::default()),
-    );
-    declarations.insert(
-        "__fadd_rn",
-        GlobalDeclaration::Functions(FunctionOverloads::default()),
-    );
-    declarations.insert(
-        "__fsub_rn",
-        GlobalDeclaration::Functions(FunctionOverloads::default()),
-    );
-    declarations.insert(
-        "__fsub_rz",
-        GlobalDeclaration::Functions(FunctionOverloads::default()),
-    );
     for &name in &[
+        "__fadd_rz",
+        "__fadd_rn",
+        "__fsub_rn",
+        "__fsub_rz",
+        "__fadd_rd",
+        "__fadd_ru",
+        "__fsub_rd",
+        "__fsub_ru",
         "__fmul_rz",
         "__fmul_rn",
         "__fmul_rd",
@@ -1374,8 +1366,12 @@ pub(super) enum FunctionCandidate {
     },
     AddRoundNearest,
     AddRoundZero,
+    AddRoundDown,
+    AddRoundUp,
     SubtractRoundNearest,
     SubtractRoundZero,
+    SubtractRoundDown,
+    SubtractRoundUp,
     MultiplyRoundNearest,
     MultiplyRoundZero,
     MultiplyRoundDown,
@@ -1998,9 +1994,13 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::FloatToInteger { .. }
                         | FunctionCandidate::IntegerToFloat { .. }
                         | FunctionCandidate::AddRoundZero
+                        | FunctionCandidate::AddRoundDown
+                        | FunctionCandidate::AddRoundUp
                         | FunctionCandidate::AddRoundNearest
                         | FunctionCandidate::SubtractRoundNearest
                         | FunctionCandidate::SubtractRoundZero
+                        | FunctionCandidate::SubtractRoundDown
+                        | FunctionCandidate::SubtractRoundUp
                         | FunctionCandidate::FusedMultiplyAddRoundZero
                         | FunctionCandidate::FusedMultiplyAddRoundNearest
                         | FunctionCandidate::MultiplyRoundZero
@@ -2309,9 +2309,13 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::PositiveDifference
             | FunctionCandidate::ScaleByPowerOfTwo
             | FunctionCandidate::AddRoundZero
+            | FunctionCandidate::AddRoundDown
+            | FunctionCandidate::AddRoundUp
             | FunctionCandidate::AddRoundNearest
             | FunctionCandidate::SubtractRoundNearest
             | FunctionCandidate::SubtractRoundZero
+            | FunctionCandidate::SubtractRoundDown
+            | FunctionCandidate::SubtractRoundUp
             | FunctionCandidate::FusedMultiplyAddRoundZero
             | FunctionCandidate::FusedMultiplyAddRoundNearest
             | FunctionCandidate::MultiplyRoundZero
@@ -2627,6 +2631,26 @@ impl<'a> Parser<'a> {
         }
         if let FunctionCandidate::IntegerToFloat { source, rounding } = candidate {
             return self.lower_integer_to_float_call(source, rounding, arguments, span);
+        }
+        if matches!(
+            candidate,
+            FunctionCandidate::AddRoundDown | FunctionCandidate::SubtractRoundDown
+        ) {
+            return self.lower_fadd_rd_call(
+                arguments,
+                candidate == FunctionCandidate::SubtractRoundDown,
+                span,
+            );
+        }
+        if matches!(
+            candidate,
+            FunctionCandidate::AddRoundUp | FunctionCandidate::SubtractRoundUp
+        ) {
+            return self.lower_fadd_ru_call(
+                arguments,
+                candidate == FunctionCandidate::SubtractRoundUp,
+                span,
+            );
         }
         if candidate == FunctionCandidate::AddRoundZero {
             return self.lower_fadd_rz_call(arguments, span);
@@ -3375,6 +3399,10 @@ impl<'a> Parser<'a> {
                 (true, "remainderf") => Some(FunctionCandidate::FloatRemainder(
                     RemainderMode::NearestEven,
                 )),
+                (true, "__fadd_rd") => Some(FunctionCandidate::AddRoundDown),
+                (true, "__fadd_ru") => Some(FunctionCandidate::AddRoundUp),
+                (true, "__fsub_rd") => Some(FunctionCandidate::SubtractRoundDown),
+                (true, "__fsub_ru") => Some(FunctionCandidate::SubtractRoundUp),
                 (true, "__fmul_rd") => Some(FunctionCandidate::MultiplyRoundDown),
                 (true, "__fmul_ru") => Some(FunctionCandidate::MultiplyRoundUp),
                 (true, "__fsqrt_ru") => Some(FunctionCandidate::SqrtRoundUp),
@@ -3590,9 +3618,13 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::PositiveDifference
             | FunctionCandidate::ScaleByPowerOfTwo
             | FunctionCandidate::AddRoundZero
+            | FunctionCandidate::AddRoundDown
+            | FunctionCandidate::AddRoundUp
             | FunctionCandidate::AddRoundNearest
             | FunctionCandidate::SubtractRoundNearest
             | FunctionCandidate::SubtractRoundZero
+            | FunctionCandidate::SubtractRoundDown
+            | FunctionCandidate::SubtractRoundUp
             | FunctionCandidate::MultiplyRoundZero
             | FunctionCandidate::MultiplyRoundDown
             | FunctionCandidate::MultiplyRoundUp
@@ -3691,9 +3723,13 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::NextAfter
             | FunctionCandidate::PositiveDifference
             | FunctionCandidate::AddRoundZero
+            | FunctionCandidate::AddRoundDown
+            | FunctionCandidate::AddRoundUp
             | FunctionCandidate::AddRoundNearest
             | FunctionCandidate::SubtractRoundNearest
             | FunctionCandidate::SubtractRoundZero
+            | FunctionCandidate::SubtractRoundDown
+            | FunctionCandidate::SubtractRoundUp
             | FunctionCandidate::FusedMultiplyAddRoundZero
             | FunctionCandidate::FusedMultiplyAddRoundNearest
             | FunctionCandidate::MultiplyRoundZero

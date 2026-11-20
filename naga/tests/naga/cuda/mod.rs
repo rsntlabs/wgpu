@@ -48,6 +48,7 @@ mod empty_scalar_construction;
 mod fabs;
 mod fadd_rn;
 mod fadd_rz;
+mod fadd_sub_directed;
 mod fdiv_rn;
 mod fdiv_rz;
 mod ffsll;
