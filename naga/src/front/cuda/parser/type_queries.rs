@@ -599,7 +599,9 @@ impl Parser<'_> {
             }
             Token::Paren('(') => {
                 self.parameter_expansion_budget.charge_work(2, start)?;
-                let (operand, _) = self.record_offset_sizeof_operand(depth + 1)?;
+                let (operand, _) = self.sizeof_binary_expression(0, |parser| {
+                    parser.record_offset_sizeof_operand(depth + 1)
+                })?;
                 let end = self.lexer.expect_span(Token::Paren(')'))?;
                 (operand, end)
             }
@@ -1318,7 +1320,7 @@ impl Parser<'_> {
     }
 
     fn sizeof_conditional_expression(&mut self) -> Result<(SizeofOperand, Span), ParseError> {
-        let (condition, condition_span) = self.sizeof_binary_expression(0)?;
+        let (condition, condition_span) = self.sizeof_binary_expression(0, Self::sizeof_operand)?;
         let (token, question_span) = self.lexer.peek()?;
         if token != Token::Operation('?') {
             return Ok((condition, condition_span));
@@ -1394,8 +1396,9 @@ impl Parser<'_> {
     fn sizeof_binary_expression(
         &mut self,
         minimum_precedence: u8,
+        parse_operand: impl Fn(&mut Self) -> Result<(SizeofOperand, Span), ParseError> + Copy,
     ) -> Result<(SizeofOperand, Span), ParseError> {
-        let (mut left, mut span) = self.sizeof_operand()?;
+        let (mut left, mut span) = parse_operand(self)?;
         while let Some((operator, precedence)) = expressions::binary_operator(self.lexer.peek()?.0)
         {
             if precedence < minimum_precedence {
@@ -1404,7 +1407,8 @@ impl Parser<'_> {
             let operator_span = self.lexer.next()?.1;
             self.parameter_expansion_budget
                 .charge_work(1, operator_span)?;
-            let (right, right_span) = self.sizeof_binary_expression(precedence + 1)?;
+            let (right, right_span) =
+                self.sizeof_binary_expression(precedence + 1, parse_operand)?;
             left = self.sizeof_binary_operand(operator, left, right, operator_span)?;
             span = span.until(&right_span);
         }
@@ -1932,6 +1936,7 @@ mod tests {
         let bitwise_chain = format!("1{}]", " | 0 ^ 0 & 0".repeat(128));
         let comparison_chain = format!("1{}]", " == 0 < 1".repeat(128));
         let logical_chain = format!("1{}]", " || (1 / 0)".repeat(128));
+        let sizeof_sum_chain = format!("sizeof({}1) / 4]", "0 + ".repeat(128));
         let array_rank = format!("sizeof(int{}) / 4]", "[1]".repeat(64));
         for (source, exhaust_bytes, succeeds) in [
             ("((((1ULL))))]", false, true),
@@ -1988,6 +1993,8 @@ mod tests {
             ("sizeof *+Items / 4]", true, true),
             ("sizeof(+Items) / 8]", false, true),
             ("sizeof(-~!!One) / 4]", false, false),
+            (sizeof_sum_chain.as_str(), true, true),
+            ("sizeof(((((1 + 1))))) / 4]", false, false),
             ("sizeof (((((*Items))))) / 4]", false, false),
             ("sizeof(void const * const * volatile) / 8]", true, true),
             ("alignof(Fixed &) / 4]", false, true),

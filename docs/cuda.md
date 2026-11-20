@@ -527,17 +527,21 @@ Unary `+`, `-`, `~`, and `!` use the same operand rules and scalar
 promotions as standalone `sizeof`. Unary `+` on an array gives the
 pointer size, and dereferencing that pointer in the query preserves the
 element type, as in `sizeof *+grid`.
+Parenthesized operands can also use scalar binary operators, as in
+`sizeof(value + 1)`. These expressions use the same type conversions
+and precedence as standalone `sizeof`. They are checked for operand type
+errors without evaluating their values.
 Pointer type queries, including `void*`, use the CUDA source ABI size and
 alignment of eight bytes. Reference type queries use the referent's layout.
 Array type operands can include dimensions such as `int[2][3]`. Every
 explicit bound must be a positive integral constant, even in a skipped
 query. Only `alignof` accepts an omitted outer bound in this syntax.
-Arithmetic rejects signed overflow and zero divisors, and wraps unsigned
-results at the operation's width. Shift counts must be nonnegative and less
-than the promoted left operand's bit width. Left shifts wrap at that width
-and signed right shifts are arithmetic. The final `offsetof` index must be
-nonnegative and in bounds. The offset uses the declared stride of each array
-dimension.
+Arithmetic that computes the `offsetof` index rejects signed overflow and
+zero divisors and wraps unsigned results at the operation's width. Shift
+counts must be nonnegative and less than the promoted left operand's bit
+width. Left shifts wrap at that width and signed right shifts are arithmetic.
+The final `offsetof` index must be nonnegative and in bounds. The offset
+uses the declared stride of each array dimension.
 The synthetic `<cstddef>` and `<stddef.h>` headers define the function-like
 macro `offsetof(Record, member)` on the first active inclusion of either
 header. The macro follows the normal `#undef` and redefinition rules.

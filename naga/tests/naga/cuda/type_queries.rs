@@ -1219,7 +1219,6 @@ fn cuda_record_offsetof_rejects_unsupported_named_sizeof_in_indices() {
     for (index, message) in [
         ("sizeof(scratch)", "complete"),
         ("true || sizeof scratch", "complete"),
-        ("sizeof(input + 1)", "expected"),
         ("sizeof local[0++]", "expected"),
         ("sizeof(object.row[0)", "expected"),
         ("sizeof(input++)", "expected"),
@@ -2989,7 +2988,6 @@ fn cuda_record_offsetof_nested_sizeof_groups_and_dereferences_reject_invalid_ope
         "((pointer)",
         "(*pointer).",
         "&value",
-        "value + 1",
         "(value, value)",
         "helper()",
         "(*pointer).field++",
@@ -3165,5 +3163,101 @@ fn cuda_record_offsetof_nested_sizeof_unary_rejects_invalid_types_even_when_skip
                 }}"
             ));
         }
+    }
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_scalar_binary_types_match_standalone_promotions() {
+    for (operand, size) in [
+        ("small + small", 4),
+        ("flag + flag", 4),
+        ("small - value", 4),
+        ("value * real", 4),
+        ("1 / 0", 4),
+        ("1 % 0", 4),
+        ("2147483647 + 1", 4),
+        ("1 << 999", 4),
+        ("1 >> -1", 4),
+        ("small & value", 4),
+        ("value ^ bits | 1u", 4),
+        ("value < bits", 1),
+        ("value <= bits", 1),
+        ("value > bits", 1),
+        ("value >= bits", 1),
+        ("value == bits", 1),
+        ("value != bits", 1),
+        ("value && bits", 1),
+        ("value || bits", 1),
+        ("value + bits * 2 == 7", 1),
+        ("1L + bits", 8),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{
+                    short small; bool flag; int value; unsigned bits; float real;
+                    output[0] = __builtin_offsetof(Offsets, bytes[sizeof({operand})]);
+                }}"
+            ),
+            &[size * 4],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            short small;
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof small + 1]);
+            output[1] = __builtin_offsetof(Offsets, bytes[sizeof(small + 1)]);
+            output[2] = __builtin_offsetof(Offsets, bytes[true || sizeof(1 / 0)]);
+        }",
+        &[12, 16, 4],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_scalar_binary_never_emits_volatile_reads_or_operations() {
+    let module = roundtrip(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output, volatile int *input) {
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof(*input + *input * 2)]);
+        }",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(
+            expression,
+            naga::Expression::Load { .. } | naga::Expression::Binary { .. }
+        )));
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_scalar_binary_rejects_invalid_types_and_broader_operators() {
+    for operand in [
+        "pointer + 1",
+        "pointer - pointer",
+        "pointer == pointer",
+        "pointer && value",
+        "record + value",
+        "vector + vector",
+        "real % value",
+        "real & value",
+        "value << real",
+        "value = 1",
+        "value += 1",
+        "value++ + 1",
+        "value ? 1 : 2",
+        "value, 1",
+        "value + helper()",
+    ] {
+        rejected(&format!(
+            "struct Offsets {{ int bytes[64]; }}; struct Record {{ int field; }};
+            __device__ int helper() {{ return 0; }}
+            __global__ void kernel(unsigned long *output) {{
+                int value; int *pointer; float real; Record record; float2 vector;
+                output[0] = __builtin_offsetof(Offsets, bytes[sizeof({operand})]);
+            }}"
+        ));
     }
 }
