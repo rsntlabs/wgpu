@@ -4,6 +4,7 @@ use naga::{AddressSpace, Expression, StorageAccess, TypeInner};
 use super::helpers::{root_expression, validate};
 
 const FIXTURE: &str = include_str!("../../in/cuda/ldg.cu");
+const NEW_VECTOR_TYPES: [&str; 5] = ["int2", "uint2", "int4", "uint4", "float4"];
 
 #[test]
 fn cuda_ldg_lowers_to_ordinary_read_only_storage_loads() {
@@ -200,6 +201,64 @@ fn cuda_ldg_rejects_unsupported_float2_origins_and_redeclarations() {
 }
 
 #[test]
+fn cuda_ldg_selects_const_overloads_for_native_32_bit_vectors() {
+    for ty in NEW_VECTOR_TYPES {
+        let source = format!(
+            "using Element = {ty};
+            __device__ Element __ldg(const Element *const address);
+            __device__ Element __ldg(Element *address) {{ return *address; }}
+            __device__ unsigned __ldg(bool value) {{ return value ? 1u : 2u; }}
+            __device__ Element read_vector(const Element *address) {{ return __ldg(address); }}
+            __global__ void kernel(const Element *left, const Element *right, Element *out) {{
+                const Element *alias = left;
+                if (threadIdx.x != 0u) alias = right;
+                Element local = right[0];
+                out[0] = read_vector(alias + 1);
+                out[1] = __ldg(&left[1]);
+                out[2] = __ldg(&local);
+            }}"
+        );
+        let (module, info) = validate(&source);
+        #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+        super::helpers::wgsl_roundtrip(
+            &module,
+            &info,
+            naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+        );
+        let _ = (module, info);
+    }
+}
+
+#[test]
+fn cuda_ldg_reserves_the_canonical_vector_signatures() {
+    for ty in NEW_VECTOR_TYPES {
+        for source in [
+            format!("__device__ unsigned __ldg(const {ty} *address);"),
+            format!("__device__ {ty} __ldg(const {ty} *address) {{ return *address; }}"),
+        ] {
+            let error = parse_str(&source, &Options::default()).unwrap_err();
+            assert!(error.message.contains("builtin"), "{source}: {error}");
+        }
+    }
+}
+
+#[test]
+fn cuda_ldg_rejects_writable_vector_origins_through_helpers() {
+    for ty in NEW_VECTOR_TYPES {
+        let source = format!(
+            "__device__ {ty} read_vector(const {ty} *address) {{ return __ldg(address); }}
+            __global__ void kernel(const {ty} *input, {ty} *out) {{
+                const {ty} *alias = input;
+                if (threadIdx.x != 0u) alias = out;
+                out[0] = read_vector(alias);
+            }}"
+        );
+        let error = parse_str(&source, &Options::default()).unwrap_err();
+        assert!(error.message.contains("read-only storage"), "{ty}: {error}");
+    }
+}
+
+#[test]
 fn cuda_ldg_rejects_non_read_only_storage_origins() {
     for body in [
         "out[0] = __ldg(out);",
@@ -247,10 +306,12 @@ fn cuda_ldg_rejects_invalid_overloads_and_constant_calls() {
         "short value = 0; out[0] = __ldg(&value);",
         "long value = 0; out[0] = __ldg(&value);",
         "bool value = false; out[0] = __ldg(&value);",
-        "uint2 value{}; out[0] = __ldg(&value);",
+        "float1 value{}; out[0] = __ldg(&value);",
         "float3 value{}; out[0] = __ldg(&value);",
-        "float4 value{}; out[0] = __ldg(&value);",
+        "uint3 value{}; out[0] = __ldg(&value);",
+        "short4 value{}; out[0] = __ldg(&value);",
         "volatile float2 value{}; out[0] = __ldg(&value);",
+        "volatile float4 value{}; out[0] = __ldg(&value);",
         "volatile int value = 0; out[0] = __ldg(&value);",
         "volatile float value = 0.0f; out[0] = __ldg(&value);",
         "volatile unsigned value = 0u; out[0] = __ldg(&value);",

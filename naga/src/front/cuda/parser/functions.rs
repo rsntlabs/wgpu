@@ -3430,7 +3430,12 @@ impl<'a> Parser<'a> {
                     (None, Scalar::I32),
                     (None, Scalar::U32),
                     (None, Scalar::F32),
+                    (Some(VectorSize::Bi), Scalar::I32),
+                    (Some(VectorSize::Bi), Scalar::U32),
                     (Some(VectorSize::Bi), Scalar::F32),
+                    (Some(VectorSize::Quad), Scalar::I32),
+                    (Some(VectorSize::Quad), Scalar::U32),
+                    (Some(VectorSize::Quad), Scalar::F32),
                 ]
                 .into_iter()
                 .filter(move |_| read_only_load_visible)

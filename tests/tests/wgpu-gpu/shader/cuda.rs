@@ -111,6 +111,7 @@ mod kernels;
 mod launch_bounds;
 mod ldg;
 mod ldg_float2;
+mod ldg_native_vectors;
 mod ldg_signed_float;
 mod list_initialization;
 mod literals;
@@ -290,6 +291,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_INT2FLOAT_RZ,
         CUDA_LDG,
         CUDA_LDG_FLOAT2,
+        CUDA_LDG_NATIVE_VECTORS,
         CUDA_LDG_SIGNED_FLOAT,
         CUDA_FLOAT2INT_RZ,
         CUDA_FLOAT2UINT_RZ,
@@ -1371,3 +1373,14 @@ static CUDA_LDG_SIGNED_FLOAT: GpuTestConfiguration = configuration(ldg_signed_fl
 
 #[apply(gpu_test!)]
 static CUDA_LDG_FLOAT2: GpuTestConfiguration = configuration(ldg_float2::cases);
+
+#[apply(gpu_test!)]
+static CUDA_LDG_NATIVE_VECTORS: GpuTestConfiguration = configuration(ldg_native_vectors::cases)
+    .parameters(
+        TestParameters::default()
+            .downlevel_flags(DownlevelFlags::COMPUTE_SHADERS)
+            .limits(Limits {
+                max_storage_buffers_per_shader_stage: 6,
+                ..Limits::downlevel_defaults()
+            }),
+    );

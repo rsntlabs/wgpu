@@ -39,6 +39,23 @@ fn cuda_ldg_cli_emits_float2_loads_for_all_backends() {
     );
 }
 
+#[test]
+fn cuda_ldg_cli_emits_native_vector_loads_for_all_backends() {
+    let input_types = [
+        (VectorSize::Bi, Scalar::I32, 8),
+        (VectorSize::Bi, Scalar::U32, 8),
+        (VectorSize::Quad, Scalar::I32, 16),
+        (VectorSize::Quad, Scalar::U32, 16),
+        (VectorSize::Quad, Scalar::F32, 16),
+    ]
+    .map(|(size, scalar, stride)| (TypeInner::Vector { size, scalar }, stride));
+    emits_all_backends(
+        include_str!("../../naga/tests/in/cuda/ldg-native-vectors.cu"),
+        "load_vectors",
+        &input_types,
+    );
+}
+
 fn emits_all_backends(source: &str, entry: &str, input_types: &[(TypeInner, u32)]) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);

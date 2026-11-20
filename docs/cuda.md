@@ -1813,10 +1813,11 @@ Metal output for `__brev` and `__brevll` requires MSL version 1.2 or newer.
 ## Read-only loads
 
 `__ldg(const T *address)` returns the value at the address for `int`,
-`unsigned int`, `float`, and `float2` pointees. It accepts offsets such as
-`__ldg(input + i)` and element addresses such as `__ldg(&input[i])`.
-The pointer can pass through device
-helpers and local aliases. Each possible origin must be a read-only kernel
+`unsigned int`, `float`, `int2`, `uint2`, `float2`, `int4`, `uint4`,
+and `float4` pointees. It accepts offsets such as `__ldg(input + i)` and
+element addresses such as `__ldg(&input[i])`. Vector offsets count whole
+vectors. The pointer can pass through device helpers and local aliases.
+Each possible origin must be a read-only kernel
 buffer, such as a `const unsigned int *` kernel parameter. A `const` alias of
 a writable buffer is rejected.
 
