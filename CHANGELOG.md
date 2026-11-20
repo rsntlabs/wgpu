@@ -390,6 +390,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA `fdimf` with correctly rounded single-precision positive differences.
 - Support CUDA `ilogbf` with exact exponents for finite and subnormal inputs.
 - Support CUDA `logbf` with exact single-precision exponents and special values.
+- Support CUDA `__float2int_rd` for single-precision conversion to signed integers rounded down.
 - Reject incompatible return qualifiers in CUDA builtin prototypes.
 - Support all ten CUDA compound assignment operator functions with right-before-left operand sequencing.
 - Support CUDA constant-memory declarations as host-updated read-only storage bindings.

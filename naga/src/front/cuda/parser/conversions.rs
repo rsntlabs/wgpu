@@ -1,9 +1,11 @@
+use super::float_helpers::FloatMathFunction;
 use super::*;
 
 impl Parser<'_> {
-    pub(super) fn lower_float_to_integer_rz_call(
+    pub(super) fn lower_float_to_integer_call(
         &mut self,
         destination: Scalar,
+        rounding: Option<FloatMathFunction>,
         arguments: Vec<Value>,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
@@ -16,7 +18,10 @@ impl Parser<'_> {
             .preflight_expressions(1 + usize::from(needs_float_conversion), span)?;
         // The intrinsic is not a source constant expression, even for literal arguments.
         argument.constant = ConstantValue::default();
-        let argument = self.convert_scalar(argument.into(), Scalar::F32)?;
+        let mut argument = self.convert_scalar(argument.into(), Scalar::F32)?;
+        if let Some(rounding) = rounding {
+            argument.handle = self.call_float_math(argument.handle, rounding, span)?;
+        }
         let mut result = self.convert_scalar(argument.into(), destination)?;
         result.span = span;
         Ok(result.into())

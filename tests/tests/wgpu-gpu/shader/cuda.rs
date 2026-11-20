@@ -56,6 +56,7 @@ mod fdimf;
 mod fdiv_rn;
 mod fdiv_rz;
 mod ffsll;
+mod float2int_rd;
 mod float2int_rz;
 mod float2uint_rz;
 mod float_classification;
@@ -309,6 +310,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_LDG_FLOAT2,
         CUDA_LDG_NATIVE_VECTORS,
         CUDA_LDG_SIGNED_FLOAT,
+        CUDA_FLOAT2INT_RD,
         CUDA_FLOAT2INT_RZ,
         CUDA_FLOAT2UINT_RZ,
         CUDA_FLOAT_CLASSIFICATION,
@@ -1427,3 +1429,6 @@ static CUDA_ILOGBF: GpuTestConfiguration = configuration(ilogbf::cases);
 
 #[apply(gpu_test!)]
 static CUDA_LOGBF: GpuTestConfiguration = configuration(logbf::cases);
+
+#[apply(gpu_test!)]
+static CUDA_FLOAT2INT_RD: GpuTestConfiguration = configuration(float2int_rd::cases);

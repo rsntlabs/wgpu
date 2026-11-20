@@ -1178,14 +1178,12 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         );
     }
-    declarations.insert(
-        "__float2int_rz",
-        GlobalDeclaration::Functions(FunctionOverloads::default()),
-    );
-    declarations.insert(
-        "__float2uint_rz",
-        GlobalDeclaration::Functions(FunctionOverloads::default()),
-    );
+    for name in ["__float2int_rz", "__float2uint_rz", "__float2int_rd"] {
+        declarations.insert(
+            name,
+            GlobalDeclaration::Functions(FunctionOverloads::default()),
+        );
+    }
     declarations.insert(
         "__int2float_rz",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
@@ -1351,7 +1349,10 @@ pub(super) enum FunctionCandidate {
     CopySign,
     NextAfter,
     PositiveDifference,
-    FloatToIntegerRoundZero(Scalar),
+    FloatToInteger {
+        destination: Scalar,
+        rounding: Option<FloatMathFunction>,
+    },
     IntegerToFloat {
         source: Scalar,
         rounding: IntegerToFloatRounding,
@@ -1971,7 +1972,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::CopySign
                         | FunctionCandidate::NextAfter
                         | FunctionCandidate::PositiveDifference
-                        | FunctionCandidate::FloatToIntegerRoundZero(_)
+                        | FunctionCandidate::FloatToInteger { .. }
                         | FunctionCandidate::IntegerToFloat { .. }
                         | FunctionCandidate::AddRoundZero
                         | FunctionCandidate::AddRoundNearest
@@ -2252,7 +2253,10 @@ impl<'a> Parser<'a> {
                 scalar: result,
             }
             | FunctionCandidate::Bitcast { result, .. }
-            | FunctionCandidate::FloatToIntegerRoundZero(result)
+            | FunctionCandidate::FloatToInteger {
+                destination: result,
+                ..
+            }
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
             FunctionCandidate::FloatClassification(_) => TypeSpecifier::Scalar(Scalar::I32),
             FunctionCandidate::FloatExponent(result) => TypeSpecifier::Scalar(result.scalar()),
@@ -2574,8 +2578,12 @@ impl<'a> Parser<'a> {
         if candidate == FunctionCandidate::PositiveDifference {
             return self.lower_fdimf_call(arguments, span);
         }
-        if let FunctionCandidate::FloatToIntegerRoundZero(destination) = candidate {
-            return self.lower_float_to_integer_rz_call(destination, arguments, span);
+        if let FunctionCandidate::FloatToInteger {
+            destination,
+            rounding,
+        } = candidate
+        {
+            return self.lower_float_to_integer_call(destination, rounding, arguments, span);
         }
         if let FunctionCandidate::IntegerToFloat { source, rounding } = candidate {
             return self.lower_integer_to_float_call(source, rounding, arguments, span);
@@ -3320,12 +3328,18 @@ impl<'a> Parser<'a> {
                 (true, "fdimf") => Some(FunctionCandidate::PositiveDifference),
                 (true, "ilogbf") => Some(FunctionCandidate::FloatExponent(ExponentResult::Integer)),
                 (true, "logbf") => Some(FunctionCandidate::FloatExponent(ExponentResult::Float)),
-                (true, "__float2int_rz") => {
-                    Some(FunctionCandidate::FloatToIntegerRoundZero(Scalar::I32))
-                }
-                (true, "__float2uint_rz") => {
-                    Some(FunctionCandidate::FloatToIntegerRoundZero(Scalar::U32))
-                }
+                (true, "__float2int_rz") => Some(FunctionCandidate::FloatToInteger {
+                    destination: Scalar::I32,
+                    rounding: None,
+                }),
+                (true, "__float2uint_rz") => Some(FunctionCandidate::FloatToInteger {
+                    destination: Scalar::U32,
+                    rounding: None,
+                }),
+                (true, "__float2int_rd") => Some(FunctionCandidate::FloatToInteger {
+                    destination: Scalar::I32,
+                    rounding: Some(FloatMathFunction::Floor),
+                }),
                 (true, "__int2float_rz") => Some(FunctionCandidate::IntegerToFloat {
                     source: Scalar::I32,
                     rounding: IntegerToFloatRounding::TowardZero,
@@ -3520,7 +3534,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FloatClassification(_)
             | FunctionCandidate::FloatExponent(_)
             | FunctionCandidate::IntegralDouble { .. }
-            | FunctionCandidate::FloatToIntegerRoundZero(_)
+            | FunctionCandidate::FloatToInteger { .. }
             | FunctionCandidate::IntegerToFloat { .. }
             | FunctionCandidate::SqrtRoundZero
             | FunctionCandidate::Sqrt
@@ -3577,7 +3591,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::FloatClassification(_)
             | FunctionCandidate::FloatExponent(_)
-            | FunctionCandidate::FloatToIntegerRoundZero(_)
+            | FunctionCandidate::FloatToInteger { .. }
             | FunctionCandidate::SqrtRoundZero
             | FunctionCandidate::Sqrt
             | FunctionCandidate::Fmodf

@@ -19,8 +19,9 @@ fn cuda_uniform_math_barriers_accept_floor_result_as_uniform_control() {
     );
 }
 
-const EXPRESSIONS: [&str; 13] = [
+const EXPRESSIONS: [&str; 14] = [
     "floorf(value)",
+    "__float2int_rd(value)",
     "ceilf(value)",
     "roundf(value)",
     "fabsf(value)",
