@@ -73,3 +73,72 @@ fn cuda_remainderf_rejects_wrong_signatures_calls_and_constant_contexts() {
         assert!(!range.is_empty() && source.get(range).is_some(), "{error}");
     }
 }
+
+#[test]
+fn cuda_libdevice_remainders_share_the_matching_cuda_helpers() {
+    let (module, info) = validate(
+        "using Sample = float;
+        __host__ __device__ Sample __nv_fmodf(Sample, const Sample);
+        __device__ Sample __nv_remainderf(const Sample, Sample);
+        __device__ int __nv_fmodf(bool first, bool second) { return first && second; }
+        __global__ void kernel(float *out, float x, float y) {
+            out[0] = __nv_fmodf(x++, y++);
+            out[1] = __nv_remainderf(x++, y++);
+            out[2] = fmodf(x, y);
+            out[3] = remainderf(x, y);
+            out[4] = float(__nv_fmodf(true, false));
+        }",
+    );
+    for name in ["_naga_fmodf", "_naga_remainderf"] {
+        assert_eq!(
+            module
+                .functions
+                .iter()
+                .filter(|(_, function)| function.name.as_deref() == Some(name))
+                .count(),
+            1
+        );
+    }
+    let mut calls = Vec::new();
+    naga::proc::any_statement(&module.entry_points[0].function.body, &mut |statement| {
+        if let naga::Statement::Call { function, .. } = statement {
+            calls.push(module.functions[*function].name.as_deref().unwrap());
+        }
+        false
+    });
+    assert_eq!(
+        calls,
+        [
+            "_naga_fmodf",
+            "_naga_remainderf",
+            "_naga_fmodf",
+            "_naga_remainderf",
+            "__nv_fmodf"
+        ],
+    );
+    #[cfg(all(feature = "wgsl-in", feature = "wgsl-out"))]
+    super::helpers::wgsl_roundtrip(
+        &module,
+        &info,
+        naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
+    );
+    let _ = info;
+}
+
+#[test]
+fn cuda_libdevice_remainders_reject_invalid_declarations_and_calls() {
+    for name in ["__nv_fmodf", "__nv_remainderf"] {
+        for source in [
+            format!("__device__ int {name}(float, float); __global__ void kernel() {{}}"),
+            format!("__device__ float {name}(float x, float y) {{ return x; }} __global__ void kernel() {{}}"),
+            format!("using {name} = float; __global__ void kernel() {{}}"),
+            format!("__global__ void kernel() {{ {name}(1); }}"),
+            format!("__global__ void kernel(float *p) {{ {name}(p, 2); }}"),
+            format!("__global__ void kernel() {{ constexpr float x = {name}(1, 2); }}"),
+        ] {
+            let error = parse_str(&source, &Options::default()).unwrap_err();
+            let range = error.span.to_range().unwrap();
+            assert!(!range.is_empty() && source.get(range).is_some(), "{error}");
+        }
+    }
+}

@@ -387,6 +387,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Emit the required GLSL 16-bit integer extension, explicitly typed zero initializers, and a valid GLSL 1.40 version header.
 - Support CUDA `fmodf` with exact finite remainders and special-value handling.
 - Support CUDA `remainderf` with exact finite remainders and ties-to-even quotient selection.
+- Support CUDA libdevice spellings `__nv_fmodf` and `__nv_remainderf`.
 - Support CUDA `__fdiv_rd` and `__frcp_rd` with correctly rounded downward division and reciprocals.
 - Support CUDA `__fdiv_ru` and `__frcp_ru` with correctly rounded upward division and reciprocals.
 - Support CUDA `__fsqrt_rd` and `__fsqrt_ru` with correctly rounded directed square roots.

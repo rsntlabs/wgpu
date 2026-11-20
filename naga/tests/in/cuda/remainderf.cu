@@ -9,7 +9,7 @@ __global__ void nearest_remainders(const uint2 *input, unsigned *output, unsigne
     float y = __uint_as_float(input[index].y);
     unsigned counter = 0u;
     output[base] = __float_as_uint(remainderf(x, y));
-    output[base + 1u] = __float_as_uint(remainderf(counted(x, counter), counted(y, counter)));
+    output[base + 1u] = __float_as_uint(__nv_remainderf(counted(x, counter), counted(y, counter)));
     output[base + 2u] = counter;
     output[base + 3u] = kind(remainderf(x, y));
 }

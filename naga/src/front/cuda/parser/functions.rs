@@ -1116,10 +1116,6 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
             )
         }))
         .chain(core::iter::once((
-            "fmodf",
-            GlobalDeclaration::Functions(FunctionOverloads::default()),
-        )))
-        .chain(core::iter::once((
             "__byte_perm",
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         )))
@@ -1231,7 +1227,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "ilogbf",
         "logbf",
         "ldexpf",
+        "fmodf",
+        "__nv_fmodf",
         "remainderf",
+        "__nv_remainderf",
         "scalbnf",
     ] {
         declarations.insert(
@@ -3579,10 +3578,12 @@ impl<'a> Parser<'a> {
                     .then_some(FunctionCandidate::Sqrt),
             )
             .chain(match (builtin_visible, name) {
-                (true, "fmodf") => Some(FunctionCandidate::FloatRemainder(RemainderMode::Truncate)),
-                (true, "remainderf") => Some(FunctionCandidate::FloatRemainder(
-                    RemainderMode::NearestEven,
-                )),
+                (true, "fmodf" | "__nv_fmodf") => {
+                    Some(FunctionCandidate::FloatRemainder(RemainderMode::Truncate))
+                }
+                (true, "remainderf" | "__nv_remainderf") => Some(
+                    FunctionCandidate::FloatRemainder(RemainderMode::NearestEven),
+                ),
                 (true, "__sinf" | "__cosf") => Some(FunctionCandidate::FastTrigonometry {
                     cosine: name == "__cosf",
                     flush_input_and_output: false,

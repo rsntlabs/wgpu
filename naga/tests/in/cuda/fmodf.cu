@@ -23,14 +23,14 @@ __global__ void remainders(Bits *output) {
     output[2] = __float_as_uint(fmodf(5.5f, -2.0f));
     output[3] = __float_as_uint(fmodf(-5.5f, -2.0f));
     output[4] = __float_as_uint(fmodf(4.0f, 2.0f));
-    output[5] = __float_as_uint(fmodf(-4.0f, 2.0f));
+    output[5] = __float_as_uint(__nv_fmodf(-4.0f, 2.0f));
     output[6] = __float_as_uint(fmodf(0.0f, -2.0f));
     output[7] = __float_as_uint(fmodf(-0.0f, 2.0f));
     output[8] = __float_as_uint(fmodf(1.0f, 3.0f));
     output[9] = __float_as_uint(fmodf(3.0f, 1.0f));
     output[10] = __float_as_uint(fmodf(__uint_as_float(0x7f7fffffu), __uint_as_float(1u)));
     output[11] = __float_as_uint(fmodf(__uint_as_float(0xff7fffffu), __uint_as_float(1u)));
-    output[12] = __float_as_uint(fmodf(__uint_as_float(0x00800000u), __uint_as_float(3u)));
+    output[12] = __float_as_uint(__nv_fmodf(__uint_as_float(0x00800000u), __uint_as_float(3u)));
     output[13] = __float_as_uint(fmodf(__uint_as_float(0x007fffffu), __uint_as_float(3u)));
     output[14] = __float_as_uint(fmodf(__uint_as_float(1u), __uint_as_float(0x00800000u)));
     output[15] = __float_as_uint(fmodf(__uint_as_float(0x3f800001u), 1.0f));
@@ -57,7 +57,7 @@ __global__ void remainders(Bits *output) {
     output[34] = __float_as_uint(fmodf(7.0f, denominator++));
     output[35] = __float_as_uint(denominator);
     value = 5.5f;
-    output[36] = __float_as_uint(fmodf(value++, value++));
+    output[36] = __float_as_uint(__nv_fmodf(value++, value++));
     output[37] = __float_as_uint(value);
     bool choose = false;
     output[38] = __float_as_uint(choose ? fmodf(value++, 2.0f) : fmodf(value++, 3.0f));
