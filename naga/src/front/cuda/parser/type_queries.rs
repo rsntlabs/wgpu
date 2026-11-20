@@ -236,6 +236,28 @@ impl Parser<'_> {
                     let result = Self::record_offset_unary(operator, operand, span)?;
                     return Ok((result, span.until(&operand_span)));
                 }
+                if self.starts_type()? {
+                    self.parameter_expansion_budget.charge_work(2, span)?;
+                    let mut lookahead = self.lexer.clone();
+                    let target_span = lookahead.peek()?.1;
+                    let target = self.parse_type_from(&mut lookahead)?;
+                    if lookahead.next_if(Token::Paren(')'))? {
+                        let scalar = target
+                            .ty
+                            .source_scalar()
+                            .filter(|&scalar| Self::record_offset_integral_scalar(scalar))
+                            .ok_or_else(|| ParseError {
+                                message: String::from(
+                                    "__builtin_offsetof C-style cast requires an integral scalar target",
+                                ),
+                                span: target_span,
+                            })?;
+                        self.lexer = lookahead;
+                        let (operand, end) =
+                            self.record_offset_index_prefix(depth + 1, evaluate)?;
+                        return Ok((Self::record_offset_cast(scalar, operand.value), span.until(&end)));
+                    }
+                }
                 let (operand, _) = self.record_offset_index(depth + 1, 0, evaluate)?;
                 let closing = self.lexer.expect_span(Token::Paren(')'))?;
                 self.parameter_expansion_budget.charge_work(1, closing)?;
@@ -1494,6 +1516,9 @@ mod tests {
             ("true || bool(1 / 0)]", false, true),
             ("int((((1))))]", true, true),
             ("int(((((1)))))]", false, false),
+            ("(int)(short)(unsigned)(bool)1]", true, true),
+            ("(int)(int)(short)(unsigned)(bool)1]", false, false),
+            ("true || (int)(1 / 0)]", true, true),
         ] {
             let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             let span = Span::new(0, 1);

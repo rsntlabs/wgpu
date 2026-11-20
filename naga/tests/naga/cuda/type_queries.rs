@@ -876,6 +876,75 @@ fn cuda_record_offsetof_rejects_invalid_functional_cast_indices() {
 }
 
 #[test]
+fn cuda_record_offsetof_evaluates_c_style_integral_cast_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        #define CAST(value) ((short)(value))
+        struct Record { int head; int row[4]; };
+        using Index = short;
+        using Wide = unsigned long long;
+        constexpr int Known = 1;
+        __global__ void kernel(unsigned long *output, unsigned input, volatile int *observed) {
+            const volatile int &readonly = observed[0];
+            output[0] = offsetof(Record, row[(unsigned short)(int)65537ULL]);
+            output[1] = offsetof(Record, row[(int)0xffffffffu + 2]);
+            output[2] = offsetof(Record, row[CAST(65538u)]);
+            output[3] = offsetof(Record, row[(short)65535u < 0]);
+            output[4] = offsetof(Record, row[(short)(65535u < 0)]);
+            output[5] = offsetof(Record, row[(bool)0 ? 1 : 2]);
+            output[6] = offsetof(Record, row[(bool)-7]);
+            output[7] = offsetof(Record, row[(std::size_t)3]);
+            output[8] = offsetof(Record, row[(::size_t)2]);
+            output[9] = offsetof(Record, row[(decltype(input))2]);
+            output[10] = offsetof(Record, row[(true ? -1 : (Wide)input) == 0xffffffffffffffffULL]);
+            output[11] = offsetof(Record, row[true || (int)(1 / 0)]);
+            output[12] = offsetof(Record, row[true ? (const volatile int)Known : readonly]);
+            output[13] = offsetof(Record, row[(int(1))]);
+            output[14] = offsetof(Record, row[(Index)+1]);
+            {
+                constexpr int Index = 2;
+                output[15] = offsetof(Record, row[(Index)+1]);
+            }
+            output[16] = offsetof(Record, row[(Index)+1]);
+        }",
+        &[8, 8, 12, 8, 4, 12, 8, 16, 12, 12, 8, 8, 8, 8, 8, 16, 8],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_invalid_c_style_cast_indices() {
+    for (index, message) in [
+        ("(int)input", "integral constant"),
+        ("(int)readonly", "integral constant"),
+        ("(int)(1 / 0)", "division by zero"),
+        ("(int)(true ? Known : readonly)", "volatile"),
+        ("(float)1", "integral scalar target"),
+        ("true || (Pointer)0", "integral scalar target"),
+        ("(Record)1", "integral scalar target"),
+        ("(int *)0", "integer literal"),
+        ("(int &)Known", "integer literal"),
+        ("(int)1.0f", "integer literal"),
+        ("(int)(0, 1)", "expected"),
+        ("(int){1}", "integer literal"),
+        ("(int)()", "integer literal"),
+        ("(int)", "integer literal"),
+        ("(int)4", "out of bounds"),
+        ("(short)65535u", "nonnegative"),
+    ] {
+        let error = rejected(&format!(
+            "struct Record {{ int row[4]; }};
+             using Pointer = int *;
+             constexpr int Known = 1;
+             __global__ void kernel(unsigned *out, unsigned input, volatile int *observed) {{
+                 const volatile int &readonly = observed[0];
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
+        assert!(error.message.contains(message), "{index}: {error}");
+    }
+}
+
+#[test]
 fn cuda_record_offsetof_resolves_named_integral_indices_in_scope() {
     assert_query_results(
         "#include <cstddef>\n#define COLUMN column\n

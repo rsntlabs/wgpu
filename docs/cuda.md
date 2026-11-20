@@ -496,6 +496,8 @@ destination width, and conversions to `bool` test for a nonzero value.
 An unqualified integral type name or alias also accepts functional cast
 syntax, such as `int(value)` or `bool()`. Empty parentheses produce the
 type's zero value.
+C-style casts such as `(unsigned short)value` use the same integral
+conversion rules and bind to the next unary operand.
 Arithmetic rejects signed overflow and zero divisors, and wraps unsigned
 results at the operation's width. Shift counts must be nonnegative and less
 than the promoted left operand's bit width. Left shifts wrap at that width
