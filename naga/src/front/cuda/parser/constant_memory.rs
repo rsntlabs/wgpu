@@ -4,7 +4,7 @@ use super::*;
 #[derive(Clone, Copy, Debug)]
 pub(super) struct ConstantMemoryDeclaration {
     global: Handle<GlobalVariable>,
-    qualifiers: Qualifiers,
+    pub(super) qualifiers: Qualifiers,
     is_defined: bool,
     is_internal: bool,
     has_c_linkage: bool,

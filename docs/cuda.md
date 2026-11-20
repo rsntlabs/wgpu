@@ -477,14 +477,18 @@ integral constant names, including global `constexpr` values, local integral
 constants and instantiated integral template parameters. Indices may use
 parentheses, unary `+`, `-`, `~` and `!`, arithmetic `+`, `-`, `*`, `/`
 and `%`, shifts `<<` and `>>`, relational `<`, `<=`, `>` and `>=`, equality
-`==` and `!=`, bitwise `&`, `^` and `|`, and logical `&&` and `||`. Operators
-follow C++ precedence and associate left to right within each binary level. Binary
-arithmetic, comparison and bitwise operators apply the usual arithmetic
-conversions after integer promotion. Comparisons and logical operators
-produce Boolean values. Logical operators short-circuit. A skipped right
-operand must still use supported integral expressions and visible names,
+`==` and `!=`, bitwise `&`, `^` and `|`, logical `&&` and `||`, and the
+conditional operator `?:`. Operators follow C++ precedence. Binary
+operators associate left to right and conditional operators associate right
+to left. Binary arithmetic, comparison and bitwise operators apply the
+usual arithmetic conversions after integer promotion. Comparisons and
+logical operators produce Boolean values. Logical operators short-circuit.
+A skipped right operand must still use supported integral expressions and visible names,
 but its values are never evaluated. This permits skipped reads of named
 runtime integral objects and skipped arithmetic with invalid values.
+Conditional indices likewise evaluate only the selected arm. Both arms
+determine the result type, and reading a volatile conditional result is
+invalid in a constant index.
 Arithmetic rejects signed overflow and zero divisors, and wraps unsigned
 results at the operation's width. Shift counts must be nonnegative and less
 than the promoted left operand's bit width. Left shifts wrap at that width

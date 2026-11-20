@@ -180,7 +180,7 @@ fn cuda_record_offsetof_rejects_invalid_array_indices_without_evaluating_them() 
         ("row[()]", "integer literal"),
         ("row[((1)]", "expected"),
         ("row[(1))]", "expected"),
-        ("row[(1?1:0)]", "expected"),
+        ("row[(1=0)]", "expected"),
         ("row[(1,2)]", "expected"),
         ("row[index]", "integer literal"),
         ("row[helper()]", "integer literal"),
@@ -249,7 +249,7 @@ fn cuda_record_offsetof_rejects_invalid_unary_indices() {
         ("--Zero", "integer literal"),
         ("++Zero", "integer literal"),
         ("+Zero++", "expected"),
-        ("+Zero?1:0", "expected"),
+        ("+Zero,1", "expected"),
         ("+dynamic", "integer literal"),
     ] {
         let source = format!(
@@ -497,7 +497,6 @@ fn cuda_record_offsetof_rejects_invalid_bitwise_indices() {
         ("1 &= 1", "expected"),
         ("1 ^= 1", "expected"),
         ("1 |= 1", "expected"),
-        ("1 ? 0 : 1", "expected"),
         ("1, 0", "expected"),
     ] {
         let error = rejected(&format!(
@@ -554,7 +553,6 @@ fn cuda_record_offsetof_rejects_invalid_comparison_indices() {
         ("1 > > 1", "integer literal"),
         ("1 <=> 1", "integer literal"),
         ("1 = 1", "expected"),
-        ("1 > 0 ? 1 : 0", "expected"),
         ("1 == (1 / 0)", "division by zero"),
         ("(1 << 32) > 0", "shift count"),
         ("(1 < 2) - 2", "nonnegative"),
@@ -621,13 +619,79 @@ fn cuda_record_offsetof_rejects_invalid_logical_indices() {
         ("0 && (runtime++)", "expected"),
         ("0 && (runtime = 0)", "expected"),
         ("0 && (runtime, 0)", "expected"),
-        ("0 && (1 ? 0 : 1)", "expected"),
         ("3 + (0 || 1)", "out of bounds"),
     ] {
         let error = rejected(&format!(
             "struct Record {{ int row[4]; }};
              __global__ void kernel(unsigned *out, int runtime, float real) {{
                  int values[1];
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
+        assert!(error.message.contains(message), "{index}: {error}");
+    }
+}
+
+#[test]
+fn cuda_record_offsetof_evaluates_conditional_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        #define PICK(test, first, second) ((test) ? (first) : (second))
+        struct Record { int head; int row[4]; };
+        constexpr short Narrow = 2;
+        constexpr short Small = 1;
+        constexpr int Known = 1;
+        constexpr bool Yes = true;
+        constexpr bool No = false;
+        __global__ void kernel(unsigned long *output, unsigned input, volatile int *observed) {
+            volatile int &live = observed[0];
+            const volatile int &readonly = observed[0];
+            output[0] = offsetof(Record, row[1 ? 2 : input]);
+            output[1] = offsetof(Record, row[0 ? 1 / 0 : 3]);
+            output[2] = offsetof(Record, row[PICK(1, 1, 2147483647 + 1)]);
+            output[3] = offsetof(Record, row[0 ? 1 : 1 ? 2 : 3]);
+            output[4] = offsetof(Record, row[1 ? 0 ? 1 : 2 : 3]);
+            output[5] = offsetof(Record, row[(1 ? -1 : input) < 1]);
+            output[6] = offsetof(Record, row[(1 ? -1L : input) < 1]);
+            output[7] = offsetof(Record, row[(1 ? Narrow : Small) + 1]);
+            output[8] = offsetof(Record, row[0 ? No : Yes]);
+            output[9] = offsetof(Record, row[1 || input ? 2 : 3]);
+            output[10] = offsetof(Record, row[0 && (input ? 1 / 0 : 1 << 32)]);
+            output[11] = offsetof(Record, row[1 ? Known : live]);
+            output[12] = offsetof(Record, row[1 || (1 ? Known : readonly)]);
+            output[13] = offsetof(Record, row[(0 ? input << 33 : -1) == 0xffffffffu]);
+        }",
+        &[12, 16, 8, 12, 12, 4, 8, 16, 8, 12, 4, 8, 8, 8],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_invalid_conditional_indices() {
+    for (index, message) in [
+        ("input ? 1 : 1", "integral constant"),
+        ("0 ? 1 : input", "integral constant"),
+        ("1 ? 1 / 0 : 0", "division by zero"),
+        ("0 ? 1 : 2147483647 + 1", "signed overflow"),
+        ("0 ? 1 : 1 << 32", "shift count"),
+        ("1 ? 0 : Missing", "integer literal"),
+        ("1 ? 0 : 1.0f", "integer literal"),
+        ("1 ? 0 : observed", "integer literal"),
+        ("1 ? Known : readonly", "volatile"),
+        ("1 ? (0 ? Known : Known) : (readonly)", "volatile"),
+        ("1 ? -1 : input", "out of bounds"),
+        ("1 ? 4 : 0", "out of bounds"),
+        ("1 ?: 0", "integer literal"),
+        ("1 ? 0", "expected"),
+        ("1 ? 0 :", "integer literal"),
+        ("1 ? 0, 1 : 2", "expected"),
+        ("1 ? (0, 1) : 2", "expected"),
+        ("1 ? 0 : input = 2", "expected"),
+    ] {
+        let error = rejected(&format!(
+            "struct Record {{ int row[4]; }};
+             constexpr int Known = 1;
+             __global__ void kernel(unsigned *out, unsigned input, volatile int *observed) {{
+                 const volatile int &readonly = observed[0];
                  out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
              }}"
         ));
@@ -701,7 +765,7 @@ fn cuda_record_offsetof_rejects_nonconstant_and_invalid_named_indices() {
         ("__builtin_offsetof(Record, row[input]);", "integral constant"),
         ("__builtin_offsetof(Record, row[StorageIndex]);", "integral constant"),
         ("__builtin_offsetof(Record, row[Index + input]);", "integral constant"),
-        ("__builtin_offsetof(Record, row[(Index ? 1 : 0)]);", "expected"),
+        ("__builtin_offsetof(Record, row[(Index, 1)]);", "expected"),
         ("__builtin_offsetof(Record, row[::Index]);", "integral constant"),
     ] {
         let error = rejected(&format!(
