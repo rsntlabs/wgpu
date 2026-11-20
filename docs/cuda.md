@@ -593,6 +593,7 @@ A reference to either kind of pointer array, such as `int (*(&)[2])[3]`
 or `int (*(&)[2])(int)`, uses the referred array's layout.
 The referenced array can split its dimensions across inner groups, as in
 `int (*((&)[2])[3])[4]`. Here `[2][3]` is the pointer array's shape.
+The same shape can be written without a reference as `int (*([2])[3])[4]`.
 An additional pointer, as in `int (*(*)[2])[3]`, uses the pointer layout.
 The pointed-to array may have an omitted outer bound.
 References to those pointers, such as `int (*&)[3]` and `int (*&&)[3]`,

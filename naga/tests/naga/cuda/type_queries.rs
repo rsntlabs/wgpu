@@ -6038,3 +6038,62 @@ fn cuda_layout_queries_split_inner_indirection_validates_combined_array_limits()
         "{error}"
     );
 }
+
+#[test]
+fn cuda_layout_queries_grouped_dimensions_after_pointer_stars_preserve_outer_array_extent() {
+    for ty in [
+        "int(*([2])[3])[4]",
+        "int(*(([2]))[3])[4]",
+        "int(*([2])[3])",
+        "int(*([2])[3])(int)",
+        "P(*([2])[3])[4]",
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; using P = int*;
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof({ty}); output[1] = alignof({ty});
+                output[2] = __builtin_offsetof(Offsets, bytes[sizeof({ty})]);
+            }}"
+            ),
+            &[48, 8, 192],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = alignof(int(*([])[3])[4]);
+            output[1] = __builtin_offsetof(Offsets, bytes[alignof(int(*(([]))[3])(int))]);
+        }",
+        &[8, 32],
+    );
+}
+
+#[test]
+fn cuda_layout_queries_grouped_dimensions_after_pointer_stars_validate_bounds_and_terminal_suffix()
+{
+    for ty in [
+        "int(*([0])[3])[4]",
+        "int(*([2])[0])[4]",
+        "int(*([2])[runtime])[4]",
+        "int(*([2])[])[4]",
+        "int(*([2])[3])[0]",
+        "int(*([65536])[65536])[4]",
+        "int(*([2])[3])(Missing)",
+        "int(*([2])[3])(int,)",
+        "int(*(([2])[3])[4]",
+        "int(*([])[3])[4]",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof({ty})");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
+    }
+}

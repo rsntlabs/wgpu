@@ -271,6 +271,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support grouped pointee dimensions and signatures in CUDA pointer-array layout queries.
 - Support split array dimensions and enclosed signatures on CUDA pointer and reference type operands.
 - Support split dimensions inside grouped CUDA pointer arrays.
+- Support grouped dimensions directly after pointer stars in CUDA layout queries.
 - Support array type dimensions in CUDA `offsetof` layout queries.
 - Support named member paths in CUDA `offsetof` size queries.
 - Support unevaluated array and pointer subscripts in CUDA `offsetof` size queries.

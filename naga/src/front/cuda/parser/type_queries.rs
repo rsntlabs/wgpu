@@ -1916,22 +1916,26 @@ impl Parser<'_> {
                     let inner_groups =
                         Self::scan_additional_type_query_groups(&mut lookahead, budget)?;
                     let (token, span) = lookahead.peek()?;
-                    through_pointer = token == Token::Operation('*');
-                    if through_pointer {
-                        Self::scan_type_query_pointer_chain(&mut lookahead, budget, 0)?;
-                        Self::scan_type_query_reference(&mut lookahead, budget)?;
-                    } else if !Self::scan_type_query_reference(&mut lookahead, budget)? {
-                        return Ok(None);
-                    }
-                    let Some(remaining) =
-                        Self::scan_type_query_group_closes(&mut lookahead, inner_groups)?
-                    else {
-                        return Ok(None);
+                    array_groups = if token == Token::Paren('[') {
+                        inner_groups
+                    } else {
+                        through_pointer = token == Token::Operation('*');
+                        if through_pointer {
+                            Self::scan_type_query_pointer_chain(&mut lookahead, budget, 0)?;
+                            Self::scan_type_query_reference(&mut lookahead, budget)?;
+                        } else if !Self::scan_type_query_reference(&mut lookahead, budget)? {
+                            return Ok(None);
+                        }
+                        let Some(remaining) =
+                            Self::scan_type_query_group_closes(&mut lookahead, inner_groups)?
+                        else {
+                            return Ok(None);
+                        };
+                        remaining
                     };
                     if lookahead.peek()?.0 != Token::Paren('[') {
                         return Ok(None);
                     }
-                    array_groups = remaining;
                     budget.charge_work(2, span)?;
                 }
                 if lookahead.peek()?.0 == Token::Paren('[') {
