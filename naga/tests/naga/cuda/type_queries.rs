@@ -4728,3 +4728,60 @@ fn cuda_layout_queries_function_pointer_noexcept_specs_validate_constants_even_i
         assert!(error.message.contains("nesting limit"), "{error}");
     }
 }
+
+#[test]
+fn cuda_layout_queries_variadic_function_pointers_have_pointer_layout() {
+    for signature in [
+        "(...)",
+        "(int, ...)",
+        "(int...)",
+        "(const int*, unsigned&, ...)",
+        "(short, ...) noexcept",
+        "(...) noexcept(false)",
+        "(int, REST)",
+    ] {
+        let prelude = if signature.contains("REST") {
+            "#define REST ...\n"
+        } else {
+            ""
+        };
+        assert_query_results(
+            &format!(
+                "{prelude}struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof(int(*){signature});
+                output[1] = __builtin_offsetof(Offsets, bytes[alignof(int(*){signature})]);
+            }}"
+            ),
+            &[8, 32],
+        );
+    }
+}
+
+#[test]
+fn cuda_layout_queries_variadic_function_pointers_reject_malformed_parameter_lists() {
+    for query in [
+        "sizeof(int(*)(void, ...))",
+        "sizeof(int(*)(..., int))",
+        "sizeof(int(*)(int, ..., float))",
+        "sizeof(int(*)(..., ...))",
+        "sizeof(int(*)(int... ...))",
+        "sizeof(int(*)(. . .))",
+        "sizeof(int(*)(int,,...))",
+        "sizeof(int(*)(int,...,))",
+        "sizeof(int(...))",
+        "sizeof(int(int,...))",
+    ] {
+        for nested in [false, true] {
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query.to_owned()
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ output[0] = {expression}; }}"
+            ));
+        }
+    }
+}

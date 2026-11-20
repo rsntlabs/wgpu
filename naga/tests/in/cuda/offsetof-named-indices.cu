@@ -36,6 +36,7 @@ __device__ void check_member_size(Outer *layout, unsigned index)
              || (sizeof(int (*)(const int *, unsigned &)) != 8u) || (alignof(void (*)(void)) != 8u)
              || (sizeof(int (*)(int) noexcept) != 8u)
              || (alignof(void (*)() noexcept(sizeof(FixedRow) == 12u)) != 8u)
+             || (sizeof(int (*)(const int *, ...) noexcept) != 8u) || (alignof(void (*)(...)) != 8u)
              || (sizeof(index[layout->grid]) != 12u)
              || (sizeof(layout->grid[layout->prefix < 1.0f]) != 12u)]) == 48u);
 

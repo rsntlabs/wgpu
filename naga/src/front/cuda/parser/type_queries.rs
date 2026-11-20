@@ -1463,7 +1463,13 @@ impl Parser<'_> {
             return Ok(());
         }
         loop {
-            let (_, span) = self.lexer.peek()?;
+            let (token, span) = self.lexer.peek()?;
+            if token == Token::Ellipsis {
+                self.parameter_expansion_budget.charge_work(2, span)?;
+                self.lexer.next()?;
+                self.lexer.expect_span(Token::Paren(')'))?;
+                return Ok(());
+            }
             self.parameter_expansion_budget.charge_work(1, span)?;
             let operand = self.type_query_base()?;
             let pointer_depth = self.type_query_pointer_depth(operand.as_ref())?;
@@ -1478,8 +1484,10 @@ impl Parser<'_> {
             if self.lexer.next_if(Token::Paren(')'))? {
                 return Ok(());
             }
-            let comma = self.lexer.expect_span(Token::Separator(','))?;
-            self.parameter_expansion_budget.charge_work(1, comma)?;
+            if self.lexer.peek()?.0 != Token::Ellipsis {
+                let comma = self.lexer.expect_span(Token::Separator(','))?;
+                self.parameter_expansion_budget.charge_work(1, comma)?;
+            }
         }
     }
 

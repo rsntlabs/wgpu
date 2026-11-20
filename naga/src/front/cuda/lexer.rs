@@ -22,6 +22,7 @@ pub(super) enum Token<'a> {
     DecrementOperation,
     Arrow,
     ScopeResolution,
+    Ellipsis,
     Trivia,
     End,
 }
@@ -426,6 +427,7 @@ fn consume_token(input: &str) -> Result<(Token<'_>, &str), ParseError> {
     let rest = &input[character.len_utf8()..];
     Ok(match character {
         ':' if rest.starts_with(':') => (Token::ScopeResolution, &rest[1..]),
+        '.' if rest.starts_with("..") => (Token::Ellipsis, &rest[2..]),
         ':' | ';' | ',' | '.' => (Token::Separator(character), rest),
         '(' | ')' | '{' | '}' | '[' | ']' => (Token::Paren(character), rest),
         '<' | '>' => {
