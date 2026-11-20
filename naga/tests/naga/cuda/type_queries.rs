@@ -2989,8 +2989,6 @@ fn cuda_record_offsetof_nested_sizeof_groups_and_dereferences_reject_invalid_ope
         "((pointer)",
         "(*pointer).",
         "&value",
-        "+value",
-        "!value",
         "value + 1",
         "(value, value)",
         "helper()",
@@ -3090,4 +3088,82 @@ fn cuda_record_offsetof_nested_sizeof_literals_reject_bad_literals_and_null_dere
         output[0] = __builtin_offsetof(Offsets, bytes[sizeof(1)]);
     }",
     );
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_unary_types_and_array_decay_preserve_precedence() {
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output, volatile int *input) {
+            short small; bool flag; int grid[2][3]; int *pointer = nullptr;
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof(+small)]);
+            output[1] = __builtin_offsetof(Offsets, bytes[sizeof(-small)]);
+            output[2] = __builtin_offsetof(Offsets, bytes[sizeof(~flag)]);
+            output[3] = __builtin_offsetof(Offsets, bytes[sizeof(!small)]);
+            output[4] = __builtin_offsetof(Offsets, bytes[sizeof(-*input)]);
+            output[5] = __builtin_offsetof(Offsets, bytes[sizeof(+pointer)]);
+            output[6] = __builtin_offsetof(Offsets, bytes[sizeof(!pointer)]);
+            output[7] = __builtin_offsetof(Offsets, bytes[sizeof(!nullptr)]);
+            output[8] = __builtin_offsetof(Offsets, bytes[sizeof(+grid)]);
+            output[9] = __builtin_offsetof(Offsets, bytes[sizeof(*+grid)]);
+            output[10] = __builtin_offsetof(Offsets, bytes[sizeof(+*grid)]);
+            output[11] = __builtin_offsetof(Offsets, bytes[sizeof(*+grid[0])]);
+            output[12] = __builtin_offsetof(Offsets, bytes[sizeof -1]);
+            output[13] = __builtin_offsetof(Offsets, bytes[sizeof(~0xffffffffffffffffULL)]);
+        }",
+        &[16, 16, 16, 4, 16, 32, 4, 4, 32, 48, 32, 16, 16, 32],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_unary_never_reads_volatile_or_materializes_null() {
+    let module = roundtrip(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output, volatile int *input) {
+            extern __shared__ int rows[][3];
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof(~*input)]);
+            output[1] = __builtin_offsetof(Offsets, bytes[sizeof(!nullptr)]);
+            output[2] = __builtin_offsetof(Offsets, bytes[sizeof(*+rows)]);
+        }",
+    );
+    assert_eq!(module.global_variables.len(), 2);
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(
+            expression,
+            naga::Expression::Load { .. } | naga::Expression::Unary { .. }
+        )));
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_unary_rejects_invalid_types_even_when_skipped() {
+    for operand in [
+        "+record",
+        "-record",
+        "~record",
+        "!record",
+        "+vector",
+        "!vector",
+        "-pointer",
+        "~pointer",
+        "+nullptr",
+        "-nullptr",
+        "~nullptr",
+        "~1.0f",
+        "++value",
+        "value++",
+        "*+nullptr",
+    ] {
+        for prefix in ["", "true || "] {
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }}; struct Record {{ int field; }};
+                __global__ void kernel(unsigned long *output) {{
+                    int value; int *pointer; Record record; float2 vector;
+                    output[0] = __builtin_offsetof(Offsets, bytes[{prefix}sizeof({operand})]);
+                }}"
+            ));
+        }
+    }
 }

@@ -4,7 +4,7 @@ enum SizeofOperand {
     Scalar(SourceScalar),
     IntegerZeroLiteral(SourceScalar),
     Object(TypeResolution),
-    IncompleteArray(TypeResolution),
+    IncompleteArray(Handle<Type>),
     NullPointer,
 }
 
@@ -417,7 +417,7 @@ impl Parser<'_> {
         let (token, target_span) = self.lexer.peek()?;
         let expression_operand = name == "sizeof"
             && match token {
-                Token::Operation('*')
+                Token::Operation('*' | '+' | '-' | '~' | '!')
                 | Token::Paren('(')
                 | Token::Number(_)
                 | Token::Word("true" | "false" | "nullptr") => true,
@@ -571,7 +571,11 @@ impl Parser<'_> {
         depth: u32,
     ) -> Result<(SizeofOperand, Span), ParseError> {
         let (token, start) = self.lexer.next()?;
-        if matches!(token, Token::Operation('*') | Token::Paren('(')) && depth >= 64 {
+        if matches!(
+            token,
+            Token::Operation('*' | '+' | '-' | '~' | '!') | Token::Paren('(')
+        ) && depth >= 64
+        {
             return Err(ParseError {
                 message: String::from("CUDA expression nesting limit exceeded"),
                 span: start,
@@ -582,11 +586,16 @@ impl Parser<'_> {
             span: start,
         };
         let (mut operand, mut end) = match token {
-            Token::Operation('*') => {
+            Token::Operation(operator @ ('*' | '+' | '-' | '~' | '!')) => {
                 self.parameter_expansion_budget.charge_work(1, start)?;
                 let (operand, end) = self.record_offset_sizeof_operand(depth + 1)?;
                 let span = start.until(&end);
-                return Ok((self.sizeof_dereference(operand, span)?, span));
+                let operand = if operator == '*' {
+                    self.sizeof_dereference(operand, span)?
+                } else {
+                    self.sizeof_unary(operator, operand, span)?
+                };
+                return Ok((operand, span));
             }
             Token::Paren('(') => {
                 self.parameter_expansion_budget.charge_work(2, start)?;
@@ -1609,7 +1618,7 @@ impl Parser<'_> {
                     ty
                 }
             }
-            SizeofOperand::IncompleteArray(element) if arrow => element,
+            SizeofOperand::IncompleteArray(element) if arrow => TypeResolution::Handle(element),
             _ => return Err(invalid()),
         };
         let (_, ty) = self.field_type(&ty, field, field_span)?;
@@ -1718,13 +1727,12 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<SizeofOperand, ParseError> {
         let element = match operand {
-            SizeofOperand::Object(ref ty) => self
-                .source_pointer_pointee(ty)
-                .or_else(|| match *ty.inner_with(&self.module.types) {
-                    TypeInner::Array { base, .. } => Some(base),
-                    _ => None,
-                })
-                .map(TypeResolution::Handle),
+            SizeofOperand::Object(ref ty) => self.source_pointer_pointee(ty).or_else(|| match *ty
+                .inner_with(&self.module.types)
+            {
+                TypeInner::Array { base, .. } => Some(base),
+                _ => None,
+            }),
             SizeofOperand::IncompleteArray(element) => Some(element),
             SizeofOperand::Scalar(_)
             | SizeofOperand::IntegerZeroLiteral(_)
@@ -1734,11 +1742,11 @@ impl Parser<'_> {
             message: String::from("sizeof dereference requires a pointer or array operand"),
             span,
         })?;
-        Ok(SizeofOperand::Object(element))
+        Ok(SizeofOperand::Object(TypeResolution::Handle(element)))
     }
 
     fn sizeof_unary(
-        &mut self,
+        &self,
         operator: char,
         operand: SizeofOperand,
         span: Span,
@@ -1746,6 +1754,12 @@ impl Parser<'_> {
         let invalid = || ParseError {
             message: String::from("invalid operand for sizeof builtin unary operator"),
             span,
+        };
+        let decayed_pointer = |base| {
+            TypeResolution::Value(TypeInner::Pointer {
+                base,
+                space: self.source_pointer_space(base),
+            })
         };
         let ty = match operand {
             SizeofOperand::Scalar(scalar) | SizeofOperand::IntegerZeroLiteral(scalar) => {
@@ -1763,28 +1777,15 @@ impl Parser<'_> {
                 return Ok(SizeofOperand::Object(scalar_resolution(Scalar::BOOL)));
             }
             SizeofOperand::NullPointer => return Err(invalid()),
-            SizeofOperand::IncompleteArray(element) => {
-                if operator == '!' {
-                    return Ok(SizeofOperand::Object(scalar_resolution(Scalar::BOOL)));
-                }
-                if operator != '+' {
-                    return Err(invalid());
-                }
-                let base = self.type_handle(&element, span);
-                return self.pointer_type(base, span).map(SizeofOperand::Object);
-            }
-            SizeofOperand::Object(ty) => ty,
+            SizeofOperand::IncompleteArray(base) => decayed_pointer(base),
+            SizeofOperand::Object(ty) => match *ty.inner_with(&self.module.types) {
+                TypeInner::Array { base, .. } => decayed_pointer(base),
+                _ => ty,
+            },
         };
         if self.source_pointer_pointee(&ty).is_some() {
             return match operator {
                 '+' => Ok(SizeofOperand::Object(ty)),
-                '!' => Ok(SizeofOperand::Object(scalar_resolution(Scalar::BOOL))),
-                _ => Err(invalid()),
-            };
-        }
-        if let TypeInner::Array { base, .. } = *ty.inner_with(&self.module.types) {
-            return match operator {
-                '+' => self.pointer_type(base, span).map(SizeofOperand::Object),
                 '!' => Ok(SizeofOperand::Object(scalar_resolution(Scalar::BOOL))),
                 _ => Err(invalid()),
             };
@@ -1858,11 +1859,12 @@ impl Parser<'_> {
             Symbol::Variable { ty, .. }
             | Symbol::Reference { ty, .. }
             | Symbol::Constant { ty, .. } => ty,
-            Symbol::Array { pointer, ty, .. } => {
+            Symbol::Array { pointer, .. } => {
                 let array = match self.function.ir.expressions[pointer] {
                     Expression::LocalVariable(local) => {
                         if self.function.pending_array == Some(local) {
-                            return Ok(SizeofOperand::IncompleteArray(ty));
+                            let element = self.function.ir.local_variables[local].ty;
+                            return Ok(SizeofOperand::IncompleteArray(element));
                         }
                         self.function.ir.local_variables[local].ty
                     }
@@ -1876,9 +1878,9 @@ impl Parser<'_> {
             }
             Symbol::TemplateParameter { scalar, .. } => return Ok(SizeofOperand::Scalar(scalar)),
             Symbol::DynamicShared(declaration) => {
-                return Ok(SizeofOperand::IncompleteArray(TypeResolution::Handle(
+                return Ok(SizeofOperand::IncompleteArray(
                     self.dynamic_shared_element_type(declaration),
-                )));
+                ));
             }
             _ => {
                 return Err(ParseError {
@@ -1983,6 +1985,9 @@ mod tests {
             ("sizeof Items[((((One))))] / 4]", false, false),
             ("sizeof (*Items) / 4]", true, true),
             ("sizeof *((Items)) / 4]", false, true),
+            ("sizeof *+Items / 4]", true, true),
+            ("sizeof(+Items) / 8]", false, true),
+            ("sizeof(-~!!One) / 4]", false, false),
             ("sizeof (((((*Items))))) / 4]", false, false),
             ("sizeof(void const * const * volatile) / 8]", true, true),
             ("alignof(Fixed &) / 4]", false, true),

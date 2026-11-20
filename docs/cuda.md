@@ -523,6 +523,10 @@ multidimensional array preserves the selected row's extent.
 Nested `sizeof` also accepts supported numeric, Boolean, and `nullptr`
 literals with or without parentheses. It uses their CUDA source type sizes
 without emitting the literal values.
+Unary `+`, `-`, `~`, and `!` use the same operand rules and scalar
+promotions as standalone `sizeof`. Unary `+` on an array gives the
+pointer size, and dereferencing that pointer in the query preserves the
+element type, as in `sizeof *+grid`.
 Pointer type queries, including `void*`, use the CUDA source ABI size and
 alignment of eight bytes. Reference type queries use the referent's layout.
 Array type operands can include dimensions such as `int[2][3]`. Every

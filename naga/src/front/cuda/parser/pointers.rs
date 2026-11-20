@@ -519,7 +519,7 @@ impl<'a> Parser<'a> {
         Ok(self.module.types.insert(ty, span))
     }
 
-    fn source_pointer_space(&self, pointee: Handle<Type>) -> AddressSpace {
+    pub(super) fn source_pointer_space(&self, pointee: Handle<Type>) -> AddressSpace {
         if self.is_incomplete_array(pointee) {
             // Source descriptors need a valid address space even before pointer lowering.
             AddressSpace::Storage {
