@@ -3715,7 +3715,6 @@ fn cuda_record_offsetof_nested_sizeof_functional_casts_reject_broader_syntax_and
         "unsigned int(value)",
         "const int(value)",
         "long long(value)",
-        "std::size_t(value)",
         "decltype(value)(value)",
         "Record(value)",
         "float2(value)",
@@ -3742,4 +3741,97 @@ fn cuda_record_offsetof_nested_sizeof_functional_casts_reject_broader_syntax_and
             output[0] = __builtin_offsetof(Offsets, bytes[sizeof(Alias(value))]);
         }",
     );
+}
+
+#[test]
+fn cuda_sizeof_qualified_functional_casts_share_standalone_and_nested_syntax() {
+    for operand in [
+        "std::size_t(value)",
+        "::size_t(value)",
+        "Std::size_t(value ? 1 : 2)",
+    ] {
+        assert_query_results(
+            &format!(
+                "#include <cstddef>\nnamespace Std = std;
+            struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{
+                int value;
+                output[0] = sizeof({operand});
+                output[1] = __builtin_offsetof(Offsets, bytes[sizeof({operand})]);
+            }}"
+            ),
+            &[8, 32],
+        );
+    }
+    assert_query_results(
+        "#include <cstddef>\nusing Index = unsigned; struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            int Index; int value; int *pointer;
+            output[0] = sizeof ::Index(value);
+            output[1] = __builtin_offsetof(Offsets, bytes[sizeof ::Index(value)]);
+            output[2] = sizeof(std::size_t);
+            output[3] = __builtin_offsetof(Offsets, bytes[sizeof(std::size_t)]);
+            output[4] = sizeof(std::size_t(0)[pointer]);
+        }",
+        &[4, 16, 8, 32, 4],
+    );
+}
+
+#[test]
+fn cuda_sizeof_qualified_functional_casts_do_not_read_volatile_operands() {
+    for nested in [false, true] {
+        let source = |operand: &str| {
+            let query = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[sizeof({operand})])")
+            } else {
+                format!("sizeof({operand})")
+            };
+            format!("#include <cstddef>\nstruct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output, volatile int *input) {{ output[0] = {query}; }}")
+        };
+        let cast = roundtrip(&source("std::size_t(*input)"));
+        let control = roundtrip(&source("std::size_t"));
+        assert_eq!(
+            cast.entry_points[0]
+                .function
+                .expressions
+                .iter()
+                .collect::<Vec<_>>(),
+            control.entry_points[0]
+                .function
+                .expressions
+                .iter()
+                .collect::<Vec<_>>()
+        );
+        assert!(cast.entry_points[0]
+            .function
+            .expressions
+            .iter()
+            .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    }
+}
+
+#[test]
+fn cuda_sizeof_qualified_functional_casts_reject_empty_multiarg_and_invalid_names() {
+    for operand in [
+        "std::size_t()",
+        "std::size_t(value, value)",
+        "std::size_t(value,)",
+        "missing::size_t(value)",
+        "std::missing(value)",
+        "std::nullptr_t(value)",
+        "::Record(value)",
+        "::Constant(value)",
+    ] {
+        for nested in [false, true] {
+            let query = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[sizeof({operand})])")
+            } else {
+                format!("sizeof({operand})")
+            };
+            rejected(&format!("#include <cstddef>\nstruct Offsets {{ int bytes[64]; }};
+                struct Record {{ int field; }}; constexpr int Constant = 1;
+                __global__ void kernel(unsigned long *output) {{ int value; output[0] = {query}; }}"));
+        }
+    }
 }

@@ -170,9 +170,11 @@ pub(super) fn try_qualified_name(
 ) -> Result<Option<QualifiedName>, ParseError> {
     let mut lookahead = lexer.clone();
     if lookahead.peek()?.0 != Token::ScopeResolution {
-        if !matches!(lookahead.next()?.0, Token::Word(_))
-            || !matches!(lookahead.peek(), Ok((Token::ScopeResolution, _)))
-        {
+        let (Token::Word(word), _) = lookahead.next()? else {
+            return Ok(None);
+        };
+        // A leading :: after sizeof can start its operand.
+        if word == "sizeof" || !matches!(lookahead.peek(), Ok((Token::ScopeResolution, _))) {
             return Ok(None);
         }
     }

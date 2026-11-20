@@ -23,7 +23,8 @@ __device__ void check_member_size(Outer *layout, unsigned index)
              || (sizeof(static_cast<bool>(layout)) != 1u)
              || (sizeof((unsigned short)(index + 1u)) != 2u)
              || (sizeof((bool)layout) != 1u)
-             || (sizeof short(index) != 2u) || (sizeof(bool(layout)) != 1u)]) == 48u);
+             || (sizeof short(index) != 2u) || (sizeof(bool(layout)) != 1u)
+             || (sizeof ::size_t(index) != 8u) || (sizeof(std::size_t(index)) != 8u)]) == 48u);
 
 __global__ void named_offsets(unsigned *output) {
     unsigned lane = threadIdx.x;
