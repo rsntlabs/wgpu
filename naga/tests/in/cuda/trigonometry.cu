@@ -79,8 +79,8 @@ __global__ void trigonometry(Bits *out) {
     out[29] = __float_as_uint(__sinf(0.0f));
     out[30] = __float_as_uint(__sinf(-0.0f));
     out[31] = __float_as_uint(__sinf(__uint_as_float(1u)));
-    out[32] = __float_as_uint(__sinf(__uint_as_float(0x80000001u)));
-    out[33] = __float_as_uint(__cosf(__uint_as_float(1u)));
+    out[32] = __float_as_uint(__nv_fast_sinf(__uint_as_float(0x80000001u)));
+    out[33] = __float_as_uint(__nv_fast_cosf(__uint_as_float(1u)));
     value = 0.0f;
     out[34] = __float_as_uint(__sinf(value++));
     out[35] = __float_as_uint(value);

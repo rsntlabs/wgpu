@@ -110,7 +110,7 @@ impl Parser<'_> {
         cosine: bool,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
-        let result = self.trigonometry_bits(value, cosine, span)?;
+        let result = self.trigonometry_bits(value, cosine, false, span)?;
         self.bitcast_scalar(result, Scalar::F32, span)
     }
 
@@ -118,27 +118,25 @@ impl Parser<'_> {
         &mut self,
         arguments: Vec<Value>,
         cosine: bool,
+        flush_input_and_output: bool,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         let argument = arguments.into_iter().next().unwrap();
         let converts = self.source_scalar(&argument.ty) != Some(SourceScalar::Scalar(Scalar::F32));
+        let flush_output = !cosine || flush_input_and_output;
+        let flushes = usize::from(flush_input_and_output) + usize::from(flush_output);
         // Two bitcasts, the mode, the call result, and optional flush expressions.
-        let flush_expressions = if cosine {
-            0
-        } else {
-            SUBNORMAL_FLUSH_EXPRESSIONS
-        };
-        let expressions = usize::from(converts) + 4 + flush_expressions;
+        let expressions = usize::from(converts) + 4 + flushes * SUBNORMAL_FLUSH_EXPRESSIONS;
         self.parameter_expansion_budget
             .preflight_expressions(expressions, span)?;
         let argument = self.convert_scalar(argument.into(), Scalar::F32)?;
-        let bits = self.trigonometry_bits(argument.handle, cosine, span)?;
-        let result = if cosine {
-            bits
-        } else {
+        let bits = self.trigonometry_bits(argument.handle, cosine, flush_input_and_output, span)?;
+        let result = if flush_output {
             self.flush_trig_subnormal_bits(bits, span)?
+        } else {
+            bits
         };
         let handle = self.bitcast_scalar(result, Scalar::F32, span)?;
         Ok(Value {
@@ -187,10 +185,16 @@ impl Parser<'_> {
         &mut self,
         value: Handle<Expression>,
         cosine: bool,
+        flush_input: bool,
         span: Span,
     ) -> Result<Handle<Expression>, ParseError> {
         let function = self.trigonometry_function(span)?;
         let bits = self.bitcast_scalar(value, Scalar::U32, span)?;
+        let bits = if flush_input {
+            self.flush_trig_subnormal_bits(bits, span)?
+        } else {
+            bits
+        };
         self.call_trigonometry_bits(function, bits, cosine, span)
     }
 

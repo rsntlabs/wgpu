@@ -4062,7 +4062,7 @@ mod tests {
 
     #[test]
     fn fast_trigonometry_checks_expression_budget_before_converting_arguments() {
-        for name in ["__sinf", "__cosf"] {
+        for name in ["__sinf", "__cosf", "__nv_fast_sinf", "__nv_fast_cosf"] {
             for exhaust_bytes in [false, true] {
                 let (mut parser, [marker, _, _], span) = fns_budget_parser();
                 let arguments = alloc::vec![parser.number("1", span).unwrap()];

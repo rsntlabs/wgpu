@@ -16,7 +16,7 @@ __global__ void paired_trig(const float *input, float *output) {
     __sincosf(value, &sine, &cosine);
     output[base + 8u] = sine; output[base + 9u] = cosine;
     cursor = base + 10u;
-    __sincosf(value++, output + cursor++, output + cursor++);
+    __nv_fast_sincosf(value++, output + cursor++, output + cursor++);
     output[base + 12u] = float(cursor);
     output[base + 13u] = value;
     __sincosf(input[lane], &sine, &sine);

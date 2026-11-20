@@ -1289,9 +1289,12 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
     for &name in &[
         "__sinf",
         "__cosf",
+        "__nv_fast_sinf",
+        "__nv_fast_cosf",
         "sincosf",
         "__nv_sincosf",
         "__sincosf",
+        "__nv_fast_sincosf",
         "__fadd_rz",
         "__fadd_rn",
         "__fsub_rn",
@@ -1449,6 +1452,7 @@ pub(super) enum FunctionCandidate {
     DivideApproximate,
     FastTrigonometry {
         cosine: bool,
+        flush_input_and_output: bool,
     },
     SinCos {
         flush_subnormals: bool,
@@ -2914,8 +2918,17 @@ impl<'a> Parser<'a> {
         if let FunctionCandidate::FloatRemainder(mode) = candidate {
             return self.lower_float_remainder_call(mode, arguments, span);
         }
-        if let FunctionCandidate::FastTrigonometry { cosine } = candidate {
-            return self.lower_fast_trigonometry_call(arguments, cosine, span);
+        if let FunctionCandidate::FastTrigonometry {
+            cosine,
+            flush_input_and_output,
+        } = candidate
+        {
+            return self.lower_fast_trigonometry_call(
+                arguments,
+                cosine,
+                flush_input_and_output,
+                span,
+            );
         }
         if let FunctionCandidate::FloatMath(operation) = candidate {
             return self.lower_float_math_call(operation, arguments, span);
@@ -3570,12 +3583,20 @@ impl<'a> Parser<'a> {
                 (true, "remainderf") => Some(FunctionCandidate::FloatRemainder(
                     RemainderMode::NearestEven,
                 )),
-                (true, "__sinf") => Some(FunctionCandidate::FastTrigonometry { cosine: false }),
-                (true, "__cosf") => Some(FunctionCandidate::FastTrigonometry { cosine: true }),
+                (true, "__sinf" | "__cosf") => Some(FunctionCandidate::FastTrigonometry {
+                    cosine: name == "__cosf",
+                    flush_input_and_output: false,
+                }),
+                (true, "__nv_fast_sinf" | "__nv_fast_cosf") => {
+                    Some(FunctionCandidate::FastTrigonometry {
+                        cosine: name == "__nv_fast_cosf",
+                        flush_input_and_output: true,
+                    })
+                }
                 (true, "sincosf" | "__nv_sincosf") => Some(FunctionCandidate::SinCos {
                     flush_subnormals: false,
                 }),
-                (true, "__sincosf") => Some(FunctionCandidate::SinCos {
+                (true, "__sincosf" | "__nv_fast_sincosf") => Some(FunctionCandidate::SinCos {
                     flush_subnormals: true,
                 }),
                 (true, "__fadd2_rn") => {

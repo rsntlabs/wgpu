@@ -602,19 +602,22 @@ void main()
     uint _1160 = _584(floatBitsToUint(uintBitsToFloat(_864)), 0u);
     _20._m0[uint(31)] = floatBitsToUint(uintBitsToFloat(((_1160 & 2139095040u) == 0u) ? (_1160 & 2147483648u) : _1160));
     _866 = 2147483649u;
-    uint _1172 = _584(floatBitsToUint(uintBitsToFloat(_866)), 0u);
-    _20._m0[uint(32)] = floatBitsToUint(uintBitsToFloat(((_1172 & 2139095040u) == 0u) ? (_1172 & 2147483648u) : _1172));
+    uint _1171 = floatBitsToUint(uintBitsToFloat(_866));
+    uint _1176 = _584(((_1171 & 2139095040u) == 0u) ? (_1171 & 2147483648u) : _1171, 0u);
+    _20._m0[uint(32)] = floatBitsToUint(uintBitsToFloat(((_1176 & 2139095040u) == 0u) ? (_1176 & 2147483648u) : _1176));
     _868 = 1u;
-    _20._m0[uint(33)] = floatBitsToUint(uintBitsToFloat(_584(floatBitsToUint(uintBitsToFloat(_868)), 1u)));
+    uint _1187 = floatBitsToUint(uintBitsToFloat(_868));
+    uint _1192 = _584(((_1187 & 2139095040u) == 0u) ? (_1187 & 2147483648u) : _1187, 1u);
+    _20._m0[uint(33)] = floatBitsToUint(uintBitsToFloat(((_1192 & 2139095040u) == 0u) ? (_1192 & 2147483648u) : _1192));
     _838 = 0.0;
-    float _1189 = _838;
-    float _1190 = float(1);
-    _838 = _1189 + _1190;
-    uint _1193 = _584(floatBitsToUint(_1189), 0u);
-    _20._m0[uint(34)] = floatBitsToUint(uintBitsToFloat(((_1193 & 2139095040u) == 0u) ? (_1193 & 2147483648u) : _1193));
+    float _1201 = _838;
+    float _1202 = float(1);
+    _838 = _1201 + _1202;
+    uint _1205 = _584(floatBitsToUint(_1201), 0u);
+    _20._m0[uint(34)] = floatBitsToUint(uintBitsToFloat(((_1205 & 2139095040u) == 0u) ? (_1205 & 2147483648u) : _1205));
     _20._m0[uint(35)] = floatBitsToUint(_838);
-    float _1207 = float(1);
-    _838 -= _1207;
+    float _1219 = float(1);
+    _838 -= _1219;
     _20._m0[uint(36)] = floatBitsToUint(uintBitsToFloat(_584(floatBitsToUint(_838), 1u)));
 }
 

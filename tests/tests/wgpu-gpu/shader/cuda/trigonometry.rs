@@ -218,13 +218,13 @@ fn special_results() -> ShaderTest {
             float value = __uint_as_float(input[index]);
             out[8u * index] = __float_as_uint(sinf(value));
             out[8u * index + 1u] = __float_as_uint(cosf(value));
-            out[8u * index + 2u] = __float_as_uint(__sinf(value));
-            out[8u * index + 3u] = __float_as_uint(__cosf(value));
+            out[8u * index + 2u] = __float_as_uint(__nv_fast_sinf(value));
+            out[8u * index + 3u] = __float_as_uint(__nv_fast_cosf(value));
             float sine; float cosine;
             sincosf(value, &sine, &cosine);
             out[8u * index + 4u] = __float_as_uint(sine);
             out[8u * index + 5u] = __float_as_uint(cosine);
-            __sincosf(value, &sine, &cosine);
+            __nv_fast_sincosf(value, &sine, &cosine);
             out[8u * index + 6u] = __float_as_uint(sine);
             out[8u * index + 7u] = __float_as_uint(cosine);
         }",
