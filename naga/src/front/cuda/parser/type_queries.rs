@@ -23,7 +23,6 @@ struct RecordOffsetIndex {
 enum RecordOffsetIndexMode {
     Evaluate,
     Discarded,
-    Unevaluated,
 }
 
 impl RecordOffsetIndexMode {
@@ -254,18 +253,7 @@ impl Parser<'_> {
         }
         let (token, span) = self.lexer.next()?;
         let evaluate = mode == RecordOffsetIndexMode::Evaluate;
-        let invalid = || {
-            if mode == RecordOffsetIndexMode::Unevaluated {
-                ParseError {
-                    message: String::from(
-                        "nested sizeof subscript requires a supported integral expression",
-                    ),
-                    span,
-                }
-            } else {
-                Self::invalid_record_offset_index(span)
-            }
-        };
+        let invalid = || Self::invalid_record_offset_index(span);
         let number = match token {
             Token::Paren('(') | Token::Operation('+' | '-' | '~' | '!') => {
                 if depth >= 64 {
@@ -338,15 +326,6 @@ impl Parser<'_> {
                 };
                 if let Some(target) = target {
                     return self.record_offset_functional_cast(target, depth, mode, span);
-                }
-                if mode == RecordOffsetIndexMode::Unevaluated {
-                    let symbol = self.lookup_symbol(name).ok_or_else(invalid)?;
-                    let operand = self.named_sizeof_operand(symbol, span)?;
-                    let scalar = self
-                        .sizeof_source_scalar(&operand)
-                        .filter(|&scalar| Self::record_offset_integral_scalar(scalar))
-                        .ok_or_else(invalid)?;
-                    return Ok((RecordOffsetIndex::prvalue(scalar, None), span));
                 }
                 let symbol = self.record_offset_index_symbol(name).ok_or_else(invalid)?;
                 let (scalar, lvalue) = self
@@ -690,26 +669,21 @@ impl Parser<'_> {
                     (operand, end) = self.sizeof_member(operand)?;
                 }
                 (Token::Paren('['), opening) => {
+                    if depth >= 64 {
+                        return Err(ParseError {
+                            message: String::from("CUDA expression nesting limit exceeded"),
+                            span: opening,
+                        });
+                    }
                     self.parameter_expansion_budget.charge_work(2, opening)?;
                     self.lexer.next()?;
-                    let (base, index) = if self.sizeof_integral_operand(&operand) {
-                        if depth >= 64 {
-                            return Err(ParseError {
-                                message: String::from("CUDA expression nesting limit exceeded"),
-                                span: opening,
-                            });
-                        }
-                        let (base, _) = self.record_offset_sizeof_conditional(depth + 1)?;
-                        (base, operand)
-                    } else {
-                        let (index, _) = self.record_offset_index(
-                            depth + 1,
-                            0,
-                            RecordOffsetIndexMode::Unevaluated,
-                        )?;
-                        (operand, SizeofOperand::Scalar(index.scalar))
-                    };
+                    let (other, _) = self.record_offset_sizeof_conditional(depth + 1)?;
                     end = self.lexer.expect_span(Token::Paren(']'))?;
+                    let (base, index) = if self.sizeof_integral_operand(&operand) {
+                        (other, operand)
+                    } else {
+                        (operand, other)
+                    };
                     operand = self.sizeof_subscript(base, index, start.until(&end))?;
                 }
                 _ => break,
@@ -2244,6 +2218,8 @@ mod tests {
             ("sizeof(0[Items]) / 4]", true, true),
             ("sizeof(0[1[2[3[4[Items]]]]]) / 4]", false, false),
             ("sizeof(Items[false]) / 4]", false, true),
+            ("sizeof(Items[1.0f < 2.0f]) / 4]", true, true),
+            ("sizeof(Items[Items[Items[Items[0]]]]) / 4]", false, false),
             ("sizeof Items[One ? short(1 / 0) : -1] / 4]", true, true),
             ("sizeof Items[One + sizeof(int[1 + 1])] / 4]", false, true),
             ("sizeof Items[((((One))))] / 4]", false, false),

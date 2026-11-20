@@ -513,10 +513,10 @@ Member paths rooted in a named object can use `.` and `->`, as in
 their full extent.
 These paths can also subscript arrays and pointers, as in
 `sizeof(record.grid[row + 1])` and `sizeof pointer[index].field`.
-Subscripts accept the integral operators, casts, and layout queries
-supported in `offsetof` indices. They check operand types and can use
-runtime or volatile integral objects without reading them. Selecting a
-row preserves its array type.
+The subscript index must have an integral type. It can use the supported
+unevaluated expressions, including scalar comparisons, casts,
+conditionals, and grouped commas. Runtime and volatile values are left
+unevaluated. Selecting a row preserves its array type.
 The commuted form, such as `sizeof(row[record.grid])`, selects the
 same element type and also leaves both operands unevaluated.
 Grouping and unary dereference also work on these named operands, as in

@@ -2802,7 +2802,6 @@ fn cuda_record_offsetof_nested_sizeof_subscripts_reject_invalid_or_broader_index
         "grid[Integer]",
         "grid[index++]",
         "grid[helper()]",
-        "grid[(index, 0)]",
         "grid[]",
         "incomplete[0]",
     ] {
@@ -4209,4 +4208,76 @@ fn cuda_record_offsetof_nested_sizeof_commuted_subscripts_reject_invalid_operand
             ));
         }
     }
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_subscripts_accept_type_only_integral_expression_results() {
+    for index in [
+        "real < 1.0f",
+        "static_cast<int>(real)",
+        "(int)real",
+        "int(real)",
+        "pointer ? 0 : 1",
+        "record.field",
+        "vector.x < real",
+        "(index, 0)",
+        "static_cast<bool>(pointer)",
+        "real ? 0 : index",
+        "(real, index)",
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; struct Record {{ int field; }};
+            __global__ void kernel(unsigned long *output) {{
+                int grid[2][3]; int index; float real; int *pointer; Record record; float2 vector;
+                output[0] = __builtin_offsetof(Offsets, bytes[sizeof(grid[{index}])]);
+            }}"
+            ),
+            &[48],
+        );
+    }
+    let module = roundtrip(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output, volatile float *input) {
+            int grid[2][3];
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof(grid[static_cast<int>(*input)])]);
+        }",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_subscripts_reject_nonintegral_results_and_invalid_syntax() {
+    for index in [
+        "real",
+        "pointer",
+        "record",
+        "vector",
+        "pointer + 1",
+        "helper()",
+        "index++",
+        "index,",
+        "",
+        "(real, real)",
+        "index ? real : real",
+    ] {
+        for prefix in ["", "true || "] {
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }}; struct Record {{ int field; }};
+                __device__ int helper() {{ return 0; }}
+                __global__ void kernel(unsigned long *output) {{
+                    int grid[2][3]; int index; float real; int *pointer; Record record; float2 vector;
+                    output[0] = __builtin_offsetof(Offsets, bytes[{prefix}sizeof(grid[{index}])]);
+                }}"));
+        }
+    }
+    rejected(
+        "struct Offsets { int bytes[64]; }; __global__ void kernel(unsigned long *output) {
+        float real; output[0] = __builtin_offsetof(Offsets, bytes[static_cast<int>(real)]);
+    }",
+    );
 }
