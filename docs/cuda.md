@@ -469,6 +469,9 @@ giving the byte offset of a direct member of a complete record. The record
 type can be qualified, named through an alias, or resolved during template
 instantiation. The offset includes preceding members and padding. Use a
 narrower constant type if the target shader needs only 32-bit values.
+The synthetic `<cstddef>` and `<stddef.h>` headers define the function-like
+macro `offsetof(Record, member)` on the first active inclusion of either
+header. The macro follows the normal `#undef` and redefinition rules.
 
 `sizeof(object)` and `sizeof object` also accept a direct, unqualified object
 name. Supported objects include scalar, vector, record, and array variables,
@@ -873,8 +876,7 @@ the pointed-to object. Guard a pointer before accessing it when it may be null.
 Comparisons between two pointers remain unsupported.
 
 `nullptr` has its own source type, available as `decltype(nullptr)` or
-`std::nullptr_t`. The built-in `<cstddef>` include exposes this type only;
-other header contents and include forms remain unsupported. It supports named
+`std::nullptr_t`. It supports named
 `auto` values, aliases,
 local objects, mutable and const references, helper parameters and results,
 and function template deduction. These values convert to compatible pointers

@@ -211,6 +211,7 @@ struct Conditional {
 
 struct Preprocessor<'a> {
     lexer: RawLexer<'a>,
+    included_stddef: bool,
     definitions: FastHashMap<String, Definition>,
     next_identifier: usize,
     conditionals: Vec<Conditional>,
@@ -262,6 +263,7 @@ pub(super) fn prepare(source: &str) -> Result<Option<PreparedSource>, ParseError
     }
     let mut preprocessor = Preprocessor {
         lexer: RawLexer::new(source),
+        included_stddef: false,
         definitions: FastHashMap::default(),
         next_identifier: 0,
         conditionals: Vec::new(),
@@ -423,12 +425,7 @@ impl Preprocessor<'_> {
             _ if !self.active() => {}
             "define" => self.define(payload, directive.span)?,
             "pragma" => self.pragma(payload, span)?,
-            "include"
-                if matches!(payload, [opening, header, closing]
-                if opening.kind == Kind::Punctuation && opening.spelling == "<"
-                    && header.kind == Kind::Word && header.spelling == "cstddef" && !header.separated
-                    && closing.kind == Kind::Punctuation && closing.spelling == ">" && !closing.separated) =>
-                {}
+            "include" => self.include_stddef(payload, directive.span)?,
             "undef" => {
                 let operand = Self::operand(payload, directive.span)?;
                 self.budget.visit(operand.spelling.len(), operand.span)?;
@@ -457,6 +454,56 @@ impl Preprocessor<'_> {
             }
             _ => Err(error("expected one CUDA preprocessing macro name", span)),
         }
+    }
+
+    fn include_stddef(&mut self, payload: &[RawToken], span: Span) -> Result<(), ParseError> {
+        let supported = match *payload {
+            [ref opening, ref header @ .., ref closing]
+                if opening.kind == Kind::Punctuation
+                    && opening.spelling == "<"
+                    && closing.kind == Kind::Punctuation
+                    && closing.spelling == ">"
+                    && !closing.separated =>
+            {
+                match *header {
+                    [ref name] => {
+                        name.kind == Kind::Word && name.spelling == "cstddef" && !name.separated
+                    }
+                    [ref name, ref dot, ref suffix] => {
+                        name.kind == Kind::Word
+                            && name.spelling == "stddef"
+                            && !name.separated
+                            && dot.kind == Kind::Punctuation
+                            && dot.spelling == "."
+                            && !dot.separated
+                            && suffix.kind == Kind::Word
+                            && suffix.spelling == "h"
+                            && !suffix.separated
+                    }
+                    _ => false,
+                }
+            }
+            _ => false,
+        };
+        if !supported {
+            return Err(error("CUDA preprocessing directive is unsupported", span));
+        }
+        if self.included_stddef {
+            return Ok(());
+        }
+
+        let mut lexer = RawLexer::new("offsetof(T, member) __builtin_offsetof(T, member)");
+        let mut definition = Vec::new();
+        while let Some(mut token) = lexer.next(&mut self.budget).map_err(|mut error| {
+            error.span = span;
+            error
+        })? {
+            token.span = span;
+            self.budget.push(&mut definition, token, span)?;
+        }
+        self.define(&definition, span)?;
+        self.included_stddef = true;
+        Ok(())
     }
 
     fn pragma(&mut self, payload: &[RawToken], start: Span) -> Result<(), ParseError> {

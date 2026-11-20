@@ -108,6 +108,96 @@ fn cuda_preprocessing_definitions_follow_source_order_and_undef_allows_replaceme
 }
 
 #[test]
+fn cuda_preprocessing_stddef_headers_define_offsetof_after_an_active_include() {
+    for header in ["cstddef", "stddef.h"] {
+        validate(&kernel(
+            &format!(
+                "#if 0\n#include <{header}>\n#endif\n
+                 #if defined(offsetof)\n#error defined too early\n#endif\n
+                 #include <{header}>\n
+                 #ifndef offsetof\n#error missing offsetof\n#endif\n
+                 struct Record {{ int first; float2 payload; }};\n
+                 #define TARGET Record\n#define MEMBER payload\n"
+            ),
+            "static_assert(offsetof(TARGET, MEMBER) == 8u);
+             static_assert(offsetof(TARGET, MEMBER) == __builtin_offsetof(Record, payload));",
+        ));
+    }
+    let error = rejected(&kernel("", "out[0] = unsigned(offsetof(Record, field));"));
+    assert!(error.message.contains("offsetof"), "{error}");
+}
+
+#[test]
+fn cuda_preprocessing_stddef_headers_preserve_undef_and_later_replacements() {
+    for (first, second) in [("cstddef", "stddef.h"), ("stddef.h", "cstddef")] {
+        let (module, _) = validate(&kernel(
+            &format!(
+                "#include <{first}>\n#undef offsetof\n#include <{first}>\n
+                 #include <{second}>\n#ifdef offsetof\n#error recreated offsetof\n#endif\n
+                 #define offsetof(T, member) 7u\n#include <{second}>\n
+                 __device__ unsigned replacement() {{ return offsetof(Ignored, field); }}"
+            ),
+            "out[0] = replacement();",
+        ));
+        assert_eq!(
+            returned_literal(&module, "replacement"),
+            naga::Literal::U32(7)
+        );
+    }
+    let error = rejected(
+        "struct Record { int field; };
+         __device__ unsigned early() { return unsigned(offsetof(Record, field)); }
+         \n#include <cstddef>\n__global__ void kernel() {}",
+    );
+    assert!(error.message.contains("offsetof"), "{error}");
+}
+
+#[test]
+fn cuda_preprocessing_stddef_headers_use_normal_macro_diagnostics() {
+    validate(&kernel(
+        "#define offsetof(T, member) __builtin_offsetof(T, member)\n#include <cstddef>\n
+         struct Record { int field; };",
+        "static_assert(offsetof(Record, field) == 0u);",
+    ));
+    let error = rejected(&kernel("#define offsetof 7u\n#include <stddef.h>", ""));
+    assert!(
+        error
+            .message
+            .contains("conflicting CUDA macro redefinition"),
+        "{error}"
+    );
+
+    let source = kernel(
+        "#include <cstddef>\nstruct Record { int field; };",
+        "static_assert(offsetof(Record, absent) == 0u);",
+    );
+    rejected_at(&source, "offsetof(Record, absent)");
+    let error = rejected(&kernel("#include <stddef.h>", "offsetof(1);"));
+    assert!(error.message.contains("argument"), "{error}");
+    for header in ["<stddef .h>", "<stddef.h >", "<cstddef.h>", "\"stddef.h\""] {
+        let error = rejected(&kernel(&format!("#include {header}"), ""));
+        assert!(error.message.contains("unsupported"), "{header}: {error}");
+    }
+}
+
+#[test]
+fn cuda_preprocessing_stddef_headers_obey_the_macro_definition_limit() {
+    use core::fmt::Write as _;
+
+    let mut source = String::new();
+    for index in 0..4096 {
+        writeln!(source, "#define TEST_LIMIT_{index} 0").unwrap();
+    }
+    validate(&kernel(&source, ""));
+    source.push_str("#include <stddef.h>\n");
+    let error = rejected(&kernel(&source, ""));
+    assert!(
+        error.message.contains("macro definition limit exceeded"),
+        "{error}"
+    );
+}
+
+#[test]
 fn cuda_preprocessing_alias_replacements_resolve_at_each_use() {
     let (module, _) = validate("#define OUTER INNER\n#define INNER 1u\n__device__ unsigned first() { return OUTER; }\n#undef INNER\n#define INNER 2u\n__device__ unsigned second() { return OUTER; }\n#undef INNER\n__global__ void kernel() { unsigned INNER = 3u; OUTER; }\n");
     assert_eq!(returned_literal(&module, "first"), naga::Literal::U32(1));
