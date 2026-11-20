@@ -510,6 +510,9 @@ the object. Fixed arrays retain their full extent and array parameters
 use their adjusted pointer type.
 Pointer type queries, including `void*`, use the CUDA source ABI size and
 alignment of eight bytes. Reference type queries use the referent's layout.
+Array type operands can include dimensions such as `int[2][3]`. Every
+explicit bound must be a positive integral constant, even in a skipped
+query. Only `alignof` accepts an omitted outer bound in this syntax.
 Arithmetic rejects signed overflow and zero divisors, and wraps unsigned
 results at the operation's width. Shift counts must be nonnegative and less
 than the promoted left operand's bit width. Left shifts wrap at that width

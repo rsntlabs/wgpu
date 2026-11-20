@@ -1037,8 +1037,6 @@ fn cuda_record_offsetof_evaluates_scalar_layout_queries_in_indices() {
 fn cuda_record_offsetof_rejects_unsupported_layout_queries_in_indices() {
     for (index, message) in [
         ("sizeof(int && &)", "expected"),
-        ("alignof(int[2])", "expected"),
-        ("sizeof(int[2])", "expected"),
         ("sizeof(int())", "expected"),
         ("sizeof()", "type"),
         ("sizeof(1)", "type"),
@@ -1321,6 +1319,75 @@ fn cuda_record_offsetof_rejects_invalid_indirect_type_queries_in_indices() {
          }}"
     ));
     assert!(error.message.contains("pointer nesting limit"), "{error}");
+}
+
+#[test]
+fn cuda_record_offsetof_evaluates_array_type_queries_in_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        #define ROWS 2
+        struct Record { int head; int row[5]; };
+        struct Padded { short first; int middle; short last; };
+        using Row = int[3];
+        constexpr int Count = 2;
+        template<int N> __device__ size_t selected() {
+            return offsetof(Record, row[sizeof(int[N]) / sizeof(int)]);
+        }
+        __global__ void kernel(unsigned long *output, unsigned input) {
+            output[0] = offsetof(Record, row[sizeof(int[ROWS][3]) / 8]);
+            output[1] = offsetof(Record, row[sizeof(Row[Count][2]) / 12]);
+            output[2] = offsetof(Record, row[alignof(int[2][3]) / 4]);
+            output[3] = offsetof(Record, row[alignof(float4[][3]) / 4]);
+            output[4] = offsetof(Record, row[sizeof(Padded[2]) / 8]);
+            output[5] = offsetof(Record, row[sizeof(float3[2]) / 8]);
+            output[6] = offsetof(Record, row[sizeof(short3[2]) / 4]);
+            output[7] = offsetof(Record, row[sizeof(bool[2][2])]);
+            output[8] = offsetof(Record, row[sizeof(int[sizeof(int)]) / 4]);
+            output[9] = offsetof(Record, row[sizeof(int[true || input]) / 4]);
+            output[10] = offsetof(Record, row[sizeof(int[static_cast<unsigned>(1 + 1)]) / 4]);
+            output[11] = offsetof(Record, row[alignof(Row[][2]) / 4]);
+            size_t instantiated = selected<3>();
+        }",
+        &[16, 20, 8, 20, 16, 16, 16, 20, 20, 8, 12, 8],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_invalid_array_type_queries_in_indices() {
+    for (index, message) in [
+        ("sizeof(int[0])", "positive"),
+        ("sizeof(int[-1])", "positive"),
+        ("sizeof(int[0x100000000ULL])", "positive"),
+        ("sizeof(int[input])", "integral constant"),
+        ("true || sizeof(int[1 / 0])", "division by zero"),
+        ("true || alignof(int[1 << 32])", "shift count"),
+        ("sizeof(int[536870912])", "type size limit"),
+        ("alignof(int[][536870912])", "type size limit"),
+        ("sizeof(int[][2])", "complete"),
+        ("alignof(int[2][])", "outermost"),
+        ("alignof(Open[2])", "complete"),
+        ("sizeof(int *[2])", "direct arrays"),
+        ("sizeof(int &[2])", "direct arrays"),
+        ("sizeof(int[2)", "expected"),
+    ] {
+        let error = rejected(&format!(
+            "struct Record {{ int row[5]; }};
+             using Open = int[];
+             __global__ void kernel(unsigned *out, unsigned input) {{
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
+        assert!(error.message.contains(message), "{index}: {error}");
+    }
+    let suffixes = "[1]".repeat(64);
+    let error = rejected(&format!(
+        "struct Record {{ int row[5]; }};
+         using Row = int[3];
+         __global__ void kernel(unsigned *out) {{
+             out[0] = unsigned(__builtin_offsetof(Record, row[alignof(Row{suffixes})]));
+         }}"
+    ));
+    assert!(error.message.contains("array rank limit"), "{error}");
 }
 
 #[test]

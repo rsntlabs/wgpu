@@ -397,7 +397,7 @@ impl Parser<'_> {
             self.lexer.next()?;
             self.record_offset_named_sizeof(symbol, target_span)?
         } else if parenthesized {
-            self.record_offset_type_layout(name, target_span)?
+            self.record_offset_type_layout(name, depth + 1, target_span)?
         } else {
             return Err(ParseError {
                 message: String::from("__builtin_offsetof nested sizeof expected a parenthesized type or a named object"),
@@ -419,12 +419,26 @@ impl Parser<'_> {
     fn record_offset_type_layout(
         &mut self,
         name: &str,
+        depth: u32,
         target_span: Span,
     ) -> Result<u32, ParseError> {
         let TypeQueryType::Object { ty, .. } = self.type_query_type_id(target_span)? else {
             return Ok(8);
         };
         let ty = ty.ty;
+        if self.lexer.peek()?.0 == Token::Paren('[') {
+            self.record_offset_array_layout(name, ty, depth, target_span)
+        } else {
+            self.record_offset_layout_value(name, ty, target_span)
+        }
+    }
+
+    fn record_offset_layout_value(
+        &mut self,
+        name: &str,
+        ty: TypeSpecifier,
+        target_span: Span,
+    ) -> Result<u32, ParseError> {
         if let Some(scalar) = ty.source_scalar() {
             // The supported scalar types have natural alignment equal to their size.
             Ok(u32::from(scalar.scalar().width))
@@ -444,6 +458,74 @@ impl Parser<'_> {
                     span: target_span,
                 })
         }
+    }
+
+    fn record_offset_array_layout(
+        &mut self,
+        name: &str,
+        ty: TypeSpecifier,
+        depth: u32,
+        span: Span,
+    ) -> Result<u32, ParseError> {
+        let size = self.record_offset_layout_value("sizeof", ty, span)?;
+        let alignment = self.record_offset_layout_value("alignof", ty, span)?;
+        let base_rank = match ty {
+            TypeSpecifier::Array(handle) => self.array_shape(handle, span)?.1,
+            _ => 0,
+        };
+        let size_limit = |span| ParseError {
+            message: String::from("array exceeds Naga's type size limit"),
+            span,
+        };
+        let mut size = size
+            .checked_next_multiple_of(alignment)
+            .filter(|&size| size <= crate::valid::MAX_TYPE_SIZE)
+            .ok_or_else(|| size_limit(span))?;
+        let mut rank = base_rank;
+        while let (Token::Paren('['), open) = self.lexer.peek()? {
+            self.lexer.next()?;
+            self.parameter_expansion_budget.charge_work(2, open)?;
+            rank += 1;
+            if rank > 64 {
+                return Err(ParseError {
+                    message: String::from("CUDA array rank limit exceeded"),
+                    span: open,
+                });
+            }
+            if self.lexer.next_if(Token::Paren(']'))? {
+                if rank != base_rank + 1 {
+                    return Err(ParseError {
+                        message: String::from("only the outermost array bound may be omitted"),
+                        span: open,
+                    });
+                }
+                if name == "sizeof" {
+                    return Err(ParseError {
+                        message: String::from("sizeof requires a complete array type"),
+                        span: open,
+                    });
+                }
+                continue;
+            }
+            // A skipped query still requires a valid array type.
+            let (bound, bound_span) = self.record_offset_index(depth, 0, true)?;
+            self.lexer.expect_span(Token::Paren(']'))?;
+            let count = bound
+                .value
+                .and_then(|value| u32::try_from(value).ok())
+                .filter(|&count| count != 0)
+                .ok_or_else(|| ParseError {
+                    message: String::from(
+                        "array bound must be a positive 32-bit integral constant",
+                    ),
+                    span: bound_span,
+                })?;
+            size = size
+                .checked_mul(count)
+                .filter(|&size| size <= crate::valid::MAX_TYPE_SIZE)
+                .ok_or_else(|| size_limit(bound_span))?;
+        }
+        Ok(if name == "sizeof" { size } else { alignment })
     }
 
     fn record_offset_named_sizeof(&self, symbol: Symbol, span: Span) -> Result<u32, ParseError> {
@@ -1719,6 +1801,7 @@ mod tests {
         let bitwise_chain = format!("1{}]", " | 0 ^ 0 & 0".repeat(128));
         let comparison_chain = format!("1{}]", " == 0 < 1".repeat(128));
         let logical_chain = format!("1{}]", " || (1 / 0)".repeat(128));
+        let array_rank = format!("sizeof(int{}) / 4]", "[1]".repeat(64));
         for (source, exhaust_bytes, succeeds) in [
             ("((((1ULL))))]", false, true),
             ("((((1ULL))))]", true, true),
@@ -1762,6 +1845,9 @@ mod tests {
             ("sizeof(One) / 4]", false, true),
             ("sizeof(void const * const * volatile) / 8]", true, true),
             ("alignof(Fixed &) / 4]", false, true),
+            ("sizeof(int[sizeof(int)][2]) / 32]", true, true),
+            ("alignof(int[][3]) / 4]", false, true),
+            (array_rank.as_str(), true, true),
             ("true || (sizeof(float) / alignof(long))]", false, true),
             ("((((sizeof(bool)))))]", false, false),
         ] {
