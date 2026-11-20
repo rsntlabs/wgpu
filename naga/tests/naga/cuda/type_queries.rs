@@ -180,12 +180,12 @@ fn cuda_record_offsetof_rejects_invalid_array_indices_without_evaluating_them() 
         ("row[()]", "integer literal"),
         ("row[((1)]", "expected"),
         ("row[(1))]", "expected"),
-        ("row[(1*1)]", "expected"),
+        ("row[(1<<1)]", "expected"),
         ("row[(1,2)]", "expected"),
         ("row[index]", "integer literal"),
         ("row[helper()]", "integer literal"),
         ("row[index++]", "integer literal"),
-        ("row[0*1]", "expected"),
+        ("row[0<1]", "expected"),
         ("row[0,1]", "expected"),
         ("row[1", "expected"),
         ("row[3]", "out of bounds"),
@@ -249,7 +249,7 @@ fn cuda_record_offsetof_rejects_invalid_unary_indices() {
         ("--Zero", "integer literal"),
         ("++Zero", "integer literal"),
         ("+Zero++", "expected"),
-        ("+Zero*1", "expected"),
+        ("+Zero<<1", "expected"),
         ("+dynamic", "integer literal"),
     ] {
         let source = format!(
@@ -318,6 +318,73 @@ fn cuda_record_offsetof_rejects_invalid_additive_indices() {
         let error = rejected(&format!(
             "struct Record {{ int row[3]; }};
              __global__ void kernel(unsigned *out, int runtime) {{
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
+        assert!(error.message.contains(message), "{index}: {error}");
+    }
+}
+
+#[test]
+fn cuda_record_offsetof_evaluates_multiplicative_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        #define PRODUCT(left, right) ((left) * (right))
+        struct Record { int head; int row[4]; };
+        constexpr unsigned Max = 0xffffffffu;
+        constexpr unsigned long Wide = 0xfffffffffffffffful;
+        constexpr unsigned short Narrow = 65535;
+        constexpr bool Flag = true;
+        __global__ void kernel(unsigned long *output) {
+            output[0] = offsetof(Record, row[PRODUCT(2, 3) - 4]);
+            output[1] = offsetof(Record, row[2 * (3 - 2)]);
+            output[2] = offsetof(Record, row[1 + 4 / 2]);
+            output[3] = offsetof(Record, row[8 / 4 / 2]);
+            output[4] = offsetof(Record, row[8 / (4 / 2) - 4]);
+            output[5] = offsetof(Record, row[7 % 4 / 2]);
+            output[6] = offsetof(Record, row[-7 / 3 + 3]);
+            output[7] = offsetof(Record, row[-7 % 3 + 2]);
+            output[8] = offsetof(Record, row[-1 % 2u]);
+            output[9] = offsetof(Record, row[-1 / Max]);
+            output[10] = offsetof(Record, row[Max * Max]);
+            output[11] = offsetof(Record, row[Wide * 0xffffffffffffffffULL]);
+            output[12] = offsetof(Record, row[-1l % Wide]);
+            output[13] = offsetof(Record, row[Flag * (Narrow % 2)]);
+            output[14] = offsetof(Record, row[-(2 * 3) / -2]);
+        }",
+        &[12, 12, 16, 8, 4, 8, 8, 8, 8, 8, 8, 8, 4, 8, 16],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_invalid_multiplicative_indices() {
+    for (index, message) in [
+        ("2147483647 * 2 - 2147483647", "signed overflow"),
+        ("9223372036854775807LL * 2", "signed overflow"),
+        ("Min / -1", "signed overflow"),
+        ("Min % -1", "signed overflow"),
+        ("WideMin / -1", "signed overflow"),
+        ("WideMin % -1", "signed overflow"),
+        ("1 / (2 - 2)", "division by zero"),
+        ("0u % Zero", "remainder by zero"),
+        ("1ULL / !1", "division by zero"),
+        ("2 * 2", "out of bounds"),
+        ("-7 / 3", "nonnegative"),
+        ("2 * runtime", "integral constant"),
+        ("2 % 1.0f", "integer literal"),
+        ("1 *", "integer literal"),
+        ("1 ** 1", "integer literal"),
+        ("*Zero", "integer literal"),
+        ("1 *= 2", "expected"),
+        ("1 /= 2", "expected"),
+        ("1 %= 2", "expected"),
+    ] {
+        let error = rejected(&format!(
+            "struct Record {{ int row[4]; }};
+             constexpr int Min = -2147483647 - 1;
+             constexpr long WideMin = -9223372036854775807L - 1;
+             __global__ void kernel(unsigned *out, int runtime) {{
+                 constexpr unsigned short Zero = 0;
                  out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
              }}"
         ));

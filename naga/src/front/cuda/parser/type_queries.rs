@@ -97,12 +97,12 @@ impl Parser<'_> {
     }
 
     fn record_offset_index(&mut self, depth: u32) -> Result<(RecordOffsetIndex, Span), ParseError> {
-        let (mut left, mut span) = self.record_offset_index_prefix(depth)?;
+        let (mut left, mut span) = self.record_offset_index_product(depth)?;
         while let (Token::Operation(operator @ ('+' | '-')), operator_span) = self.lexer.peek()? {
             self.lexer.next()?;
             self.parameter_expansion_budget
                 .charge_work(1, operator_span)?;
-            let (right, right_span) = self.record_offset_index_prefix(depth)?;
+            let (right, right_span) = self.record_offset_index_product(depth)?;
             let scalar = Self::arithmetic_scalar(left.scalar, right.scalar);
             let value = if operator == '+' {
                 left.value + right.value
@@ -110,6 +110,24 @@ impl Parser<'_> {
                 left.value - right.value
             };
             left = Self::record_offset_arithmetic(value, scalar, operator_span)?;
+            span = span.until(&right_span);
+        }
+        Ok((left, span))
+    }
+
+    fn record_offset_index_product(
+        &mut self,
+        depth: u32,
+    ) -> Result<(RecordOffsetIndex, Span), ParseError> {
+        let (mut left, mut span) = self.record_offset_index_prefix(depth)?;
+        while let (Token::Operation(operator @ ('*' | '/' | '%')), operator_span) =
+            self.lexer.peek()?
+        {
+            self.lexer.next()?;
+            self.parameter_expansion_budget
+                .charge_work(1, operator_span)?;
+            let (right, right_span) = self.record_offset_index_prefix(depth)?;
+            left = Self::record_offset_product(operator, left, right, operator_span)?;
             span = span.until(&right_span);
         }
         Ok((left, span))
@@ -217,6 +235,42 @@ impl Parser<'_> {
             span,
         })?;
         Ok(RecordOffsetIndex { value, scalar })
+    }
+
+    fn record_offset_product(
+        operator: char,
+        left: RecordOffsetIndex,
+        right: RecordOffsetIndex,
+        span: Span,
+    ) -> Result<RecordOffsetIndex, ParseError> {
+        let scalar = Self::arithmetic_scalar(left.scalar, right.scalar);
+        let left = Self::record_offset_arithmetic(left.value, scalar, span)?.value;
+        let right = Self::record_offset_arithmetic(right.value, scalar, span)?.value;
+        let value = match (operator, scalar.scalar()) {
+            ('*', Scalar::U64) => i128::from((left as u64).wrapping_mul(right as u64)),
+            ('*', _) => left * right,
+            ('/' | '%', _) if right == 0 => {
+                let operation = if operator == '/' {
+                    "division"
+                } else {
+                    "remainder"
+                };
+                return Err(ParseError {
+                    message: format!("__builtin_offsetof index has {operation} by zero"),
+                    span,
+                });
+            }
+            ('/', _) => left / right,
+            ('%', _) => {
+                // The quotient must be representable even for remainder.
+                if right == -1 {
+                    Self::record_offset_arithmetic(-left, scalar, span)?;
+                }
+                left % right
+            }
+            _ => unreachable!(),
+        };
+        Self::record_offset_arithmetic(value, scalar, span)
     }
 
     fn invalid_record_offset_index(span: Span) -> ParseError {
@@ -1046,7 +1100,8 @@ mod tests {
 
     #[test]
     fn offsetof_indices_respect_expression_depth_without_allocating() {
-        let chain = format!("{}1]", "0 + ".repeat(128));
+        let sum_chain = format!("{}1]", "0 + ".repeat(128));
+        let product_chain = format!("{}1]", "1 * ".repeat(128));
         for (source, exhaust_bytes, succeeds) in [
             ("((((1ULL))))]", false, true),
             ("((((1ULL))))]", true, true),
@@ -1054,7 +1109,9 @@ mod tests {
             ("+(!!1ULL)]", true, true),
             ("+(!!!1ULL)]", false, false),
             ("((1 + 0) + (0))]", true, true),
-            (chain.as_str(), false, true),
+            ("((1 + 2) / (3))]", true, true),
+            (sum_chain.as_str(), false, true),
+            (product_chain.as_str(), false, true),
         ] {
             let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             let span = Span::new(0, 1);
