@@ -1351,8 +1351,17 @@ subnormal inputs and preventing contraction with following addition or
 subtraction. Finite overflow saturates to the signed largest finite value;
 inexact underflow truncates toward signed zero. Actual infinity inputs, NaNs,
 and zero products follow `__fmul_rn`. Calls execute at runtime and are not
-source constant expressions. The `__fmul_rd` and `__fmul_ru` modes remain
-unsupported.
+source constant expressions.
+
+`__fmul_rd(float, float)` rounds toward negative infinity and
+`__fmul_ru(float, float)` rounds toward positive infinity. They share the
+exact integer product algorithm with separate cached helpers. If a finite
+product is inexact, the helper increases the magnitude by one representable
+step when rounding away from zero. In that direction, overflow returns signed
+infinity and a nonzero product below the minimum subnormal rounds to the signed
+minimum subnormal. Rounding toward zero saturates finite overflow and preserves
+the sign of underflow to zero. Argument conversion, special values, and
+runtime-only evaluation follow `__fmul_rn`.
 
 `__fmaf_rn(float, float, float)` computes `x * y + z` as one operation rounded
 once to nearest, with ties to even, following NVIDIA's
@@ -1634,7 +1643,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fsub_rn`, `__fsub_rz`, `__fmul_rn`, `__fmul_rz`, `__fdiv_rn`, `__fdiv_rz`, `__fdiv_rd`, `__fdiv_ru`, `__frcp_rn`, `__frcp_rz`, `__frcp_rd`, `__frcp_ru`, `__fsqrt_rn`, `__fsqrt_rz`, `__fsqrt_rd`, `__fsqrt_ru`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fsub_rn`, `__fsub_rz`, `__fmul_rn`, `__fmul_rz`, `__fmul_rd`, `__fmul_ru`, `__fdiv_rn`, `__fdiv_rz`, `__fdiv_rd`, `__fdiv_ru`, `__frcp_rn`, `__frcp_rz`, `__frcp_rd`, `__frcp_ru`, `__fsqrt_rn`, `__fsqrt_rz`, `__fsqrt_rd`, `__fsqrt_ru`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 

@@ -390,6 +390,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA `__fdiv_rd` and `__frcp_rd` with correctly rounded downward division and reciprocals.
 - Support CUDA `__fdiv_ru` and `__frcp_ru` with correctly rounded upward division and reciprocals.
 - Support CUDA `__fsqrt_rd` and `__fsqrt_ru` with correctly rounded directed square roots.
+- Support CUDA `__fmul_rd` and `__fmul_ru` with correctly rounded directed single-precision multiplication.
 - Support CUDA `nextafterf` with exact single-precision steps, including signed zeros and subnormals.
 - Support CUDA `fdimf` with correctly rounded single-precision positive differences.
 - Support CUDA `ilogbf` with exact exponents for finite and subnormal inputs.

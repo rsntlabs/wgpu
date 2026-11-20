@@ -290,9 +290,7 @@ impl Parser<'_> {
             &mut self.parameter_expansion_budget,
             span,
         )?;
-        self.parameter_expansion_budget
-            .charge_work(self.float_math_functions.len() + 20, span)?;
-        for function in self.float_math_functions.iter_mut().chain([
+        let intrinsic_functions = [
             &mut self.sqrtf_function,
             &mut self.sqrtf_rz_function,
             &mut self.sqrtf_ru_function,
@@ -308,12 +306,23 @@ impl Parser<'_> {
             &mut self.fadd_rz_function,
             &mut self.fmul_rn_function,
             &mut self.fmul_rz_function,
+            &mut self.fmul_rd_function,
+            &mut self.fmul_ru_function,
             &mut self.fmaf_rn_function,
             &mut self.fmaf_rz_function,
             &mut self.frsqrt_rn_function,
             &mut self.trigonometry_function,
             &mut self.fns_function,
-        ]) {
+        ];
+        self.parameter_expansion_budget.charge_work(
+            self.float_math_functions.len() + intrinsic_functions.len(),
+            span,
+        )?;
+        for function in self
+            .float_math_functions
+            .iter_mut()
+            .chain(intrinsic_functions)
+        {
             if let Some(previous) = *function {
                 *function = handles[previous.index()];
             }
