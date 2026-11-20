@@ -387,6 +387,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Emit the required GLSL 16-bit integer extension, explicitly typed zero initializers, and a valid GLSL 1.40 version header.
 - Support CUDA `fmodf` with exact finite remainders and special-value handling.
 - Support CUDA `remainderf` with exact finite remainders and ties-to-even quotient selection.
+- Support CUDA `__fdiv_rd` and `__frcp_rd` with correctly rounded downward division and reciprocals.
 - Support CUDA `nextafterf` with exact single-precision steps, including signed zeros and subnormals.
 - Support CUDA `fdimf` with correctly rounded single-precision positive differences.
 - Support CUDA `ilogbf` with exact exponents for finite and subnormal inputs.

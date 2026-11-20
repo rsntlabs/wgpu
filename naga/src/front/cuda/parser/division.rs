@@ -4,6 +4,7 @@ use super::*;
 enum DivisionRounding {
     NearestEven,
     TowardZero,
+    TowardNegative,
 }
 
 impl Parser<'_> {
@@ -23,6 +24,14 @@ impl Parser<'_> {
         self.lower_fdiv_call(arguments, DivisionRounding::TowardZero, span)
     }
 
+    pub(super) fn lower_fdiv_rd_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lower_fdiv_call(arguments, DivisionRounding::TowardNegative, span)
+    }
+
     fn lower_fdiv_call(
         &mut self,
         arguments: Vec<Value>,
@@ -40,6 +49,9 @@ impl Parser<'_> {
             }
             DivisionRounding::TowardZero => {
                 self.divide_f32_rz(numerator.handle, denominator.handle, span)?
+            }
+            DivisionRounding::TowardNegative => {
+                self.divide_f32_with_rounding(numerator.handle, denominator.handle, rounding, span)?
             }
         };
         Ok(Value {
@@ -69,6 +81,14 @@ impl Parser<'_> {
         self.lower_frcp_call(arguments, DivisionRounding::TowardZero, span)
     }
 
+    pub(super) fn lower_frcp_rd_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.lower_frcp_call(arguments, DivisionRounding::TowardNegative, span)
+    }
+
     fn lower_frcp_call(
         &mut self,
         arguments: Vec<Value>,
@@ -83,6 +103,9 @@ impl Parser<'_> {
         let handle = match rounding {
             DivisionRounding::NearestEven => self.divide_f32(one, argument.handle, span)?,
             DivisionRounding::TowardZero => self.divide_f32_rz(one, argument.handle, span)?,
+            DivisionRounding::TowardNegative => {
+                self.divide_f32_with_rounding(one, argument.handle, rounding, span)?
+            }
         };
         Ok(Value {
             category: ValueCategory::Prvalue,
@@ -125,7 +148,7 @@ impl Parser<'_> {
         let numerator_bits = self.bitcast_scalar(numerator, Scalar::U32, span)?;
         let denominator_bits = self.bitcast_scalar(denominator, Scalar::U32, span)?;
         let result = match rounding {
-            DivisionRounding::NearestEven => {
+            DivisionRounding::NearestEven | DivisionRounding::TowardNegative => {
                 self.call_division_bits(numerator_bits, denominator_bits, rounding, span)?
             }
             DivisionRounding::TowardZero => {
@@ -190,6 +213,7 @@ impl Parser<'_> {
         let cached = match rounding {
             DivisionRounding::NearestEven => self.division_function,
             DivisionRounding::TowardZero => self.division_rz_function,
+            DivisionRounding::TowardNegative => self.division_rd_function,
         };
         if let Some(function) = cached {
             return Ok(function);
@@ -210,6 +234,7 @@ impl Parser<'_> {
         match rounding {
             DivisionRounding::NearestEven => self.division_function = Some(function),
             DivisionRounding::TowardZero => self.division_rz_function = Some(function),
+            DivisionRounding::TowardNegative => self.division_rd_function = Some(function),
         }
         Ok(function)
     }
@@ -224,6 +249,7 @@ impl Parser<'_> {
         let name = match rounding {
             DivisionRounding::NearestEven => "_naga_divide_f32",
             DivisionRounding::TowardZero => "_naga_divide_f32_rz",
+            DivisionRounding::TowardNegative => "_naga_divide_f32_rd",
         };
         let argument_names = ["numerator_bits", "denominator_bits"];
         self.parameter_expansion_budget.charge_nodes(2, span)?;
@@ -361,7 +387,18 @@ impl Parser<'_> {
         let minimum_exponent = self.append(Expression::Literal(Literal::I32(-150)), span)?;
         let too_small =
             self.division_binary(BinaryOperator::Less, exponent, minimum_exponent, span)?;
-        self.division_return_if(too_small, sign, span)?;
+        let negative = if matches!(rounding, DivisionRounding::TowardNegative) {
+            Some(self.division_binary(BinaryOperator::NotEqual, sign, zero, span)?)
+        } else {
+            None
+        };
+        let tiny = if let Some(negative) = negative {
+            let minimum = self.division_cast(negative, Scalar::U32, span)?;
+            self.division_binary(BinaryOperator::InclusiveOr, sign, minimum, span)?
+        } else {
+            sign
+        };
+        self.division_return_if(too_small, tiny, span)?;
 
         let quotient = self.division_local("quotient", Scalar::U32, span)?;
         let remainder = self.division_local("remainder", Scalar::U32, span)?;
@@ -520,6 +557,22 @@ impl Parser<'_> {
                 DivisionRounding::TowardZero => {
                     parser.division_binary(BinaryOperator::ShiftRight, quotient, shift, span)?
                 }
+                DivisionRounding::TowardNegative => {
+                    use BinaryOperator as Op;
+
+                    let unit = parser.division_binary(Op::ShiftLeft, one, shift, span)?;
+                    let mask = parser.division_binary(Op::Subtract, unit, one, span)?;
+                    let discarded = parser.division_binary(Op::And, quotient, mask, span)?;
+                    let lost_bits =
+                        parser.division_binary(Op::InclusiveOr, discarded, remainder, span)?;
+                    let inexact = parser.division_binary(Op::NotEqual, lost_bits, zero, span)?;
+                    let increment =
+                        parser.division_binary(Op::LogicalAnd, negative.unwrap(), inexact, span)?;
+                    let increment = parser.division_cast(increment, Scalar::U32, span)?;
+                    let truncated =
+                        parser.division_binary(Op::ShiftRight, quotient, shift, span)?;
+                    parser.division_binary(Op::Add, truncated, increment, span)?
+                }
             };
             let result =
                 parser.division_binary(BinaryOperator::InclusiveOr, sign, rounded, span)?;
@@ -540,28 +593,34 @@ impl Parser<'_> {
             span,
         )?;
         let (normalized, exponent) = match rounding {
-            DivisionRounding::NearestEven => {
-                let twice_remainder =
-                    self.division_binary(BinaryOperator::ShiftLeft, remainder, one, span)?;
-                let above_half = self.division_binary(
-                    BinaryOperator::Greater,
-                    twice_remainder,
-                    denominator_significand,
-                    span,
-                )?;
-                let at_half = self.division_binary(
-                    BinaryOperator::Equal,
-                    twice_remainder,
-                    denominator_significand,
-                    span,
-                )?;
-                let odd_bits = self.division_binary(BinaryOperator::And, quotient, one, span)?;
-                let is_odd =
-                    self.division_binary(BinaryOperator::NotEqual, odd_bits, zero, span)?;
-                let round_tie =
-                    self.division_binary(BinaryOperator::LogicalAnd, at_half, is_odd, span)?;
-                let rounds_up =
-                    self.division_binary(BinaryOperator::LogicalOr, above_half, round_tie, span)?;
+            DivisionRounding::NearestEven | DivisionRounding::TowardNegative => {
+                let rounds_up = if let Some(negative) = negative {
+                    let inexact =
+                        self.division_binary(BinaryOperator::NotEqual, remainder, zero, span)?;
+                    self.division_binary(BinaryOperator::LogicalAnd, negative, inexact, span)?
+                } else {
+                    let twice_remainder =
+                        self.division_binary(BinaryOperator::ShiftLeft, remainder, one, span)?;
+                    let above_half = self.division_binary(
+                        BinaryOperator::Greater,
+                        twice_remainder,
+                        denominator_significand,
+                        span,
+                    )?;
+                    let at_half = self.division_binary(
+                        BinaryOperator::Equal,
+                        twice_remainder,
+                        denominator_significand,
+                        span,
+                    )?;
+                    let odd_bits =
+                        self.division_binary(BinaryOperator::And, quotient, one, span)?;
+                    let is_odd =
+                        self.division_binary(BinaryOperator::NotEqual, odd_bits, zero, span)?;
+                    let round_tie =
+                        self.division_binary(BinaryOperator::LogicalAnd, at_half, is_odd, span)?;
+                    self.division_binary(BinaryOperator::LogicalOr, above_half, round_tie, span)?
+                };
                 let increment = self.division_select(rounds_up, one, zero, span)?;
                 let rounded =
                     self.division_binary(BinaryOperator::Add, quotient, increment, span)?;
@@ -588,6 +647,10 @@ impl Parser<'_> {
             DivisionRounding::TowardZero => {
                 let maximum = self.division_literal(0x7f7f_ffff, span)?;
                 self.division_binary(BinaryOperator::InclusiveOr, sign, maximum, span)?
+            }
+            DivisionRounding::TowardNegative => {
+                let maximum = self.division_literal(0x7f7f_ffff, span)?;
+                self.division_select(negative.unwrap(), signed_infinity, maximum, span)?
             }
         };
         self.division_return_if(overflow, signed_overflow, span)?;
@@ -817,7 +880,11 @@ mod tests {
 
     #[test]
     fn division_local_and_first_cache_build_preflight_exhausted_budgets() {
-        for rounding in [DivisionRounding::NearestEven, DivisionRounding::TowardZero] {
+        for rounding in [
+            DivisionRounding::NearestEven,
+            DivisionRounding::TowardZero,
+            DivisionRounding::TowardNegative,
+        ] {
             for cached_helper in [false, true] {
                 for exhaust_bytes in [false, true] {
                     let source = "1";
@@ -850,6 +917,7 @@ mod tests {
                     assert!(parser.module.functions.is_empty());
                     assert_eq!(parser.division_function, None);
                     assert_eq!(parser.division_rz_function, None);
+                    assert_eq!(parser.division_rd_function, None);
                 }
             }
         }

@@ -53,6 +53,7 @@ mod fabs;
 mod fadd_rn;
 mod fadd_rz;
 mod fdimf;
+mod fdiv_rd;
 mod fdiv_rn;
 mod fdiv_rz;
 mod ffsll;
@@ -263,6 +264,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_CACHED_MATH,
         CUDA_ROUNDING_ZERO_SIGNS,
         CUDA_COPYSIGNF,
+        CUDA_FDIV_RD,
         CUDA_FDIMF,
         CUDA_ILOGBF,
         CUDA_LDEXPF,
@@ -1467,3 +1469,6 @@ static CUDA_FLOAT2UINT_RN: GpuTestConfiguration = configuration(float2uint_rn::c
 
 #[apply(gpu_test!)]
 static CUDA_LDEXPF: GpuTestConfiguration = configuration(ldexpf::cases);
+
+#[apply(gpu_test!)]
+static CUDA_FDIV_RD: GpuTestConfiguration = configuration(fdiv_rd::cases);

@@ -503,3 +503,6 @@ mod ldexpf;
 mod scalbnf;
 
 mod remainderf;
+
+mod fdiv_rd;
+mod frcp_rd;
