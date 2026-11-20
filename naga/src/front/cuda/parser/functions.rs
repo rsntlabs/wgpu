@@ -1186,6 +1186,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__float2int_ru",
         "__float2uint_ru",
         "__float2int_rn",
+        "__float2uint_rn",
     ] {
         declarations.insert(
             name,
@@ -3362,6 +3363,10 @@ impl<'a> Parser<'a> {
                 }),
                 (true, "__float2int_rn") => Some(FunctionCandidate::FloatToInteger {
                     destination: Scalar::I32,
+                    rounding: Some(FloatMathFunction::NearestEven),
+                }),
+                (true, "__float2uint_rn") => Some(FunctionCandidate::FloatToInteger {
+                    destination: Scalar::U32,
                     rounding: Some(FloatMathFunction::NearestEven),
                 }),
                 (true, "__int2float_rz") => Some(FunctionCandidate::IntegerToFloat {

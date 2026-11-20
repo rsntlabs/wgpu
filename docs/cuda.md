@@ -1639,12 +1639,13 @@ rounding helper with `rintf`. For example, both `1.5f` and `2.5f`
 round to `2`, and both `-1.5f` and `-2.5f` round to `-2`.
 The same range, runtime, and overload rules apply.
 
-`__float2uint_rd(float)` and `__float2uint_ru(float)` use the same rounding
-as their signed counterparts and return `unsigned int`. Both zero signs
-produce zero. Rounding down sends every negative nonzero input below
-zero. Rounding up sends inputs strictly between `-1` and `0` to zero
-and positive subnormals to `1`. A rounded value outside the unsigned
-range has an undefined result.
+`__float2uint_rd(float)`, `__float2uint_ru(float)`, and `__float2uint_rn(float)`
+use the same rounding as their signed counterparts and return `unsigned int`.
+Both zero signs produce zero. Rounding down sends every negative nonzero
+input below zero. Rounding up sends inputs strictly between `-1` and `0`
+to zero and positive subnormals to `1`. Rounding to nearest sends negative
+inputs from `-0.5` through zero to zero and chooses the even integer on ties.
+A rounded value outside the unsigned range has an undefined result.
 See NVIDIA's [conversion intrinsics](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__CAST.html).
 
 `__int2float_rz(int)` and `__uint2float_rz(unsigned int)` convert the argument
