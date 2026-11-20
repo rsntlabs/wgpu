@@ -601,6 +601,8 @@ Grouping is also accepted for a pointer array with no following suffix,
 as in `int ((*[2]))`.
 Enclosing parentheses around array dimensions, as in `int ([3])` or
 `int *([3])`, use the same layout and bound rules as ungrouped dimensions.
+Dimensions after a closing parenthesis, as in `int ([3])[2]`, belong to
+the same array shape and share its bound, rank, and size limits.
 Array type operands can include dimensions such as `int[2][3]`. Every
 explicit bound must be a positive integral constant, even in a skipped
 query. Only `alignof` accepts an omitted outer bound in this syntax.

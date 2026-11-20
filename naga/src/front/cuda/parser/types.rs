@@ -1126,6 +1126,15 @@ impl<'a> Parser<'a> {
         ty: QualifiedType,
         span: Span,
     ) -> Result<QualifiedType, ParseError> {
+        self.array_alias_declarator_with_groups(ty, 0, span)
+    }
+
+    pub(super) fn array_alias_declarator_with_groups(
+        &mut self,
+        ty: QualifiedType,
+        groups: usize,
+        span: Span,
+    ) -> Result<QualifiedType, ParseError> {
         if self.lexer.peek()?.0 != Token::Paren('[') {
             return Ok(ty);
         }
@@ -1140,7 +1149,7 @@ impl<'a> Parser<'a> {
         self.lexer.next()?;
         let resolution = self.lower_type(ty.ty, span)?;
         let base = self.type_handle(&resolution, span);
-        let array = self.array_declaration(base, true, span)?;
+        let array = self.array_declaration_with_groups(base, true, groups, span)?;
         let array_ty = match array.count {
             Some(_) => array.ty,
             None => self.array_type(array.element_ty, ArraySize::Dynamic, span, span)?,

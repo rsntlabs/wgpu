@@ -486,19 +486,18 @@ impl Parser<'_> {
             }
             TypeQueryType::PointerToArray(ty) => {
                 // The pointee may have an omitted outer bound.
-                self.record_offset_array_layout("alignof", ty.ty, depth, target_span)?;
+                self.record_offset_array_layout("alignof", ty.ty, depth, target_span, 0)?;
                 Ok(8)
             }
-            TypeQueryType::ArrayOfPointers => self.record_offset_pointer_array_layout(name, depth),
+            TypeQueryType::ArrayOfPointers => {
+                self.record_offset_pointer_array_layout(name, depth, 0)
+            }
             TypeQueryType::GroupedArray { element, groups } => {
-                let layout =
-                    self.record_offset_grouped_array_layout(name, element, depth, target_span)?;
-                self.close_type_query_groups(groups)?;
-                Ok(layout)
+                self.record_offset_grouped_array_layout(name, element, depth, target_span, groups)
             }
             TypeQueryType::Object(ty) => {
                 if self.lexer.peek()?.0 == Token::Paren('[') {
-                    self.record_offset_array_layout(name, ty.ty, depth, target_span)
+                    self.record_offset_array_layout(name, ty.ty, depth, target_span, 0)
                 } else {
                     self.record_offset_layout_value(name, ty.ty, target_span)
                 }
@@ -542,6 +541,7 @@ impl Parser<'_> {
         ty: TypeSpecifier,
         depth: u32,
         span: Span,
+        groups: usize,
     ) -> Result<u32, ParseError> {
         let size = self.record_offset_layout_value("sizeof", ty, span)?;
         let alignment = self.record_offset_layout_value("alignof", ty, span)?;
@@ -553,7 +553,7 @@ impl Parser<'_> {
             .checked_next_multiple_of(alignment)
             .filter(|&size| size <= crate::valid::MAX_TYPE_SIZE)
             .ok_or_else(|| Self::type_query_array_size_limit(span))?;
-        self.type_query_array_layout(name, stride, alignment, base_rank, |parser| {
+        self.type_query_array_layout(name, stride, alignment, base_rank, groups, |parser| {
             parser.record_offset_array_bound(depth)
         })
     }
@@ -576,8 +576,9 @@ impl Parser<'_> {
         &mut self,
         name: &str,
         depth: u32,
+        groups: usize,
     ) -> Result<u32, ParseError> {
-        self.type_query_array_layout(name, 8, 8, 0, |parser| {
+        self.type_query_array_layout(name, 8, 8, 0, groups, |parser| {
             parser.record_offset_array_bound(depth)
         })
     }
@@ -588,11 +589,14 @@ impl Parser<'_> {
         element: GroupedArrayElement,
         depth: u32,
         span: Span,
+        groups: usize,
     ) -> Result<u32, ParseError> {
         match element {
-            GroupedArrayElement::Pointer => self.record_offset_pointer_array_layout(name, depth),
+            GroupedArrayElement::Pointer => {
+                self.record_offset_pointer_array_layout(name, depth, groups)
+            }
             GroupedArrayElement::Value(ty) => {
-                self.record_offset_array_layout(name, ty.ty, depth, span)
+                self.record_offset_array_layout(name, ty.ty, depth, span, groups)
             }
         }
     }
@@ -610,11 +614,11 @@ impl Parser<'_> {
         mut size: u32,
         alignment: u32,
         base_rank: usize,
+        mut groups: usize,
         mut parse_bound: impl FnMut(&mut Self) -> Result<(u32, Span), ParseError>,
     ) -> Result<u32, ParseError> {
         let mut rank = base_rank;
-        while let (Token::Paren('['), open) = self.lexer.peek()? {
-            self.lexer.next()?;
+        while let Some(open) = self.next_array_dimension(&mut groups)? {
             self.parameter_expansion_budget.charge_work(2, open)?;
             rank += 1;
             if rank > 64 {
@@ -1324,18 +1328,18 @@ impl Parser<'_> {
                 self.array_alias_declarator(ty, span)?;
                 8
             }
-            TypeQueryType::ArrayOfPointers => self.type_query_pointer_array_layout(name)?,
-            TypeQueryType::GroupedArray { element, groups } => {
-                let layout = match element {
-                    GroupedArrayElement::Pointer => self.type_query_pointer_array_layout(name)?,
-                    GroupedArrayElement::Value(ty) => {
-                        let ty = self.array_alias_declarator(ty, span)?.ty;
-                        self.type_query_value(name, ty, span)?
-                    }
-                };
-                self.close_type_query_groups(groups)?;
-                layout
-            }
+            TypeQueryType::ArrayOfPointers => self.type_query_pointer_array_layout(name, 0)?,
+            TypeQueryType::GroupedArray { element, groups } => match element {
+                GroupedArrayElement::Pointer => {
+                    self.type_query_pointer_array_layout(name, groups)?
+                }
+                GroupedArrayElement::Value(ty) => {
+                    let ty = self
+                        .array_alias_declarator_with_groups(ty, groups, span)?
+                        .ty;
+                    self.type_query_value(name, ty, span)?
+                }
+            },
             TypeQueryType::Object(ty) => {
                 let ty = self.array_alias_declarator(ty, span)?.ty;
                 self.type_query_value(name, ty, span)?
@@ -1345,8 +1349,12 @@ impl Parser<'_> {
         self.type_query_result(value, span.until(&closing))
     }
 
-    fn type_query_pointer_array_layout(&mut self, name: &str) -> Result<u32, ParseError> {
-        self.type_query_array_layout(name, 8, 8, 0, |parser| {
+    fn type_query_pointer_array_layout(
+        &mut self,
+        name: &str,
+        groups: usize,
+    ) -> Result<u32, ParseError> {
+        self.type_query_array_layout(name, 8, 8, 0, groups, |parser| {
             parser.array_size().map(|(count, span)| (count.get(), span))
         })
     }
@@ -1528,7 +1536,7 @@ impl Parser<'_> {
             } else {
                 context.array_query_name()
             };
-            let layout = self.record_offset_pointer_array_layout(name, depth + 1)?;
+            let layout = self.record_offset_pointer_array_layout(name, depth + 1, 0)?;
             let ty = if through_pointer {
                 TypeQueryType::Pointer
             } else {
@@ -1539,7 +1547,7 @@ impl Parser<'_> {
             if suffix == Token::Paren('[') {
                 let element =
                     self.type_query_grouped_array_element(operand, pointer_depth, reference, span)?;
-                self.record_offset_grouped_array_layout("alignof", element, depth + 1, span)?;
+                self.record_offset_grouped_array_layout("alignof", element, depth + 1, span, 0)?;
                 return Ok(ty);
             }
             if matches!(
@@ -1595,7 +1603,7 @@ impl Parser<'_> {
                     } else {
                         context.array_query_name()
                     };
-                    let layout = self.record_offset_pointer_array_layout(name, depth + 1)?;
+                    let layout = self.record_offset_pointer_array_layout(name, depth + 1, 0)?;
                     if pointer {
                         TypeQueryType::Pointer
                     } else {
@@ -1716,10 +1724,11 @@ impl Parser<'_> {
                             ty.ty,
                             depth + 1,
                             parameter_span,
+                            0,
                         )?;
                     }
                     TypeQueryType::ArrayOfPointers => {
-                        self.record_offset_pointer_array_layout("alignof", depth + 1)?;
+                        self.record_offset_pointer_array_layout("alignof", depth + 1, 0)?;
                     }
                     TypeQueryType::GroupedArray { element, groups } => {
                         self.record_offset_grouped_array_layout(
@@ -1727,8 +1736,8 @@ impl Parser<'_> {
                             element,
                             depth + 1,
                             parameter_span,
+                            groups,
                         )?;
-                        self.close_type_query_groups(groups)?;
                     }
                     TypeQueryType::Pointer
                     | TypeQueryType::FunctionReference

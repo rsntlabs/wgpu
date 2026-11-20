@@ -842,6 +842,16 @@ impl<'a> Parser<'a> {
         allow_inferred: bool,
         span: Span,
     ) -> Result<ArrayDeclaration, ParseError> {
+        self.array_declaration_with_groups(base, allow_inferred, 0, span)
+    }
+
+    pub(super) fn array_declaration_with_groups(
+        &mut self,
+        base: Handle<Type>,
+        allow_inferred: bool,
+        mut groups: usize,
+        span: Span,
+    ) -> Result<ArrayDeclaration, ParseError> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         if self.is_incomplete_array(base) {
@@ -870,7 +880,7 @@ impl<'a> Parser<'a> {
                 .charge_slice::<(Option<NonZeroU32>, Span)>(1, span)?;
             self.parameter_expansion_budget.charge_work(1, span)?;
             dimensions.push(extent);
-            if !self.lexer.next_if(Token::Paren('['))? {
+            if self.next_array_dimension(&mut groups)?.is_none() {
                 break;
             }
         }
@@ -895,6 +905,24 @@ impl<'a> Parser<'a> {
             element_ty,
             count,
         })
+    }
+
+    pub(super) fn next_array_dimension(
+        &mut self,
+        groups: &mut usize,
+    ) -> Result<Option<Span>, ParseError> {
+        loop {
+            let (token, span) = self.lexer.peek()?;
+            if token == Token::Paren('[') {
+                self.lexer.next()?;
+                return Ok(Some(span));
+            }
+            if *groups == 0 {
+                return Ok(None);
+            }
+            self.lexer.expect_span(Token::Paren(')'))?;
+            *groups -= 1;
+        }
     }
 
     pub(super) fn array_size(&mut self) -> Result<(NonZeroU32, Span), ParseError> {

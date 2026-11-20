@@ -5734,3 +5734,81 @@ fn cuda_layout_queries_terminal_grouped_array_declarators_validate_elements_boun
         }
     }
 }
+
+#[test]
+fn cuda_layout_queries_array_dimensions_after_grouped_dimensions_preserve_full_extent() {
+    for (ty, size, alignment) in [
+        ("int([3])[2]", 24, 4),
+        ("int(([2])[3])[4]", 96, 4),
+        ("int*([2])[3]", 48, 8),
+        ("Row([2])[3]", 72, 4),
+        ("int(*)(int([3])[2])", 8, 8),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[128]; }}; using Row = int[3];
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof({ty}); output[1] = alignof({ty});
+                output[2] = __builtin_offsetof(Offsets, bytes[sizeof({ty})]);
+            }}"
+            ),
+            &[size, alignment, size * 4],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = alignof(int([])[3]);
+            output[1] = __builtin_offsetof(Offsets, bytes[alignof(int*(([ ]))[3])]);
+        }",
+        &[4, 32],
+    );
+}
+
+#[test]
+fn cuda_layout_queries_dimensions_after_groups_share_bounds_rank_and_size_checks() {
+    for ty in [
+        "int([2])[]",
+        "int([])[]",
+        "int([2])[0]",
+        "int([2])[runtime]",
+        "int([65536])[65536]",
+        "int([3])[2",
+        "void([2])[3]",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof({ty})");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[128]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
+    }
+}
+
+#[test]
+fn cuda_layout_queries_grouped_and_following_array_dimensions_share_rank_limit() {
+    let source = |count| {
+        let ty = format!("Row({}){}", "[1]".repeat(32), "[1]".repeat(count));
+        format!(
+            "struct Offsets {{ int bytes[64]; }}; using Row = int[1];
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof({ty});
+                output[1] = __builtin_offsetof(Offsets, bytes[sizeof({ty})]);
+            }}"
+        )
+    };
+    assert_query_results(&source(31), &[4, 16]);
+    let error = rejected(&source(32));
+    assert!(error.message.contains("array rank limit"), "{error}");
+    rejected(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = __builtin_offsetof(Offsets, bytes[true || alignof(int([2])[])]);
+        }",
+    );
+}
