@@ -127,6 +127,7 @@ mod multiple_kernels;
 mod multiply24;
 mod multiply_high;
 mod nearbyintf;
+mod nextafterf;
 mod noexcept;
 mod nonfinite_constants;
 mod null_pointers;
@@ -251,6 +252,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_CACHED_MATH,
         CUDA_ROUNDING_ZERO_SIGNS,
         CUDA_COPYSIGNF,
+        CUDA_NEXTAFTERF,
         CUDA_CEILF,
         CUDA_CLASS_VALUES,
         CUDA_CLZLL,
@@ -1203,6 +1205,9 @@ static CUDA_FLOAT_CLASSIFICATION: GpuTestConfiguration = configuration(float_cla
 
 #[apply(gpu_test!)]
 static CUDA_COPYSIGNF: GpuTestConfiguration = configuration(copysignf::cases);
+
+#[apply(gpu_test!)]
+static CUDA_NEXTAFTERF: GpuTestConfiguration = configuration(nextafterf::cases);
 
 #[apply(gpu_test!)]
 static CUDA_FADD_RN: GpuTestConfiguration = configuration(fadd_rn::cases);

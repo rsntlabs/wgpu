@@ -4026,6 +4026,65 @@ mod tests {
     }
 
     #[test]
+    fn nextafterf_partial_helper_failure_preserves_caller_and_does_not_publish_helper() {
+        for available_nodes in [0, 8, 20, 32] {
+            let (mut parser, [from, toward, _], span) = fns_budget_parser();
+            parser.parameter_expansion_budget.activate();
+            parser.prepare_parameter_bindings(span).unwrap();
+            let caller = format!("{:?}", parser.function.ir);
+            let depths = parser.function.expression_graph_depths.clone();
+            let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+            parser
+                .parameter_expansion_budget
+                .charge_nodes(remaining - available_nodes, span)
+                .unwrap();
+            let error = parser.call_nextafterf_bits(from, toward, span).unwrap_err();
+            assert_eq!(error.message, limit_error(span).message);
+            assert_eq!(error.span, span);
+            assert!(parser.parameter_expansion_budget.is_exhausted());
+            assert_fns_budget_caller(&parser, from);
+            assert_eq!(format!("{:?}", parser.function.ir), caller);
+            assert_eq!(parser.function.expression_graph_depths, depths);
+            assert!(parser.module.functions.is_empty());
+            assert_eq!(parser.nextafterf_function, None);
+        }
+    }
+
+    #[test]
+    fn nextafterf_cached_call_reserves_result_before_flushing_pending_expressions() {
+        let (mut parser, [from, toward, _], span) = fns_budget_parser();
+        let result = parser.call_nextafterf_bits(from, toward, span).unwrap();
+        let cached = parser.nextafterf_function.unwrap();
+        parser
+            .append(
+                Expression::Binary {
+                    op: BinaryOperator::Add,
+                    left: result,
+                    right: toward,
+                },
+                span,
+            )
+            .unwrap();
+        let caller = format!("{:?}", parser.function.ir);
+        let depths = parser.function.expression_graph_depths.clone();
+        let bytes_for_call = size_of::<(Statement, Span)>() + 2 * size_of::<Handle<Expression>>();
+        let remaining = BYTE_LIMIT - parser.parameter_expansion_budget.bytes;
+        parser
+            .parameter_expansion_budget
+            .charge_bytes(remaining - bytes_for_call, span)
+            .unwrap();
+        let error = parser.call_nextafterf_bits(from, toward, span).unwrap_err();
+        assert_eq!(error.message, limit_error(span).message);
+        assert_eq!(error.span, span);
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+        assert_fns_budget_caller(&parser, from);
+        assert_eq!(format!("{:?}", parser.function.ir), caller);
+        assert_eq!(parser.function.expression_graph_depths, depths);
+        assert_eq!(parser.module.functions.len(), 1);
+        assert_eq!(parser.nextafterf_function, Some(cached));
+    }
+
+    #[test]
     fn fns_first_call_checks_node_and_byte_budget_before_allocating() {
         for exhaust_bytes in [false, true] {
             let (mut parser, [mask, base, offset], span) = fns_budget_parser();
