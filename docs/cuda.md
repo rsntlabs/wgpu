@@ -472,12 +472,13 @@ through an alias, or resolved during template instantiation. The offset
 includes preceding members and padding at each level. Use a
 narrower constant type if the target shader needs only 32-bit values.
 Designators can also index fixed array fields, as in `grid[1][2]` or
-`leaves[1].value`. Each index must be an in-range, nonnegative integer
-literal or an unqualified integral constant name. Named constants include
-global `constexpr` values, local integral constants and instantiated
-integral template parameters. Parentheses may group either kind of index,
-including parentheses introduced by a macro. The offset uses the declared
-stride of each array dimension.
+`leaves[1].value`. Index operands can be integer literals or unqualified
+integral constant names, including global `constexpr` values, local integral
+constants and instantiated integral template parameters. Indices may use
+parentheses and the unary operators `+`, `-`, `~` and `!`. Unary arithmetic
+applies integer promotions, rejects signed overflow and wraps unsigned
+negation at the promoted width. The final index must be nonnegative and in
+bounds. The offset uses the declared stride of each array dimension.
 The synthetic `<cstddef>` and `<stddef.h>` headers define the function-like
 macro `offsetof(Record, member)` on the first active inclusion of either
 header. The macro follows the normal `#undef` and redefinition rules.

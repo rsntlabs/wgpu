@@ -172,7 +172,6 @@ fn cuda_record_offsetof_indexes_fixed_arrays_at_their_declared_strides() {
 fn cuda_record_offsetof_rejects_invalid_array_indices_without_evaluating_them() {
     for (path, message) in [
         ("row[-1]", "integer literal"),
-        ("row[+1]", "integer literal"),
         ("row[1.0f]", "integer literal"),
         ("row[true]", "integer literal"),
         ("row[0b2]", "integer literal"),
@@ -207,6 +206,64 @@ fn cuda_record_offsetof_rejects_invalid_array_indices_without_evaluating_them() 
             }}"
         ));
         assert!(error.message.contains(message), "{path}: {error}");
+    }
+}
+
+#[test]
+fn cuda_record_offsetof_evaluates_integral_unary_indices() {
+    assert_query_results(
+        "#include <cstddef>\n#define INVERT(value) (~(value))\n
+        struct Record { int head; int row[3]; };
+        constexpr short Negative = -2;
+        constexpr unsigned All = 0xffffffffu;
+        constexpr unsigned long long Wide = 0xffffffffffffffffULL;
+        constexpr bool Flag = true;
+        template<int Index> __device__ size_t index_offset() {
+            return offsetof(Record, row[-Index]);
+        }
+        __global__ void kernel(unsigned long *output) {
+            output[0] = offsetof(Record, row[-Negative]);
+            output[1] = offsetof(Record, row[INVERT(Negative)]);
+            output[2] = offsetof(Record, row[+Flag]);
+            output[3] = offsetof(Record, row[!Flag]);
+            output[4] = offsetof(Record, row[-All]);
+            output[5] = offsetof(Record, row[~All]);
+            output[6] = offsetof(Record, row[-Wide]);
+            output[7] = offsetof(Record, row[~Wide]);
+            output[8] = offsetof(Record, row[-(-2)]);
+            output[9] = offsetof(Record, row[!!2]);
+            size_t instantiated = index_offset<-1>();
+        }",
+        &[12, 8, 8, 4, 8, 4, 8, 4, 12, 8],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_invalid_unary_indices() {
+    for (index, message) in [
+        ("-Min", "signed overflow"),
+        ("-(-WideMin)", "signed overflow"),
+        ("!Real", "integer literal"),
+        ("~Zero", "nonnegative"),
+        ("-1u", "out of bounds"),
+        ("--Zero", "integer literal"),
+        ("++Zero", "integer literal"),
+        ("+Zero++", "expected"),
+        ("+Zero+1", "expected"),
+        ("+dynamic", "integer literal"),
+    ] {
+        let source = format!(
+            "struct Record {{ int row[3]; }};
+             constexpr int Min = -2147483647 - 1;
+             constexpr long long WideMin = -9223372036854775807LL - 1;
+             constexpr float Real = 1.0f;
+             __global__ void kernel(unsigned *out, int dynamic) {{
+                 constexpr short Zero = 0;
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        );
+        let error = rejected(&source);
+        assert!(error.message.contains(message), "{index}: {error}");
     }
 }
 

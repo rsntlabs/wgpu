@@ -66,61 +66,18 @@ impl Parser<'_> {
         array: Handle<Type>,
         offset: u32,
     ) -> Result<(Handle<Type>, u32), ParseError> {
-        let (mut token, mut span) = self.lexer.next()?;
-        let start = span;
-        let mut groups = 0;
-        while token == Token::Paren('(') {
-            groups += 1;
-            if self.function.expression_depth + groups > 64 {
-                return Err(ParseError {
-                    message: String::from("CUDA expression nesting limit exceeded"),
-                    span,
-                });
-            }
-            self.parameter_expansion_budget.charge_work(1, span)?;
-            (token, span) = self.lexer.next()?;
-        }
-        let invalid = || {
-            ParseError {
-            message: String::from(
-                "__builtin_offsetof index requires an integer literal or named integral constant with a nonnegative value that fits in 32 bits",
-            ),
-            span,
-        }
-        };
-        let literal = match token {
-            Token::Number(text) => {
-                self.parameter_expansion_budget
-                    .charge_work(text.len() + 1, span)?;
-                if text.contains('\'') {
-                    self.parameter_expansion_budget
-                        .charge_bytes(text.len(), span)?;
-                }
-                number::parse_integer(text).map(|number| number.literal)
-            }
-            Token::Word(name) => {
-                self.parameter_expansion_budget
-                    .charge_work(name.len() + 1, span)?;
-                self.record_offset_named_constant(name)
-            }
-            _ => None,
-        };
+        let (literal, span) = self.record_offset_index(self.function.expression_depth)?;
         let index = match literal {
-            Some(Literal::Bool(value)) => Some(u32::from(value)),
-            Some(Literal::I16(value)) => u32::try_from(value).ok(),
-            Some(Literal::U16(value)) => Some(u32::from(value)),
-            Some(Literal::I32(value)) => u32::try_from(value).ok(),
-            Some(Literal::U32(value)) => Some(value),
-            Some(Literal::I64(value)) => u32::try_from(value).ok(),
-            Some(Literal::U64(value)) => u32::try_from(value).ok(),
+            Literal::Bool(value) => Some(u32::from(value)),
+            Literal::I16(value) => u32::try_from(value).ok(),
+            Literal::U16(value) => Some(u32::from(value)),
+            Literal::I32(value) => u32::try_from(value).ok(),
+            Literal::U32(value) => Some(value),
+            Literal::I64(value) => u32::try_from(value).ok(),
+            Literal::U64(value) => u32::try_from(value).ok(),
             _ => None,
         }
-        .ok_or_else(invalid)?;
-        for _ in 0..groups {
-            span = self.lexer.expect_span(Token::Paren(')'))?;
-            self.parameter_expansion_budget.charge_work(1, span)?;
-        }
-        let span = start.until(&span);
+        .ok_or_else(|| Self::invalid_record_offset_index(span))?;
         self.lexer.expect_span(Token::Paren(']'))?;
         let TypeInner::Array {
             base,
@@ -141,6 +98,98 @@ impl Parser<'_> {
         }
         let bytes = u64::from(stride) * u64::from(index);
         Ok((base, Self::checked_record_offset(offset, bytes, span)?))
+    }
+
+    fn record_offset_index(&mut self, depth: u32) -> Result<(Literal, Span), ParseError> {
+        let (token, span) = self.lexer.next()?;
+        let literal = match token {
+            Token::Paren('(') | Token::Operation('+' | '-' | '~' | '!') => {
+                if depth >= 64 {
+                    return Err(ParseError {
+                        message: String::from("CUDA expression nesting limit exceeded"),
+                        span,
+                    });
+                }
+                self.parameter_expansion_budget.charge_work(1, span)?;
+                let (operand, operand_span) = self.record_offset_index(depth + 1)?;
+                if let Token::Operation(operator) = token {
+                    let literal = Self::record_offset_unary(operator, operand, span)?;
+                    return Ok((literal, span.until(&operand_span)));
+                }
+                let closing = self.lexer.expect_span(Token::Paren(')'))?;
+                self.parameter_expansion_budget.charge_work(1, closing)?;
+                return Ok((operand, span.until(&closing)));
+            }
+            Token::Number(text) => {
+                self.parameter_expansion_budget
+                    .charge_work(text.len() + 1, span)?;
+                if text.contains('\'') {
+                    self.parameter_expansion_budget
+                        .charge_bytes(text.len(), span)?;
+                }
+                number::parse_integer(text).map(|number| number.literal)
+            }
+            Token::Word(name) => {
+                self.parameter_expansion_budget
+                    .charge_work(name.len() + 1, span)?;
+                self.record_offset_named_constant(name)
+            }
+            _ => None,
+        };
+        match literal {
+            Some(
+                literal @ (Literal::Bool(_)
+                | Literal::I16(_)
+                | Literal::U16(_)
+                | Literal::I32(_)
+                | Literal::U32(_)
+                | Literal::I64(_)
+                | Literal::U64(_)),
+            ) => Ok((literal, span)),
+            _ => Err(Self::invalid_record_offset_index(span)),
+        }
+    }
+
+    fn record_offset_unary(
+        operator: char,
+        operand: Literal,
+        span: Span,
+    ) -> Result<Literal, ParseError> {
+        let operand = match operand {
+            Literal::Bool(value) => Literal::I32(i32::from(value)),
+            Literal::I16(value) => Literal::I32(i32::from(value)),
+            Literal::U16(value) => Literal::I32(i32::from(value)),
+            other => other,
+        };
+        let result = match (operator, operand) {
+            ('+', value) => Some(value),
+            ('!', value) => Some(Literal::Bool(matches!(
+                value,
+                Literal::I32(0) | Literal::U32(0) | Literal::I64(0) | Literal::U64(0)
+            ))),
+            ('-', Literal::I32(value)) => value.checked_neg().map(Literal::I32),
+            ('-', Literal::I64(value)) => value.checked_neg().map(Literal::I64),
+            ('-', Literal::U32(value)) => Some(Literal::U32(value.wrapping_neg())),
+            ('-', Literal::U64(value)) => Some(Literal::U64(value.wrapping_neg())),
+            ('~', Literal::I32(value)) => Some(Literal::I32(!value)),
+            ('~', Literal::U32(value)) => Some(Literal::U32(!value)),
+            ('~', Literal::I64(value)) => Some(Literal::I64(!value)),
+            ('~', Literal::U64(value)) => Some(Literal::U64(!value)),
+            _ => unreachable!(),
+        };
+        result.ok_or_else(|| ParseError {
+            message: String::from("__builtin_offsetof index has signed overflow"),
+            span,
+        })
+    }
+
+    fn invalid_record_offset_index(span: Span) -> ParseError {
+        ParseError {
+            message: String::from(
+                "__builtin_offsetof index requires an integer literal or named integral constant with a nonnegative value that fits in 32 bits",
+            ),
+            span,
+        }
     }
 
     fn record_offset_named_constant(&self, name: &str) -> Option<Literal> {
@@ -951,12 +1000,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn offsetof_grouped_indices_respect_expression_depth_without_allocating() {
-        for (groups, exhaust_bytes, succeeds) in
-            [(4, false, true), (4, true, true), (5, false, false)]
-        {
-            let source = format!("{}1ULL{}]", "(".repeat(groups), ")".repeat(groups));
-            let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
+    fn offsetof_indices_respect_expression_depth_without_allocating() {
+        for (source, exhaust_bytes, succeeds) in [
+            ("((((1ULL))))]", false, true),
+            ("((((1ULL))))]", true, true),
+            ("(((((1ULL)))))]", false, false),
+            ("+(!!1ULL)]", true, true),
+            ("+(!!!1ULL)]", false, false),
+        ] {
+            let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             let span = Span::new(0, 1);
             let element = parser.module.types.insert(
                 Type {
