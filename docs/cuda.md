@@ -517,6 +517,8 @@ Subscripts accept the integral operators, casts, and layout queries
 supported in `offsetof` indices. They check operand types and can use
 runtime or volatile integral objects without reading them. Selecting a
 row preserves its array type.
+The commuted form, such as `sizeof(row[record.grid])`, selects the
+same element type and also leaves both operands unevaluated.
 Grouping and unary dereference also work on these named operands, as in
 `sizeof((*pointer).field)` and `sizeof *grid`. Dereferencing a
 multidimensional array preserves the selected row's extent.

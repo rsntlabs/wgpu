@@ -692,14 +692,25 @@ impl Parser<'_> {
                 (Token::Paren('['), opening) => {
                     self.parameter_expansion_budget.charge_work(2, opening)?;
                     self.lexer.next()?;
-                    let (index, _) =
-                        self.record_offset_index(depth + 1, 0, RecordOffsetIndexMode::Unevaluated)?;
+                    let (base, index) = if self.sizeof_integral_operand(&operand) {
+                        if depth >= 64 {
+                            return Err(ParseError {
+                                message: String::from("CUDA expression nesting limit exceeded"),
+                                span: opening,
+                            });
+                        }
+                        let (base, _) = self.record_offset_sizeof_conditional(depth + 1)?;
+                        (base, operand)
+                    } else {
+                        let (index, _) = self.record_offset_index(
+                            depth + 1,
+                            0,
+                            RecordOffsetIndexMode::Unevaluated,
+                        )?;
+                        (operand, SizeofOperand::Scalar(index.scalar))
+                    };
                     end = self.lexer.expect_span(Token::Paren(']'))?;
-                    operand = self.sizeof_subscript(
-                        operand,
-                        SizeofOperand::Scalar(index.scalar),
-                        start.until(&end),
-                    )?;
+                    operand = self.sizeof_subscript(base, index, start.until(&end))?;
                 }
                 _ => break,
             }
@@ -2230,6 +2241,8 @@ mod tests {
             ("sizeof true]", true, true),
             ("sizeof Pair.y / 4]", true, true),
             ("sizeof Items[((One))] / 4]", true, true),
+            ("sizeof(0[Items]) / 4]", true, true),
+            ("sizeof(0[1[2[3[4[Items]]]]]) / 4]", false, false),
             ("sizeof(Items[false]) / 4]", false, true),
             ("sizeof Items[One ? short(1 / 0) : -1] / 4]", true, true),
             ("sizeof Items[One + sizeof(int[1 + 1])] / 4]", false, true),

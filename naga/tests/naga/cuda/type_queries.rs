@@ -2804,7 +2804,6 @@ fn cuda_record_offsetof_nested_sizeof_subscripts_reject_invalid_or_broader_index
         "grid[helper()]",
         "grid[(index, 0)]",
         "grid[]",
-        "index[grid]",
         "incomplete[0]",
     ] {
         rejected(&format!(
@@ -4132,6 +4131,80 @@ fn cuda_sizeof_nested_layout_query_operands_validate_inner_types_and_bounds_when
                 __global__ void kernel(unsigned long *output) {{
                     int value; int index; int grid[2][3];
                     output[0] = __builtin_offsetof(Offsets, bytes[{prefix}{query}]);
+                }}"
+            ));
+        }
+    }
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_commuted_subscripts_preserve_array_and_member_shapes() {
+    assert_query_results(
+        "struct Offsets { int bytes[64]; }; struct Record { int matrix[2][3]; };
+        __global__ void kernel(unsigned long *output, volatile int *input) {
+            extern __shared__ Record scratch[];
+            int grid[2][3]; int index; bool flag;
+            using Row = int[3]; Row *rows = nullptr; Record *records = nullptr;
+            volatile int &watched = input[0];
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof(0[grid])]);
+            output[1] = __builtin_offsetof(Offsets, bytes[sizeof(0[grid][index])]);
+            output[2] = __builtin_offsetof(Offsets, bytes[sizeof(watched[grid])]);
+            output[3] = __builtin_offsetof(Offsets, bytes[sizeof(index[rows])]);
+            output[4] = __builtin_offsetof(Offsets, bytes[sizeof(index[scratch].matrix)]);
+            output[5] = __builtin_offsetof(Offsets, bytes[sizeof(0[(flag ? rows : nullptr)])]);
+            output[6] = __builtin_offsetof(Offsets, bytes[sizeof(index[records].matrix[watched])]);
+            output[7] = __builtin_offsetof(Offsets, bytes[sizeof(index[flag ? rows : nullptr])]);
+            output[8] = __builtin_offsetof(Offsets, bytes[sizeof((index + 1)[grid])]);
+        }",
+        &[48, 16, 48, 48, 96, 48, 48, 48, 48],
+    );
+    let module = roundtrip(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output, volatile int *input) {
+            int grid[2][3]; volatile int &index = input[0];
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof(index[grid])]);
+        }",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_commuted_subscripts_allow_default_parameter_metadata() {
+    roundtrip(
+        "struct Offsets { int bytes[64]; };
+        __device__ unsigned selected(int *parameter, int index,
+            unsigned bytes = unsigned(__builtin_offsetof(Offsets, bytes[sizeof(index[parameter])]))) {
+            return bytes;
+        }
+        __global__ void kernel(unsigned *output, int *input) { output[0] = selected(input, -1); }");
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_commuted_subscripts_reject_invalid_operand_types() {
+    for operand in [
+        "index[value]",
+        "1.0f[grid]",
+        "vector[grid]",
+        "record[grid]",
+        "pointer[rows]",
+        "nullptr[grid]",
+        "index[nullptr]",
+        "index[incomplete]",
+        "index[vector]",
+        "index[record]",
+    ] {
+        for prefix in ["", "true || "] {
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }}; struct Record {{ int field; }};
+                using Unknown = int[]; using Row = int[3];
+                __global__ void kernel(unsigned long *output) {{
+                    int grid[2][3]; int value; int index; int *pointer;
+                    Row *rows; Unknown *incomplete; float2 vector; Record record;
+                    output[0] = __builtin_offsetof(Offsets, bytes[{prefix}sizeof({operand})]);
                 }}"
             ));
         }
