@@ -13,6 +13,15 @@ struct RecordOffsetIndex {
     scalar: SourceScalar,
 }
 
+impl RecordOffsetIndex {
+    fn boolean(value: bool) -> Self {
+        Self {
+            value: i128::from(value),
+            scalar: SourceScalar::Scalar(Scalar::BOOL),
+        }
+    }
+}
+
 impl Parser<'_> {
     pub(super) fn record_offset_query(&mut self, span: Span) -> Result<Value, ParseError> {
         self.lexer.expect_span(Token::Paren('('))?;
@@ -71,9 +80,10 @@ impl Parser<'_> {
         array: Handle<Type>,
         offset: u32,
     ) -> Result<(Handle<Type>, u32), ParseError> {
-        let (index, span) = self.record_offset_index(self.function.expression_depth, 0)?;
-        let index =
-            u32::try_from(index.value).map_err(|_| Self::invalid_record_offset_index(span))?;
+        let (index, span) = self.record_offset_index(self.function.expression_depth, 0, true)?;
+        let index = index
+            .and_then(|index| u32::try_from(index.value).ok())
+            .ok_or_else(|| Self::invalid_record_offset_index(span))?;
         self.lexer.expect_span(Token::Paren(']'))?;
         let TypeInner::Array {
             base,
@@ -100,38 +110,38 @@ impl Parser<'_> {
         &mut self,
         depth: u32,
         minimum_precedence: u8,
-    ) -> Result<(RecordOffsetIndex, Span), ParseError> {
-        let (mut left, mut span) = self.record_offset_index_prefix(depth)?;
+        evaluate: bool,
+    ) -> Result<(Option<RecordOffsetIndex>, Span), ParseError> {
+        let (mut left, mut span) = self.record_offset_index_prefix(depth, evaluate)?;
         while let Some((operator, precedence)) = expressions::binary_operator(self.lexer.peek()?.0)
         {
-            if precedence < minimum_precedence
-                || !matches!(
-                    operator,
-                    BinaryOperator::Add
-                        | BinaryOperator::Subtract
-                        | BinaryOperator::Multiply
-                        | BinaryOperator::Divide
-                        | BinaryOperator::Modulo
-                        | BinaryOperator::ShiftLeft
-                        | BinaryOperator::ShiftRight
-                        | BinaryOperator::Less
-                        | BinaryOperator::LessEqual
-                        | BinaryOperator::Greater
-                        | BinaryOperator::GreaterEqual
-                        | BinaryOperator::Equal
-                        | BinaryOperator::NotEqual
-                        | BinaryOperator::And
-                        | BinaryOperator::ExclusiveOr
-                        | BinaryOperator::InclusiveOr
-                )
-            {
+            if precedence < minimum_precedence {
                 break;
             }
             let (_, operator_span) = self.lexer.next()?;
             self.parameter_expansion_budget
                 .charge_work(1, operator_span)?;
-            let (right, right_span) = self.record_offset_index(depth, precedence + 1)?;
-            left = Self::record_offset_binary(operator, left, right, operator_span)?;
+            let short_circuit = left.as_ref().and_then(|left| match operator {
+                BinaryOperator::LogicalAnd if left.value == 0 => Some(false),
+                BinaryOperator::LogicalOr if left.value != 0 => Some(true),
+                _ => None,
+            });
+            let (right, right_span) = self.record_offset_index(
+                depth,
+                precedence + 1,
+                evaluate && short_circuit.is_none(),
+            )?;
+            // Every supported operator accepts and returns integral types.
+            left = match (short_circuit, left, right) {
+                (Some(value), _, _) => Some(RecordOffsetIndex::boolean(value)),
+                (None, Some(left), Some(right)) => Some(Self::record_offset_binary(
+                    operator,
+                    left,
+                    right,
+                    operator_span,
+                )?),
+                _ => None,
+            };
             span = span.until(&right_span);
         }
         Ok((left, span))
@@ -140,8 +150,10 @@ impl Parser<'_> {
     fn record_offset_index_prefix(
         &mut self,
         depth: u32,
-    ) -> Result<(RecordOffsetIndex, Span), ParseError> {
+        evaluate: bool,
+    ) -> Result<(Option<RecordOffsetIndex>, Span), ParseError> {
         let (token, span) = self.lexer.next()?;
+        let invalid = || Self::invalid_record_offset_index(span);
         let number = match token {
             Token::Paren('(') | Token::Operation('+' | '-' | '~' | '!') => {
                 if depth >= 64 {
@@ -152,11 +164,14 @@ impl Parser<'_> {
                 }
                 self.parameter_expansion_budget.charge_work(1, span)?;
                 if let Token::Operation(operator) = token {
-                    let (operand, operand_span) = self.record_offset_index_prefix(depth + 1)?;
-                    let result = Self::record_offset_unary(operator, operand, span)?;
+                    let (operand, operand_span) =
+                        self.record_offset_index_prefix(depth + 1, evaluate)?;
+                    let result = operand
+                        .map(|operand| Self::record_offset_unary(operator, operand, span))
+                        .transpose()?;
                     return Ok((result, span.until(&operand_span)));
                 }
-                let (operand, _) = self.record_offset_index(depth + 1, 0)?;
+                let (operand, _) = self.record_offset_index(depth + 1, 0, evaluate)?;
                 let closing = self.lexer.expect_span(Token::Paren(')'))?;
                 self.parameter_expansion_budget.charge_work(1, closing)?;
                 return Ok((operand, span.until(&closing)));
@@ -173,11 +188,19 @@ impl Parser<'_> {
             Token::Word(name) => {
                 self.parameter_expansion_budget
                     .charge_work(name.len() + 1, span)?;
-                self.record_offset_named_constant(name)
+                let symbol = self.record_offset_index_symbol(name).ok_or_else(invalid)?;
+                if !evaluate {
+                    return if self.record_offset_integral_symbol(&symbol) {
+                        Ok((None, span))
+                    } else {
+                        Err(invalid())
+                    };
+                }
+                self.record_offset_named_constant(symbol)
             }
             _ => None,
         }
-        .ok_or_else(|| Self::invalid_record_offset_index(span))?;
+        .ok_or_else(invalid)?;
         let value = match number.literal {
             Literal::Bool(value) => i128::from(value),
             Literal::I16(value) => i128::from(value),
@@ -186,13 +209,13 @@ impl Parser<'_> {
             Literal::U32(value) => i128::from(value),
             Literal::I64(value) => i128::from(value),
             Literal::U64(value) => i128::from(value),
-            _ => return Err(Self::invalid_record_offset_index(span)),
+            _ => return Err(invalid()),
         };
         Ok((
-            RecordOffsetIndex {
+            evaluate.then_some(RecordOffsetIndex {
                 value,
                 scalar: number.scalar,
-            },
+            }),
             span,
         ))
     }
@@ -206,12 +229,7 @@ impl Parser<'_> {
             '+' => operand.value,
             '-' => -operand.value,
             '~' => !operand.value,
-            '!' => {
-                return Ok(RecordOffsetIndex {
-                    value: i128::from(operand.value == 0),
-                    scalar: SourceScalar::Scalar(Scalar::BOOL),
-                });
-            }
+            '!' => return Ok(RecordOffsetIndex::boolean(operand.value == 0)),
             _ => unreachable!(),
         };
         Self::record_offset_arithmetic(
@@ -262,12 +280,19 @@ impl Parser<'_> {
             | BinaryOperator::NotEqual => {
                 return Self::record_offset_comparison(operator, left, right, span);
             }
+            BinaryOperator::LogicalAnd | BinaryOperator::LogicalOr => {
+                let value = if operator == BinaryOperator::LogicalAnd {
+                    left.value != 0 && right.value != 0
+                } else {
+                    left.value != 0 || right.value != 0
+                };
+                return Ok(RecordOffsetIndex::boolean(value));
+            }
             BinaryOperator::Add => left.value + right.value,
             BinaryOperator::Subtract => left.value - right.value,
             BinaryOperator::And => left.value & right.value,
             BinaryOperator::ExclusiveOr => left.value ^ right.value,
             BinaryOperator::InclusiveOr => left.value | right.value,
-            _ => unreachable!(),
         };
         let scalar = Self::arithmetic_scalar(left.scalar, right.scalar);
         Self::record_offset_arithmetic(value, scalar, span)
@@ -291,10 +316,7 @@ impl Parser<'_> {
             BinaryOperator::NotEqual => left != right,
             _ => unreachable!(),
         };
-        Ok(RecordOffsetIndex {
-            value: i128::from(value),
-            scalar: SourceScalar::Scalar(Scalar::BOOL),
-        })
+        Ok(RecordOffsetIndex::boolean(value))
     }
 
     fn record_offset_product(
@@ -378,13 +400,45 @@ impl Parser<'_> {
         }
     }
 
-    fn record_offset_named_constant(&self, name: &str) -> Option<number::Number> {
+    fn record_offset_index_symbol(&self, name: &str) -> Option<Symbol> {
         if (self.function.parsing_default || self.function.parsing_exception_specification)
             && self.function.symbol_table.lookup(name).is_some()
         {
             return None;
         }
-        let (literal, scalar) = match self.lookup_symbol(name)? {
+        self.lookup_symbol(name)
+    }
+
+    fn record_offset_integral_symbol(&self, symbol: &Symbol) -> bool {
+        let scalar = match *symbol {
+            Symbol::Constant { ref ty, .. }
+            | Symbol::Variable { ref ty, .. }
+            | Symbol::Reference { ref ty, .. } => self.source_scalar(ty),
+            Symbol::TemplateFunctionParameter(Some(SourceType::Shader(ty))) => {
+                self.source_scalar(&TypeResolution::Handle(ty))
+            }
+            Symbol::ConstantMemory(declaration) => self.source_scalar(&TypeResolution::Handle(
+                self.constant_memory_type(declaration),
+            )),
+            Symbol::TemplateParameter { scalar, .. } => Some(scalar),
+            _ => None,
+        };
+        scalar.is_some_and(|scalar| {
+            matches!(
+                scalar.scalar(),
+                Scalar::BOOL
+                    | Scalar::I16
+                    | Scalar::U16
+                    | Scalar::I32
+                    | Scalar::U32
+                    | Scalar::I64
+                    | Scalar::U64
+            )
+        })
+    }
+
+    fn record_offset_named_constant(&self, symbol: Symbol) -> Option<number::Number> {
+        let (literal, scalar) = match symbol {
             Symbol::Constant { literal, ty, .. } => (literal?, self.source_scalar(&ty)?),
             Symbol::TemplateParameter {
                 literal, scalar, ..
@@ -1201,6 +1255,7 @@ mod tests {
         let shift_chain = format!("1{}]", " >> 0".repeat(128));
         let bitwise_chain = format!("1{}]", " | 0 ^ 0 & 0".repeat(128));
         let comparison_chain = format!("1{}]", " == 0 < 1".repeat(128));
+        let logical_chain = format!("1{}]", " || (1 / 0)".repeat(128));
         for (source, exhaust_bytes, succeeds) in [
             ("((((1ULL))))]", false, true),
             ("((((1ULL))))]", true, true),
@@ -1215,6 +1270,9 @@ mod tests {
             (shift_chain.as_str(), false, true),
             (bitwise_chain.as_str(), false, true),
             (comparison_chain.as_str(), true, true),
+            (logical_chain.as_str(), true, true),
+            ("1 || ((((1 / 0))))]", false, true),
+            ("1 || (((((1 / 0)))))]", false, false),
         ] {
             let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             let span = Span::new(0, 1);

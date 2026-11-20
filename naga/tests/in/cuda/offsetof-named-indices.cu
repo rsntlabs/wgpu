@@ -17,9 +17,9 @@ __global__ void named_offsets(unsigned *output) {
     const auto Zero = 0u;
     constexpr bool LastRow = true;
     constexpr unsigned Global = unsigned(offsetof(Outer, grid[((+RowIndex * 3u % 2u + 1u - 1u) << 0u) ^ 0u][((-(-ColumnIndex) * 3 / 2 - 1 + 0) >> 0) | 0]));
-    constexpr unsigned Local = unsigned(__builtin_offsetof(Outer, grid[(-(-LocalRow) - 0) >= 1][(+LocalColumn + 0u) <= 1u]));
+    constexpr unsigned Local = unsigned(__builtin_offsetof(Outer, grid[((-(-LocalRow) - 0) >= 1) || (1 / 0)][((+LocalColumn + 0u) <= 1u) || cursor]));
     constexpr unsigned Mixed = unsigned(offsetof(Outer, leaves[(1u)].values[((LocalColumn))]));
-    constexpr unsigned ZeroIndex = unsigned(offsetof(Outer, leaves[(~(~Zero) * 7u + 1u - 1u) > 0u].values[(!LastRow % 2 + 0) < 0]));
+    constexpr unsigned ZeroIndex = unsigned(offsetof(Outer, leaves[((~(~Zero) * 7u + 1u - 1u) > 0u) && cursor].values[((!LastRow % 2 + 0) < 0) && (1 / 0)]));
     constexpr unsigned BoolIndex = unsigned(offsetof(Outer, grid[(!!LastRow % 2 + 0) == 1][(!LocalRow - 0) != 0]));
     constexpr unsigned Macro = unsigned(__builtin_offsetof(Outer, grid[RowIndex][COLUMN]));
     output[base] = Global; output[base + 1u] = Local;
