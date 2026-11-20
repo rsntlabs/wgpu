@@ -15,6 +15,78 @@ const PI_OVER_TWO: [u32; 12] = [
 ];
 
 impl Parser<'_> {
+    pub(super) fn lower_sincos_call(
+        &mut self,
+        arguments: Vec<CapturedArgument>,
+        span: Span,
+        order: parameter_calls::ArgumentEvaluationOrder,
+    ) -> Result<ExpressionResult, ParseError> {
+        if arguments.len() != 3 {
+            return Err(ParseError {
+                message: String::from("invalid sincosf argument count"),
+                span,
+            });
+        }
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let converts_input = arguments[0].ty().and_then(|ty| self.source_scalar(ty))
+            != Some(SourceScalar::Scalar(Scalar::F32));
+        self.parameter_expansion_budget
+            .preflight_expressions(8 + usize::from(converts_input), span)?;
+        self.parameter_expansion_budget.charge_nodes(4, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<(Statement, Span)>(4, span)?;
+        self.parameter_expansion_budget
+            .charge_slice::<Handle<Expression>>(4, span)?;
+        let mut input = None;
+        let mut outputs = [None, None];
+        let mut arguments = arguments.into_iter().enumerate();
+        while let Some((index, argument)) = match order {
+            parameter_calls::ArgumentEvaluationOrder::LeftToRight => arguments.next(),
+            parameter_calls::ArgumentEvaluationOrder::RightToLeft => arguments.next_back(),
+        } {
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            self.append_block(argument.body);
+            let value = argument.value.require_value()?;
+            if index == 0 {
+                input = Some(self.convert_scalar(value, Scalar::F32)?.handle);
+            } else {
+                let target = self
+                    .candidate_type(functions::FunctionCandidate::SinCos, index)
+                    .ok_or_else(|| ParseError {
+                        message: String::from("invalid sincosf output pointer type"),
+                        span,
+                    })?;
+                let pointer = self.convert_pointer(value, &target, Qualifiers::NONE, span)?;
+                let reference = self.pointer_reference(pointer)?;
+                if !reference.writable() {
+                    return Err(ParseError {
+                        message: String::from("sincosf requires writable float output pointers"),
+                        span,
+                    });
+                }
+                outputs[index - 1] = Some(reference);
+            }
+        }
+        let input = input.ok_or_else(|| ParseError {
+            message: String::from("invalid sincosf argument count"),
+            span,
+        })?;
+        let sine = self.trigonometry(input, false, span)?;
+        let cosine = self.trigonometry(input, true, span)?;
+        for (output, value) in outputs.into_iter().zip([sine, cosine]) {
+            let mut output = output.ok_or_else(|| ParseError {
+                message: String::from("invalid sincosf argument count"),
+                span,
+            })?;
+            self.decorate_reference(&mut output, &mut |parser, pointer, _, _| {
+                parser.push_statement(Statement::Store { pointer, value }, span);
+                Ok(())
+            })?;
+        }
+        Ok(ExpressionResult::Void(VoidValue::runtime(span)))
+    }
+
     pub(super) fn trigonometry(
         &mut self,
         value: Handle<Expression>,

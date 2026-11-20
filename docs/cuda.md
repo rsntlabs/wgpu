@@ -1685,7 +1685,14 @@ The calculation uses the received input representation, including subnormals.
 `sinf` preserves signed zero, and `cosf` returns `1.0f` for both signed zeros.
 Infinities and NaNs produce the canonical quiet NaN `0x7fc00000`.
 Calls execute at runtime and are not constant expressions. Double-precision
-`sin` and `cos` and the pointer-output `sincosf` remain unsupported.
+`sin` and `cos` remain unsupported.
+
+`sincosf(float, float *, float *)` writes the sine and cosine to the first
+and second output pointers, respectively, and returns `void`. The input
+converts to `float`, and each argument is evaluated once before either
+output is written. Both output pointers must refer to writable `float`
+objects. The results follow `sinf` and `cosf`, respectively. See NVIDIA's
+[`sincosf` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__SINGLE.html).
 
 `__sinf(float)` and `__cosf(float)` use the same portable sine and cosine
 calculation. `__sinf` converts a subnormal result to zero with the result's
@@ -1706,7 +1713,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fadd_rd`, `__fadd_ru`, `__fadd2_rn`, `__fadd2_rz`, `__fadd2_rd`, `__fadd2_ru`, `__fsub_rn`, `__fsub_rz`, `__fsub_rd`, `__fsub_ru`, `__fmul_rn`, `__fmul_rz`, `__fmul_rd`, `__fmul_ru`, `__fmul2_rn`, `__fmul2_rz`, `__fmul2_rd`, `__fmul2_ru`, `__fdiv_rn`, `__fdividef`, `__fdiv_rz`, `__fdiv_rd`, `__fdiv_ru`, `__frcp_rn`, `__frcp_rz`, `__frcp_rd`, `__frcp_ru`, `__fsqrt_rn`, `__fsqrt_rz`, `__fsqrt_rd`, `__fsqrt_ru`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `__fmaf_rd`, `__fmaf_ru`, `__fmaf_ieee_rn`, `__fmaf_ieee_rz`, `__fmaf_ieee_rd`, `__fmaf_ieee_ru`, `__ffma2_rn`, `__ffma2_rz`, `__ffma2_rd`, `__ffma2_ru`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `__sinf`, `__cosf`, `isfinite`, `isinf`, `isnan`, `signbit`, `__nv_finitef`, `__nv_isinff`, `__nv_isnanf`, or `__nv_signbitf` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fadd_rd`, `__fadd_ru`, `__fadd2_rn`, `__fadd2_rz`, `__fadd2_rd`, `__fadd2_ru`, `__fsub_rn`, `__fsub_rz`, `__fsub_rd`, `__fsub_ru`, `__fmul_rn`, `__fmul_rz`, `__fmul_rd`, `__fmul_ru`, `__fmul2_rn`, `__fmul2_rz`, `__fmul2_rd`, `__fmul2_ru`, `__fdiv_rn`, `__fdividef`, `__fdiv_rz`, `__fdiv_rd`, `__fdiv_ru`, `__frcp_rn`, `__frcp_rz`, `__frcp_rd`, `__frcp_ru`, `__fsqrt_rn`, `__fsqrt_rz`, `__fsqrt_rd`, `__fsqrt_ru`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `__fmaf_rd`, `__fmaf_ru`, `__fmaf_ieee_rn`, `__fmaf_ieee_rz`, `__fmaf_ieee_rd`, `__fmaf_ieee_ru`, `__ffma2_rn`, `__ffma2_rz`, `__ffma2_rd`, `__ffma2_ru`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `__sinf`, `__cosf`, `sincosf`, `isfinite`, `isinf`, `isnan`, `signbit`, `__nv_finitef`, `__nv_isinff`, `__nv_isnanf`, or `__nv_signbitf` remain unsupported.
 
 ## Bit reinterpretation
 
