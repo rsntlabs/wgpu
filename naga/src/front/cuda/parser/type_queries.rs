@@ -1365,27 +1365,18 @@ impl Parser<'_> {
             });
         }
 
-        let mut pointer_depth = usize::from(matches!(
+        let initial_pointer_depth = usize::from(matches!(
             operand,
             Some(QualifiedType {
                 ty: TypeSpecifier::Pointer { .. },
                 ..
             })
         ));
-        while self.lexer.next_if(Token::Operation('*'))? {
-            self.parameter_expansion_budget.charge_work(1, span)?;
-            pointer_depth += 1;
-            if pointer_depth > 64 {
-                return self.fail("CUDA pointer nesting limit exceeded");
-            }
-            let budget = &mut self.parameter_expansion_budget;
-            types::declaration_qualifiers_with_work(
-                &mut self.lexer,
-                Qualifiers::NONE,
-                true,
-                |span| budget.charge_work(1, span),
-            )?;
-        }
+        let pointer_depth = Self::scan_type_query_pointer_chain(
+            &mut self.lexer,
+            &mut self.parameter_expansion_budget,
+            initial_pointer_depth,
+        )?;
         if operand.is_none() && pointer_depth == 0 {
             return Err(ParseError {
                 message: String::from("type queries require a complete object type"),
@@ -1405,6 +1396,28 @@ impl Parser<'_> {
         })
     }
 
+    fn scan_type_query_pointer_chain(
+        lexer: &mut Lexer<'_>,
+        budget: &mut parameter_expansion::ExpansionBudget,
+        mut depth: usize,
+    ) -> Result<usize, ParseError> {
+        while let (Token::Operation('*'), span) = lexer.peek()? {
+            lexer.next()?;
+            budget.charge_work(1, span)?;
+            depth += 1;
+            if depth > 64 {
+                return Err(ParseError {
+                    message: String::from("CUDA pointer nesting limit exceeded"),
+                    span,
+                });
+            }
+            types::declaration_qualifiers_with_work(lexer, Qualifiers::NONE, true, |span| {
+                budget.charge_work(1, span)
+            })?;
+        }
+        Ok(depth)
+    }
+
     fn scan_grouped_array_declarator(
         &mut self,
         lexer: &mut Lexer<'_>,
@@ -1415,20 +1428,20 @@ impl Parser<'_> {
         }
         let mut lookahead = lexer.clone();
         lookahead.next()?;
-        let indirection = match lookahead.next()?.0 {
-            Token::Operation('*') => ArrayIndirection::Pointer,
-            Token::Operation('&') | Token::LogicalOperation('&') => ArrayIndirection::Reference,
+        let budget = &mut self.parameter_expansion_budget;
+        let indirection = match lookahead.peek()?.0 {
+            Token::Operation('*') => {
+                budget.charge_work(2, span)?;
+                Self::scan_type_query_pointer_chain(&mut lookahead, budget, 0)?;
+                ArrayIndirection::Pointer
+            }
+            Token::Operation('&') | Token::LogicalOperation('&') => {
+                lookahead.next()?;
+                budget.charge_work(3, span)?;
+                ArrayIndirection::Reference
+            }
             _ => return Ok(None),
         };
-        self.parameter_expansion_budget.charge_work(3, span)?;
-        if matches!(indirection, ArrayIndirection::Pointer) {
-            types::declaration_qualifiers_with_work(
-                &mut lookahead,
-                Qualifiers::NONE,
-                true,
-                |span| self.parameter_expansion_budget.charge_work(1, span),
-            )?;
-        }
         if !lookahead.next_if(Token::Paren(')'))? || lookahead.peek()?.0 != Token::Paren('[') {
             return Ok(None);
         }

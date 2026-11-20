@@ -4415,3 +4415,83 @@ fn cuda_layout_queries_grouped_array_references_reject_invalid_qualifiers_bounds
         }",
     );
 }
+
+#[test]
+fn cuda_layout_queries_grouped_pointer_chains_to_arrays_have_pointer_layout() {
+    for query in [
+        "sizeof(int(**)[3])",
+        "alignof(int(**)[3])",
+        "sizeof(int(***const)[2][3])",
+        "alignof(int(*const *volatile)[][3])",
+        "sizeof(Row(**)[2])",
+        "sizeof(int(*)[3])",
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; using Row = int[3];
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = {query};
+                output[1] = __builtin_offsetof(Offsets, bytes[{query}]);
+            }}"
+            ),
+            &[8, 32],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output, int *pointer) {
+            output[0] = sizeof(int(*pointer));
+            output[1] = __builtin_offsetof(Offsets, bytes[sizeof(int(*pointer))]);
+        }",
+        &[4, 16],
+    );
+}
+
+#[test]
+fn cuda_layout_queries_grouped_pointer_chains_are_bounded_and_validate_array_shapes() {
+    let accepted = format!("sizeof(int({})[3])", "*".repeat(64));
+    assert_query_results(
+        &format!(
+            "struct Offsets {{ int bytes[64]; }}; __global__ void kernel(unsigned long *output) {{
+            output[0] = {accepted}; output[1] = __builtin_offsetof(Offsets, bytes[{accepted}]);
+        }}"
+        ),
+        &[8, 32],
+    );
+    let excessive = format!("sizeof(int({})[3])", "*".repeat(65));
+    for nested in [false, true] {
+        let query = if nested {
+            format!("__builtin_offsetof(Offsets, bytes[{excessive}])")
+        } else {
+            excessive.clone()
+        };
+        let error = rejected(&format!(
+            "struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{ output[0] = {query}; }}"
+        ));
+        assert!(error.message.contains("pointer nesting limit"), "{error}");
+    }
+    for query in [
+        "sizeof(int(**)[0])",
+        "sizeof(int(**)[index])",
+        "sizeof(int(**)[2][])",
+        "alignof(int(*const const *)[2])",
+        "sizeof(int(**)(int))",
+        "alignof(int(**)())",
+        "sizeof(int(**pointer))",
+    ] {
+        for nested in [false, true] {
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query.to_owned()
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{
+                    int index; int *pointer = nullptr; output[0] = {expression};
+                }}"
+            ));
+        }
+    }
+}
