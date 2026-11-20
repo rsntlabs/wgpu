@@ -5956,3 +5956,85 @@ fn cuda_layout_queries_nonarray_indirect_split_dimensions_reject_bad_bounds_and_
     );
     assert!(error.message.contains("no object layout"), "{error}");
 }
+
+#[test]
+fn cuda_layout_queries_pointer_arrays_with_split_inner_indirection_preserve_array_order() {
+    for (ty, size) in [
+        ("int(*((&)[2])[3])[4]", 48),
+        ("int(*((*)[2])[3])[4]", 8),
+        ("int(*(((&))[2])[3])[4]", 48),
+        ("Row(*((&)[2])[3])[4]", 48),
+        ("int(*((&)[2])[3])(int)", 48),
+        ("void(*((*)[2])[3])(...) noexcept", 8),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; using Row = int[3];
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof({ty}); output[1] = alignof({ty});
+                output[2] = __builtin_offsetof(Offsets, bytes[sizeof({ty})]);
+            }}"
+            ),
+            &[size, 8, size * 4],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = alignof(int(*((&)[])[3])[4]);
+            output[1] = __builtin_offsetof(Offsets, bytes[sizeof(int(*((*)[])[3])[4])]);
+        }",
+        &[8, 32],
+    );
+}
+
+#[test]
+fn cuda_layout_queries_split_inner_indirection_validates_combined_array_limits() {
+    for ty in [
+        "int(*((&)[0])[3])[4]",
+        "int(*((&)[2])[0])[4]",
+        "int(*((&)[2])[3])[0]",
+        "int(*((*)[2])[runtime])[4]",
+        "int(*((&)[2])[])[4]",
+        "int(*((&const)[2])[3])[4]",
+        "int(*((&)[65536])[65536])[4]",
+        "int(*((&)[2])[3])(Missing)",
+        "void(*((&)[2])[3])(void, int)",
+        "int(*((&)[2])[3])[4",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof({ty})");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
+    }
+    let source = |count| {
+        format!(
+            "__global__ void kernel(unsigned long *output) {{ output[0] = sizeof(int (*((&) {}){})[4]); }}",
+            "[1]".repeat(32),
+            "[1]".repeat(count)
+        )
+    };
+    assert_query_results(&source(32), &[8]);
+    let error = rejected(&source(33));
+    assert!(error.message.contains("array rank limit"), "{error}");
+    let groups = |count| {
+        format!(
+            "__global__ void kernel(unsigned long *output) {{ output[0] = sizeof(int (*{}&{}[2])[3]); }}",
+            "(".repeat(count),
+            ")".repeat(count)
+        )
+    };
+    assert_query_results(&groups(64), &[16]);
+    let error = rejected(&groups(65));
+    assert!(
+        error.message.contains("declarator nesting limit"),
+        "{error}"
+    );
+}
