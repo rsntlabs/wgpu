@@ -24,14 +24,14 @@ fn result_kind(value_4: i32) -> u32 {
 }
 
 fn signbit(value_5: bool) -> i32 {
-    var local_33: i32;
+    var local_44: i32;
 
     if value_5 {
-        local_33 = 7i;
+        local_44 = 7i;
     } else {
-        local_33 = 9i;
+        local_44 = 9i;
     }
-    let _e6 = local_33;
+    let _e6 = local_44;
     return _e6;
 }
 
@@ -71,13 +71,25 @@ fn float_classification(@builtin(local_invocation_id) threadIdx: vec3<u32>, @bui
     var local_30: u32;
     var local_31: u32;
     var local_32: u32;
+    var local_33: u32;
+    var local_34: u32;
+    var local_35: u32;
+    var local_36: u32;
+    var local_37: u32;
+    var alias_cursor: i32;
+    var local_38: u32;
+    var local_39: u32;
+    var local_40: u32;
+    var local_41: u32;
+    var local_42: u32;
+    var local_43: u32;
 
     let index = (threadIdx.x + (blockIdx.x * 32u));
     if (index >= 544u) {
         return;
     }
     let bits = input[index];
-    let base = (4u + (index * 23u));
+    let base = (4u + (index * 33u));
     let value_6 = bitcast<f32>(bits);
     output[base] = u32(i32(((bitcast<u32>(value_6) & 2147483647u) < 2139095040u)));
     local = u32((base + 1u));
@@ -129,21 +141,21 @@ fn float_classification(@builtin(local_invocation_id) threadIdx: vec3<u32>, @bui
     if (i32(((bitcast<u32>(value_6) & 2147483647u) < 2139095040u)) != 0i) {
         local_12 = u32((base + 12u));
         let _e165 = local_12;
-        local_30 = _e165;
-        let _e167 = local_30;
+        local_41 = _e165;
+        let _e167 = local_41;
         output[_e167] = 2u;
     } else {
         if (i32(((bitcast<u32>(value_6) & 2147483647u) == 2139095040u)) != 0i) {
             local_13 = u32((base + 12u));
             let _e182 = local_13;
-            local_31 = _e182;
-            let _e184 = local_31;
+            local_42 = _e182;
+            let _e184 = local_42;
             output[_e184] = 3u;
         } else {
             local_14 = u32((base + 12u));
             let _e191 = local_14;
-            local_32 = _e191;
-            let _e193 = local_32;
+            local_43 = _e191;
+            let _e193 = local_43;
             output[_e193] = 4u;
         }
     }
@@ -194,4 +206,41 @@ fn float_classification(@builtin(local_invocation_id) threadIdx: vec3<u32>, @bui
     local_28 = u32((base + 22u));
     let _e347 = local_28;
     output[_e347] = u32(i32(((bitcast<u32>(bitcast<f32>(_e334)) & 2147483648u) != 0u)));
+    local_30 = u32((base + 23u));
+    let _e360 = local_30;
+    output[_e360] = u32(i32(((bitcast<u32>(value_6) & 2147483647u) < 2139095040u)));
+    local_31 = u32((base + 24u));
+    let _e373 = local_31;
+    output[_e373] = u32(i32(((bitcast<u32>(value_6) & 2147483647u) == 2139095040u)));
+    local_32 = u32((base + 25u));
+    let _e386 = local_32;
+    output[_e386] = u32(i32(((bitcast<u32>(value_6) & 2147483647u) > 2139095040u)));
+    local_33 = u32((base + 26u));
+    let _e399 = local_33;
+    output[_e399] = u32(i32(((bitcast<u32>(value_6) & 2147483648u) != 0u)));
+    local_34 = u32((base + 27u));
+    let _e414 = local_34;
+    output[_e414] = u32(i32(((bitcast<u32>(f32(3i)) & 2147483647u) < 2139095040u)));
+    local_35 = u32((base + 28u));
+    let _e429 = local_35;
+    output[_e429] = u32(i32(((bitcast<u32>(f32(0u)) & 2147483647u) == 2139095040u)));
+    local_36 = u32((base + 29u));
+    let _e444 = local_36;
+    output[_e444] = u32(i32(((bitcast<u32>(f32(true)) & 2147483647u) > 2139095040u)));
+    local_37 = u32((base + 30u));
+    let _e460 = local_37;
+    output[_e460] = u32(i32(((bitcast<u32>(f32(-(3i))) & 2147483648u) != 0u)));
+    alias_cursor = 0i;
+    let _e464 = alias_cursor;
+    alias_cursor = (_e464 + 1i);
+    local_39 = u32((index + u32(_e464)));
+    let _e471 = local_39;
+    let _e473 = input[_e471];
+    local_38 = u32((base + 31u));
+    let _e486 = local_38;
+    output[_e486] = u32(i32(((bitcast<u32>(bitcast<f32>(_e473)) & 2147483648u) != 0u)));
+    let _e488 = alias_cursor;
+    local_40 = u32((base + 32u));
+    let _e494 = local_40;
+    output[_e494] = u32(_e488);
 }

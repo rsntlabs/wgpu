@@ -44,15 +44,19 @@ uint result_kind(
 int signbit(
     bool value_5
 ) {
-    int local_33 = {};
+    int local_44 = {};
     if (value_5) {
-        local_33 = 7;
+        local_44 = 7;
     } else {
-        local_33 = 9;
+        local_44 = 9;
     }
-    int _e6 = local_33;
+    int _e6 = local_44;
     return _e6;
 }
+int naga_neg(int val) {
+    return as_type<int>(-as_type<uint>(val));
+}
+
 
 struct float_classificationInput {
 };
@@ -97,12 +101,24 @@ kernel void float_classification(
     uint local_30 = {};
     uint local_31 = {};
     uint local_32 = {};
+    uint local_33 = {};
+    uint local_34 = {};
+    uint local_35 = {};
+    uint local_36 = {};
+    uint local_37 = {};
+    int alias_cursor = {};
+    uint local_38 = {};
+    uint local_39 = {};
+    uint local_40 = {};
+    uint local_41 = {};
+    uint local_42 = {};
+    uint local_43 = {};
     uint index = threadIdx.x + (blockIdx.x * 32u);
     if (index >= 544u) {
         return;
     }
     uint bits = input[index];
-    uint base = 4u + (index * 23u);
+    uint base = 4u + (index * 33u);
     float value_6 = as_type<float>(bits);
     output[base] = static_cast<uint>(static_cast<int>((as_type<uint>(value_6) & 2147483647u) < 2139095040u));
     local = static_cast<uint>(base + 1u);
@@ -154,21 +170,21 @@ kernel void float_classification(
     if (static_cast<int>((as_type<uint>(value_6) & 2147483647u) < 2139095040u) != 0) {
         local_12 = static_cast<uint>(base + 12u);
         uint _e165 = local_12;
-        local_30 = _e165;
-        uint _e167 = local_30;
+        local_41 = _e165;
+        uint _e167 = local_41;
         output[_e167] = 2u;
     } else {
         if (static_cast<int>((as_type<uint>(value_6) & 2147483647u) == 2139095040u) != 0) {
             local_13 = static_cast<uint>(base + 12u);
             uint _e182 = local_13;
-            local_31 = _e182;
-            uint _e184 = local_31;
+            local_42 = _e182;
+            uint _e184 = local_42;
             output[_e184] = 3u;
         } else {
             local_14 = static_cast<uint>(base + 12u);
             uint _e191 = local_14;
-            local_32 = _e191;
-            uint _e193 = local_32;
+            local_43 = _e191;
+            uint _e193 = local_43;
             output[_e193] = 4u;
         }
     }
@@ -219,4 +235,41 @@ kernel void float_classification(
     local_28 = static_cast<uint>(base + 22u);
     uint _e347 = local_28;
     output[_e347] = static_cast<uint>(static_cast<int>((as_type<uint>(as_type<float>(_e334)) & 2147483648u) != 0u));
+    local_30 = static_cast<uint>(base + 23u);
+    uint _e360 = local_30;
+    output[_e360] = static_cast<uint>(static_cast<int>((as_type<uint>(value_6) & 2147483647u) < 2139095040u));
+    local_31 = static_cast<uint>(base + 24u);
+    uint _e373 = local_31;
+    output[_e373] = static_cast<uint>(static_cast<int>((as_type<uint>(value_6) & 2147483647u) == 2139095040u));
+    local_32 = static_cast<uint>(base + 25u);
+    uint _e386 = local_32;
+    output[_e386] = static_cast<uint>(static_cast<int>((as_type<uint>(value_6) & 2147483647u) > 2139095040u));
+    local_33 = static_cast<uint>(base + 26u);
+    uint _e399 = local_33;
+    output[_e399] = static_cast<uint>(static_cast<int>((as_type<uint>(value_6) & 2147483648u) != 0u));
+    local_34 = static_cast<uint>(base + 27u);
+    uint _e414 = local_34;
+    output[_e414] = static_cast<uint>(static_cast<int>((as_type<uint>(static_cast<float>(3)) & 2147483647u) < 2139095040u));
+    local_35 = static_cast<uint>(base + 28u);
+    uint _e429 = local_35;
+    output[_e429] = static_cast<uint>(static_cast<int>((as_type<uint>(static_cast<float>(0u)) & 2147483647u) == 2139095040u));
+    local_36 = static_cast<uint>(base + 29u);
+    uint _e444 = local_36;
+    output[_e444] = static_cast<uint>(static_cast<int>((as_type<uint>(static_cast<float>(true)) & 2147483647u) > 2139095040u));
+    local_37 = static_cast<uint>(base + 30u);
+    uint _e460 = local_37;
+    output[_e460] = static_cast<uint>(static_cast<int>((as_type<uint>(static_cast<float>(naga_neg(3))) & 2147483648u) != 0u));
+    alias_cursor = 0;
+    int _e464 = alias_cursor;
+    alias_cursor = as_type<int>(as_type<uint>(_e464) + as_type<uint>(1));
+    local_39 = static_cast<uint>(index + static_cast<uint>(_e464));
+    uint _e471 = local_39;
+    uint _e473 = input[_e471];
+    local_38 = static_cast<uint>(base + 31u);
+    uint _e486 = local_38;
+    output[_e486] = static_cast<uint>(static_cast<int>((as_type<uint>(as_type<float>(_e473)) & 2147483648u) != 0u));
+    int _e488 = alias_cursor;
+    local_40 = static_cast<uint>(base + 32u);
+    uint _e494 = local_40;
+    output[_e494] = static_cast<uint>(_e488);
 }

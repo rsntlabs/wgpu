@@ -39,6 +39,7 @@ impl Parser<'_> {
         self.activate_parameter_expansion(span)?;
         self.prepare_parameter_bindings(span)?;
         let value = arguments.into_iter().next().unwrap();
+        let value = self.convert_scalar(value.into(), Scalar::F32)?;
         let bits = self.bitcast_scalar(value.handle, Scalar::U32, span)?;
         let (mask, comparison, bound) = match classification {
             FloatClassification::Finite => (0x7fff_ffff, BinaryOperator::Less, 0x7f80_0000),

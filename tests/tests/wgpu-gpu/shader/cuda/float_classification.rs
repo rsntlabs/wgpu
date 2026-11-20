@@ -44,7 +44,7 @@ pub(super) fn cases() -> Vec<ShaderTest> {
         input.push(state);
     }
     assert_eq!(input.len(), 544);
-    let mut expected = vec![SENTINEL; 4 + input.len() * 23 + 4];
+    let mut expected = vec![SENTINEL; 4 + input.len() * 33 + 4];
     for (index, bits) in input.iter().copied().enumerate() {
         let magnitude = bits & 0x7fff_ffff;
         let finite = u32::from(magnitude < 0x7f80_0000);
@@ -56,7 +56,7 @@ pub(super) fn cases() -> Vec<ShaderTest> {
         assert_eq!(infinite, u32::from(host.is_infinite()));
         assert_eq!(nan, u32::from(host.is_nan()));
         assert_eq!(sign, u32::from(host.is_sign_negative()));
-        expected[4 + index * 23..27 + index * 23].copy_from_slice(&[
+        expected[4 + index * 33..37 + index * 33].copy_from_slice(&[
             finite,
             infinite,
             nan,
@@ -85,6 +85,16 @@ pub(super) fn cases() -> Vec<ShaderTest> {
             0,
             1,
             1,
+            1,
+            finite,
+            infinite,
+            nan,
+            sign,
+            1,
+            0,
+            0,
+            1,
+            sign,
             1,
         ]);
     }

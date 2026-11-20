@@ -31,13 +31,13 @@ uint result_kind(int value_4) {
 }
 
 int signbit(bool value_5) {
-    int local_33 = 0;
+    int local_44 = 0;
     if (value_5) {
-        local_33 = 7;
+        local_44 = 7;
     } else {
-        local_33 = 9;
+        local_44 = 9;
     }
-    int _e6 = local_33;
+    int _e6 = local_44;
     return _e6;
 }
 
@@ -78,12 +78,24 @@ void main() {
     uint local_30 = 0u;
     uint local_31 = 0u;
     uint local_32 = 0u;
+    uint local_33 = 0u;
+    uint local_34 = 0u;
+    uint local_35 = 0u;
+    uint local_36 = 0u;
+    uint local_37 = 0u;
+    int alias_cursor = 0;
+    uint local_38 = 0u;
+    uint local_39 = 0u;
+    uint local_40 = 0u;
+    uint local_41 = 0u;
+    uint local_42 = 0u;
+    uint local_43 = 0u;
     uint index = (threadIdx.x + (blockIdx.x * 32u));
     if ((index >= 544u)) {
         return;
     }
     uint bits = _group_0_binding_0_cs[index];
-    uint base = (4u + (index * 23u));
+    uint base = (4u + (index * 33u));
     float value_6 = uintBitsToFloat(bits);
     _group_0_binding_1_cs[base] = uint(int(((floatBitsToUint(value_6) & 2147483647u) < 2139095040u)));
     local = uint((base + 1u));
@@ -135,21 +147,21 @@ void main() {
     if ((int(((floatBitsToUint(value_6) & 2147483647u) < 2139095040u)) != 0)) {
         local_12 = uint((base + 12u));
         uint _e165 = local_12;
-        local_30 = _e165;
-        uint _e167 = local_30;
+        local_41 = _e165;
+        uint _e167 = local_41;
         _group_0_binding_1_cs[_e167] = 2u;
     } else {
         if ((int(((floatBitsToUint(value_6) & 2147483647u) == 2139095040u)) != 0)) {
             local_13 = uint((base + 12u));
             uint _e182 = local_13;
-            local_31 = _e182;
-            uint _e184 = local_31;
+            local_42 = _e182;
+            uint _e184 = local_42;
             _group_0_binding_1_cs[_e184] = 3u;
         } else {
             local_14 = uint((base + 12u));
             uint _e191 = local_14;
-            local_32 = _e191;
-            uint _e193 = local_32;
+            local_43 = _e191;
+            uint _e193 = local_43;
             _group_0_binding_1_cs[_e193] = 4u;
         }
     }
@@ -200,5 +212,42 @@ void main() {
     local_28 = uint((base + 22u));
     uint _e347 = local_28;
     _group_0_binding_1_cs[_e347] = uint(int(((floatBitsToUint(uintBitsToFloat(_e334)) & 2147483648u) != 0u)));
+    local_30 = uint((base + 23u));
+    uint _e360 = local_30;
+    _group_0_binding_1_cs[_e360] = uint(int(((floatBitsToUint(value_6) & 2147483647u) < 2139095040u)));
+    local_31 = uint((base + 24u));
+    uint _e373 = local_31;
+    _group_0_binding_1_cs[_e373] = uint(int(((floatBitsToUint(value_6) & 2147483647u) == 2139095040u)));
+    local_32 = uint((base + 25u));
+    uint _e386 = local_32;
+    _group_0_binding_1_cs[_e386] = uint(int(((floatBitsToUint(value_6) & 2147483647u) > 2139095040u)));
+    local_33 = uint((base + 26u));
+    uint _e399 = local_33;
+    _group_0_binding_1_cs[_e399] = uint(int(((floatBitsToUint(value_6) & 2147483648u) != 0u)));
+    local_34 = uint((base + 27u));
+    uint _e414 = local_34;
+    _group_0_binding_1_cs[_e414] = uint(int(((floatBitsToUint(float(3)) & 2147483647u) < 2139095040u)));
+    local_35 = uint((base + 28u));
+    uint _e429 = local_35;
+    _group_0_binding_1_cs[_e429] = uint(int(((floatBitsToUint(float(0u)) & 2147483647u) == 2139095040u)));
+    local_36 = uint((base + 29u));
+    uint _e444 = local_36;
+    _group_0_binding_1_cs[_e444] = uint(int(((floatBitsToUint(float(true)) & 2147483647u) > 2139095040u)));
+    local_37 = uint((base + 30u));
+    uint _e460 = local_37;
+    _group_0_binding_1_cs[_e460] = uint(int(((floatBitsToUint(float(-(3))) & 2147483648u) != 0u)));
+    alias_cursor = 0;
+    int _e464 = alias_cursor;
+    alias_cursor = (_e464 + 1);
+    local_39 = uint((index + uint(_e464)));
+    uint _e471 = local_39;
+    uint _e473 = _group_0_binding_0_cs[_e471];
+    local_38 = uint((base + 31u));
+    uint _e486 = local_38;
+    _group_0_binding_1_cs[_e486] = uint(int(((floatBitsToUint(uintBitsToFloat(_e473)) & 2147483648u) != 0u)));
+    int _e488 = alias_cursor;
+    local_40 = uint((base + 32u));
+    uint _e494 = local_40;
+    _group_0_binding_1_cs[_e494] = uint(_e488);
 }
 

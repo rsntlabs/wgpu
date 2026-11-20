@@ -9,7 +9,7 @@ __global__ void float_classification(const unsigned *input, unsigned *output) {
     unsigned index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= 544u) return;
     unsigned bits = input[index];
-    unsigned base = 4u + index * 23u;
+    unsigned base = 4u + index * 33u;
     float value = __uint_as_float(bits);
     output[base] = unsigned(isfinite(value));
     output[base + 1u] = unsigned(isinf(value));
@@ -37,4 +37,15 @@ __global__ void float_classification(const unsigned *input, unsigned *output) {
     output[base + 20u] = unsigned(isinf(__uint_as_float(0x7f800000u)));
     output[base + 21u] = unsigned(isnan(__uint_as_float(0xff800001u)));
     output[base + 22u] = unsigned(signbit(__uint_as_float(0xff800001u)));
+    output[base + 23u] = unsigned(__nv_finitef(value));
+    output[base + 24u] = unsigned(__nv_isinff(value));
+    output[base + 25u] = unsigned(__nv_isnanf(value));
+    output[base + 26u] = unsigned(__nv_signbitf(value));
+    output[base + 27u] = unsigned(__nv_finitef(3));
+    output[base + 28u] = unsigned(__nv_isinff(0u));
+    output[base + 29u] = unsigned(__nv_isnanf(true));
+    output[base + 30u] = unsigned(__nv_signbitf(-3));
+    int alias_cursor = 0;
+    output[base + 31u] = unsigned(__nv_signbitf(__uint_as_float(input[index + unsigned(alias_cursor++)])));
+    output[base + 32u] = unsigned(alias_cursor);
 }

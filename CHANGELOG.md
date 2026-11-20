@@ -395,6 +395,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA `__fmaf_rd` and `__fmaf_ru` with single-rounding toward negative and positive infinity.
 - Support CUDA `__fdividef`, including its special results for large finite divisors.
 - Support CUDA's four `__fmaf_ieee_*` intrinsics with the existing subnormal-preserving FMA helpers.
+- Support libdevice `__nv_finitef`, `__nv_isinff`, `__nv_isnanf`, and `__nv_signbitf` classification intrinsics.
 - Support CUDA `nextafterf` with exact single-precision steps, including signed zeros and subnormals.
 - Support CUDA `fdimf` with correctly rounded single-precision positive differences.
 - Support CUDA `ilogbf` with exact exponents for finite and subnormal inputs.

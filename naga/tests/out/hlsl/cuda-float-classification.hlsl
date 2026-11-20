@@ -28,15 +28,19 @@ uint result_kind(int value_4)
 
 int signbit(bool value_5)
 {
-    int local_33 = (int)0;
+    int local_44 = (int)0;
 
     if (value_5) {
-        local_33 = int(7);
+        local_44 = int(7);
     } else {
-        local_33 = int(9);
+        local_44 = int(9);
     }
-    int _e6 = local_33;
+    int _e6 = local_44;
     return _e6;
+}
+
+int naga_neg(int val) {
+    return asint(-asuint(val));
 }
 
 [numthreads(32, 1, 1)]
@@ -76,13 +80,25 @@ void float_classification(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : S
     uint local_30 = (uint)0;
     uint local_31 = (uint)0;
     uint local_32 = (uint)0;
+    uint local_33 = (uint)0;
+    uint local_34 = (uint)0;
+    uint local_35 = (uint)0;
+    uint local_36 = (uint)0;
+    uint local_37 = (uint)0;
+    int alias_cursor = (int)0;
+    uint local_38 = (uint)0;
+    uint local_39 = (uint)0;
+    uint local_40 = (uint)0;
+    uint local_41 = (uint)0;
+    uint local_42 = (uint)0;
+    uint local_43 = (uint)0;
 
     uint index = (threadIdx.x + (blockIdx.x * 32u));
     if ((index >= 544u)) {
         return;
     }
     uint bits = asuint(input.Load(index*4));
-    uint base = (4u + (index * 23u));
+    uint base = (4u + (index * 33u));
     float value_6 = asfloat(bits);
     output.Store(base*4, asuint(uint(int(((asuint(value_6) & 2147483647u) < 2139095040u)))));
     local = uint((base + 1u));
@@ -134,21 +150,21 @@ void float_classification(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : S
     if ((int(((asuint(value_6) & 2147483647u) < 2139095040u)) != int(0))) {
         local_12 = uint((base + 12u));
         uint _e165 = local_12;
-        local_30 = _e165;
-        uint _e167 = local_30;
+        local_41 = _e165;
+        uint _e167 = local_41;
         output.Store(_e167*4, asuint(2u));
     } else {
         if ((int(((asuint(value_6) & 2147483647u) == 2139095040u)) != int(0))) {
             local_13 = uint((base + 12u));
             uint _e182 = local_13;
-            local_31 = _e182;
-            uint _e184 = local_31;
+            local_42 = _e182;
+            uint _e184 = local_42;
             output.Store(_e184*4, asuint(3u));
         } else {
             local_14 = uint((base + 12u));
             uint _e191 = local_14;
-            local_32 = _e191;
-            uint _e193 = local_32;
+            local_43 = _e191;
+            uint _e193 = local_43;
             output.Store(_e193*4, asuint(4u));
         }
     }
@@ -199,4 +215,41 @@ void float_classification(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : S
     local_28 = uint((base + 22u));
     uint _e347 = local_28;
     output.Store(_e347*4, asuint(uint(int(((asuint(asfloat(_e334)) & 2147483648u) != 0u)))));
+    local_30 = uint((base + 23u));
+    uint _e360 = local_30;
+    output.Store(_e360*4, asuint(uint(int(((asuint(value_6) & 2147483647u) < 2139095040u)))));
+    local_31 = uint((base + 24u));
+    uint _e373 = local_31;
+    output.Store(_e373*4, asuint(uint(int(((asuint(value_6) & 2147483647u) == 2139095040u)))));
+    local_32 = uint((base + 25u));
+    uint _e386 = local_32;
+    output.Store(_e386*4, asuint(uint(int(((asuint(value_6) & 2147483647u) > 2139095040u)))));
+    local_33 = uint((base + 26u));
+    uint _e399 = local_33;
+    output.Store(_e399*4, asuint(uint(int(((asuint(value_6) & 2147483648u) != 0u)))));
+    local_34 = uint((base + 27u));
+    uint _e414 = local_34;
+    output.Store(_e414*4, asuint(uint(int(((asuint(float(int(3))) & 2147483647u) < 2139095040u)))));
+    local_35 = uint((base + 28u));
+    uint _e429 = local_35;
+    output.Store(_e429*4, asuint(uint(int(((asuint(float(0u)) & 2147483647u) == 2139095040u)))));
+    local_36 = uint((base + 29u));
+    uint _e444 = local_36;
+    output.Store(_e444*4, asuint(uint(int(((asuint(float(true)) & 2147483647u) > 2139095040u)))));
+    local_37 = uint((base + 30u));
+    uint _e460 = local_37;
+    output.Store(_e460*4, asuint(uint(int(((asuint(float(naga_neg(int(3)))) & 2147483648u) != 0u)))));
+    alias_cursor = int(0);
+    int _e464 = alias_cursor;
+    alias_cursor = asint(asuint(_e464) + asuint(int(1)));
+    local_39 = uint((index + uint(_e464)));
+    uint _e471 = local_39;
+    uint _e473 = asuint(input.Load(_e471*4));
+    local_38 = uint((base + 31u));
+    uint _e486 = local_38;
+    output.Store(_e486*4, asuint(uint(int(((asuint(asfloat(_e473)) & 2147483648u) != 0u)))));
+    int _e488 = alias_cursor;
+    local_40 = uint((base + 32u));
+    uint _e494 = local_40;
+    output.Store(_e494*4, asuint(uint(_e488)));
 }

@@ -858,12 +858,21 @@ const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 8] = [
     ("nearbyintf", FloatMathFunction::NearestEven),
 ];
 
-const FLOAT_CLASSIFICATION_BUILTINS: &[(&str, FloatClassification)] = &[
-    ("isfinite", FloatClassification::Finite),
-    ("isinf", FloatClassification::Infinite),
-    ("isnan", FloatClassification::NaN),
-    ("signbit", FloatClassification::SignBit),
-];
+const FLOAT_CLASSIFICATION_BUILTINS: &[(&str, FunctionCandidate)] = {
+    use FloatClassification::{Finite, Infinite, NaN, SignBit};
+    use FunctionCandidate::{FixedFloatClassification as Fixed, FloatClassification as Overload};
+
+    &[
+        ("isfinite", Overload(Finite)),
+        ("isinf", Overload(Infinite)),
+        ("isnan", Overload(NaN)),
+        ("signbit", Overload(SignBit)),
+        ("__nv_finitef", Fixed(Finite)),
+        ("__nv_isinff", Fixed(Infinite)),
+        ("__nv_isnanf", Fixed(NaN)),
+        ("__nv_signbitf", Fixed(SignBit)),
+    ]
+};
 
 const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 12] = [
     (
@@ -1358,6 +1367,7 @@ pub(super) enum FunctionCandidate {
     },
     FloatMath(FloatMathFunction),
     FloatClassification(FloatClassification),
+    FixedFloatClassification(FloatClassification),
     FloatExponent(ExponentResult),
     IntegralDouble {
         source: Scalar,
@@ -1999,6 +2009,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Unary { .. }
                         | FunctionCandidate::FloatMath(_)
                         | FunctionCandidate::FloatClassification(_)
+                        | FunctionCandidate::FixedFloatClassification(_)
                         | FunctionCandidate::FloatExponent(_)
                         | FunctionCandidate::SqrtRoundZero
                         | FunctionCandidate::SqrtRoundUp
@@ -2307,7 +2318,8 @@ impl<'a> Parser<'a> {
                 ..
             }
             | FunctionCandidate::Unary { result, .. } => TypeSpecifier::Scalar(result),
-            FunctionCandidate::FloatClassification(_) => TypeSpecifier::Scalar(Scalar::I32),
+            FunctionCandidate::FloatClassification(_)
+            | FunctionCandidate::FixedFloatClassification(_) => TypeSpecifier::Scalar(Scalar::I32),
             FunctionCandidate::FloatExponent(result) => TypeSpecifier::Scalar(result.scalar()),
             FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::FunnelShift(_)
@@ -2627,7 +2639,9 @@ impl<'a> Parser<'a> {
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
         self.check_float_classification_argument(candidate, &arguments, span)?;
-        if let FunctionCandidate::FloatClassification(classification) = candidate {
+        if let FunctionCandidate::FloatClassification(classification)
+        | FunctionCandidate::FixedFloatClassification(classification) = candidate
+        {
             return self.lower_float_classification_call(classification, arguments, span);
         }
         if let FunctionCandidate::FloatExponent(result) = candidate {
@@ -3416,7 +3430,7 @@ impl<'a> Parser<'a> {
                     .iter()
                     .find(|&&(candidate, _)| candidate == name)
                     .filter(move |_| builtin_visible)
-                    .map(|&(_, operation)| FunctionCandidate::FloatClassification(operation)),
+                    .map(|&(_, candidate)| candidate),
             )
             .chain(
                 (builtin_visible && matches!(name, "__fsqrt_rz" | "__fsqrt_rd"))
@@ -3684,6 +3698,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Unary { .. }
             | FunctionCandidate::FloatMath(_)
             | FunctionCandidate::FloatClassification(_)
+            | FunctionCandidate::FixedFloatClassification(_)
             | FunctionCandidate::FloatExponent(_)
             | FunctionCandidate::IntegralDouble { .. }
             | FunctionCandidate::FloatToInteger { .. }
@@ -3748,6 +3763,7 @@ impl<'a> Parser<'a> {
             }
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::FloatClassification(_)
+            | FunctionCandidate::FixedFloatClassification(_)
             | FunctionCandidate::FloatExponent(_)
             | FunctionCandidate::FloatToInteger { .. }
             | FunctionCandidate::SqrtRoundZero

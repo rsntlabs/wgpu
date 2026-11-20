@@ -522,3 +522,5 @@ mod fmaf_directed;
 mod fdividef;
 
 mod fmaf_ieee;
+
+mod libdevice_float_classification;

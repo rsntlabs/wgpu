@@ -1519,6 +1519,12 @@ These builtins require `float` arguments. Explicitly cast integral values to
 ordinary and template lookup. Calls execute at runtime and are not source
 constant expressions. Double-precision classification remains unsupported.
 
+The libdevice functions `__nv_finitef`, `__nv_isinff`, `__nv_isnanf`, and
+`__nv_signbitf` use the same bit tests and return `int`. Their fixed
+`int(float)` signatures convert scalar arguments to `float` before
+classification. See NVIDIA's
+[libdevice function signatures](https://docs.nvidia.com/cuda/libdevice-users-guide/libdevice_users_guide/functions.html).
+
 `fmodf(float, float)` returns the remainder after dividing the first argument
 by the second with the quotient truncated toward zero. Scalar arguments convert
 to `float` first. Integer significand reduction computes exact finite remainders,
@@ -1676,7 +1682,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fadd_rd`, `__fadd_ru`, `__fsub_rn`, `__fsub_rz`, `__fsub_rd`, `__fsub_ru`, `__fmul_rn`, `__fmul_rz`, `__fmul_rd`, `__fmul_ru`, `__fdiv_rn`, `__fdividef`, `__fdiv_rz`, `__fdiv_rd`, `__fdiv_ru`, `__frcp_rn`, `__frcp_rz`, `__frcp_rd`, `__frcp_ru`, `__fsqrt_rn`, `__fsqrt_rz`, `__fsqrt_rd`, `__fsqrt_ru`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `__fmaf_rd`, `__fmaf_ru`, `__fmaf_ieee_rn`, `__fmaf_ieee_rz`, `__fmaf_ieee_rd`, `__fmaf_ieee_ru`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fadd_rd`, `__fadd_ru`, `__fsub_rn`, `__fsub_rz`, `__fsub_rd`, `__fsub_ru`, `__fmul_rn`, `__fmul_rz`, `__fmul_rd`, `__fmul_ru`, `__fdiv_rn`, `__fdividef`, `__fdiv_rz`, `__fdiv_rd`, `__fdiv_ru`, `__frcp_rn`, `__frcp_rz`, `__frcp_rd`, `__frcp_ru`, `__fsqrt_rn`, `__fsqrt_rz`, `__fsqrt_rd`, `__fsqrt_ru`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `__fmaf_rd`, `__fmaf_ru`, `__fmaf_ieee_rn`, `__fmaf_ieee_rz`, `__fmaf_ieee_rd`, `__fmaf_ieee_ru`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, `signbit`, `__nv_finitef`, `__nv_isinff`, `__nv_isnanf`, or `__nv_signbitf` remain unsupported.
 
 ## Bit reinterpretation
 
