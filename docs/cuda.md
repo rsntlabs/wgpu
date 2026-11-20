@@ -517,6 +517,9 @@ Subscripts accept the integral operators, casts, and layout queries
 supported in `offsetof` indices. They check operand types and can use
 runtime or volatile integral objects without reading them. Selecting a
 row preserves its array type.
+Grouping and unary dereference also work on these named operands, as in
+`sizeof((*pointer).field)` and `sizeof *grid`. Dereferencing a
+multidimensional array preserves the selected row's extent.
 Pointer type queries, including `void*`, use the CUDA source ABI size and
 alignment of eight bytes. Reference type queries use the referent's layout.
 Array type operands can include dimensions such as `int[2][3]`. Every

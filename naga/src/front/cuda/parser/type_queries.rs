@@ -412,6 +412,7 @@ impl Parser<'_> {
             });
         }
         self.parameter_expansion_budget.charge_work(3, start)?;
+        let operand_start = self.lexer.clone();
         let parenthesized = if name == "sizeof" {
             self.lexer.next_if(Token::Paren('('))?
         } else {
@@ -419,40 +420,33 @@ impl Parser<'_> {
             true
         };
         let (token, target_span) = self.lexer.peek()?;
-        let object = match (name, token) {
-            ("sizeof", Token::Word(word)) => self
-                .lookup_symbol(word)
-                .filter(|symbol| {
+        let expression_operand = name == "sizeof"
+            && match token {
+                Token::Operation('*') | Token::Paren('(') => true,
+                Token::Word(word) => self.lookup_symbol(word).is_some_and(|symbol| {
                     !matches!(
-                        *symbol,
+                        symbol,
                         Symbol::Type(_)
                             | Symbol::TemplateTypeParameter { .. }
                             | Symbol::Namespace(_)
                     )
-                })
-                .map(|symbol| (word, symbol)),
-            _ => None,
-        };
-        let (size, operand_end) = if let Some((word, symbol)) = object {
-            self.parameter_expansion_budget
-                .charge_work(word.len() + 1, target_span)?;
-            self.lexer.next()?;
-            self.record_offset_named_sizeof(symbol, target_span, depth)?
+                }),
+                _ => false,
+            };
+        let (size, end) = if expression_operand {
+            self.lexer = operand_start;
+            let (operand, span) = self.record_offset_sizeof_operand(depth)?;
+            let size = self.record_offset_sizeof_operand_size(operand, span)?;
+            (size, span)
         } else if parenthesized {
-            (
-                self.record_offset_type_layout(name, depth + 1, target_span)?,
-                target_span,
-            )
+            let size = self.record_offset_type_layout(name, depth + 1, target_span)?;
+            let end = self.lexer.expect_span(Token::Paren(')'))?;
+            (size, end)
         } else {
             return Err(ParseError {
                 message: String::from("__builtin_offsetof nested sizeof expected a parenthesized type or a named object"),
                 span: target_span,
             });
-        };
-        let end = if parenthesized {
-            self.lexer.expect_span(Token::Paren(')'))?
-        } else {
-            operand_end
         };
         let value = evaluate.then_some(i128::from(size));
         Ok((
@@ -574,14 +568,42 @@ impl Parser<'_> {
         Ok(if name == "sizeof" { size } else { alignment })
     }
 
-    fn record_offset_named_sizeof(
+    fn record_offset_sizeof_operand(
         &mut self,
-        symbol: Symbol,
-        span: Span,
         depth: u32,
-    ) -> Result<(u32, Span), ParseError> {
-        let mut operand = self.named_sizeof_operand(symbol, span)?;
-        let mut end = span;
+    ) -> Result<(SizeofOperand, Span), ParseError> {
+        let (token, start) = self.lexer.next()?;
+        if matches!(token, Token::Operation('*') | Token::Paren('(')) && depth >= 64 {
+            return Err(ParseError {
+                message: String::from("CUDA expression nesting limit exceeded"),
+                span: start,
+            });
+        }
+        let invalid = || ParseError {
+            message: String::from("nested sizeof requires an operand rooted in a named object"),
+            span: start,
+        };
+        let (mut operand, mut end) = match token {
+            Token::Operation('*') => {
+                self.parameter_expansion_budget.charge_work(1, start)?;
+                let (operand, end) = self.record_offset_sizeof_operand(depth + 1)?;
+                let span = start.until(&end);
+                return Ok((self.sizeof_dereference(operand, span)?, span));
+            }
+            Token::Paren('(') => {
+                self.parameter_expansion_budget.charge_work(2, start)?;
+                let (operand, _) = self.record_offset_sizeof_operand(depth + 1)?;
+                let end = self.lexer.expect_span(Token::Paren(')'))?;
+                (operand, end)
+            }
+            Token::Word(word) => {
+                self.parameter_expansion_budget
+                    .charge_work(word.len() + 1, start)?;
+                let symbol = self.lookup_symbol(word).ok_or_else(invalid)?;
+                (self.named_sizeof_operand(symbol, start)?, start)
+            }
+            _ => return Err(invalid()),
+        };
         loop {
             match self.lexer.peek()? {
                 (Token::Separator('.') | Token::Arrow, _) => {
@@ -596,12 +618,20 @@ impl Parser<'_> {
                     operand = self.sizeof_subscript(
                         operand,
                         SizeofOperand::Scalar(index.scalar),
-                        span.until(&end),
+                        start.until(&end),
                     )?;
                 }
                 _ => break,
             }
         }
+        Ok((operand, start.until(&end)))
+    }
+
+    fn record_offset_sizeof_operand_size(
+        &self,
+        operand: SizeofOperand,
+        span: Span,
+    ) -> Result<u32, ParseError> {
         let size = match operand {
             SizeofOperand::Scalar(scalar) | SizeofOperand::IntegerZeroLiteral(scalar) => {
                 Some(u32::from(scalar.scalar().width))
@@ -613,13 +643,12 @@ impl Parser<'_> {
             }
             SizeofOperand::IncompleteArray(_) => None,
         };
-        let size = size.ok_or_else(|| ParseError {
+        size.ok_or_else(|| ParseError {
             message: String::from(
-                "__builtin_offsetof nested sizeof requires a complete named object type",
+                "__builtin_offsetof nested sizeof requires a complete object type",
             ),
-            span: span.until(&end),
-        })?;
-        Ok((size, end))
+            span,
+        })
     }
 
     fn record_offset_aggregate_size(&self, ty: TypeSpecifier) -> Option<u32> {
@@ -1929,6 +1958,9 @@ mod tests {
             ("sizeof Items[One ? short(1 / 0) : -1] / 4]", true, true),
             ("sizeof Items[One + sizeof(int[1 + 1])] / 4]", false, true),
             ("sizeof Items[((((One))))] / 4]", false, false),
+            ("sizeof (*Items) / 4]", true, true),
+            ("sizeof *((Items)) / 4]", false, true),
+            ("sizeof (((((*Items))))) / 4]", false, false),
             ("sizeof(void const * const * volatile) / 8]", true, true),
             ("alignof(Fixed &) / 4]", false, true),
             ("sizeof(int[sizeof(int)][2]) / 32]", true, true),

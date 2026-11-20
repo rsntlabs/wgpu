@@ -1220,11 +1220,9 @@ fn cuda_record_offsetof_rejects_unsupported_named_sizeof_in_indices() {
     for (index, message) in [
         ("sizeof(scratch)", "complete"),
         ("true || sizeof scratch", "complete"),
-        ("sizeof((input))", "type"),
         ("sizeof(input + 1)", "expected"),
         ("sizeof local[0++]", "expected"),
         ("sizeof(object.row[0)", "expected"),
-        ("sizeof(*out)", "type"),
         ("sizeof(input++)", "expected"),
         ("sizeof helper()", "named object"),
         ("sizeof Missing", "named object"),
@@ -1433,7 +1431,6 @@ fn cuda_record_offsetof_rejects_unsupported_member_sizeof_in_indices() {
         ("sizeof(pointer->tag.other)", "field"),
         ("sizeof(vector.w)", "field"),
         ("sizeof(object.)", "identifier"),
-        ("sizeof((object).row)", "type"),
         ("sizeof(pointer->tag++)", "expected"),
         ("alignof(object.tag)", "type"),
     ] {
@@ -2927,4 +2924,90 @@ fn cuda_record_offsetof_nested_sizeof_subscript_type_bounds_keep_default_and_noe
         __global__ void kernel() {}",
     );
     assert!(error.message.contains("integral constant"), "{error}");
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_groups_and_dereferences_preserve_postfix_types() {
+    assert_query_results(
+        "struct Offsets { int bytes[128]; };
+        struct Record { int field; int matrix[2][3]; };
+        __global__ void kernel(unsigned long *output, volatile int *input) {
+            using Row = int[3];
+            Row *rows = nullptr;
+            Record *pointer = nullptr;
+            int array[2][3];
+            volatile int &index = input[0];
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof(*input)]);
+            output[1] = __builtin_offsetof(Offsets, bytes[sizeof((*pointer).field)]);
+            output[2] = __builtin_offsetof(Offsets, bytes[sizeof *array]);
+            output[3] = __builtin_offsetof(Offsets, bytes[sizeof(((*rows)))]);
+            output[4] = __builtin_offsetof(Offsets, bytes[sizeof((array)[index])]);
+            output[5] = __builtin_offsetof(Offsets, bytes[sizeof((pointer[index]).matrix)]);
+            output[6] = __builtin_offsetof(Offsets, bytes[sizeof(*rows[index])]);
+            output[7] = __builtin_offsetof(Offsets, bytes[sizeof(*(rows[index]))]);
+            output[8] = __builtin_offsetof(Offsets, bytes[sizeof((*pointer).matrix[index])]);
+            output[9] = __builtin_offsetof(Offsets, bytes[sizeof *array + 1]);
+            output[10] = __builtin_offsetof(Offsets, bytes[sizeof (*pointer).matrix]);
+            output[11] = __builtin_offsetof(Offsets, bytes[sizeof *pointer->matrix]);
+        }",
+        &[16, 16, 48, 48, 48, 96, 16, 16, 48, 52, 96, 48],
+    );
+    let module = roundtrip(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output, volatile int *input) {
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof((*(input)))]);
+        }",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_dereferences_allow_default_parameter_types() {
+    roundtrip(
+        "struct Offsets { int bytes[64]; };
+        __device__ unsigned selected(int *parameter,
+            unsigned bytes = unsigned(__builtin_offsetof(Offsets, bytes[sizeof *parameter]))) {
+            return bytes;
+        }
+        __global__ void kernel(unsigned *output, int *input) { output[0] = selected(input); }",
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_groups_and_dereferences_reject_invalid_operands() {
+    for operand in [
+        "*nullptr",
+        "*none",
+        "*value",
+        "*incomplete",
+        "(*pointer).missing",
+        "(pointer).field",
+        "*",
+        "((pointer)",
+        "(*pointer).",
+        "&value",
+        "+value",
+        "!value",
+        "value + 1",
+        "(value, value)",
+        "helper()",
+        "(*pointer).field++",
+        "*(pointer + 1)",
+    ] {
+        rejected(&format!(
+            "struct Offsets {{ int bytes[128]; }};
+            struct Record {{ int field; }};
+            using Unknown = int[];
+            __device__ int helper() {{ return 0; }}
+            __global__ void kernel(unsigned long *output) {{
+                Record *pointer = nullptr; Unknown *incomplete = nullptr;
+                int value; auto none = nullptr;
+                output[0] = __builtin_offsetof(Offsets, bytes[sizeof({operand})]);
+            }}"
+        ));
+    }
 }
