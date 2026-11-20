@@ -133,6 +133,7 @@ mod null_pointers;
 mod nullptr;
 mod offsetof_array_indices;
 mod offsetof_member_paths;
+mod offsetof_named_indices;
 mod operator_addition;
 mod operator_compound_assignments;
 mod operator_functions;
@@ -295,6 +296,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_BUILTIN_OFFSETOF,
         CUDA_OFFSETOF_ARRAY_INDICES,
         CUDA_OFFSETOF_MEMBER_PATHS,
+        CUDA_OFFSETOF_NAMED_INDICES,
         CUDA_LDG,
         CUDA_LDG_FLOAT2,
         CUDA_LDG_NATIVE_VECTORS,
@@ -1401,3 +1403,7 @@ static CUDA_OFFSETOF_MEMBER_PATHS: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_OFFSETOF_ARRAY_INDICES: GpuTestConfiguration =
     configuration(offsetof_array_indices::cases);
+
+#[apply(gpu_test!)]
+static CUDA_OFFSETOF_NAMED_INDICES: GpuTestConfiguration =
+    configuration(offsetof_named_indices::cases);

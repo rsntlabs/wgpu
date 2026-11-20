@@ -26,6 +26,14 @@ fn cuda_record_offsetof_cli_emits_indexed_offsets_for_all_backends() {
     );
 }
 
+#[test]
+fn cuda_record_offsetof_cli_emits_named_indices_for_all_backends() {
+    emits_record_offsetof_all_backends(
+        include_str!("../../naga/tests/in/cuda/offsetof-named-indices.cu"),
+        "named_offsets",
+    );
+}
+
 fn emits_record_offsetof_all_backends(source: &str, entry: &str) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);

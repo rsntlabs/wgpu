@@ -70,21 +70,32 @@ impl Parser<'_> {
         let invalid = || {
             ParseError {
             message: String::from(
-                "__builtin_offsetof index requires a nonnegative integer literal that fits in 32 bits",
+                "__builtin_offsetof index requires an integer literal or named integral constant with a nonnegative value that fits in 32 bits",
             ),
             span,
         }
         };
-        let Token::Number(text) = token else {
-            return Err(invalid());
+        let literal = match token {
+            Token::Number(text) => {
+                self.parameter_expansion_budget
+                    .charge_work(text.len() + 1, span)?;
+                if text.contains('\'') {
+                    self.parameter_expansion_budget
+                        .charge_bytes(text.len(), span)?;
+                }
+                number::parse_integer(text).map(|number| number.literal)
+            }
+            Token::Word(name) => {
+                self.parameter_expansion_budget
+                    .charge_work(name.len() + 1, span)?;
+                self.record_offset_named_constant(name)
+            }
+            _ => None,
         };
-        self.parameter_expansion_budget
-            .charge_work(text.len() + 1, span)?;
-        if text.contains('\'') {
-            self.parameter_expansion_budget
-                .charge_bytes(text.len(), span)?;
-        }
-        let index = match number::parse_integer(text).map(|number| number.literal) {
+        let index = match literal {
+            Some(Literal::Bool(value)) => Some(u32::from(value)),
+            Some(Literal::I16(value)) => u32::try_from(value).ok(),
+            Some(Literal::U16(value)) => Some(u32::from(value)),
             Some(Literal::I32(value)) => u32::try_from(value).ok(),
             Some(Literal::U32(value)) => Some(value),
             Some(Literal::I64(value)) => u32::try_from(value).ok(),
@@ -112,6 +123,28 @@ impl Parser<'_> {
         }
         let bytes = u64::from(stride) * u64::from(index);
         Ok((base, Self::checked_record_offset(offset, bytes, span)?))
+    }
+
+    fn record_offset_named_constant(&self, name: &str) -> Option<Literal> {
+        if (self.function.parsing_default || self.function.parsing_exception_specification)
+            && self.function.symbol_table.lookup(name).is_some()
+        {
+            return None;
+        }
+        match self.lookup_symbol(name)? {
+            Symbol::Constant { literal, .. } | Symbol::TemplateParameter { literal, .. } => literal,
+            Symbol::Variable {
+                pointer,
+                qualifiers,
+                ..
+            } if qualifiers.is_const && !qualifiers.is_volatile => {
+                let Expression::LocalVariable(local) = self.function.ir.expressions[pointer] else {
+                    return None;
+                };
+                self.function.constant_locals.get(&local).copied()
+            }
+            _ => None,
+        }
     }
 
     fn checked_record_offset(offset: u32, bytes: u64, span: Span) -> Result<u32, ParseError> {

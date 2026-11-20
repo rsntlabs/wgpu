@@ -180,7 +180,6 @@ fn cuda_record_offsetof_rejects_invalid_array_indices_without_evaluating_them() 
         ("row[]", "integer literal"),
         ("row[(1)]", "integer literal"),
         ("row[index]", "integer literal"),
-        ("row[constant_index]", "integer literal"),
         ("row[helper()]", "integer literal"),
         ("row[index++]", "integer literal"),
         ("row[0+1]", "expected"),
@@ -199,11 +198,66 @@ fn cuda_record_offsetof_rejects_invalid_array_indices_without_evaluating_them() 
             "struct Record {{ int row[3]; int grid[2][3]; int scalar; float2 vector; float3 vectors[2]; }};
             __device__ unsigned helper() {{ return 1u; }}
             __global__ void kernel(unsigned *output) {{
-                unsigned index = 0u; constexpr unsigned constant_index = 1u;
+                unsigned index = 0u;
                 output[0] = unsigned(true ? 0u : __builtin_offsetof(Record, {path}));
             }}"
         ));
         assert!(error.message.contains(message), "{path}: {error}");
+    }
+}
+
+#[test]
+fn cuda_record_offsetof_resolves_named_integral_indices_in_scope() {
+    assert_query_results(
+        "#include <cstddef>\n#define COLUMN column\n
+        constexpr unsigned row = 1u;
+        constexpr short column = 2;
+        struct Outer { int prefix; int grid[2][3]; };
+        template<unsigned Index = 1, bool Last = true>
+        __device__ size_t choose() { return offsetof(Outer, grid[Last][Index]); }
+        static_assert(offsetof(Outer, grid[row][column]) == 24u);
+        __global__ void kernel(unsigned long *output) {
+            const auto zero = 0U;
+            constexpr unsigned long long first = 1ULL;
+            output[0] = offsetof(Outer, grid[row][COLUMN]);
+            {
+                const int row = 0;
+                output[1] = __builtin_offsetof(Outer, grid[row][first]);
+            }
+            output[2] = offsetof(Outer, grid[row][zero]);
+            constexpr bool start = false;
+            output[3] = offsetof(Outer, grid[start][first]);
+            static_assert(offsetof(Outer, grid[row][first]) == 20u);
+            size_t local = choose<>();
+        }",
+        &[24, 8, 16, 8],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_nonconstant_and_invalid_named_indices() {
+    for (body, message) in [
+        ("unsigned Index = 1u; __builtin_offsetof(Record, row[Index]);", "integral constant"),
+        ("const unsigned Index = input; __builtin_offsetof(Record, row[Index]);", "integral constant"),
+        ("const unsigned value = 1u; const unsigned &Index = value; __builtin_offsetof(Record, row[Index]);", "integral constant"),
+        ("constexpr float Index = 1.0f; __builtin_offsetof(Record, row[Index]);", "integral constant"),
+        ("constexpr int Index = -1; __builtin_offsetof(Record, row[Index]);", "integral constant"),
+        ("constexpr unsigned long long Index = 4294967296ULL; __builtin_offsetof(Record, row[Index]);", "integral constant"),
+        ("constexpr unsigned Index = 3u; __builtin_offsetof(Record, row[Index]);", "out of bounds"),
+        ("using Index = int; __builtin_offsetof(Record, row[Index]);", "integral constant"),
+        ("const auto Index = __builtin_offsetof(Record, row[Index]);", "integral constant"),
+        ("__builtin_offsetof(Record, row[input]);", "integral constant"),
+        ("__builtin_offsetof(Record, row[StorageIndex]);", "integral constant"),
+        ("__builtin_offsetof(Record, row[Index+1]);", "expected"),
+        ("__builtin_offsetof(Record, row[::Index]);", "integral constant"),
+    ] {
+        let error = rejected(&format!(
+            "constexpr unsigned Index = 1u;
+            __constant__ unsigned StorageIndex;
+            struct Record {{ int row[3]; }};
+            __global__ void kernel(const unsigned input) {{ {body} }}"
+        ));
+        assert!(error.message.contains(message), "{body}: {error}");
     }
 }
 
