@@ -5448,3 +5448,69 @@ fn cuda_layout_queries_references_to_pointer_arrays_validate_all_declarator_laye
         }
     }
 }
+
+#[test]
+fn cuda_layout_queries_pointers_to_grouped_arrays_of_pointers_have_pointer_layout() {
+    for ty in [
+        "int(*(*)[2])[3]",
+        "int(*(*)[])(int)",
+        "int(*(*)[])[]",
+        "int(*)(int(*(*)[])[3])",
+        "void(*const(*)[2])(...) noexcept",
+        "int(*(**)[2])[3]",
+        "int(*(*&)[2])[3]",
+        "int(*(*const &&)[2])(int)",
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof({ty}); output[1] = alignof({ty});
+                output[2] = __builtin_offsetof(Offsets, bytes[sizeof({ty})]);
+            }}"
+            ),
+            &[8, 8, 32],
+        );
+    }
+}
+
+#[test]
+fn cuda_layout_queries_pointers_to_grouped_pointer_arrays_reject_invalid_shapes_and_signatures() {
+    for ty in [
+        "int(*(*)[0])[3]",
+        "int(*(*)[2])[0]",
+        "int(*(*)[runtime])[3]",
+        "int(*(*)[2][])[3]",
+        "int(*(*&const)[2])[3]",
+        "int(*(*& &)[2])[3]",
+        "int(*(*)[2])(Missing)",
+        "int(*(*)[])(void, int)",
+        "int(*(*)[2])(int,)",
+        "int(*(*)[2])(int) noexcept(runtime)",
+        "int(*(*)[268435456u])[3]",
+        "int(*(*)[2])[536870912u]",
+        "void(*(*)[2])[3]",
+        "int(*(*)[2])[3",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof({ty})");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
+    }
+    let source = |count| {
+        format!(
+            "__global__ void kernel(unsigned long *output) {{ output[0] = sizeof(int (*({})[2])[3]); }}",
+            "*".repeat(count)
+        )
+    };
+    assert_query_results(&source(64), &[8]);
+    let error = rejected(&source(65));
+    assert!(error.message.contains("pointer nesting limit"), "{error}");
+}

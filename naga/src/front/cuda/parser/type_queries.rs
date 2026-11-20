@@ -36,7 +36,7 @@ enum GroupedTypeQuery {
     ArrayReference,
     FunctionPointer,
     FunctionReference,
-    PointerArray,
+    PointerArray { through_pointer: bool },
 }
 
 enum GroupedArrayElement {
@@ -1416,13 +1416,8 @@ impl Parser<'_> {
     ) -> Result<TypeQueryType, ParseError> {
         let operand = self.type_query_base()?;
         let pointer_depth = self.type_query_pointer_depth(operand.as_ref())?;
-        let (token, reference_span) = self.lexer.peek()?;
-        let reference = matches!(token, Token::Operation('&') | Token::LogicalOperation('&'));
-        if reference {
-            self.parameter_expansion_budget
-                .charge_work(1, reference_span)?;
-            self.lexer.next()?;
-        }
+        let reference =
+            Self::scan_type_query_reference(&mut self.lexer, &mut self.parameter_expansion_budget)?;
         let mut lookahead = self.lexer.clone();
         let declarator = self.scan_grouped_query_declarator(&mut lookahead)?;
         if declarator.is_some() {
@@ -1435,13 +1430,25 @@ impl Parser<'_> {
         let function = matches!(declarator, Some(GroupedTypeQuery::FunctionPointer))
             || function_reference
             || function_parameter;
-        let pointer_array = matches!(declarator, Some(GroupedTypeQuery::PointerArray));
-        if (function || pointer_array) && depth >= 64 {
+        if (function || matches!(declarator, Some(GroupedTypeQuery::PointerArray { .. })))
+            && depth >= 64
+        {
             return self.fail("CUDA expression nesting limit exceeded");
         }
-        let array_layout = if pointer_array {
-            let layout =
-                self.record_offset_pointer_array_layout(context.array_query_name(), depth + 1)?;
+        let array_type = if let Some(GroupedTypeQuery::PointerArray { through_pointer }) =
+            declarator
+        {
+            let name = if through_pointer {
+                "alignof"
+            } else {
+                context.array_query_name()
+            };
+            let layout = self.record_offset_pointer_array_layout(name, depth + 1)?;
+            let ty = if through_pointer {
+                TypeQueryType::Pointer
+            } else {
+                TypeQueryType::PointerArrayLayout(layout)
+            };
             self.lexer.expect_span(Token::Paren(')'))?;
             if self.lexer.peek()?.0 == Token::Paren('[') {
                 let element =
@@ -1454,13 +1461,13 @@ impl Parser<'_> {
                         self.record_offset_array_layout("alignof", ty.ty, depth + 1, span)?;
                     }
                 }
-                return Ok(TypeQueryType::PointerArrayLayout(layout));
+                return Ok(ty);
             }
-            Some(layout)
+            Some(ty)
         } else {
             None
         };
-        if function || array_layout.is_some() {
+        if function || array_type.is_some() {
             if pointer_depth == 0 {
                 if reference && operand.is_none() {
                     return self.fail("function types cannot return references to void");
@@ -1473,8 +1480,8 @@ impl Parser<'_> {
             }
             self.type_query_function_parameters(depth + 1)?;
             self.type_query_function_noexcept(depth)?;
-            return Ok(if let Some(layout) = array_layout {
-                TypeQueryType::PointerArrayLayout(layout)
+            return Ok(if let Some(ty) = array_type {
+                ty
             } else if function_reference {
                 TypeQueryType::FunctionReference
             } else {
@@ -1690,6 +1697,19 @@ impl Parser<'_> {
         Ok(depth)
     }
 
+    fn scan_type_query_reference(
+        lexer: &mut Lexer<'_>,
+        budget: &mut parameter_expansion::ExpansionBudget,
+    ) -> Result<bool, ParseError> {
+        let (token, span) = lexer.peek()?;
+        let reference = matches!(token, Token::Operation('&') | Token::LogicalOperation('&'));
+        if reference {
+            budget.charge_work(1, span)?;
+            lexer.next()?;
+        }
+        Ok(reference)
+    }
+
     fn scan_grouped_query_declarator(
         &mut self,
         lexer: &mut Lexer<'_>,
@@ -1705,25 +1725,28 @@ impl Parser<'_> {
             Token::Operation('*') => {
                 budget.charge_work(2, span)?;
                 Self::scan_type_query_pointer_chain(&mut lookahead, budget, 0)?;
+                let mut through_pointer = false;
                 if lookahead.next_if(Token::Paren('('))? {
-                    let (token, span) = lookahead.next()?;
-                    if !matches!(token, Token::Operation('&') | Token::LogicalOperation('&'))
-                        || !lookahead.next_if(Token::Paren(')'))?
+                    let (token, span) = lookahead.peek()?;
+                    through_pointer = token == Token::Operation('*');
+                    if through_pointer {
+                        Self::scan_type_query_pointer_chain(&mut lookahead, budget, 0)?;
+                        Self::scan_type_query_reference(&mut lookahead, budget)?;
+                    } else if !Self::scan_type_query_reference(&mut lookahead, budget)? {
+                        return Ok(None);
+                    }
+                    if !lookahead.next_if(Token::Paren(')'))?
                         || lookahead.peek()?.0 != Token::Paren('[')
                     {
                         return Ok(None);
                     }
-                    budget.charge_work(3, span)?;
+                    budget.charge_work(2, span)?;
                 }
-                let (token, reference_span) = lookahead.peek()?;
-                if token == Token::Paren('[') {
+                if lookahead.peek()?.0 == Token::Paren('[') {
                     *lexer = lookahead;
-                    return Ok(Some(GroupedTypeQuery::PointerArray));
+                    return Ok(Some(GroupedTypeQuery::PointerArray { through_pointer }));
                 }
-                if matches!(token, Token::Operation('&') | Token::LogicalOperation('&')) {
-                    budget.charge_work(1, reference_span)?;
-                    lookahead.next()?;
-                }
+                Self::scan_type_query_reference(&mut lookahead, budget)?;
                 true
             }
             Token::Operation('&') | Token::LogicalOperation('&') => {
