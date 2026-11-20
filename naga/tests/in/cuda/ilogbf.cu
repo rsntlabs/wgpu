@@ -8,7 +8,7 @@ __global__ void exponent_values(const unsigned *input, unsigned *output, unsigne
     float value = __uint_as_float(input[index]);
     unsigned counter = 0u;
     output[base] = unsigned(ilogbf(value));
-    output[base + 1u] = unsigned(ilogbf(counted(value, counter)));
+    output[base + 1u] = unsigned(__nv_ilogbf(counted(value, counter)));
     output[base + 2u] = counter;
     output[base + 3u] = kind(ilogbf(value));
 }

@@ -1225,13 +1225,17 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "nextafterf",
         "fdimf",
         "ilogbf",
+        "__nv_ilogbf",
         "logbf",
+        "__nv_logbf",
         "ldexpf",
+        "__nv_ldexpf",
         "fmodf",
         "__nv_fmodf",
         "remainderf",
         "__nv_remainderf",
         "scalbnf",
+        "__nv_scalbnf",
     ] {
         declarations.insert(
             name,
@@ -3637,9 +3641,15 @@ impl<'a> Parser<'a> {
                 (true, "copysignf") => Some(FunctionCandidate::CopySign),
                 (true, "nextafterf") => Some(FunctionCandidate::NextAfter),
                 (true, "fdimf") => Some(FunctionCandidate::PositiveDifference),
-                (true, "ldexpf" | "scalbnf") => Some(FunctionCandidate::ScaleByPowerOfTwo),
-                (true, "ilogbf") => Some(FunctionCandidate::FloatExponent(ExponentResult::Integer)),
-                (true, "logbf") => Some(FunctionCandidate::FloatExponent(ExponentResult::Float)),
+                (true, "ldexpf" | "scalbnf" | "__nv_ldexpf" | "__nv_scalbnf") => {
+                    Some(FunctionCandidate::ScaleByPowerOfTwo)
+                }
+                (true, "ilogbf" | "__nv_ilogbf") => {
+                    Some(FunctionCandidate::FloatExponent(ExponentResult::Integer))
+                }
+                (true, "logbf" | "__nv_logbf") => {
+                    Some(FunctionCandidate::FloatExponent(ExponentResult::Float))
+                }
                 (true, "__float2int_rz") => Some(FunctionCandidate::FloatToInteger {
                     destination: Scalar::I32,
                     rounding: None,

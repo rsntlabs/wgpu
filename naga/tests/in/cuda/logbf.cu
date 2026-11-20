@@ -8,7 +8,7 @@ __global__ void exponent_values(const unsigned *input, unsigned *output, unsigne
     float value = __uint_as_float(input[index]);
     unsigned counter = 0u;
     output[base] = __float_as_uint(logbf(value));
-    output[base + 1u] = __float_as_uint(logbf(counted(value, counter)));
+    output[base + 1u] = __float_as_uint(__nv_logbf(counted(value, counter)));
     output[base + 2u] = counter;
     output[base + 3u] = kind(logbf(value));
 }
