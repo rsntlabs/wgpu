@@ -586,7 +586,8 @@ impl Parser<'_> {
         self.parameter_expansion_budget
             .charge_work(1, question_span)?;
         self.require_sizeof_condition(&condition, condition_span)?;
-        let accept = self.record_offset_sizeof_conditional(depth + 1)?;
+        let accept = self
+            .sizeof_comma_expression(|parser| parser.record_offset_sizeof_conditional(depth + 1))?;
         let colon_span = self.lexer.expect_span(Token::Separator(':'))?;
         self.parameter_expansion_budget.charge_work(1, colon_span)?;
         let reject = self.record_offset_sizeof_conditional(depth + 1)?;
@@ -628,7 +629,9 @@ impl Parser<'_> {
             }
             Token::Paren('(') => {
                 self.parameter_expansion_budget.charge_work(2, start)?;
-                let (operand, _) = self.record_offset_sizeof_conditional(depth + 1)?;
+                let (operand, _) = self.sizeof_comma_expression(|parser| {
+                    parser.record_offset_sizeof_conditional(depth + 1)
+                })?;
                 let end = self.lexer.expect_span(Token::Paren(')'))?;
                 (operand, end)
             }
@@ -1331,12 +1334,15 @@ impl Parser<'_> {
         result
     }
 
-    fn sizeof_comma_expression(&mut self) -> Result<(SizeofOperand, Span), ParseError> {
-        let (mut operand, mut span) = self.sizeof_conditional_expression()?;
+    fn sizeof_comma_expression(
+        &mut self,
+        parse_conditional: impl Fn(&mut Self) -> Result<(SizeofOperand, Span), ParseError>,
+    ) -> Result<(SizeofOperand, Span), ParseError> {
+        let (mut operand, mut span) = parse_conditional(self)?;
         while let (Token::Separator(','), comma_span) = self.lexer.peek()? {
             self.lexer.next()?;
             self.parameter_expansion_budget.charge_work(1, comma_span)?;
-            let (right, right_span) = self.sizeof_conditional_expression()?;
+            let (right, right_span) = parse_conditional(self)?;
             operand = match right {
                 SizeofOperand::IntegerZeroLiteral(scalar) => SizeofOperand::Scalar(scalar),
                 other => other,
@@ -1362,7 +1368,7 @@ impl Parser<'_> {
             self.parameter_expansion_budget
                 .charge_work(1, question_span)?;
             self.require_sizeof_condition(&condition, condition_span)?;
-            let accept = self.sizeof_comma_expression()?;
+            let accept = self.sizeof_comma_expression(Self::sizeof_conditional_expression)?;
             let colon_span = self.lexer.expect_span(Token::Separator(':'))?;
             self.parameter_expansion_budget.charge_work(1, colon_span)?;
             let reject = self.sizeof_conditional_expression()?;
@@ -1576,7 +1582,8 @@ impl Parser<'_> {
                         return Ok((operand, start.until(&end)));
                     }
                 }
-                let (operand, _) = self.sizeof_comma_expression()?;
+                let (operand, _) =
+                    self.sizeof_comma_expression(Self::sizeof_conditional_expression)?;
                 let closing = self.lexer.expect_span(Token::Paren(')'))?;
                 (operand, start.until(&closing))
             }
@@ -1616,7 +1623,8 @@ impl Parser<'_> {
             Token::Separator('.') | Token::Arrow | Token::Paren('[')
         ) {
             if self.lexer.next_if(Token::Paren('['))? {
-                let (index, _) = self.sizeof_comma_expression()?;
+                let (index, _) =
+                    self.sizeof_comma_expression(Self::sizeof_conditional_expression)?;
                 end = self.lexer.expect_span(Token::Paren(']'))?;
                 let (base, index) = if self.sizeof_integral_operand(&operand) {
                     (index, operand)
@@ -1684,7 +1692,8 @@ impl Parser<'_> {
             })?;
         self.lexer.expect_span(Token::Paren('>'))?;
         self.lexer.expect_span(Token::Paren('('))?;
-        let (operand, operand_span) = self.sizeof_comma_expression()?;
+        let (operand, operand_span) =
+            self.sizeof_comma_expression(Self::sizeof_conditional_expression)?;
         let end = self.lexer.expect_span(Token::Paren(')'))?;
         Ok((
             self.sizeof_scalar_cast_result(scalar, &operand, operand_span)?,
@@ -1977,6 +1986,7 @@ mod tests {
         let comparison_chain = format!("1{}]", " == 0 < 1".repeat(128));
         let logical_chain = format!("1{}]", " || (1 / 0)".repeat(128));
         let sizeof_sum_chain = format!("sizeof({}1) / 4]", "0 + ".repeat(128));
+        let sizeof_comma_chain = format!("sizeof({}1) / 4]", "0L,".repeat(128));
         let array_rank = format!("sizeof(int{}) / 4]", "[1]".repeat(64));
         for (source, exhaust_bytes, succeeds) in [
             ("((((1ULL))))]", false, true),
@@ -2034,6 +2044,8 @@ mod tests {
             ("sizeof(+Items) / 8]", false, true),
             ("sizeof(-~!!One) / 4]", false, false),
             (sizeof_sum_chain.as_str(), true, true),
+            (sizeof_comma_chain.as_str(), true, true),
+            ("sizeof(true ? 0L, 1 : 1) / 4]", false, true),
             ("sizeof(((((1 + 1))))) / 4]", false, false),
             ("sizeof(true ? 1 : false ? 0L : 4) / 8]", true, true),
             (

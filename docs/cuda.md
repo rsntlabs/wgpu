@@ -535,6 +535,9 @@ Parenthesized conditional expressions such as `sizeof(flag ? a : b)`
 use the same supported scalar and pointer arm types as standalone
 `sizeof`. Both arms are type-checked without evaluating the condition
 or either arm.
+Comma expressions in grouped operands and in the middle arm of a
+conditional use the final operand's type, including the full extent
+of an array. Every operand is type-checked without being evaluated.
 Pointer type queries, including `void*`, use the CUDA source ABI size and
 alignment of eight bytes. Reference type queries use the referent's layout.
 Array type operands can include dimensions such as `int[2][3]`. Every

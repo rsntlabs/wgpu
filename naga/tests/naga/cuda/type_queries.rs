@@ -2988,7 +2988,6 @@ fn cuda_record_offsetof_nested_sizeof_groups_and_dereferences_reject_invalid_ope
         "((pointer)",
         "(*pointer).",
         "&value",
-        "(value, value)",
         "helper()",
         "(*pointer).field++",
         "*(pointer + 1)",
@@ -3247,7 +3246,6 @@ fn cuda_record_offsetof_nested_sizeof_scalar_binary_rejects_invalid_types_and_br
         "value = 1",
         "value += 1",
         "value++ + 1",
-        "value, 1",
         "value + helper()",
     ] {
         rejected(&format!(
@@ -3343,7 +3341,6 @@ fn cuda_record_offsetof_nested_sizeof_conditionals_reject_invalid_types_even_whe
         "flag ? value :",
         "flag ? : value",
         "flag ? value",
-        "flag ? value, value : value",
         "flag ? int(value) : value",
         "flag ? static_cast<int>(value) : value",
     ] {
@@ -3355,5 +3352,91 @@ fn cuda_record_offsetof_nested_sizeof_conditionals_reject_invalid_types_even_whe
                 output[0] = __builtin_offsetof(Offsets, bytes[sizeof({operand})]);
             }}"
         ));
+    }
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_comma_preserves_final_types_and_conditional_precedence() {
+    for (operand, size) in [
+        ("value, flag", 1),
+        ("flag, small", 2),
+        ("value, grid", 24),
+        ("(value, grid)[0]", 12),
+        ("value, record", 28),
+        ("(value, record).matrix", 24),
+        ("value, pointer", 8),
+        ("value, nullptr", 8),
+        ("value, 0", 4),
+        ("flag ? value, small : other", 2),
+        ("flag ? small : other, flag", 1),
+        ("flag ? (value, small) : (value, other)", 2),
+        ("flag ? flag ? value, small : other : small", 2),
+        ("flag ? pointer : (value, nullptr)", 8),
+        ("1 / 0, value, flag", 1),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }};
+            struct Record {{ int first; int matrix[2][3]; }};
+            __global__ void kernel(unsigned long *output) {{
+                int value; bool flag; short small; short other; int grid[2][3];
+                Record record; int *pointer = nullptr;
+                output[0] = __builtin_offsetof(Offsets, bytes[sizeof({operand})]);
+            }}"
+            ),
+            &[size * 4],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            short small; bool flag;
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof small + 1]);
+        }",
+        &[12],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_comma_never_reads_discarded_or_final_volatile_operands() {
+    let module = roundtrip(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output, volatile int *input) {
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof(*input, *input)]);
+        }",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_comma_rejects_early_errors_and_nonliteral_zero() {
+    for operand in [
+        "missing, value",
+        "Integer, value",
+        "helper(), value",
+        "value++, value",
+        "value = 1, value",
+        "pointer + 1, value",
+        "value,, flag",
+        "value,",
+        ",value",
+        "flag ? pointer : (1, 0)",
+        "flag ? (0, 0) : pointer",
+        "flag ? pointer : ((nullptr, 0))",
+    ] {
+        for prefix in ["", "true || "] {
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __device__ int helper() {{ return 0; }}
+                __global__ void kernel(unsigned long *output) {{
+                    int value; bool flag; int *pointer; using Integer = int;
+                    output[0] = __builtin_offsetof(Offsets, bytes[{prefix}sizeof({operand})]);
+                }}"
+            ));
+        }
     }
 }
