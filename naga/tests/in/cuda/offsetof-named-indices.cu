@@ -10,7 +10,9 @@ template<unsigned Index> __device__ unsigned selected_offset() {
     return offset;
 }
 __device__ void check_member_size(Outer *layout, unsigned index)
-    noexcept(offsetof(Outer, grid[(sizeof((*layout).grid[index + (1 / 0)]) == 12u)][(sizeof (layout[index ? int(index) : -1]).prefix != 4u)]) == 48u);
+    noexcept(offsetof(Outer,
+        grid[(sizeof((*layout).grid[index + (1 / 0)]) == 12u) && (sizeof nullptr == 8u)]
+            [(sizeof (layout[index ? int(index) : -1]).prefix != 4u) || (sizeof(0x1.8p+2f) != 4u) || (sizeof true != 1u)]) == 48u);
 
 __global__ void named_offsets(unsigned *output) {
     unsigned lane = threadIdx.x;

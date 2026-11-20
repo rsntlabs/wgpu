@@ -309,12 +309,7 @@ impl Parser<'_> {
                 return Ok((operand, span.until(&closing)));
             }
             Token::Number(text) => {
-                self.parameter_expansion_budget
-                    .charge_work(text.len() + 1, span)?;
-                if text.contains('\'') {
-                    self.parameter_expansion_budget
-                        .charge_bytes(text.len(), span)?;
-                }
+                self.charge_type_query_number(text, span)?;
                 number::parse_integer(text)
             }
             Token::Word(word @ ("true" | "false")) => {
@@ -422,7 +417,10 @@ impl Parser<'_> {
         let (token, target_span) = self.lexer.peek()?;
         let expression_operand = name == "sizeof"
             && match token {
-                Token::Operation('*') | Token::Paren('(') => true,
+                Token::Operation('*')
+                | Token::Paren('(')
+                | Token::Number(_)
+                | Token::Word("true" | "false" | "nullptr") => true,
                 Token::Word(word) => self.lookup_symbol(word).is_some_and(|symbol| {
                     !matches!(
                         symbol,
@@ -580,7 +578,7 @@ impl Parser<'_> {
             });
         }
         let invalid = || ParseError {
-            message: String::from("nested sizeof requires an operand rooted in a named object"),
+            message: String::from("nested sizeof requires a supported literal or named object"),
             span: start,
         };
         let (mut operand, mut end) = match token {
@@ -596,6 +594,12 @@ impl Parser<'_> {
                 let end = self.lexer.expect_span(Token::Paren(')'))?;
                 (operand, end)
             }
+            Token::Number(text) => (self.sizeof_numeric_literal(text, start)?, start),
+            Token::Word("true" | "false") => (
+                SizeofOperand::Scalar(SourceScalar::Scalar(Scalar::BOOL)),
+                start,
+            ),
+            Token::Word("nullptr") => (SizeofOperand::NullPointer, start),
             Token::Word(word) => {
                 self.parameter_expansion_budget
                     .charge_work(word.len() + 1, start)?;
@@ -648,6 +652,34 @@ impl Parser<'_> {
                 "__builtin_offsetof nested sizeof requires a complete object type",
             ),
             span,
+        })
+    }
+
+    fn charge_type_query_number(&mut self, text: &str, span: Span) -> Result<(), ParseError> {
+        self.parameter_expansion_budget
+            .charge_work(text.len() + 1, span)?;
+        if text.contains('\'') {
+            self.parameter_expansion_budget
+                .charge_bytes(text.len(), span)?;
+        }
+        Ok(())
+    }
+
+    fn sizeof_numeric_literal(
+        &mut self,
+        text: &str,
+        span: Span,
+    ) -> Result<SizeofOperand, ParseError> {
+        self.charge_type_query_number(text, span)?;
+        let number = number::parse(text).ok_or_else(|| ParseError {
+            message: String::from("unsupported or out-of-range numeric literal"),
+            span,
+        })?;
+        Ok(match number.literal {
+            Literal::I32(0) | Literal::U32(0) | Literal::I64(0) | Literal::U64(0) => {
+                SizeofOperand::IntegerZeroLiteral(number.scalar)
+            }
+            _ => SizeofOperand::Scalar(number.scalar),
         })
     }
 
@@ -1495,19 +1527,7 @@ impl Parser<'_> {
                 let closing = self.lexer.expect_span(Token::Paren(')'))?;
                 (operand, start.until(&closing))
             }
-            Token::Number(text) => {
-                let number = number::parse(text).ok_or_else(|| ParseError {
-                    message: String::from("unsupported or out-of-range numeric literal"),
-                    span: start,
-                })?;
-                let operand = match number.literal {
-                    Literal::I32(0) | Literal::U32(0) | Literal::I64(0) | Literal::U64(0) => {
-                        SizeofOperand::IntegerZeroLiteral(number.scalar)
-                    }
-                    _ => SizeofOperand::Scalar(number.scalar),
-                };
-                (operand, start)
-            }
+            Token::Number(text) => (self.sizeof_numeric_literal(text, start)?, start),
             Token::Word("true" | "false") => (
                 SizeofOperand::Scalar(SourceScalar::Scalar(Scalar::BOOL)),
                 start,
@@ -1952,6 +1972,9 @@ mod tests {
             ("alignof(float3) / 4]", false, true),
             ("sizeof One / 4]", true, true),
             ("sizeof(One) / 4]", false, true),
+            ("sizeof(0x1.8p+2f) / 4]", true, true),
+            ("sizeof nullptr / 8]", false, true),
+            ("sizeof true]", true, true),
             ("sizeof Pair.y / 4]", true, true),
             ("sizeof Items[((One))] / 4]", true, true),
             ("sizeof(Items[false]) / 4]", false, true),

@@ -1039,7 +1039,6 @@ fn cuda_record_offsetof_rejects_unsupported_layout_queries_in_indices() {
         ("sizeof(int && &)", "expected"),
         ("sizeof(int())", "expected"),
         ("sizeof()", "type"),
-        ("sizeof(1)", "type"),
         ("sizeof int", "expected"),
         ("alignof(int", "expected"),
         ("alignof(Shadowed)", "type"),
@@ -3010,4 +3009,85 @@ fn cuda_record_offsetof_nested_sizeof_groups_and_dereferences_reject_invalid_ope
             }}"
         ));
     }
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_literals_preserve_source_sizes_and_unary_binding() {
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof(1)]);
+            output[1] = __builtin_offsetof(Offsets, bytes[sizeof 1u]);
+            output[2] = __builtin_offsetof(Offsets, bytes[sizeof((0L))]);
+            output[3] = __builtin_offsetof(Offsets, bytes[sizeof 18446744073709551615ULL]);
+            output[4] = __builtin_offsetof(Offsets, bytes[sizeof(1.0f)]);
+            output[5] = __builtin_offsetof(Offsets, bytes[sizeof true]);
+            output[6] = __builtin_offsetof(Offsets, bytes[sizeof((false))]);
+            output[7] = __builtin_offsetof(Offsets, bytes[sizeof(nullptr)]);
+            output[8] = __builtin_offsetof(Offsets, bytes[sizeof nullptr]);
+            output[9] = __builtin_offsetof(Offsets, bytes[sizeof 1 + 1]);
+            output[10] = __builtin_offsetof(Offsets, bytes[sizeof true ? 7 : 9]);
+            output[11] = __builtin_offsetof(Offsets, bytes[sizeof(0x10u)]);
+            output[12] = __builtin_offsetof(Offsets, bytes[sizeof(1'000)]);
+            output[13] = __builtin_offsetof(Offsets, bytes[sizeof(1'000.0f)]);
+            output[14] = __builtin_offsetof(Offsets, bytes[sizeof(0x1.8p+2f)]);
+        }",
+        &[16, 16, 32, 32, 16, 4, 4, 32, 32, 20, 28, 16, 16, 16, 16],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_literals_emit_only_final_offsets() {
+    let module = roundtrip(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof(18446744073709551615ULL)]);
+            output[1] = __builtin_offsetof(Offsets, bytes[sizeof(1.5f)]);
+            output[2] = __builtin_offsetof(Offsets, bytes[sizeof(nullptr)]);
+        }",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| {
+            !matches!(
+                expression,
+                naga::Expression::Literal(naga::Literal::U64(u64::MAX) | naga::Literal::F32(_))
+                    | naga::Expression::Load { .. }
+            )
+        }));
+    assert!(module.types.iter().all(|(_, ty)| ty
+        .inner
+        .scalar()
+        .is_none_or(|scalar| scalar.kind != naga::ScalarKind::Float)));
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_literals_reject_bad_literals_and_null_dereferences() {
+    for operand in [
+        "18446744073709551616ULL",
+        "1.0",
+        "1e100f",
+        "0x",
+        "1uuu",
+        "*nullptr",
+        "*(nullptr)",
+        "nullptr[0]",
+        "true[0]",
+        "1[0]",
+        "()",
+    ] {
+        rejected(&format!(
+            "struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = __builtin_offsetof(Offsets, bytes[sizeof({operand})]);
+            }}"
+        ));
+    }
+    rejected(
+        "struct Offsets { int bytes[2]; }; __global__ void kernel(unsigned long *output) {
+        output[0] = __builtin_offsetof(Offsets, bytes[sizeof(1)]);
+    }",
+    );
 }
