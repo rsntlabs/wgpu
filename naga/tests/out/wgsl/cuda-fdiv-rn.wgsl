@@ -101,14 +101,14 @@ fn quotient_value(first: f32, second: f32) -> f32 {
 }
 
 fn _fdiv_rn(first_1: bool, second_1: bool) -> i32 {
-    var local_15: i32;
+    var local_29: i32;
 
     if first_1 {
-        local_15 = 7i;
+        local_29 = 7i;
     } else {
-        local_15 = 9i;
+        local_29 = 9i;
     }
-    let _e6 = local_15;
+    let _e6 = local_29;
     return _e6;
 }
 
@@ -135,12 +135,27 @@ fn divide_round_nearest(@builtin(local_invocation_id) threadIdx: vec3<u32>, @bui
     var local_12: u32;
     var local_13: u32;
     var local_14: u32;
+    var local_15: u32;
+    var fast_cursor: i32;
+    var local_16: u32;
+    var local_17: u32;
+    var local_18: u32;
+    var local_19: u32;
+    var local_20: u32;
+    var local_21: u32;
+    var local_22: u32;
+    var local_23: u32;
+    var local_24: u32;
+    var local_25: u32;
+    var local_26: u32;
+    var local_27: u32;
+    var local_28: u32;
 
     let index = (threadIdx.x + (blockIdx.x * 32u));
     if (index >= 4096u) {
         return;
     }
-    let base = (4u + (index * 10u));
+    let base = (4u + (index * 16u));
     local = u32((index * 2u));
     let _e17 = local;
     let _e20 = input[_e17];
@@ -215,4 +230,61 @@ fn divide_round_nearest(@builtin(local_invocation_id) threadIdx: vec3<u32>, @bui
     local_14 = u32((base + 9u));
     let _e189 = local_14;
     output[_e189] = bitcast<u32>(_e183);
+    let _e192 = bitcast<u32>(second_2);
+    let _e194 = (_e192 & 2147483647u);
+    let _e204 = gen__naga_divide_f32_(bitcast<u32>(first_2), select(_e192, ((_e192 & 2147483648u) | 2139095040u), ((_e194 > 2122317824u) && (_e194 < 2139095040u))));
+    local_15 = u32((base + 10u));
+    let _e211 = local_15;
+    output[_e211] = bitcast<u32>(bitcast<f32>(_e204));
+    fast_cursor = 0i;
+    let _e217 = fast_cursor;
+    fast_cursor = (_e217 + 1i);
+    local_17 = u32(((index * 2u) + u32(_e217)));
+    let _e224 = local_17;
+    let _e226 = input[_e224];
+    let _e230 = fast_cursor;
+    fast_cursor = (_e230 + 1i);
+    local_18 = u32(((index * 2u) + u32(_e230)));
+    let _e237 = local_18;
+    let _e239 = input[_e237];
+    let _e242 = bitcast<u32>(bitcast<f32>(_e239));
+    let _e244 = (_e242 & 2147483647u);
+    let _e254 = gen__naga_divide_f32_(bitcast<u32>(bitcast<f32>(_e226)), select(_e242, ((_e242 & 2147483648u) | 2139095040u), ((_e244 > 2122317824u) && (_e244 < 2139095040u))));
+    local_16 = u32((base + 11u));
+    let _e261 = local_16;
+    output[_e261] = bitcast<u32>(bitcast<f32>(_e254));
+    let _e263 = fast_cursor;
+    local_19 = u32((base + 12u));
+    let _e269 = local_19;
+    output[_e269] = u32(_e263);
+    local_21 = 2122317824u;
+    let _e273 = local_21;
+    local_22 = 2122317823u;
+    let _e277 = local_22;
+    let _e280 = bitcast<u32>(bitcast<f32>(_e277));
+    let _e282 = (_e280 & 2147483647u);
+    let _e292 = gen__naga_divide_f32_(bitcast<u32>(bitcast<f32>(_e273)), select(_e280, ((_e280 & 2147483648u) | 2139095040u), ((_e282 > 2122317824u) && (_e282 < 2139095040u))));
+    local_20 = u32((base + 13u));
+    let _e299 = local_20;
+    output[_e299] = bitcast<u32>(bitcast<f32>(_e292));
+    local_24 = 2122317824u;
+    let _e303 = local_24;
+    local_25 = 2122317824u;
+    let _e307 = local_25;
+    let _e310 = bitcast<u32>(bitcast<f32>(_e307));
+    let _e312 = (_e310 & 2147483647u);
+    let _e322 = gen__naga_divide_f32_(bitcast<u32>(bitcast<f32>(_e303)), select(_e310, ((_e310 & 2147483648u) | 2139095040u), ((_e312 > 2122317824u) && (_e312 < 2139095040u))));
+    local_23 = u32((base + 14u));
+    let _e329 = local_23;
+    output[_e329] = bitcast<u32>(bitcast<f32>(_e322));
+    local_27 = 2122317824u;
+    let _e333 = local_27;
+    local_28 = 2122317825u;
+    let _e337 = local_28;
+    let _e340 = bitcast<u32>(bitcast<f32>(_e337));
+    let _e342 = (_e340 & 2147483647u);
+    let _e352 = gen__naga_divide_f32_(bitcast<u32>(bitcast<f32>(_e333)), select(_e340, ((_e340 & 2147483648u) | 2139095040u), ((_e342 > 2122317824u) && (_e342 < 2139095040u))));
+    local_26 = u32((base + 15u));
+    let _e359 = local_26;
+    output[_e359] = bitcast<u32>(bitcast<f32>(_e352));
 }

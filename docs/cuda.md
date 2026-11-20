@@ -1185,6 +1185,14 @@ the existing integer division helper with `/` and `/=`, including its subnormal,
 signed-zero, infinity, and canonical-NaN behavior. Intrinsic calls execute at
 runtime and are not source constant expressions.
 
+`__fdividef(float, float)` implements CUDA's approximate division intrinsic.
+For a finite divisor with magnitude strictly greater than 2^126, a finite
+numerator yields zero with the quotient's sign, and an infinite numerator
+yields canonical NaN. Other operand combinations use the exact nearest-even
+division helper, including subnormal inputs and results. Arguments convert to
+`float` before division. Calls execute at runtime. See NVIDIA's
+[`__fdividef` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SINGLE.html).
+
 `__fdiv_rz(float, float)` computes a single-precision quotient rounded toward
 zero, following NVIDIA's
 [`__fdiv_rz` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SINGLE.html).
@@ -1193,7 +1201,7 @@ algorithm through a separate cached helper, preserving received subnormal inputs
 and truncating inexact results toward signed zero. Finite overflow saturates to
 the signed largest finite value. Actual infinity inputs, zero denominators,
 NaNs, and signed-zero cases follow `__fdiv_rn`. Calls execute at runtime and are
-not source constant expressions. The approximate `__fdividef` intrinsic remains unsupported.
+not source constant expressions.
 
 `__fdiv_rd(float, float)` rounds the single-precision quotient toward negative
 infinity. Finite positive overflow returns the largest finite `float`, and
@@ -1662,7 +1670,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fadd_rd`, `__fadd_ru`, `__fsub_rn`, `__fsub_rz`, `__fsub_rd`, `__fsub_ru`, `__fmul_rn`, `__fmul_rz`, `__fmul_rd`, `__fmul_ru`, `__fdiv_rn`, `__fdiv_rz`, `__fdiv_rd`, `__fdiv_ru`, `__frcp_rn`, `__frcp_rz`, `__frcp_rd`, `__frcp_ru`, `__fsqrt_rn`, `__fsqrt_rz`, `__fsqrt_rd`, `__fsqrt_ru`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `__fmaf_rd`, `__fmaf_ru`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fadd_rd`, `__fadd_ru`, `__fsub_rn`, `__fsub_rz`, `__fsub_rd`, `__fsub_ru`, `__fmul_rn`, `__fmul_rz`, `__fmul_rd`, `__fmul_ru`, `__fdiv_rn`, `__fdividef`, `__fdiv_rz`, `__fdiv_rd`, `__fdiv_ru`, `__frcp_rn`, `__frcp_rz`, `__frcp_rd`, `__frcp_ru`, `__fsqrt_rn`, `__fsqrt_rz`, `__fsqrt_rd`, `__fsqrt_ru`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `__fmaf_rd`, `__fmaf_ru`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 

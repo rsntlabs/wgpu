@@ -107,14 +107,14 @@ float quotient_value(float first, float second)
 
 int _fdiv_rn(bool first_1, bool second_1)
 {
-    int local_15 = (int)0;
+    int local_29 = (int)0;
 
     if (first_1) {
-        local_15 = int(7);
+        local_29 = int(7);
     } else {
-        local_15 = int(9);
+        local_29 = int(9);
     }
-    int _e6 = local_15;
+    int _e6 = local_29;
     return _e6;
 }
 
@@ -143,12 +143,27 @@ void divide_round_nearest(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : S
     uint local_12 = (uint)0;
     uint local_13 = (uint)0;
     uint local_14 = (uint)0;
+    uint local_15 = (uint)0;
+    int fast_cursor = (int)0;
+    uint local_16 = (uint)0;
+    uint local_17 = (uint)0;
+    uint local_18 = (uint)0;
+    uint local_19 = (uint)0;
+    uint local_20 = (uint)0;
+    uint local_21 = (uint)0;
+    uint local_22 = (uint)0;
+    uint local_23 = (uint)0;
+    uint local_24 = (uint)0;
+    uint local_25 = (uint)0;
+    uint local_26 = (uint)0;
+    uint local_27 = (uint)0;
+    uint local_28 = (uint)0;
 
     uint index = (threadIdx.x + (blockIdx.x * 32u));
     if ((index >= 4096u)) {
         return;
     }
-    uint base = (4u + (index * 10u));
+    uint base = (4u + (index * 16u));
     local = uint((index * 2u));
     uint _e17 = local;
     uint _e20 = asuint(input.Load(_e17*4));
@@ -223,4 +238,61 @@ void divide_round_nearest(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : S
     local_14 = uint((base + 9u));
     uint _e189 = local_14;
     output.Store(_e189*4, asuint(asuint(_e183)));
+    uint _e192 = asuint(second_2);
+    uint _e194 = (_e192 & 2147483647u);
+    const uint _e204 = _naga_divide_f32_(asuint(first_2), (((_e194 > 2122317824u) && (_e194 < 2139095040u)) ? ((_e192 & 2147483648u) | 2139095040u) : _e192));
+    local_15 = uint((base + 10u));
+    uint _e211 = local_15;
+    output.Store(_e211*4, asuint(asuint(asfloat(_e204))));
+    fast_cursor = int(0);
+    int _e217 = fast_cursor;
+    fast_cursor = asint(asuint(_e217) + asuint(int(1)));
+    local_17 = uint(((index * 2u) + uint(_e217)));
+    uint _e224 = local_17;
+    uint _e226 = asuint(input.Load(_e224*4));
+    int _e230 = fast_cursor;
+    fast_cursor = asint(asuint(_e230) + asuint(int(1)));
+    local_18 = uint(((index * 2u) + uint(_e230)));
+    uint _e237 = local_18;
+    uint _e239 = asuint(input.Load(_e237*4));
+    uint _e242 = asuint(asfloat(_e239));
+    uint _e244 = (_e242 & 2147483647u);
+    const uint _e254 = _naga_divide_f32_(asuint(asfloat(_e226)), (((_e244 > 2122317824u) && (_e244 < 2139095040u)) ? ((_e242 & 2147483648u) | 2139095040u) : _e242));
+    local_16 = uint((base + 11u));
+    uint _e261 = local_16;
+    output.Store(_e261*4, asuint(asuint(asfloat(_e254))));
+    int _e263 = fast_cursor;
+    local_19 = uint((base + 12u));
+    uint _e269 = local_19;
+    output.Store(_e269*4, asuint(uint(_e263)));
+    local_21 = 2122317824u;
+    uint _e273 = local_21;
+    local_22 = 2122317823u;
+    uint _e277 = local_22;
+    uint _e280 = asuint(asfloat(_e277));
+    uint _e282 = (_e280 & 2147483647u);
+    const uint _e292 = _naga_divide_f32_(asuint(asfloat(_e273)), (((_e282 > 2122317824u) && (_e282 < 2139095040u)) ? ((_e280 & 2147483648u) | 2139095040u) : _e280));
+    local_20 = uint((base + 13u));
+    uint _e299 = local_20;
+    output.Store(_e299*4, asuint(asuint(asfloat(_e292))));
+    local_24 = 2122317824u;
+    uint _e303 = local_24;
+    local_25 = 2122317824u;
+    uint _e307 = local_25;
+    uint _e310 = asuint(asfloat(_e307));
+    uint _e312 = (_e310 & 2147483647u);
+    const uint _e322 = _naga_divide_f32_(asuint(asfloat(_e303)), (((_e312 > 2122317824u) && (_e312 < 2139095040u)) ? ((_e310 & 2147483648u) | 2139095040u) : _e310));
+    local_23 = uint((base + 14u));
+    uint _e329 = local_23;
+    output.Store(_e329*4, asuint(asuint(asfloat(_e322))));
+    local_27 = 2122317824u;
+    uint _e333 = local_27;
+    local_28 = 2122317825u;
+    uint _e337 = local_28;
+    uint _e340 = asuint(asfloat(_e337));
+    uint _e342 = (_e340 & 2147483647u);
+    const uint _e352 = _naga_divide_f32_(asuint(asfloat(_e333)), (((_e342 > 2122317824u) && (_e342 < 2139095040u)) ? ((_e340 & 2147483648u) | 2139095040u) : _e340));
+    local_26 = uint((base + 15u));
+    uint _e359 = local_26;
+    output.Store(_e359*4, asuint(asuint(asfloat(_e352))));
 }

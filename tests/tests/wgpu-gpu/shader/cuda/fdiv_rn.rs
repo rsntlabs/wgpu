@@ -24,6 +24,16 @@ pub(super) fn cases() -> Vec<ShaderTest> {
                 host
             }
         );
+        let denominator = second & 0x7fff_ffff;
+        let fast = if (0x7e80_0001..0x7f80_0000).contains(&denominator) {
+            if first & 0x7fff_ffff >= 0x7f80_0000 {
+                0x7fc0_0000
+            } else {
+                (first ^ second) & 0x8000_0000
+            }
+        } else {
+            result
+        };
         input.extend_from_slice(&[first, second]);
         expected.extend_from_slice(&[
             result,
@@ -36,13 +46,19 @@ pub(super) fn cases() -> Vec<ShaderTest> {
             7,
             host_result(second, first),
             0x3eaa_aaab,
+            fast,
+            fast,
+            2,
+            0x3f80_0001,
+            0x3f80_0000,
+            0,
         ]);
     }
     assert_eq!(input.len(), 8192);
     expected.extend_from_slice(&[SENTINEL; 4]);
     let initial = vec![SENTINEL; expected.len()];
     vec![module_case(
-        "__fdiv_rn exact bigint references preserve zero signs rounded operand order and sequenced wrappers",
+        "RN and fast divide exact bigint references preserve zero signs rounded operand order and sequenced wrappers",
         include_str!("../../../../../naga/tests/in/cuda/fdiv-rn.cu"), [32,1,1], &expected,
     ).module_buffers(vec![
         ShaderBuffer::new(0,wgpu::BufferBindingType::Storage { read_only:true },&input),

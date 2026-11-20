@@ -1253,6 +1253,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__fsqrt_ru",
         "__fdiv_rz",
         "__fdiv_rn",
+        "__fdividef",
         "__frcp_rn",
         "__frcp_rz",
         "__fdiv_rd",
@@ -1380,6 +1381,7 @@ pub(super) enum FunctionCandidate {
     FusedMultiplyAddRoundDown,
     FusedMultiplyAddRoundUp,
     DivideRoundNearest,
+    DivideApproximate,
     DivideRoundZero,
     DivideRoundDown,
     DivideRoundUp,
@@ -2014,6 +2016,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::DivideRoundUp
                         | FunctionCandidate::DivideRoundZero
                         | FunctionCandidate::DivideRoundNearest
+                        | FunctionCandidate::DivideApproximate
                         | FunctionCandidate::ReciprocalRoundNearest
                         | FunctionCandidate::ReciprocalRoundDown
                         | FunctionCandidate::ReciprocalRoundUp
@@ -2331,6 +2334,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::DivideRoundUp
             | FunctionCandidate::DivideRoundZero
             | FunctionCandidate::DivideRoundNearest
+            | FunctionCandidate::DivideApproximate
             | FunctionCandidate::ReciprocalRoundNearest
             | FunctionCandidate::ReciprocalRoundDown
             | FunctionCandidate::ReciprocalRoundUp
@@ -2701,6 +2705,9 @@ impl<'a> Parser<'a> {
         }
         if candidate == FunctionCandidate::DivideRoundZero {
             return self.lower_fdiv_rz_call(arguments, span);
+        }
+        if candidate == FunctionCandidate::DivideApproximate {
+            return self.lower_fdividef_call(arguments, span);
         }
         if candidate == FunctionCandidate::DivideRoundNearest {
             return self.lower_fdiv_rn_call(arguments, span);
@@ -3419,6 +3426,7 @@ impl<'a> Parser<'a> {
                 (true, "__fmul_rd") => Some(FunctionCandidate::MultiplyRoundDown),
                 (true, "__fmul_ru") => Some(FunctionCandidate::MultiplyRoundUp),
                 (true, "__fsqrt_ru") => Some(FunctionCandidate::SqrtRoundUp),
+                (true, "__fdividef") => Some(FunctionCandidate::DivideApproximate),
                 (true, "__fdiv_rd") => Some(FunctionCandidate::DivideRoundDown),
                 (true, "__fdiv_ru") => Some(FunctionCandidate::DivideRoundUp),
                 (true, "__frcp_rd") => Some(FunctionCandidate::ReciprocalRoundDown),
@@ -3645,7 +3653,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::DivideRoundDown
             | FunctionCandidate::DivideRoundUp
             | FunctionCandidate::DivideRoundZero
-            | FunctionCandidate::DivideRoundNearest => 2,
+            | FunctionCandidate::DivideRoundNearest
+            | FunctionCandidate::DivideApproximate => 2,
             FunctionCandidate::AtomicCompareExchange(_)
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
@@ -3757,6 +3766,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::DivideRoundUp
             | FunctionCandidate::DivideRoundZero
             | FunctionCandidate::DivideRoundNearest
+            | FunctionCandidate::DivideApproximate
             | FunctionCandidate::ReciprocalRoundNearest
             | FunctionCandidate::ReciprocalRoundDown
             | FunctionCandidate::ReciprocalRoundUp

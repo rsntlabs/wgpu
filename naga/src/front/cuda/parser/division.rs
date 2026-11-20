@@ -41,6 +41,46 @@ impl Parser<'_> {
         self.lower_fdiv_call(arguments, DivisionRounding::TowardPositive, span)
     }
 
+    pub(super) fn lower_fdividef_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        use BinaryOperator as Op;
+
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let mut arguments = arguments.into_iter();
+        let numerator = self.convert_scalar(arguments.next().unwrap().into(), Scalar::F32)?;
+        let denominator = self.convert_scalar(arguments.next().unwrap().into(), Scalar::F32)?;
+        let numerator = self.bitcast_scalar(numerator.handle, Scalar::U32, span)?;
+        let denominator = self.bitcast_scalar(denominator.handle, Scalar::U32, span)?;
+        let magnitude_mask = self.division_literal(0x7fff_ffff, span)?;
+        let sign_mask = self.division_literal(0x8000_0000, span)?;
+        let limit = self.division_literal(0x7e80_0000, span)?;
+        let infinity = self.division_literal(0x7f80_0000, span)?;
+        let magnitude = self.division_binary(Op::And, denominator, magnitude_mask, span)?;
+        let above_limit = self.division_binary(Op::Greater, magnitude, limit, span)?;
+        let finite = self.division_binary(Op::Less, magnitude, infinity, span)?;
+        let large_finite = self.division_binary(Op::LogicalAnd, above_limit, finite, span)?;
+        let sign = self.division_binary(Op::And, denominator, sign_mask, span)?;
+        let signed_infinity = self.division_binary(Op::InclusiveOr, sign, infinity, span)?;
+        // A large finite divisor has the same result as a same-sign infinity.
+        let divisor = self.division_select(large_finite, signed_infinity, denominator, span)?;
+        let bits =
+            self.call_division_bits(numerator, divisor, DivisionRounding::NearestEven, span)?;
+        let handle = self.bitcast_scalar(bits, Scalar::F32, span)?;
+        Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
+            constant: ConstantValue::default(),
+            handle,
+            ty: scalar_resolution(Scalar::F32),
+            span,
+        }
+        .into())
+    }
+
     fn lower_fdiv_call(
         &mut self,
         arguments: Vec<Value>,

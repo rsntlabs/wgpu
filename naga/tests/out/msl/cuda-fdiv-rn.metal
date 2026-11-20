@@ -122,13 +122,13 @@ int _fdiv_rn(
     bool first_1,
     bool second_1
 ) {
-    int local_15 = {};
+    int local_29 = {};
     if (first_1) {
-        local_15 = 7;
+        local_29 = 7;
     } else {
-        local_15 = 9;
+        local_29 = 9;
     }
-    int _e6 = local_15;
+    int _e6 = local_29;
     return _e6;
 }
 
@@ -164,11 +164,26 @@ kernel void divide_round_nearest(
     uint local_12 = {};
     uint local_13 = {};
     uint local_14 = {};
+    uint local_15 = {};
+    int fast_cursor = {};
+    uint local_16 = {};
+    uint local_17 = {};
+    uint local_18 = {};
+    uint local_19 = {};
+    uint local_20 = {};
+    uint local_21 = {};
+    uint local_22 = {};
+    uint local_23 = {};
+    uint local_24 = {};
+    uint local_25 = {};
+    uint local_26 = {};
+    uint local_27 = {};
+    uint local_28 = {};
     uint index = threadIdx.x + (blockIdx.x * 32u);
     if (index >= 4096u) {
         return;
     }
-    uint base = 4u + (index * 10u);
+    uint base = 4u + (index * 16u);
     local = static_cast<uint>(index * 2u);
     uint _e17 = local;
     uint _e20 = input[_e17];
@@ -243,4 +258,61 @@ kernel void divide_round_nearest(
     local_14 = static_cast<uint>(base + 9u);
     uint _e189 = local_14;
     output[_e189] = as_type<uint>(_e183);
+    uint _e192 = as_type<uint>(second_2);
+    uint _e194 = _e192 & 2147483647u;
+    uint _e204 = _naga_divide_f32_(as_type<uint>(first_2), ((_e194 > 2122317824u) && (_e194 < 2139095040u)) ? ((_e192 & 2147483648u) | 2139095040u) : _e192);
+    local_15 = static_cast<uint>(base + 10u);
+    uint _e211 = local_15;
+    output[_e211] = as_type<uint>(as_type<float>(_e204));
+    fast_cursor = 0;
+    int _e217 = fast_cursor;
+    fast_cursor = as_type<int>(as_type<uint>(_e217) + as_type<uint>(1));
+    local_17 = static_cast<uint>((index * 2u) + static_cast<uint>(_e217));
+    uint _e224 = local_17;
+    uint _e226 = input[_e224];
+    int _e230 = fast_cursor;
+    fast_cursor = as_type<int>(as_type<uint>(_e230) + as_type<uint>(1));
+    local_18 = static_cast<uint>((index * 2u) + static_cast<uint>(_e230));
+    uint _e237 = local_18;
+    uint _e239 = input[_e237];
+    uint _e242 = as_type<uint>(as_type<float>(_e239));
+    uint _e244 = _e242 & 2147483647u;
+    uint _e254 = _naga_divide_f32_(as_type<uint>(as_type<float>(_e226)), ((_e244 > 2122317824u) && (_e244 < 2139095040u)) ? ((_e242 & 2147483648u) | 2139095040u) : _e242);
+    local_16 = static_cast<uint>(base + 11u);
+    uint _e261 = local_16;
+    output[_e261] = as_type<uint>(as_type<float>(_e254));
+    int _e263 = fast_cursor;
+    local_19 = static_cast<uint>(base + 12u);
+    uint _e269 = local_19;
+    output[_e269] = static_cast<uint>(_e263);
+    local_21 = 2122317824u;
+    uint _e273 = local_21;
+    local_22 = 2122317823u;
+    uint _e277 = local_22;
+    uint _e280 = as_type<uint>(as_type<float>(_e277));
+    uint _e282 = _e280 & 2147483647u;
+    uint _e292 = _naga_divide_f32_(as_type<uint>(as_type<float>(_e273)), ((_e282 > 2122317824u) && (_e282 < 2139095040u)) ? ((_e280 & 2147483648u) | 2139095040u) : _e280);
+    local_20 = static_cast<uint>(base + 13u);
+    uint _e299 = local_20;
+    output[_e299] = as_type<uint>(as_type<float>(_e292));
+    local_24 = 2122317824u;
+    uint _e303 = local_24;
+    local_25 = 2122317824u;
+    uint _e307 = local_25;
+    uint _e310 = as_type<uint>(as_type<float>(_e307));
+    uint _e312 = _e310 & 2147483647u;
+    uint _e322 = _naga_divide_f32_(as_type<uint>(as_type<float>(_e303)), ((_e312 > 2122317824u) && (_e312 < 2139095040u)) ? ((_e310 & 2147483648u) | 2139095040u) : _e310);
+    local_23 = static_cast<uint>(base + 14u);
+    uint _e329 = local_23;
+    output[_e329] = as_type<uint>(as_type<float>(_e322));
+    local_27 = 2122317824u;
+    uint _e333 = local_27;
+    local_28 = 2122317825u;
+    uint _e337 = local_28;
+    uint _e340 = as_type<uint>(as_type<float>(_e337));
+    uint _e342 = _e340 & 2147483647u;
+    uint _e352 = _naga_divide_f32_(as_type<uint>(as_type<float>(_e333)), ((_e342 > 2122317824u) && (_e342 < 2139095040u)) ? ((_e340 & 2147483648u) | 2139095040u) : _e340);
+    local_26 = static_cast<uint>(base + 15u);
+    uint _e359 = local_26;
+    output[_e359] = as_type<uint>(as_type<float>(_e352));
 }

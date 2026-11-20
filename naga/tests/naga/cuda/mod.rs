@@ -518,3 +518,5 @@ mod fmul_rd;
 mod fmul_ru;
 
 mod fmaf_directed;
+
+mod fdividef;
