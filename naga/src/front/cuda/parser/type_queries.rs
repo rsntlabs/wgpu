@@ -8,6 +8,11 @@ enum SizeofOperand {
     NullPointer,
 }
 
+enum TypeQueryType {
+    Pointer,
+    Object { ty: QualifiedType, reference: bool },
+}
+
 struct RecordOffsetIndex {
     value: Option<i128>,
     scalar: SourceScalar,
@@ -416,7 +421,10 @@ impl Parser<'_> {
         name: &str,
         target_span: Span,
     ) -> Result<u32, ParseError> {
-        let ty = self.parse_type()?.ty;
+        let TypeQueryType::Object { ty, .. } = self.type_query_type_id(target_span)? else {
+            return Ok(8);
+        };
+        let ty = ty.ty;
         if let Some(scalar) = ty.source_scalar() {
             // The supported scalar types have natural alignment equal to their size.
             Ok(u32::from(scalar.scalar().width))
@@ -955,6 +963,22 @@ impl Parser<'_> {
             return self.fail("type queries require a parenthesized type or sizeof a named object");
         }
 
+        let value = match self.type_query_type_id(span)? {
+            TypeQueryType::Pointer => 8,
+            TypeQueryType::Object { ty, reference } => {
+                let ty = if reference {
+                    ty.ty
+                } else {
+                    self.array_alias_declarator(ty, span)?.ty
+                };
+                self.type_query_value(name, ty, span)?
+            }
+        };
+        let closing = self.lexer.expect_span(Token::Paren(')'))?;
+        self.type_query_result(value, span.until(&closing))
+    }
+
+    fn type_query_type_id(&mut self, span: Span) -> Result<TypeQueryType, ParseError> {
         let mut lookahead = self.lexer.clone();
         let qualifiers = types::declaration_qualifiers(&mut lookahead, Qualifiers::NONE, false)?;
         let operand = if lookahead.next_if(Token::Word("void"))? {
@@ -978,7 +1002,13 @@ impl Parser<'_> {
             if pointer_depth > 64 {
                 return self.fail("CUDA pointer nesting limit exceeded");
             }
-            types::pointer_qualifiers(&mut self.lexer)?;
+            let budget = &mut self.parameter_expansion_budget;
+            types::declaration_qualifiers_with_work(
+                &mut self.lexer,
+                Qualifiers::NONE,
+                true,
+                |span| budget.charge_work(1, span),
+            )?;
         }
         if operand.is_none() && pointer_depth == 0 {
             return Err(ParseError {
@@ -992,19 +1022,14 @@ impl Parser<'_> {
         if (reference || pointer_depth != 0) && self.lexer.peek()?.0 == Token::Paren('[') {
             return self.fail("direct arrays of pointers or references are unsupported");
         }
-        let value = if pointer_depth != 0 {
-            8
+        Ok(if pointer_depth != 0 {
+            TypeQueryType::Pointer
         } else {
-            let operand = operand.unwrap();
-            let ty = if reference {
-                operand.ty
-            } else {
-                self.array_alias_declarator(operand, span)?.ty
-            };
-            self.type_query_value(name, ty, span)?
-        };
-        let closing = self.lexer.expect_span(Token::Paren(')'))?;
-        self.type_query_result(value, span.until(&closing))
+            TypeQueryType::Object {
+                ty: operand.unwrap(),
+                reference,
+            }
+        })
     }
 
     fn type_query_result(&mut self, value: u32, span: Span) -> Result<Value, ParseError> {
@@ -1735,6 +1760,8 @@ mod tests {
             ("alignof(float3) / 4]", false, true),
             ("sizeof One / 4]", true, true),
             ("sizeof(One) / 4]", false, true),
+            ("sizeof(void const * const * volatile) / 8]", true, true),
+            ("alignof(Fixed &) / 4]", false, true),
             ("true || (sizeof(float) / alignof(long))]", false, true),
             ("((((sizeof(bool)))))]", false, false),
         ] {
@@ -1797,6 +1824,27 @@ mod tests {
             assert!(parser.function.ir.local_variables.is_empty());
             assert!(parser.function.ir.body.is_empty());
         }
+    }
+
+    #[test]
+    fn offsetof_indirect_type_queries_charge_for_pointer_qualifiers() {
+        let source = format!("sizeof(void *{})", "__restrict__ ".repeat(64));
+        let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
+        let (index, _) = parser.record_offset_index(0, 0, true).unwrap();
+        assert_eq!(index.value, Some(8));
+
+        let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
+        let span = Span::new(0, 1);
+        parser.parameter_expansion_budget.activate();
+        for bit in (4..usize::BITS).rev() {
+            let _ = parser
+                .parameter_expansion_budget
+                .charge_work(1usize << bit, span);
+        }
+        assert!(parser.record_offset_index(0, 0, true).is_err());
+        assert!(parser.parameter_expansion_budget.is_exhausted());
+        assert!(parser.function.ir.expressions.is_empty());
+        assert!(parser.module.types.is_empty());
     }
 
     #[test]

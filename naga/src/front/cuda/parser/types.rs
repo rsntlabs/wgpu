@@ -182,8 +182,17 @@ pub(super) fn pointer_qualifiers(lexer: &mut Lexer<'_>) -> Result<Qualifiers, Pa
 
 pub(super) fn declaration_qualifiers(
     lexer: &mut Lexer<'_>,
+    qualifiers: Qualifiers,
+    allow_restrict: bool,
+) -> Result<Qualifiers, ParseError> {
+    declaration_qualifiers_with_work(lexer, qualifiers, allow_restrict, |_| Ok(()))
+}
+
+pub(super) fn declaration_qualifiers_with_work(
+    lexer: &mut Lexer<'_>,
     mut qualifiers: Qualifiers,
     allow_restrict: bool,
+    mut charge_work: impl FnMut(Span) -> Result<(), ParseError>,
 ) -> Result<Qualifiers, ParseError> {
     loop {
         let token = lexer.peek()?;
@@ -209,6 +218,7 @@ pub(super) fn declaration_qualifiers(
             Token::Word("__restrict__" | "__restrict") if allow_restrict => {}
             _ => return Ok(qualifiers),
         }
+        charge_work(token.1)?;
         lexer.next()?;
     }
 }

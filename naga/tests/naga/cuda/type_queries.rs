@@ -1036,8 +1036,8 @@ fn cuda_record_offsetof_evaluates_scalar_layout_queries_in_indices() {
 #[test]
 fn cuda_record_offsetof_rejects_unsupported_layout_queries_in_indices() {
     for (index, message) in [
-        ("sizeof(int *)", "expected"),
-        ("alignof(int &)", "expected"),
+        ("sizeof(int && &)", "expected"),
+        ("alignof(int[2])", "expected"),
         ("sizeof(int[2])", "expected"),
         ("sizeof(int())", "expected"),
         ("sizeof()", "type"),
@@ -1098,7 +1098,6 @@ fn cuda_record_offsetof_rejects_incomplete_or_unsupported_sizeof_in_indices() {
     for index in [
         "sizeof(Incomplete)",
         "true || sizeof(Incomplete)",
-        "sizeof(Pointer)",
         "sizeof(dim3)",
         "sizeof(std::nullptr_t)",
     ] {
@@ -1106,7 +1105,6 @@ fn cuda_record_offsetof_rejects_incomplete_or_unsupported_sizeof_in_indices() {
             "#include <cstddef>
              struct Record {{ int row[4]; }};
              using Incomplete = int[];
-             using Pointer = int *;
              __global__ void kernel(unsigned *out) {{
                  out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
              }}"
@@ -1157,16 +1155,10 @@ fn cuda_record_offsetof_evaluates_aggregate_alignof_in_indices() {
 
 #[test]
 fn cuda_record_offsetof_rejects_unsupported_aggregate_alignof_in_indices() {
-    for index in [
-        "alignof(Pointer)",
-        "true || alignof(Pointer)",
-        "alignof(dim3)",
-        "alignof(std::nullptr_t)",
-    ] {
+    for index in ["alignof(dim3)", "alignof(std::nullptr_t)"] {
         let error = rejected(&format!(
             "#include <cstddef>
              struct Record {{ int row[4]; }};
-             using Pointer = int *;
              __global__ void kernel(unsigned *out) {{
                  out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
              }}"
@@ -1261,6 +1253,74 @@ fn cuda_record_offsetof_rejects_unsupported_named_sizeof_in_indices() {
          }",
     );
     assert!(error.message.contains("complete"), "{error}");
+}
+
+#[test]
+fn cuda_record_offsetof_evaluates_indirect_type_queries_in_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        struct Record { int head; int row[5]; };
+        struct Padded { short first; int middle; short last; };
+        using Pointer = int *;
+        using Row = int[3];
+        using Open = int[];
+        __global__ void kernel(unsigned long *output, int *input) {
+            output[0] = offsetof(Record, row[sizeof(int *) / 4]);
+            output[1] = offsetof(Record, row[alignof(const volatile void *) / 4]);
+            output[2] = offsetof(Record, row[sizeof(void const * volatile *&&) / 4]);
+            output[3] = offsetof(Record, row[sizeof(Pointer const &) / 4]);
+            output[4] = offsetof(Record, row[alignof(Pointer *) / 4]);
+            output[5] = offsetof(Record, row[sizeof(int &) / 4]);
+            output[6] = offsetof(Record, row[alignof(int &&) / 4]);
+            output[7] = offsetof(Record, row[sizeof(const Row &) / 4]);
+            output[8] = offsetof(Record, row[alignof(Row &&) / 4]);
+            output[9] = offsetof(Record, row[sizeof(Open *) / 4]);
+            output[10] = offsetof(Record, row[alignof(Open &) / 4]);
+            output[11] = offsetof(Record, row[sizeof(Padded &) / 4]);
+            output[12] = offsetof(Record, row[sizeof(decltype(input)) / 4]);
+            output[13] = offsetof(Record, row[alignof(std::size_t *) / 4]);
+            output[14] = offsetof(Record, row[true || sizeof(int *) / 0]);
+        }",
+        &[12, 12, 12, 12, 12, 8, 8, 16, 8, 12, 8, 16, 12, 12, 8],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_invalid_indirect_type_queries_in_indices() {
+    for (index, message) in [
+        ("sizeof(void)", "complete object type"),
+        ("alignof(const void &)", "complete object type"),
+        ("true || sizeof(void &&)", "complete object type"),
+        ("sizeof(Open &)", "fixed-array type"),
+        ("sizeof(int &*)", "expected"),
+        ("sizeof(int *)", "out of bounds"),
+        ("sizeof(int (*)(int))", "expected"),
+        ("alignof(int (&)[2])", "expected"),
+        ("sizeof(int &[2])", "direct arrays"),
+        ("alignof(int * const const)", "duplicate const"),
+        (
+            "true || sizeof(int * volatile volatile)",
+            "duplicate volatile",
+        ),
+    ] {
+        let error = rejected(&format!(
+            "struct Record {{ int row[4]; }};
+             using Open = int[];
+             __global__ void kernel(unsigned *out) {{
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
+        assert!(error.message.contains(message), "{index}: {error}");
+    }
+
+    let stars = "*".repeat(65);
+    let error = rejected(&format!(
+        "struct Record {{ int row[4]; }};
+         __global__ void kernel(unsigned *out) {{
+             out[0] = unsigned(__builtin_offsetof(Record, row[sizeof(void {stars}) / 8]));
+         }}"
+    ));
+    assert!(error.message.contains("pointer nesting limit"), "{error}");
 }
 
 #[test]

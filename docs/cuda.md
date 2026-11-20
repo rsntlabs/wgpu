@@ -508,6 +508,8 @@ Inside an index, `sizeof(name)` and `sizeof name` also accept direct,
 unqualified object names. They use the source object type without reading
 the object. Fixed arrays retain their full extent and array parameters
 use their adjusted pointer type.
+Pointer type queries, including `void*`, use the CUDA source ABI size and
+alignment of eight bytes. Reference type queries use the referent's layout.
 Arithmetic rejects signed overflow and zero divisors, and wraps unsigned
 results at the operation's width. Shift counts must be nonnegative and less
 than the promoted left operand's bit width. Left shifts wrap at that width
