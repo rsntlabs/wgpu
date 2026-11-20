@@ -1288,7 +1288,6 @@ fn cuda_record_offsetof_rejects_invalid_indirect_type_queries_in_indices() {
         ("sizeof(Open &)", "fixed-array type"),
         ("sizeof(int &*)", "expected"),
         ("sizeof(int *)", "out of bounds"),
-        ("sizeof(int (*)(int))", "expected"),
         ("sizeof(int &[2])", "direct arrays"),
         ("alignof(int * const const)", "duplicate const"),
         (
@@ -4313,8 +4312,7 @@ fn cuda_layout_queries_grouped_pointer_to_array_type_ids_preserve_pointer_layout
 }
 
 #[test]
-fn cuda_layout_queries_grouped_pointer_to_array_type_ids_validate_bounds_and_reject_function_pointers(
-) {
+fn cuda_layout_queries_grouped_pointer_to_array_type_ids_validate_bounds() {
     for query in [
         "sizeof(int(*)[0])",
         "sizeof(int(*)[-1])",
@@ -4325,8 +4323,6 @@ fn cuda_layout_queries_grouped_pointer_to_array_type_ids_validate_bounds_and_rej
         "sizeof(void(*)[3])",
         "alignof(int(*const const)[3])",
         "sizeof(int(*)[3)",
-        "sizeof(int(*)(int))",
-        "alignof(int(*)())",
     ] {
         for nested in [false, true] {
             let expression = if nested {
@@ -4474,8 +4470,6 @@ fn cuda_layout_queries_grouped_pointer_chains_are_bounded_and_validate_array_sha
         "sizeof(int(**)[index])",
         "sizeof(int(**)[2][])",
         "alignof(int(*const const *)[2])",
-        "sizeof(int(**)(int))",
-        "alignof(int(**)())",
         "sizeof(int(**pointer))",
     ] {
         for nested in [false, true] {
@@ -4531,7 +4525,6 @@ fn cuda_layout_queries_grouped_references_to_array_pointers_reject_invalid_chain
         "sizeof(int(*&&)[-1])",
         "sizeof(int(*&)[index])",
         "sizeof(int(*&)[2][])",
-        "sizeof(int(*&)(int))",
     ] {
         for nested in [false, true] {
             let expression = if nested {
@@ -4608,4 +4601,61 @@ fn cuda_layout_queries_direct_pointer_arrays_validate_bounds_and_reject_referenc
             output[0] = __builtin_offsetof(Offsets, bytes[true || sizeof(int*[0])]);
         }",
     );
+}
+
+#[test]
+fn cuda_layout_queries_grouped_function_pointers_have_pointer_layout_without_function_values() {
+    for query in [
+        "sizeof(int(*)(int))",
+        "sizeof(void(*)())",
+        "alignof(int(*)(void))",
+        "sizeof(unsigned(*const)(const int*, unsigned&))",
+        "alignof(int(*volatile)(float, bool))",
+        "sizeof(int(**)(int))",
+        "sizeof(int(*&)(int))",
+        "alignof(void(*const *&&)())",
+        "sizeof(void**(*)(const void*))",
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = {query}; output[1] = __builtin_offsetof(Offsets, bytes[{query}]);
+            }}"
+            ),
+            &[8, 32],
+        );
+    }
+}
+
+#[test]
+fn cuda_layout_queries_function_pointer_signatures_reject_invalid_types_and_malformed_parameters() {
+    for query in [
+        "sizeof(int(int))",
+        "alignof(int())",
+        "sizeof(int(&)(int))",
+        "sizeof(int(*)(Missing))",
+        "sizeof(int(*)(void, int))",
+        "sizeof(int(*)(int, void))",
+        "sizeof(int(*)(int,))",
+        "sizeof(int(*)(,int))",
+        "sizeof(int(*)(int,,float))",
+        "sizeof(int(*)(int)",
+        "sizeof(Row(*)(int))",
+        "sizeof(int(*)(int[0]))",
+        "sizeof(int(*)(const void))",
+        "alignof(int(*) (void&))",
+    ] {
+        for nested in [false, true] {
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query.to_owned()
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }}; using Row = int[3];
+                __global__ void kernel(unsigned long *output) {{ output[0] = {expression}; }}"
+            ));
+        }
+    }
 }

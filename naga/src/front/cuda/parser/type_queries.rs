@@ -15,9 +15,10 @@ enum TypeQueryType {
     Object(QualifiedType),
 }
 
-enum ArrayIndirection {
-    Pointer,
-    Reference,
+enum GroupedTypeQuery {
+    PointerToArray,
+    ArrayReference,
+    FunctionPointer,
 }
 
 struct RecordOffsetIndex {
@@ -1286,7 +1287,7 @@ impl Parser<'_> {
             }
             if parenthesized
                 && self
-                    .scan_grouped_array_declarator(&mut lookahead)?
+                    .scan_grouped_query_declarator(&mut lookahead)?
                     .is_some()
             {
                 return Ok(false);
@@ -1371,41 +1372,35 @@ impl Parser<'_> {
     }
 
     fn type_query_type_id(&mut self, span: Span) -> Result<TypeQueryType, ParseError> {
+        let operand = self.type_query_base()?;
+        let pointer_depth = self.type_query_pointer_depth(operand.as_ref())?;
         let mut lookahead = self.lexer.clone();
-        let qualifiers = types::declaration_qualifiers(&mut lookahead, Qualifiers::NONE, false)?;
-        let operand = if lookahead.next_if(Token::Word("void"))? {
-            types::declaration_qualifiers(&mut lookahead, qualifiers, false)?;
+        if let Some(declarator) = self.scan_grouped_query_declarator(&mut lookahead)? {
             self.lexer = lookahead;
-            None
-        } else {
-            Some(self.parse_type()?)
-        };
-
-        let mut lookahead = self.lexer.clone();
-        if let Some(indirection) = self.scan_grouped_array_declarator(&mut lookahead)? {
+            if matches!(declarator, GroupedTypeQuery::FunctionPointer) {
+                if pointer_depth == 0
+                    && matches!(operand, Some(ty) if matches!(ty.ty, TypeSpecifier::Array(_)))
+                {
+                    return self.fail("function types cannot return arrays");
+                }
+                self.type_query_function_parameters()?;
+                return Ok(TypeQueryType::Pointer);
+            }
             let ty = operand.ok_or_else(|| ParseError {
                 message: String::from("array elements require a complete type"),
                 span,
             })?;
-            self.lexer = lookahead;
-            return Ok(match indirection {
-                ArrayIndirection::Pointer => TypeQueryType::PointerToArray(ty),
-                ArrayIndirection::Reference => TypeQueryType::Object(ty),
+            if pointer_depth != 0 {
+                return self
+                    .fail("grouped declarators with pointer array elements are unsupported");
+            }
+            return Ok(if matches!(declarator, GroupedTypeQuery::PointerToArray) {
+                TypeQueryType::PointerToArray(ty)
+            } else {
+                TypeQueryType::Object(ty)
             });
         }
 
-        let initial_pointer_depth = usize::from(matches!(
-            operand,
-            Some(QualifiedType {
-                ty: TypeSpecifier::Pointer { .. },
-                ..
-            })
-        ));
-        let pointer_depth = Self::scan_type_query_pointer_chain(
-            &mut self.lexer,
-            &mut self.parameter_expansion_budget,
-            initial_pointer_depth,
-        )?;
         if operand.is_none() && pointer_depth == 0 {
             return Err(ParseError {
                 message: String::from("type queries require a complete object type"),
@@ -1430,6 +1425,63 @@ impl Parser<'_> {
         })
     }
 
+    fn type_query_base(&mut self) -> Result<Option<QualifiedType>, ParseError> {
+        let mut lookahead = self.lexer.clone();
+        let qualifiers = types::declaration_qualifiers(&mut lookahead, Qualifiers::NONE, false)?;
+        if lookahead.next_if(Token::Word("void"))? {
+            types::declaration_qualifiers(&mut lookahead, qualifiers, false)?;
+            self.lexer = lookahead;
+            Ok(None)
+        } else {
+            self.parse_type().map(Some)
+        }
+    }
+
+    fn type_query_pointer_depth(
+        &mut self,
+        operand: Option<&QualifiedType>,
+    ) -> Result<usize, ParseError> {
+        let depth =
+            usize::from(operand.is_some_and(|ty| matches!(ty.ty, TypeSpecifier::Pointer { .. })));
+        Self::scan_type_query_pointer_chain(
+            &mut self.lexer,
+            &mut self.parameter_expansion_budget,
+            depth,
+        )
+    }
+
+    fn type_query_function_parameters(&mut self) -> Result<(), ParseError> {
+        let open = self.lexer.expect_span(Token::Paren('('))?;
+        self.parameter_expansion_budget.charge_work(2, open)?;
+        if self.lexer.next_if(Token::Paren(')'))? {
+            return Ok(());
+        }
+        let mut lookahead = self.lexer.clone();
+        if lookahead.next_if(Token::Word("void"))? && lookahead.next_if(Token::Paren(')'))? {
+            self.lexer = lookahead;
+            return Ok(());
+        }
+        loop {
+            let (_, span) = self.lexer.peek()?;
+            self.parameter_expansion_budget.charge_work(1, span)?;
+            let operand = self.type_query_base()?;
+            let pointer_depth = self.type_query_pointer_depth(operand.as_ref())?;
+            if operand.is_none() && pointer_depth == 0 {
+                return self.fail("void must be the only function parameter");
+            }
+            let (token, span) = self.lexer.peek()?;
+            if matches!(token, Token::Operation('&') | Token::LogicalOperation('&')) {
+                self.parameter_expansion_budget.charge_work(1, span)?;
+                self.lexer.next()?;
+            }
+            if self.lexer.next_if(Token::Paren(')'))? {
+                return Ok(());
+            }
+            let comma = self.lexer.expect_span(Token::Separator(','))?;
+            self.parameter_expansion_budget.charge_work(1, comma)?;
+        }
+    }
+
     fn scan_type_query_pointer_chain(
         lexer: &mut Lexer<'_>,
         budget: &mut parameter_expansion::ExpansionBudget,
@@ -1452,10 +1504,10 @@ impl Parser<'_> {
         Ok(depth)
     }
 
-    fn scan_grouped_array_declarator(
+    fn scan_grouped_query_declarator(
         &mut self,
         lexer: &mut Lexer<'_>,
-    ) -> Result<Option<ArrayIndirection>, ParseError> {
+    ) -> Result<Option<GroupedTypeQuery>, ParseError> {
         let (token, span) = lexer.peek()?;
         if token != Token::Paren('(') {
             return Ok(None);
@@ -1463,7 +1515,7 @@ impl Parser<'_> {
         let mut lookahead = lexer.clone();
         lookahead.next()?;
         let budget = &mut self.parameter_expansion_budget;
-        let indirection = match lookahead.peek()?.0 {
+        let pointer = match lookahead.peek()?.0 {
             Token::Operation('*') => {
                 budget.charge_work(2, span)?;
                 Self::scan_type_query_pointer_chain(&mut lookahead, budget, 0)?;
@@ -1472,20 +1524,26 @@ impl Parser<'_> {
                     budget.charge_work(1, reference_span)?;
                     lookahead.next()?;
                 }
-                ArrayIndirection::Pointer
+                true
             }
             Token::Operation('&') | Token::LogicalOperation('&') => {
                 lookahead.next()?;
                 budget.charge_work(3, span)?;
-                ArrayIndirection::Reference
+                false
             }
             _ => return Ok(None),
         };
-        if !lookahead.next_if(Token::Paren(')'))? || lookahead.peek()?.0 != Token::Paren('[') {
+        if !lookahead.next_if(Token::Paren(')'))? {
             return Ok(None);
         }
+        let declarator = match (pointer, lookahead.peek()?.0) {
+            (true, Token::Paren('(')) => GroupedTypeQuery::FunctionPointer,
+            (true, Token::Paren('[')) => GroupedTypeQuery::PointerToArray,
+            (false, Token::Paren('[')) => GroupedTypeQuery::ArrayReference,
+            _ => return Ok(None),
+        };
         *lexer = lookahead;
-        Ok(Some(indirection))
+        Ok(Some(declarator))
     }
 
     fn type_query_result(&mut self, value: u32, span: Span) -> Result<Value, ParseError> {
