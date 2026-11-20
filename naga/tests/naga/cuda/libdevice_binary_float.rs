@@ -1,7 +1,11 @@
 use super::helpers::validate;
 use naga::front::cuda::{parse_str, Options};
 
-const SPELLINGS: [(&str, &str); 2] = [("__nv_copysignf", "copysignf"), ("__nv_fdimf", "fdimf")];
+const SPELLINGS: [(&str, &str); 3] = [
+    ("__nv_copysignf", "copysignf"),
+    ("__nv_fdimf", "fdimf"),
+    ("__nv_nextafterf", "nextafterf"),
+];
 
 #[test]
 fn cuda_libdevice_binary_float_matches_cuda_spellings() {

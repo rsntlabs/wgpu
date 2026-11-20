@@ -9,7 +9,7 @@ __global__ void next_values(const uint2 *input, unsigned *output) {
     float y = __uint_as_float(input[index].y);
     unsigned counter = 0u;
     output[base] = __float_as_uint(nextafterf(x, y));
-    output[base + 1u] = __float_as_uint(nextafterf(counted(x, counter), counted(y, counter)));
+    output[base + 1u] = __float_as_uint(__nv_nextafterf(counted(x, counter), counted(y, counter)));
     output[base + 2u] = counter;
     output[base + 3u] = kind(nextafterf(x, y));
 }
