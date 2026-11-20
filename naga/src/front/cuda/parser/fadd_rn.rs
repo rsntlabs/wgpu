@@ -1,7 +1,7 @@
 use super::*;
 
-#[derive(Clone, Copy)]
-enum AddRounding {
+#[derive(Clone, Copy, PartialEq)]
+pub(super) enum AddRounding {
     NearestEven,
     TowardZero,
     TowardNegative,
@@ -57,6 +57,18 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
         self.lower_add_sub_call(arguments, subtract, AddRounding::TowardPositive, span)
+    }
+
+    pub(super) fn lower_fadd2_call(
+        &mut self,
+        arguments: Vec<Value>,
+        rounding: AddRounding,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        let arguments: [Value; 2] = arguments.try_into().ok().unwrap();
+        self.lower_float2_lanes(arguments, span, |parser, [left, right]| {
+            parser.call_fadd_bits(left, right, rounding, span)
+        })
     }
 
     pub(super) fn lower_fdimf_call(

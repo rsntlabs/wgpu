@@ -1,6 +1,7 @@
 use super::*;
 
 use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
+use super::fadd_rn::AddRounding;
 use super::float_classification::FloatClassification;
 use super::float_exponent::ExponentResult;
 use super::float_helpers::FloatMathFunction;
@@ -1289,6 +1290,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__fsub_rz",
         "__fadd_rd",
         "__fadd_ru",
+        "__fadd2_rn",
+        "__fadd2_rz",
+        "__fadd2_rd",
+        "__fadd2_ru",
         "__fsub_rd",
         "__fsub_ru",
         "__fmul_rz",
@@ -1413,6 +1418,7 @@ pub(super) enum FunctionCandidate {
     AddRoundZero,
     AddRoundDown,
     AddRoundUp,
+    VectorAdd(AddRounding),
     SubtractRoundNearest,
     SubtractRoundZero,
     SubtractRoundDown,
@@ -2047,6 +2053,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::AddRoundDown
                         | FunctionCandidate::AddRoundUp
                         | FunctionCandidate::AddRoundNearest
+                        | FunctionCandidate::VectorAdd(_)
                         | FunctionCandidate::SubtractRoundNearest
                         | FunctionCandidate::SubtractRoundZero
                         | FunctionCandidate::SubtractRoundDown
@@ -2344,10 +2351,12 @@ impl<'a> Parser<'a> {
             FunctionCandidate::FloatClassification(_)
             | FunctionCandidate::FixedFloatClassification(_) => TypeSpecifier::Scalar(Scalar::I32),
             FunctionCandidate::FloatExponent(result) => TypeSpecifier::Scalar(result.scalar()),
-            FunctionCandidate::VectorFusedMultiplyAdd(_) => TypeSpecifier::Vector {
-                component_count: 2,
-                scalar: Scalar::F32,
-            },
+            FunctionCandidate::VectorAdd(_) | FunctionCandidate::VectorFusedMultiplyAdd(_) => {
+                TypeSpecifier::Vector {
+                    component_count: 2,
+                    scalar: Scalar::F32,
+                }
+            }
             FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
@@ -2619,6 +2628,59 @@ impl<'a> Parser<'a> {
         self.lower_call(candidate, arguments, span)
     }
 
+    pub(super) fn lower_float2_lanes<const N: usize>(
+        &mut self,
+        arguments: [Value; N],
+        span: Span,
+        operation: impl Fn(&mut Self, [Handle<Expression>; N]) -> Result<Handle<Expression>, ParseError>,
+    ) -> Result<ExpressionResult, ParseError> {
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let operands = arguments.map(|argument| argument.handle);
+        self.parameter_expansion_budget
+            .charge_slice::<Handle<Expression>>(2, span)?;
+        let mut components = Vec::with_capacity(2);
+        for index in [0, 1] {
+            let mut lanes = operands;
+            for operand in &mut lanes {
+                let component = self.append(
+                    Expression::AccessIndex {
+                        base: *operand,
+                        index,
+                    },
+                    span,
+                )?;
+                *operand = self.bitcast_scalar(component, Scalar::U32, span)?;
+            }
+            let bits = operation(self, lanes)?;
+            components.push(self.bitcast_scalar(bits, Scalar::F32, span)?);
+        }
+        let ty = self.lower_type(
+            TypeSpecifier::Vector {
+                component_count: 2,
+                scalar: Scalar::F32,
+            },
+            span,
+        )?;
+        let handle_ty = self.type_handle(&ty, span);
+        let handle = self.append(
+            Expression::Compose {
+                ty: handle_ty,
+                components,
+            },
+            span,
+        )?;
+        Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
+            constant: ConstantValue::default(),
+            handle,
+            ty,
+            span,
+        }
+        .into())
+    }
+
     fn lower_vector_constructor_call(
         &mut self,
         component_count: u8,
@@ -2715,6 +2777,9 @@ impl<'a> Parser<'a> {
                 candidate == FunctionCandidate::SubtractRoundUp,
                 span,
             );
+        }
+        if let FunctionCandidate::VectorAdd(rounding) = candidate {
+            return self.lower_fadd2_call(arguments, rounding, span);
         }
         if candidate == FunctionCandidate::AddRoundZero {
             return self.lower_fadd_rz_call(arguments, span);
@@ -3475,6 +3540,16 @@ impl<'a> Parser<'a> {
                 (true, "remainderf") => Some(FunctionCandidate::FloatRemainder(
                     RemainderMode::NearestEven,
                 )),
+                (true, "__fadd2_rn") => {
+                    Some(FunctionCandidate::VectorAdd(AddRounding::NearestEven))
+                }
+                (true, "__fadd2_rz") => Some(FunctionCandidate::VectorAdd(AddRounding::TowardZero)),
+                (true, "__fadd2_rd") => {
+                    Some(FunctionCandidate::VectorAdd(AddRounding::TowardNegative))
+                }
+                (true, "__fadd2_ru") => {
+                    Some(FunctionCandidate::VectorAdd(AddRounding::TowardPositive))
+                }
                 (true, "__fadd_rd") => Some(FunctionCandidate::AddRoundDown),
                 (true, "__fadd_ru") => Some(FunctionCandidate::AddRoundUp),
                 (true, "__fsub_rd") => Some(FunctionCandidate::SubtractRoundDown),
@@ -3697,6 +3772,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::AddRoundDown
             | FunctionCandidate::AddRoundUp
             | FunctionCandidate::AddRoundNearest
+            | FunctionCandidate::VectorAdd(_)
             | FunctionCandidate::SubtractRoundNearest
             | FunctionCandidate::SubtractRoundZero
             | FunctionCandidate::SubtractRoundDown
@@ -3792,7 +3868,7 @@ impl<'a> Parser<'a> {
             FunctionCandidate::ScaleByPowerOfTwo => {
                 return Some(scalar_resolution([Scalar::F32, Scalar::I32][logical_index]))
             }
-            FunctionCandidate::VectorFusedMultiplyAdd(_) => {
+            FunctionCandidate::VectorAdd(_) | FunctionCandidate::VectorFusedMultiplyAdd(_) => {
                 return Some(TypeResolution::Value(TypeInner::Vector {
                     size: VectorSize::Bi,
                     scalar: Scalar::F32,

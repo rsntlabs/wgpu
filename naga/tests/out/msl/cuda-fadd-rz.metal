@@ -9,7 +9,7 @@ struct _mslBufferSizes {
     uint size1;
 };
 
-typedef uint type_4[1];
+typedef uint type_5[1];
 
 uint _naga_fadd_rz(
     uint left_bits,
@@ -76,13 +76,13 @@ int _fadd_rz(
     bool first_1,
     bool second_1
 ) {
-    int local_32 = {};
+    int local_54 = {};
     if (first_1) {
-        local_32 = 7;
+        local_54 = 7;
     } else {
-        local_32 = 9;
+        local_54 = 9;
     }
-    int _e6 = local_32;
+    int _e6 = local_54;
     return _e6;
 }
 
@@ -270,8 +270,8 @@ struct add_round_zeroInput {
 kernel void add_round_zero(
   metal::uint3 threadIdx [[thread_position_in_threadgroup]]
 , metal::uint3 blockIdx [[threadgroup_position_in_grid]]
-, device type_4 const& input [[buffer(0)]]
-, device type_4& output [[buffer(1)]]
+, device type_5 const& input [[buffer(0)]]
+, device type_5& output [[buffer(1)]]
 , constant _mslBufferSizes& _buffer_sizes [[buffer(2)]]
 ) {
     uint local = {};
@@ -308,11 +308,47 @@ kernel void add_round_zero(
     uint local_29 = {};
     uint local_30 = {};
     uint local_31 = {};
+    metal::float2 pair_first = {};
+    uint local_32 = {};
+    metal::float2 pair_second = {};
+    uint local_33 = {};
+    metal::float2 pair_rn = {};
+    metal::float2 local_34 = {};
+    metal::float2 local_35 = {};
+    uint local_36 = {};
+    uint local_37 = {};
+    uint local_38 = {};
+    metal::float2 pair_rz = {};
+    metal::float2 local_39 = {};
+    metal::float2 local_40 = {};
+    uint local_41 = {};
+    uint local_42 = {};
+    uint local_43 = {};
+    metal::float2 pair_rd = {};
+    metal::float2 local_44 = {};
+    metal::float2 local_45 = {};
+    uint local_46 = {};
+    uint local_47 = {};
+    uint local_48 = {};
+    metal::float2 pair_ru = {};
+    metal::float2 local_49 = {};
+    metal::float2 local_50 = {};
+    uint local_51 = {};
+    uint local_52 = {};
+    uint local_53 = {};
+    metal::float2 value = {};
+    metal::float2 value_1 = {};
+    metal::float2 value_2 = {};
+    metal::float2 value_3 = {};
+    metal::float2 value_4 = {};
+    metal::float2 value_5 = {};
+    metal::float2 value_6 = {};
+    metal::float2 value_7 = {};
     uint index = threadIdx.x + (blockIdx.x * 32u);
     if (index >= 4096u) {
         return;
     }
-    uint base = 4u + (index * 18u);
+    uint base = 4u + (index * 30u);
     local = static_cast<uint>(index * 2u);
     uint _e17 = local;
     uint _e20 = input[_e17];
@@ -472,4 +508,141 @@ kernel void add_round_zero(
     local_31 = static_cast<uint>(base + 17u);
     uint _e392 = local_31;
     output[_e392] = static_cast<uint>(_e386);
+    uint other = index ^ 1u;
+    local_32 = static_cast<uint>(other * 2u);
+    uint _e400 = local_32;
+    uint _e402 = input[_e400];
+    pair_first = metal::float2(first_2, as_type<float>(_e402));
+    local_33 = static_cast<uint>((other * 2u) + 1u);
+    uint _e412 = local_33;
+    uint _e414 = input[_e412];
+    pair_second = metal::float2(second_2, as_type<float>(_e414));
+    directed_cursor = 0;
+    metal::float2 _e419 = pair_first;
+    value = metal::float2 {};
+    value = _e419;
+    int _e423 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e423) + as_type<uint>(1));
+    metal::float2 _e426 = value;
+    local_34 = _e426;
+    metal::float2 _e428 = local_34;
+    metal::float2 _e429 = pair_second;
+    value_1 = metal::float2 {};
+    value_1 = _e429;
+    int _e433 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e433) + as_type<uint>(1));
+    metal::float2 _e436 = value_1;
+    local_35 = _e436;
+    metal::float2 _e438 = local_35;
+    uint _e443 = _naga_fadd_rn(as_type<uint>(_e428.x), as_type<uint>(_e438.x));
+    uint _e449 = _naga_fadd_rn(as_type<uint>(_e428.y), as_type<uint>(_e438.y));
+    pair_rn = metal::float2(as_type<float>(_e443), as_type<float>(_e449));
+    float _e454 = pair_rn.x;
+    local_36 = static_cast<uint>(base + 18u);
+    uint _e460 = local_36;
+    output[_e460] = as_type<uint>(_e454);
+    float _e463 = pair_rn.y;
+    local_37 = static_cast<uint>(base + 19u);
+    uint _e469 = local_37;
+    output[_e469] = as_type<uint>(_e463);
+    int _e471 = directed_cursor;
+    local_38 = static_cast<uint>(base + 20u);
+    uint _e477 = local_38;
+    output[_e477] = static_cast<uint>(_e471);
+    directed_cursor = 0;
+    metal::float2 _e480 = pair_first;
+    value_2 = metal::float2 {};
+    value_2 = _e480;
+    int _e484 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e484) + as_type<uint>(1));
+    metal::float2 _e487 = value_2;
+    local_39 = _e487;
+    metal::float2 _e489 = local_39;
+    metal::float2 _e490 = pair_second;
+    value_3 = metal::float2 {};
+    value_3 = _e490;
+    int _e494 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e494) + as_type<uint>(1));
+    metal::float2 _e497 = value_3;
+    local_40 = _e497;
+    metal::float2 _e499 = local_40;
+    uint _e504 = _naga_fadd_rz(as_type<uint>(_e489.x), as_type<uint>(_e499.x));
+    uint _e510 = _naga_fadd_rz(as_type<uint>(_e489.y), as_type<uint>(_e499.y));
+    pair_rz = metal::float2(as_type<float>(_e504), as_type<float>(_e510));
+    float _e515 = pair_rz.x;
+    local_41 = static_cast<uint>(base + 21u);
+    uint _e521 = local_41;
+    output[_e521] = as_type<uint>(_e515);
+    float _e524 = pair_rz.y;
+    local_42 = static_cast<uint>(base + 22u);
+    uint _e530 = local_42;
+    output[_e530] = as_type<uint>(_e524);
+    int _e532 = directed_cursor;
+    local_43 = static_cast<uint>(base + 23u);
+    uint _e538 = local_43;
+    output[_e538] = static_cast<uint>(_e532);
+    directed_cursor = 0;
+    metal::float2 _e541 = pair_first;
+    value_4 = metal::float2 {};
+    value_4 = _e541;
+    int _e545 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e545) + as_type<uint>(1));
+    metal::float2 _e548 = value_4;
+    local_44 = _e548;
+    metal::float2 _e550 = local_44;
+    metal::float2 _e551 = pair_second;
+    value_5 = metal::float2 {};
+    value_5 = _e551;
+    int _e555 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e555) + as_type<uint>(1));
+    metal::float2 _e558 = value_5;
+    local_45 = _e558;
+    metal::float2 _e560 = local_45;
+    uint _e565 = _naga_fadd_rd(as_type<uint>(_e550.x), as_type<uint>(_e560.x));
+    uint _e571 = _naga_fadd_rd(as_type<uint>(_e550.y), as_type<uint>(_e560.y));
+    pair_rd = metal::float2(as_type<float>(_e565), as_type<float>(_e571));
+    float _e576 = pair_rd.x;
+    local_46 = static_cast<uint>(base + 24u);
+    uint _e582 = local_46;
+    output[_e582] = as_type<uint>(_e576);
+    float _e585 = pair_rd.y;
+    local_47 = static_cast<uint>(base + 25u);
+    uint _e591 = local_47;
+    output[_e591] = as_type<uint>(_e585);
+    int _e593 = directed_cursor;
+    local_48 = static_cast<uint>(base + 26u);
+    uint _e599 = local_48;
+    output[_e599] = static_cast<uint>(_e593);
+    directed_cursor = 0;
+    metal::float2 _e602 = pair_first;
+    value_6 = metal::float2 {};
+    value_6 = _e602;
+    int _e606 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e606) + as_type<uint>(1));
+    metal::float2 _e609 = value_6;
+    local_49 = _e609;
+    metal::float2 _e611 = local_49;
+    metal::float2 _e612 = pair_second;
+    value_7 = metal::float2 {};
+    value_7 = _e612;
+    int _e616 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e616) + as_type<uint>(1));
+    metal::float2 _e619 = value_7;
+    local_50 = _e619;
+    metal::float2 _e621 = local_50;
+    uint _e626 = _naga_fadd_ru(as_type<uint>(_e611.x), as_type<uint>(_e621.x));
+    uint _e632 = _naga_fadd_ru(as_type<uint>(_e611.y), as_type<uint>(_e621.y));
+    pair_ru = metal::float2(as_type<float>(_e626), as_type<float>(_e632));
+    float _e637 = pair_ru.x;
+    local_51 = static_cast<uint>(base + 27u);
+    uint _e643 = local_51;
+    output[_e643] = as_type<uint>(_e637);
+    float _e646 = pair_ru.y;
+    local_52 = static_cast<uint>(base + 28u);
+    uint _e652 = local_52;
+    output[_e652] = as_type<uint>(_e646);
+    int _e654 = directed_cursor;
+    local_53 = static_cast<uint>(base + 29u);
+    uint _e660 = local_53;
+    output[_e660] = static_cast<uint>(_e654);
 }

@@ -528,3 +528,5 @@ mod libdevice_float_classification;
 mod libdevice_bitcasts;
 
 mod ffma2;
+
+mod fadd2;

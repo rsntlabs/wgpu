@@ -87,57 +87,10 @@ impl Parser<'_> {
         rounding: FmaRounding,
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
-        self.activate_parameter_expansion(span)?;
-        self.prepare_parameter_bindings(span)?;
-        let [left, right, addend]: [Value; 3] = arguments.try_into().ok().unwrap();
-        let operands = [
-            self.rvalue(left.into())?.handle,
-            self.rvalue(right.into())?.handle,
-            self.rvalue(addend.into())?.handle,
-        ];
-        self.parameter_expansion_budget
-            .charge_slice::<Handle<Expression>>(2, span)?;
-        let mut components = Vec::with_capacity(2);
-        for index in [0, 1] {
-            let mut lanes = operands;
-            for operand in &mut lanes {
-                let component = self.append(
-                    Expression::AccessIndex {
-                        base: *operand,
-                        index,
-                    },
-                    span,
-                )?;
-                *operand = self.bitcast_scalar(component, Scalar::U32, span)?;
-            }
-            let [left, right, addend] = lanes;
-            let bits = self.call_fmaf_bits(left, right, addend, rounding, span)?;
-            components.push(self.bitcast_scalar(bits, Scalar::F32, span)?);
-        }
-        let ty = self.lower_type(
-            TypeSpecifier::Vector {
-                component_count: 2,
-                scalar: Scalar::F32,
-            },
-            span,
-        )?;
-        let handle_ty = self.type_handle(&ty, span);
-        let handle = self.append(
-            Expression::Compose {
-                ty: handle_ty,
-                components,
-            },
-            span,
-        )?;
-        Ok(Value {
-            category: ValueCategory::Prvalue,
-            qualifiers: Qualifiers::NONE,
-            constant: ConstantValue::default(),
-            handle,
-            ty,
-            span,
-        }
-        .into())
+        let arguments: [Value; 3] = arguments.try_into().ok().unwrap();
+        self.lower_float2_lanes(arguments, span, |parser, [left, right, addend]| {
+            parser.call_fmaf_bits(left, right, addend, rounding, span)
+        })
     }
 
     pub(super) fn call_fmaf_rn_bits(

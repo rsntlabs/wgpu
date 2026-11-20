@@ -60,14 +60,14 @@ float truncate_value(float first, float second)
 
 int _fadd_rz(bool first_1, bool second_1)
 {
-    int local_32 = (int)0;
+    int local_54 = (int)0;
 
     if (first_1) {
-        local_32 = int(7);
+        local_54 = int(7);
     } else {
-        local_32 = int(9);
+        local_54 = int(9);
     }
-    int _e6 = local_32;
+    int _e6 = local_54;
     return _e6;
 }
 
@@ -243,6 +243,10 @@ uint _naga_fadd_ru(uint left_bits_3, uint right_bits_3)
     return (_e25 | ((((_e104 >= 8388608u) ? _e106 : 0u) << 23u) | (_e104 & 8388607u)));
 }
 
+float2 ZeroValuefloat2() {
+    return (float2)0;
+}
+
 [numthreads(32, 1, 1)]
 void add_round_zero(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_GroupID)
 {
@@ -280,12 +284,48 @@ void add_round_zero(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_Grou
     uint local_29 = (uint)0;
     uint local_30 = (uint)0;
     uint local_31 = (uint)0;
+    float2 pair_first = (float2)0;
+    uint local_32 = (uint)0;
+    float2 pair_second = (float2)0;
+    uint local_33 = (uint)0;
+    float2 pair_rn = (float2)0;
+    float2 local_34 = (float2)0;
+    float2 local_35 = (float2)0;
+    uint local_36 = (uint)0;
+    uint local_37 = (uint)0;
+    uint local_38 = (uint)0;
+    float2 pair_rz = (float2)0;
+    float2 local_39 = (float2)0;
+    float2 local_40 = (float2)0;
+    uint local_41 = (uint)0;
+    uint local_42 = (uint)0;
+    uint local_43 = (uint)0;
+    float2 pair_rd = (float2)0;
+    float2 local_44 = (float2)0;
+    float2 local_45 = (float2)0;
+    uint local_46 = (uint)0;
+    uint local_47 = (uint)0;
+    uint local_48 = (uint)0;
+    float2 pair_ru = (float2)0;
+    float2 local_49 = (float2)0;
+    float2 local_50 = (float2)0;
+    uint local_51 = (uint)0;
+    uint local_52 = (uint)0;
+    uint local_53 = (uint)0;
+    float2 value = (float2)0;
+    float2 value_1 = (float2)0;
+    float2 value_2 = (float2)0;
+    float2 value_3 = (float2)0;
+    float2 value_4 = (float2)0;
+    float2 value_5 = (float2)0;
+    float2 value_6 = (float2)0;
+    float2 value_7 = (float2)0;
 
     uint index = (threadIdx.x + (blockIdx.x * 32u));
     if ((index >= 4096u)) {
         return;
     }
-    uint base = (4u + (index * 18u));
+    uint base = (4u + (index * 30u));
     local = uint((index * 2u));
     uint _e17 = local;
     uint _e20 = asuint(input.Load(_e17*4));
@@ -445,4 +485,141 @@ void add_round_zero(uint3 threadIdx : SV_GroupThreadID, uint3 blockIdx : SV_Grou
     local_31 = uint((base + 17u));
     uint _e392 = local_31;
     output.Store(_e392*4, asuint(uint(_e386)));
+    uint other = (index ^ 1u);
+    local_32 = uint((other * 2u));
+    uint _e400 = local_32;
+    uint _e402 = asuint(input.Load(_e400*4));
+    pair_first = float2(first_2, asfloat(_e402));
+    local_33 = uint(((other * 2u) + 1u));
+    uint _e412 = local_33;
+    uint _e414 = asuint(input.Load(_e412*4));
+    pair_second = float2(second_2, asfloat(_e414));
+    directed_cursor = int(0);
+    float2 _e419 = pair_first;
+    value = ZeroValuefloat2();
+    value = _e419;
+    int _e423 = directed_cursor;
+    directed_cursor = asint(asuint(_e423) + asuint(int(1)));
+    float2 _e426 = value;
+    local_34 = _e426;
+    float2 _e428 = local_34;
+    float2 _e429 = pair_second;
+    value_1 = ZeroValuefloat2();
+    value_1 = _e429;
+    int _e433 = directed_cursor;
+    directed_cursor = asint(asuint(_e433) + asuint(int(1)));
+    float2 _e436 = value_1;
+    local_35 = _e436;
+    float2 _e438 = local_35;
+    const uint _e443 = _naga_fadd_rn(asuint(_e428.x), asuint(_e438.x));
+    const uint _e449 = _naga_fadd_rn(asuint(_e428.y), asuint(_e438.y));
+    pair_rn = float2(asfloat(_e443), asfloat(_e449));
+    float _e454 = pair_rn.x;
+    local_36 = uint((base + 18u));
+    uint _e460 = local_36;
+    output.Store(_e460*4, asuint(asuint(_e454)));
+    float _e463 = pair_rn.y;
+    local_37 = uint((base + 19u));
+    uint _e469 = local_37;
+    output.Store(_e469*4, asuint(asuint(_e463)));
+    int _e471 = directed_cursor;
+    local_38 = uint((base + 20u));
+    uint _e477 = local_38;
+    output.Store(_e477*4, asuint(uint(_e471)));
+    directed_cursor = int(0);
+    float2 _e480 = pair_first;
+    value_2 = ZeroValuefloat2();
+    value_2 = _e480;
+    int _e484 = directed_cursor;
+    directed_cursor = asint(asuint(_e484) + asuint(int(1)));
+    float2 _e487 = value_2;
+    local_39 = _e487;
+    float2 _e489 = local_39;
+    float2 _e490 = pair_second;
+    value_3 = ZeroValuefloat2();
+    value_3 = _e490;
+    int _e494 = directed_cursor;
+    directed_cursor = asint(asuint(_e494) + asuint(int(1)));
+    float2 _e497 = value_3;
+    local_40 = _e497;
+    float2 _e499 = local_40;
+    const uint _e504 = _naga_fadd_rz(asuint(_e489.x), asuint(_e499.x));
+    const uint _e510 = _naga_fadd_rz(asuint(_e489.y), asuint(_e499.y));
+    pair_rz = float2(asfloat(_e504), asfloat(_e510));
+    float _e515 = pair_rz.x;
+    local_41 = uint((base + 21u));
+    uint _e521 = local_41;
+    output.Store(_e521*4, asuint(asuint(_e515)));
+    float _e524 = pair_rz.y;
+    local_42 = uint((base + 22u));
+    uint _e530 = local_42;
+    output.Store(_e530*4, asuint(asuint(_e524)));
+    int _e532 = directed_cursor;
+    local_43 = uint((base + 23u));
+    uint _e538 = local_43;
+    output.Store(_e538*4, asuint(uint(_e532)));
+    directed_cursor = int(0);
+    float2 _e541 = pair_first;
+    value_4 = ZeroValuefloat2();
+    value_4 = _e541;
+    int _e545 = directed_cursor;
+    directed_cursor = asint(asuint(_e545) + asuint(int(1)));
+    float2 _e548 = value_4;
+    local_44 = _e548;
+    float2 _e550 = local_44;
+    float2 _e551 = pair_second;
+    value_5 = ZeroValuefloat2();
+    value_5 = _e551;
+    int _e555 = directed_cursor;
+    directed_cursor = asint(asuint(_e555) + asuint(int(1)));
+    float2 _e558 = value_5;
+    local_45 = _e558;
+    float2 _e560 = local_45;
+    const uint _e565 = _naga_fadd_rd(asuint(_e550.x), asuint(_e560.x));
+    const uint _e571 = _naga_fadd_rd(asuint(_e550.y), asuint(_e560.y));
+    pair_rd = float2(asfloat(_e565), asfloat(_e571));
+    float _e576 = pair_rd.x;
+    local_46 = uint((base + 24u));
+    uint _e582 = local_46;
+    output.Store(_e582*4, asuint(asuint(_e576)));
+    float _e585 = pair_rd.y;
+    local_47 = uint((base + 25u));
+    uint _e591 = local_47;
+    output.Store(_e591*4, asuint(asuint(_e585)));
+    int _e593 = directed_cursor;
+    local_48 = uint((base + 26u));
+    uint _e599 = local_48;
+    output.Store(_e599*4, asuint(uint(_e593)));
+    directed_cursor = int(0);
+    float2 _e602 = pair_first;
+    value_6 = ZeroValuefloat2();
+    value_6 = _e602;
+    int _e606 = directed_cursor;
+    directed_cursor = asint(asuint(_e606) + asuint(int(1)));
+    float2 _e609 = value_6;
+    local_49 = _e609;
+    float2 _e611 = local_49;
+    float2 _e612 = pair_second;
+    value_7 = ZeroValuefloat2();
+    value_7 = _e612;
+    int _e616 = directed_cursor;
+    directed_cursor = asint(asuint(_e616) + asuint(int(1)));
+    float2 _e619 = value_7;
+    local_50 = _e619;
+    float2 _e621 = local_50;
+    const uint _e626 = _naga_fadd_ru(asuint(_e611.x), asuint(_e621.x));
+    const uint _e632 = _naga_fadd_ru(asuint(_e611.y), asuint(_e621.y));
+    pair_ru = float2(asfloat(_e626), asfloat(_e632));
+    float _e637 = pair_ru.x;
+    local_51 = uint((base + 27u));
+    uint _e643 = local_51;
+    output.Store(_e643*4, asuint(asuint(_e637)));
+    float _e646 = pair_ru.y;
+    local_52 = uint((base + 28u));
+    uint _e652 = local_52;
+    output.Store(_e652*4, asuint(asuint(_e646)));
+    int _e654 = directed_cursor;
+    local_53 = uint((base + 29u));
+    uint _e660 = local_53;
+    output.Store(_e660*4, asuint(uint(_e654)));
 }

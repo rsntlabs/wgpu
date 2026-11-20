@@ -40,14 +40,20 @@ pub(super) fn cases() -> Vec<ShaderTest> {
     assert_eq!(directed_sum(0, 0, false), 0);
     let mut input = Vec::new();
     let mut expected = vec![SENTINEL; 4];
-    for line in include_str!("fadd-rz-values.csv")
+    let rows: Vec<Vec<u32>> = include_str!("fadd-rz-values.csv")
         .lines()
         .filter(|line| !line.starts_with('#'))
-    {
-        let words: Vec<_> = line
-            .split(',')
-            .map(|word| u32::from_str_radix(word, 16).unwrap())
-            .collect();
+        .map(|line| {
+            line.split(',')
+                .map(|word| u32::from_str_radix(word, 16).unwrap())
+                .collect()
+        })
+        .collect();
+    assert!(rows
+        .iter()
+        .enumerate()
+        .any(|(index, row)| row[3] != rows[index ^ 1][3]));
+    for (index, words) in rows.iter().enumerate() {
         let [first, second, toward_zero, nearest] = words[..] else {
             panic!("expected input,input,exact RZ,exact RN");
         };
@@ -80,6 +86,18 @@ pub(super) fn cases() -> Vec<ShaderTest> {
             directed_sum(first, second ^ 0x8000_0000, false),
             2,
             directed_sum(first, second ^ 0x8000_0000, true),
+            2,
+            nearest,
+            rows[index ^ 1][3],
+            2,
+            toward_zero,
+            rows[index ^ 1][2],
+            2,
+            directed_sum(first, second, false),
+            directed_sum(rows[index ^ 1][0], rows[index ^ 1][1], false),
+            2,
+            directed_sum(first, second, true),
+            directed_sum(rows[index ^ 1][0], rows[index ^ 1][1], true),
             2,
         ]);
     }
