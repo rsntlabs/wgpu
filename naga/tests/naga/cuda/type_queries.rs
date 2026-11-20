@@ -5171,3 +5171,64 @@ fn cuda_layout_queries_function_reference_returns_reject_invalid_reference_types
         }
     }
 }
+
+#[test]
+fn cuda_layout_queries_grouped_arrays_of_function_pointers_use_pointer_element_stride() {
+    for (ty, size, alignment) in [
+        ("int(*[3])(int)", 24, 8),
+        ("void(*const[2][3])(...) noexcept", 48, 8),
+        ("int&(*[2])(int) noexcept(false)", 16, 8),
+        ("int(*)(void(*[3])(int))", 8, 8),
+        ("int(*)(void(*[])(int))", 8, 8),
+        ("void(**[sizeof(int)])(int)", 32, 8),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof({ty}); output[1] = alignof({ty});
+                output[2] = __builtin_offsetof(Offsets, bytes[sizeof({ty})]);
+            }}"
+            ),
+            &[size, alignment, size * 4],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = alignof(int(*[])(int));
+            output[1] = __builtin_offsetof(Offsets, bytes[alignof(int(*[][3])(int))]);
+        }",
+        &[8, 32],
+    );
+}
+
+#[test]
+fn cuda_layout_queries_grouped_function_pointer_arrays_validate_bounds_and_signatures() {
+    for ty in [
+        "int(*[0])(int)",
+        "int(*[-1])(int)",
+        "int(*[runtime])(int)",
+        "int(*[2][])(int)",
+        "int(*[268435456u])(int)",
+        "int(*[2])(Missing)",
+        "void(*[2])(void, int)",
+        "int(*[2])(int,)",
+        "int(&[2])(int)",
+        "int(*[2](int))",
+        "int(*[])(int)",
+        "int(*[2])(int) noexcept(runtime)",
+    ] {
+        rejected(&format!(
+            "__global__ void kernel(unsigned long *output) {{ int runtime; output[0] = sizeof({ty}); }}"
+        ));
+        for prefix in ["", "true || "] {
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime;
+                    output[0] = __builtin_offsetof(Offsets, bytes[{prefix}sizeof({ty})]);
+                }}"
+            ));
+        }
+    }
+}

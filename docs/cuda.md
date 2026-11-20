@@ -571,6 +571,9 @@ Grouped function reference parameters such as `void (&)(int)` retain their
 reference type and follow the same signature validation rules.
 Function signatures may return references to supported types, including
 array aliases, as in `Row &(*)(int)`.
+Arrays of function pointers such as `int (*[3])(int)` use the pointer
+element stride. Their bounds and signatures use the same validation rules
+when queried directly or used as parameters in another signature.
 A variadic signature may use `(...)` or end its parameter list with `...`,
 with an optional comma before the ellipsis.
 The signature may end with `noexcept` or `noexcept(expression)`. The expression
