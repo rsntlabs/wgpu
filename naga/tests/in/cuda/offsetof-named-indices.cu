@@ -9,8 +9,8 @@ template<unsigned Index> __device__ unsigned selected_offset() {
     constexpr unsigned offset = unsigned(offsetof(Outer, leaves[((((+(Index) * 2u / 2u + 0u) << 1u) >> 1u) & 1u) != 0u].values[ColumnIndex]));
     return offset;
 }
-__device__ void check_member_size(Outer *layout)
-    noexcept(offsetof(Outer, grid[(sizeof(layout->grid) == 24u)][(sizeof(layout->prefix) != 4u)]) == 48u);
+__device__ void check_member_size(Outer *layout, unsigned index)
+    noexcept(offsetof(Outer, grid[(sizeof(layout->grid[index]) == 12u)][(sizeof(layout[index].prefix) != 4u)]) == 48u);
 
 __global__ void named_offsets(unsigned *output) {
     unsigned lane = threadIdx.x;

@@ -511,6 +511,11 @@ use their adjusted pointer type.
 Member paths rooted in a named object can use `.` and `->`, as in
 `sizeof(record.field)` and `sizeof pointer->field`. Array fields retain
 their full extent.
+These paths can also subscript arrays and pointers, as in
+`sizeof(record.grid[row])` and `sizeof pointer[index].field`. Subscripts
+accept integer literals, Boolean literals, and named integral objects,
+optionally grouped in parentheses. The index value is unevaluated and
+does not need to be constant. Selecting a row preserves its array type.
 Pointer type queries, including `void*`, use the CUDA source ABI size and
 alignment of eight bytes. Reference type queries use the referent's layout.
 Array type operands can include dimensions such as `int[2][3]`. Every

@@ -275,15 +275,7 @@ impl Parser<'_> {
                 self.parameter_expansion_budget.charge_work(1, closing)?;
                 return Ok((operand, span.until(&closing)));
             }
-            Token::Number(text) => {
-                self.parameter_expansion_budget
-                    .charge_work(text.len() + 1, span)?;
-                if text.contains('\'') {
-                    self.parameter_expansion_budget
-                        .charge_bytes(text.len(), span)?;
-                }
-                number::parse_integer(text)
-            }
+            Token::Number(text) => self.record_offset_integer_literal(text, span)?,
             Token::Word(word @ ("true" | "false")) => {
                 self.parameter_expansion_budget
                     .charge_work(word.len() + 1, span)?;
@@ -395,7 +387,7 @@ impl Parser<'_> {
             self.parameter_expansion_budget
                 .charge_work(word.len() + 1, target_span)?;
             self.lexer.next()?;
-            self.record_offset_named_sizeof(symbol, target_span)?
+            self.record_offset_named_sizeof(symbol, target_span, depth)?
         } else if parenthesized {
             (
                 self.record_offset_type_layout(name, depth + 1, target_span)?,
@@ -535,11 +527,24 @@ impl Parser<'_> {
         &mut self,
         symbol: Symbol,
         span: Span,
+        depth: u32,
     ) -> Result<(u32, Span), ParseError> {
         let mut operand = self.named_sizeof_operand(symbol, span)?;
         let mut end = span;
-        while matches!(self.lexer.peek()?.0, Token::Separator('.') | Token::Arrow) {
-            (operand, end) = self.sizeof_member(operand)?;
+        loop {
+            match self.lexer.peek()? {
+                (Token::Separator('.') | Token::Arrow, _) => {
+                    (operand, end) = self.sizeof_member(operand)?;
+                }
+                (Token::Paren('['), opening) => {
+                    self.parameter_expansion_budget.charge_work(2, opening)?;
+                    self.lexer.next()?;
+                    let index = self.record_offset_sizeof_subscript_index(depth + 1)?;
+                    end = self.lexer.expect_span(Token::Paren(']'))?;
+                    operand = self.sizeof_subscript(operand, index, span.until(&end))?;
+                }
+                _ => break,
+            }
         }
         let size = match operand {
             SizeofOperand::Scalar(scalar) | SizeofOperand::IntegerZeroLiteral(scalar) => {
@@ -559,6 +564,73 @@ impl Parser<'_> {
             span: span.until(&end),
         })?;
         Ok((size, end))
+    }
+
+    fn record_offset_sizeof_subscript_index(
+        &mut self,
+        depth: u32,
+    ) -> Result<SizeofOperand, ParseError> {
+        let mut groups = 0;
+        let (token, span) = loop {
+            let (token, span) = self.lexer.next()?;
+            if depth + groups >= 64 {
+                return Err(ParseError {
+                    message: String::from("CUDA expression nesting limit exceeded"),
+                    span,
+                });
+            }
+            if token != Token::Paren('(') {
+                break (token, span);
+            }
+            self.parameter_expansion_budget.charge_work(2, span)?;
+            groups += 1;
+        };
+        let invalid = || {
+            ParseError {
+            message: String::from(
+                "__builtin_offsetof nested sizeof subscript requires an integer literal, Boolean literal, or named integral object",
+            ),
+            span,
+        }
+        };
+        let index = match token {
+            Token::Number(text) => {
+                let number = self
+                    .record_offset_integer_literal(text, span)?
+                    .ok_or_else(invalid)?;
+                SizeofOperand::Scalar(number.scalar)
+            }
+            Token::Word(word) => {
+                self.parameter_expansion_budget
+                    .charge_work(word.len() + 1, span)?;
+                match word {
+                    "true" | "false" => SizeofOperand::Scalar(SourceScalar::Scalar(Scalar::BOOL)),
+                    _ => {
+                        let symbol = self.lookup_symbol(word).ok_or_else(invalid)?;
+                        self.named_sizeof_operand(symbol, span)?
+                    }
+                }
+            }
+            _ => return Err(invalid()),
+        };
+        for _ in 0..groups {
+            self.lexer.expect_span(Token::Paren(')'))?;
+        }
+        Ok(index)
+    }
+
+    fn record_offset_integer_literal(
+        &mut self,
+        text: &str,
+        span: Span,
+    ) -> Result<Option<number::Number>, ParseError> {
+        self.parameter_expansion_budget
+            .charge_work(text.len() + 1, span)?;
+        if text.contains('\'') {
+            self.parameter_expansion_budget
+                .charge_bytes(text.len(), span)?;
+        }
+        Ok(number::parse_integer(text))
     }
 
     fn record_offset_aggregate_size(&self, ty: TypeSpecifier) -> Option<u32> {
@@ -1455,7 +1527,12 @@ impl Parser<'_> {
             if self.lexer.next_if(Token::Paren('['))? {
                 let (index, _) = self.sizeof_comma_expression()?;
                 end = self.lexer.expect_span(Token::Paren(']'))?;
-                operand = self.sizeof_subscript(operand, index, start.until(&end))?;
+                let (base, index) = if self.sizeof_integral_operand(&operand) {
+                    (index, operand)
+                } else {
+                    (operand, index)
+                };
+                operand = self.sizeof_subscript(base, index, start.until(&end))?;
                 continue;
             }
             (operand, end) = self.sizeof_member(operand)?;
@@ -1569,7 +1646,7 @@ impl Parser<'_> {
     }
 
     fn sizeof_subscript(
-        &mut self,
+        &self,
         base: SizeofOperand,
         index: SizeofOperand,
         span: Span,
@@ -1580,25 +1657,19 @@ impl Parser<'_> {
             ),
             span,
         };
-        let (pointer, index) = if self.sizeof_integral_operand(&base) {
-            (index, base)
-        } else {
-            (base, index)
-        };
         if !self.sizeof_integral_operand(&index) {
             return Err(invalid());
         }
-        let operand = self
-            .sizeof_dereference(pointer, span)
-            .map_err(|_| invalid())?;
-        if let SizeofOperand::Object(ref ty) = operand {
-            let ty = self.type_handle(ty, span);
-            if self.is_incomplete_array(ty) {
-                return Err(ParseError {
-                    message: String::from("sizeof subscript requires a complete element type"),
-                    span,
-                });
-            }
+        let operand = self.sizeof_dereference(base, span).map_err(|_| invalid())?;
+        if matches!(
+            operand,
+            SizeofOperand::Object(ref ty)
+                if matches!(ty.inner_with(&self.module.types), TypeInner::Array { size: ArraySize::Dynamic, .. })
+        ) {
+            return Err(ParseError {
+                message: String::from("sizeof subscript requires a complete element type"),
+                span,
+            });
         }
         Ok(operand)
     }
@@ -1864,6 +1935,9 @@ mod tests {
             ("sizeof One / 4]", true, true),
             ("sizeof(One) / 4]", false, true),
             ("sizeof Pair.y / 4]", true, true),
+            ("sizeof Items[((One))] / 4]", true, true),
+            ("sizeof(Items[false]) / 4]", false, true),
+            ("sizeof Items[((((One))))] / 4]", false, false),
             ("sizeof(void const * const * volatile) / 8]", true, true),
             ("alignof(Fixed &) / 4]", false, true),
             ("sizeof(int[sizeof(int)][2]) / 32]", true, true),
@@ -1922,6 +1996,14 @@ mod tests {
                         size: VectorSize::Bi,
                         scalar: Scalar::I32,
                     }),
+                    literal: None,
+                },
+            );
+            parser.global_declarations.insert(
+                "Items",
+                GlobalDeclaration::Constant {
+                    handle: None,
+                    ty: TypeResolution::Handle(array),
                     literal: None,
                 },
             );
