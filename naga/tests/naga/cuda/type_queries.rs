@@ -1041,11 +1041,10 @@ fn cuda_record_offsetof_rejects_unsupported_layout_queries_in_indices() {
         ("sizeof(int[2])", "expected"),
         ("sizeof(int())", "expected"),
         ("sizeof()", "type"),
-        ("sizeof(input)", "type"),
         ("sizeof(1)", "type"),
         ("sizeof int", "expected"),
         ("alignof(int", "expected"),
-        ("sizeof(Shadowed)", "type"),
+        ("alignof(Shadowed)", "type"),
         ("sizeof(int)", "out of bounds"),
     ] {
         let error = rejected(&format!(
@@ -1177,6 +1176,91 @@ fn cuda_record_offsetof_rejects_unsupported_aggregate_alignof_in_indices() {
             "{index}: {error}"
         );
     }
+}
+
+#[test]
+fn cuda_record_offsetof_evaluates_named_sizeof_in_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        struct Record { int head; int row[5]; };
+        struct Padded { short first; int middle; short last; };
+        using Open = int[];
+        using Shadowed = long;
+        constexpr short Constant = 1;
+        __constant__ int Pool[3];
+        __device__ size_t checked(int value) noexcept(offsetof(Record, row[sizeof value / 4]) == 8) {
+            return offsetof(Record, row[sizeof value / 4]);
+        }
+        __device__ size_t adjusted(volatile int values[3]) {
+            return offsetof(Record, row[sizeof(values) / 4]);
+        }
+        __global__ void kernel(unsigned long *output, unsigned input, volatile int *values) {
+            Padded object;
+            Padded &alias = object;
+            float3 packed;
+            short grid[2][3];
+            Open *pointer = nullptr;
+            auto null_value = nullptr;
+            volatile int &referent = values[0];
+            output[0] = offsetof(Record, row[sizeof(input) / 4]);
+            output[1] = offsetof(Record, row[sizeof input / 4 + 1]);
+            output[2] = offsetof(Record, row[sizeof object / 4]);
+            output[3] = offsetof(Record, row[sizeof(alias) / 4]);
+            output[4] = offsetof(Record, row[sizeof packed / 4]);
+            output[5] = offsetof(Record, row[sizeof(grid) / 4]);
+            output[6] = offsetof(Record, row[sizeof pointer / 4]);
+            output[7] = offsetof(Record, row[sizeof(null_value) / 4]);
+            output[8] = offsetof(Record, row[sizeof referent / 4]);
+            output[9] = offsetof(Record, row[sizeof(Constant)]);
+            output[10] = offsetof(Record, row[sizeof Pool / 4]);
+            output[11] = offsetof(Record, row[sizeof(Shadowed) / 4]);
+            {
+                short Shadowed;
+                output[12] = offsetof(Record, row[sizeof(Shadowed) / 2]);
+            }
+            output[13] = offsetof(Record, row[true || sizeof(input) / 0]);
+            size_t result = adjusted(values) + checked(0);
+        }",
+        &[8, 12, 16, 16, 16, 16, 12, 12, 8, 12, 16, 12, 8, 8],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_unsupported_named_sizeof_in_indices() {
+    for (index, message) in [
+        ("sizeof(scratch)", "complete"),
+        ("true || sizeof scratch", "complete"),
+        ("sizeof((input))", "type"),
+        ("sizeof(input + 1)", "expected"),
+        ("sizeof local[0]", "expected"),
+        ("sizeof(object.row)", "expected"),
+        ("sizeof(*out)", "type"),
+        ("sizeof(input++)", "expected"),
+        ("sizeof helper()", "named object"),
+        ("sizeof Missing", "named object"),
+        ("sizeof Index", "parenthesized type"),
+        ("alignof(input)", "type"),
+    ] {
+        let error = rejected(&format!(
+            "struct Record {{ int row[5]; }};
+             using Index = int;
+             __device__ int helper() {{ return 0; }}
+             __global__ void kernel(unsigned *out, unsigned input) {{
+                 extern __shared__ int scratch[];
+                 int local[3];
+                 Record object;
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
+        assert!(error.message.contains(message), "{index}: {error}");
+    }
+    let error = rejected(
+        "struct Record { int row[5]; };
+         __global__ void kernel() {
+             int pending[] = { int(__builtin_offsetof(Record, row[sizeof(pending)])) };
+         }",
+    );
+    assert!(error.message.contains("complete"), "{error}");
 }
 
 #[test]

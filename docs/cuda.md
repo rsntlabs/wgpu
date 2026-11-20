@@ -504,6 +504,10 @@ declared stride. Nested `alignof(T)` accepts scalar types, CUDA vectors,
 complete records, and array type names with supported elements. Array
 alignment follows the element type, including for an unknown outer bound.
 Both queries produce `size_t` values before the index is folded.
+Inside an index, `sizeof(name)` and `sizeof name` also accept direct,
+unqualified object names. They use the source object type without reading
+the object. Fixed arrays retain their full extent and array parameters
+use their adjusted pointer type.
 Arithmetic rejects signed overflow and zero divisors, and wraps unsigned
 results at the operation's width. Shift counts must be nonnegative and less
 than the promoted left operand's bit width. Left shifts wrap at that width

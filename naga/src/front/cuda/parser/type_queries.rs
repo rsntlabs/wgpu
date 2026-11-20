@@ -365,19 +365,68 @@ impl Parser<'_> {
             });
         }
         self.parameter_expansion_budget.charge_work(3, start)?;
-        self.lexer.expect_span(Token::Paren('('))?;
-        let target_span = self.lexer.peek()?.1;
+        let parenthesized = if name == "sizeof" {
+            self.lexer.next_if(Token::Paren('('))?
+        } else {
+            self.lexer.expect_span(Token::Paren('('))?;
+            true
+        };
+        let (token, target_span) = self.lexer.peek()?;
+        let object = match (name, token) {
+            ("sizeof", Token::Word(word)) => self
+                .lookup_symbol(word)
+                .filter(|symbol| {
+                    !matches!(
+                        *symbol,
+                        Symbol::Type(_)
+                            | Symbol::TemplateTypeParameter { .. }
+                            | Symbol::Namespace(_)
+                    )
+                })
+                .map(|symbol| (word, symbol)),
+            _ => None,
+        };
+        let size = if let Some((word, symbol)) = object {
+            self.parameter_expansion_budget
+                .charge_work(word.len() + 1, target_span)?;
+            self.lexer.next()?;
+            self.record_offset_named_sizeof(symbol, target_span)?
+        } else if parenthesized {
+            self.record_offset_type_layout(name, target_span)?
+        } else {
+            return Err(ParseError {
+                message: String::from("__builtin_offsetof nested sizeof expected a parenthesized type or a named object"),
+                span: target_span,
+            });
+        };
+        let end = if parenthesized {
+            self.lexer.expect_span(Token::Paren(')'))?
+        } else {
+            target_span
+        };
+        let value = evaluate.then_some(i128::from(size));
+        Ok((
+            RecordOffsetIndex::prvalue(SourceScalar::Long(ScalarKind::Uint), value),
+            start.until(&end),
+        ))
+    }
+
+    fn record_offset_type_layout(
+        &mut self,
+        name: &str,
+        target_span: Span,
+    ) -> Result<u32, ParseError> {
         let ty = self.parse_type()?.ty;
-        let size = if let Some(scalar) = ty.source_scalar() {
+        if let Some(scalar) = ty.source_scalar() {
             // The supported scalar types have natural alignment equal to their size.
-            u32::from(scalar.scalar().width)
+            Ok(u32::from(scalar.scalar().width))
         } else if name == "sizeof" {
             self.record_offset_aggregate_size(ty).ok_or_else(|| ParseError {
                 message: String::from(
                     "__builtin_offsetof nested sizeof requires a scalar, vector, complete record, or fixed-array type",
                 ),
                 span: target_span,
-            })?
+            })
         } else {
             self.record_offset_aggregate_alignment(ty, target_span)?
                 .ok_or_else(|| ParseError {
@@ -385,14 +434,28 @@ impl Parser<'_> {
                         "__builtin_offsetof nested alignof requires a scalar, vector, complete record, or array type with a supported element",
                     ),
                     span: target_span,
-                })?
+                })
+        }
+    }
+
+    fn record_offset_named_sizeof(&self, symbol: Symbol, span: Span) -> Result<u32, ParseError> {
+        let size = match self.named_sizeof_operand(symbol, span)? {
+            SizeofOperand::Scalar(scalar) | SizeofOperand::IntegerZeroLiteral(scalar) => {
+                Some(u32::from(scalar.scalar().width))
+            }
+            SizeofOperand::NullPointer => Some(8),
+            SizeofOperand::Object(ty) if self.source_pointer_pointee(&ty).is_some() => Some(8),
+            SizeofOperand::Object(ty) => {
+                self.record_offset_stored_size(ty.inner_with(&self.module.types))
+            }
+            SizeofOperand::IncompleteArray(_) => None,
         };
-        let end = self.lexer.expect_span(Token::Paren(')'))?;
-        let value = evaluate.then_some(i128::from(size));
-        Ok((
-            RecordOffsetIndex::prvalue(SourceScalar::Long(ScalarKind::Uint), value),
-            start.until(&end),
-        ))
+        size.ok_or_else(|| ParseError {
+            message: String::from(
+                "__builtin_offsetof nested sizeof requires a complete named object type",
+            ),
+            span,
+        })
     }
 
     fn record_offset_aggregate_size(&self, ty: TypeSpecifier) -> Option<u32> {
@@ -407,9 +470,14 @@ impl Parser<'_> {
             TypeSpecifier::Array(handle) => handle,
             _ => return None,
         };
-        let inner = &self.module.types[handle].inner;
+        self.record_offset_stored_size(&self.module.types[handle].inner)
+    }
+
+    fn record_offset_stored_size(&self, inner: &TypeInner) -> Option<u32> {
         match *inner {
-            TypeInner::Struct { .. }
+            TypeInner::Scalar(_)
+            | TypeInner::Vector { .. }
+            | TypeInner::Struct { .. }
             | TypeInner::Array {
                 size: ArraySize::Constant(_),
                 ..
@@ -1529,7 +1597,7 @@ impl Parser<'_> {
     }
 
     fn named_sizeof_operand(
-        &mut self,
+        &self,
         symbol: Symbol,
         span: Span,
     ) -> Result<SizeofOperand, ParseError> {
@@ -1665,6 +1733,8 @@ mod tests {
             ("sizeof(Fixed) / 8]", false, true),
             ("alignof(Fixed) / 4]", true, true),
             ("alignof(float3) / 4]", false, true),
+            ("sizeof One / 4]", true, true),
+            ("sizeof(One) / 4]", false, true),
             ("true || (sizeof(float) / alignof(long))]", false, true),
             ("((((sizeof(bool)))))]", false, false),
         ] {
