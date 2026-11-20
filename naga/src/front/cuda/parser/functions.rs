@@ -4,6 +4,7 @@ use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
 use super::float_classification::FloatClassification;
 use super::float_exponent::ExponentResult;
 use super::float_helpers::FloatMathFunction;
+use super::fmodf::RemainderMode;
 use super::function_declarations::Inlining;
 use super::int_to_float::IntegerToFloatRounding;
 use super::integer_intrinsics::{
@@ -1179,6 +1180,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "ilogbf",
         "logbf",
         "ldexpf",
+        "remainderf",
         "scalbnf",
     ] {
         declarations.insert(
@@ -1362,7 +1364,7 @@ pub(super) enum FunctionCandidate {
     },
     Sqrt,
     SqrtRoundZero,
-    Fmodf,
+    FloatRemainder(RemainderMode),
     CopySign,
     NextAfter,
     PositiveDifference,
@@ -1986,7 +1988,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::FloatExponent(_)
                         | FunctionCandidate::SqrtRoundZero
                         | FunctionCandidate::Sqrt
-                        | FunctionCandidate::Fmodf
+                        | FunctionCandidate::FloatRemainder(_)
                         | FunctionCandidate::CopySign
                         | FunctionCandidate::NextAfter
                         | FunctionCandidate::PositiveDifference
@@ -2292,7 +2294,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::IntegerToFloat { .. }
             | FunctionCandidate::SqrtRoundZero
             | FunctionCandidate::Sqrt
-            | FunctionCandidate::Fmodf
+            | FunctionCandidate::FloatRemainder(_)
             | FunctionCandidate::CopySign
             | FunctionCandidate::NextAfter
             | FunctionCandidate::PositiveDifference
@@ -2684,20 +2686,8 @@ impl<'a> Parser<'a> {
             }
             .into());
         }
-        if candidate == FunctionCandidate::Fmodf {
-            let mut arguments = arguments.into_iter();
-            let dividend = self.convert_scalar(arguments.next().unwrap().into(), Scalar::F32)?;
-            let divisor = self.convert_scalar(arguments.next().unwrap().into(), Scalar::F32)?;
-            let handle = self.call_fmodf(dividend.handle, divisor.handle, span)?;
-            return Ok(Value {
-                category: ValueCategory::Prvalue,
-                qualifiers: Qualifiers::NONE,
-                constant: ConstantValue::default(),
-                handle,
-                ty: scalar_resolution(Scalar::F32),
-                span,
-            }
-            .into());
+        if let FunctionCandidate::FloatRemainder(mode) = candidate {
+            return self.lower_float_remainder_call(mode, arguments, span);
         }
         if let FunctionCandidate::FloatMath(operation) = candidate {
             return self.lower_float_math_call(operation, arguments, span);
@@ -3344,8 +3334,11 @@ impl<'a> Parser<'a> {
                 (builtin_visible && SQRT_BUILTINS.contains(&name))
                     .then_some(FunctionCandidate::Sqrt),
             )
-            .chain((builtin_visible && name == "fmodf").then_some(FunctionCandidate::Fmodf))
             .chain(match (builtin_visible, name) {
+                (true, "fmodf") => Some(FunctionCandidate::FloatRemainder(RemainderMode::Truncate)),
+                (true, "remainderf") => Some(FunctionCandidate::FloatRemainder(
+                    RemainderMode::NearestEven,
+                )),
                 (true, "copysignf") => Some(FunctionCandidate::CopySign),
                 (true, "nextafterf") => Some(FunctionCandidate::NextAfter),
                 (true, "fdimf") => Some(FunctionCandidate::PositiveDifference),
@@ -3548,7 +3541,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::PackedArithmetic(_)
             | FunctionCandidate::Atomic { .. }
             | FunctionCandidate::WrappingAtomic(_)
-            | FunctionCandidate::Fmodf
+            | FunctionCandidate::FloatRemainder(_)
             | FunctionCandidate::CopySign
             | FunctionCandidate::NextAfter
             | FunctionCandidate::PositiveDifference
@@ -3642,7 +3635,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FloatToInteger { .. }
             | FunctionCandidate::SqrtRoundZero
             | FunctionCandidate::Sqrt
-            | FunctionCandidate::Fmodf
+            | FunctionCandidate::FloatRemainder(_)
             | FunctionCandidate::CopySign
             | FunctionCandidate::NextAfter
             | FunctionCandidate::PositiveDifference

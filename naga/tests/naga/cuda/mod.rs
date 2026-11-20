@@ -501,3 +501,5 @@ mod float2uint_rn;
 mod ldexpf;
 
 mod scalbnf;
+
+mod remainderf;

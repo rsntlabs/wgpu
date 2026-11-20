@@ -1425,6 +1425,17 @@ to even. Overflow produces infinity with the input sign. NaNs produce
 the canonical quiet NaN `0x7fc00000`. Calls execute at runtime.
 See NVIDIA's [single-precision math specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__SINGLE.html).
 
+`remainderf(float, float)` subtracts the divisor multiplied by the nearest
+integer quotient from the dividend. A quotient exactly halfway between two
+integers selects the even integer. For example, `remainderf(3.0f, 2.0f)`
+returns `-1.0f`, and `remainderf(5.0f, 2.0f)` returns `1.0f`.
+The integer helper preserves the sign of the dividend on zero results
+and passes finite dividends through when the divisor is infinite.
+An infinite dividend, zero divisor, or NaN argument produces the
+canonical quiet NaN `0x7fc00000`. Arguments convert to `float` and the
+call executes at runtime. See NVIDIA's
+[`remainderf` specification](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__SINGLE.html).
+
 `isfinite(float)`, `isinf(float)`, `isnan(float)`, and `signbit(float)` classify
 the received single-precision representation using integer bit operations.
 They return `int`, following NVIDIA's default
@@ -1593,7 +1604,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fsub_rn`, `__fsub_rz`, `__fmul_rn`, `__fmul_rz`, `__fdiv_rn`, `__fdiv_rz`, `__frcp_rn`, `__frcp_rz`, `__fsqrt_rn`, `__fsqrt_rz`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fsub_rn`, `__fsub_rz`, `__fmul_rn`, `__fmul_rz`, `__fdiv_rn`, `__fdiv_rz`, `__frcp_rn`, `__frcp_rz`, `__fsqrt_rn`, `__fsqrt_rz`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, or `signbit` remain unsupported.
 
 ## Bit reinterpretation
 

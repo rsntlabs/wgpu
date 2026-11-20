@@ -4026,6 +4026,41 @@ mod tests {
     }
 
     #[test]
+    fn float_remainder_budget_checks_both_conversions_before_emission() {
+        use super::super::super::fmodf::RemainderMode;
+
+        for mode in [RemainderMode::Truncate, RemainderMode::NearestEven] {
+            for available in [0, 3] {
+                let (mut parser, [marker, _, _], span) = fns_budget_parser();
+                let arguments = alloc::vec![
+                    parser.number("1", span).unwrap(),
+                    parser.number("3u", span).unwrap(),
+                ];
+                parser.parameter_expansion_budget.activate();
+                parser.prepare_parameter_bindings(span).unwrap();
+                let caller = format!("{:?}", parser.function.ir);
+                let depths = parser.function.expression_graph_depths.clone();
+                let remaining = NODE_LIMIT - parser.parameter_expansion_budget.nodes;
+                parser
+                    .parameter_expansion_budget
+                    .charge_nodes(remaining - available, span)
+                    .unwrap();
+                let error = parser
+                    .lower_float_remainder_call(mode, arguments, span)
+                    .unwrap_err();
+                assert_eq!(error.message, limit_error(span).message);
+                assert_eq!(error.span, span);
+                assert_fns_budget_caller(&parser, marker);
+                assert_eq!(format!("{:?}", parser.function.ir), caller);
+                assert_eq!(parser.function.expression_graph_depths, depths);
+                assert!(parser.module.functions.is_empty());
+                assert!(parser.fmodf_function.is_none());
+                assert!(parser.remainderf_function.is_none());
+            }
+        }
+    }
+
+    #[test]
     fn ldexpf_budget_failure_preserves_caller_and_cache() {
         for cached in [false, true] {
             let (mut parser, [bits, other_bits, exponent], span) = fns_budget_parser();

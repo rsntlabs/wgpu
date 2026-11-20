@@ -179,6 +179,7 @@ mod qualified_values;
 mod record_static_assertions;
 mod reference_bindings;
 mod reference_categories;
+mod remainderf;
 mod restrict;
 mod rintf;
 mod roundf;
@@ -356,6 +357,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_TRUNCF,
         CUDA_FLOORF,
         CUDA_FMODF,
+        CUDA_REMAINDERF,
         CUDA_ROUNDF,
         CUDA_RSQRTF,
         CUDA_FUNCTION_MACROS,
@@ -856,6 +858,9 @@ static CUDA_FLOAT_TRUTHINESS: GpuTestConfiguration = configuration(float_truthin
 static CUDA_FLOORF: GpuTestConfiguration = configuration(floorf::cases);
 #[apply(gpu_test!)]
 static CUDA_FMODF: GpuTestConfiguration = configuration(fmodf::cases);
+
+#[apply(gpu_test!)]
+static CUDA_REMAINDERF: GpuTestConfiguration = configuration(remainderf::cases);
 #[apply(gpu_test!)]
 static CUDA_ROUNDF: GpuTestConfiguration = configuration(roundf::cases);
 #[apply(gpu_test!)]
