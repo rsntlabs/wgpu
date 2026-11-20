@@ -595,6 +595,8 @@ array's layout. `alignof` also accepts references to arrays with omitted
 outer bounds.
 Grouped declarators also accept pointer elements, as in `int *(&)[3]` or
 `int *(*)[3]`. The same array bound rules apply to these types.
+Consecutive enclosing parentheses are accepted around indirect declarators,
+as in `int ((&))[3]`, `void ((*))(int)`, and `int ((*))`.
 Array type operands can include dimensions such as `int[2][3]`. Every
 explicit bound must be a positive integral constant, even in a skipped
 query. Only `alignof` accepts an omitted outer bound in this syntax.

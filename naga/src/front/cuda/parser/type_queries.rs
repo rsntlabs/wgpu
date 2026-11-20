@@ -32,11 +32,16 @@ impl TypeQueryContext<'_> {
 }
 
 enum GroupedTypeQuery {
+    Pointer(usize),
+    Reference,
     PointerToArray,
     ArrayReference,
     FunctionPointer,
     FunctionReference,
-    PointerArray { through_pointer: bool },
+    PointerArray {
+        through_pointer: bool,
+        groups: usize,
+    },
 }
 
 enum GroupedArrayElement {
@@ -1423,6 +1428,29 @@ impl Parser<'_> {
         if declarator.is_some() {
             self.lexer = lookahead;
         }
+        let grouped_pointers = match declarator {
+            Some(GroupedTypeQuery::Pointer(count)) => Some(count),
+            Some(GroupedTypeQuery::Reference) => Some(0),
+            _ => None,
+        };
+        if let Some(grouped_pointers) = grouped_pointers {
+            if reference {
+                return self.fail("pointers and references to references are unsupported");
+            }
+            let total_pointer_depth = pointer_depth + grouped_pointers;
+            if total_pointer_depth > 64 {
+                return self.fail("CUDA pointer nesting limit exceeded");
+            }
+            if total_pointer_depth != 0 {
+                return Ok(TypeQueryType::Pointer);
+            }
+            return operand
+                .map(TypeQueryType::Object)
+                .ok_or_else(|| ParseError {
+                    message: String::from("reference requires an object type"),
+                    span,
+                });
+        }
         let function_parameter = declarator.is_none()
             && matches!(context, TypeQueryContext::FunctionParameter)
             && self.lexer.peek()?.0 == Token::Paren('(');
@@ -1435,8 +1463,10 @@ impl Parser<'_> {
         {
             return self.fail("CUDA expression nesting limit exceeded");
         }
-        let array_type = if let Some(GroupedTypeQuery::PointerArray { through_pointer }) =
-            declarator
+        let array_type = if let Some(GroupedTypeQuery::PointerArray {
+            through_pointer,
+            groups,
+        }) = declarator
         {
             let name = if through_pointer {
                 "alignof"
@@ -1449,7 +1479,9 @@ impl Parser<'_> {
             } else {
                 TypeQueryType::PointerArrayLayout(layout)
             };
-            self.lexer.expect_span(Token::Paren(')'))?;
+            for _ in 0..groups {
+                self.lexer.expect_span(Token::Paren(')'))?;
+            }
             if self.lexer.peek()?.0 == Token::Paren('[') {
                 let element =
                     self.type_query_grouped_array_element(operand, pointer_depth, reference, span)?;
@@ -1721,10 +1753,22 @@ impl Parser<'_> {
         let mut lookahead = lexer.clone();
         lookahead.next()?;
         let budget = &mut self.parameter_expansion_budget;
-        let pointer = match lookahead.peek()?.0 {
+        let mut groups = 1;
+        while let (Token::Paren('('), span) = lookahead.peek()? {
+            if groups == 64 {
+                return Err(ParseError {
+                    message: String::from("CUDA declarator nesting limit exceeded"),
+                    span,
+                });
+            }
+            budget.charge_work(2, span)?;
+            lookahead.next()?;
+            groups += 1;
+        }
+        let pointers = match lookahead.peek()?.0 {
             Token::Operation('*') => {
                 budget.charge_work(2, span)?;
-                Self::scan_type_query_pointer_chain(&mut lookahead, budget, 0)?;
+                let pointers = Self::scan_type_query_pointer_chain(&mut lookahead, budget, 0)?;
                 let mut through_pointer = false;
                 if lookahead.next_if(Token::Paren('('))? {
                     let (token, span) = lookahead.peek()?;
@@ -1744,26 +1788,37 @@ impl Parser<'_> {
                 }
                 if lookahead.peek()?.0 == Token::Paren('[') {
                     *lexer = lookahead;
-                    return Ok(Some(GroupedTypeQuery::PointerArray { through_pointer }));
+                    return Ok(Some(GroupedTypeQuery::PointerArray {
+                        through_pointer,
+                        groups,
+                    }));
                 }
                 Self::scan_type_query_reference(&mut lookahead, budget)?;
-                true
+                pointers
             }
             Token::Operation('&') | Token::LogicalOperation('&') => {
                 lookahead.next()?;
                 budget.charge_work(3, span)?;
-                false
+                0
             }
             _ => return Ok(None),
         };
-        if !lookahead.next_if(Token::Paren(')'))? {
-            return Ok(None);
+        for _ in 0..groups {
+            if !lookahead.next_if(Token::Paren(')'))? {
+                return Ok(None);
+            }
         }
-        let declarator = match (pointer, lookahead.peek()?.0) {
+        let declarator = match (pointers != 0, lookahead.peek()?.0) {
             (true, Token::Paren('(')) => GroupedTypeQuery::FunctionPointer,
             (false, Token::Paren('(')) => GroupedTypeQuery::FunctionReference,
             (true, Token::Paren('[')) => GroupedTypeQuery::PointerToArray,
             (false, Token::Paren('[')) => GroupedTypeQuery::ArrayReference,
+            (true, Token::Paren(')') | Token::Separator(',') | Token::Ellipsis) => {
+                GroupedTypeQuery::Pointer(pointers)
+            }
+            (false, Token::Paren(')') | Token::Separator(',') | Token::Ellipsis) => {
+                GroupedTypeQuery::Reference
+            }
             _ => return Ok(None),
         };
         *lexer = lookahead;
