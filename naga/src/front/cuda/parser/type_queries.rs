@@ -1391,21 +1391,27 @@ impl Parser<'_> {
         let operand = self.type_query_base()?;
         let pointer_depth = self.type_query_pointer_depth(operand.as_ref())?;
         let mut lookahead = self.lexer.clone();
-        if let Some(declarator) = self.scan_grouped_query_declarator(&mut lookahead)? {
+        let declarator = self.scan_grouped_query_declarator(&mut lookahead)?;
+        if declarator.is_some() {
             self.lexer = lookahead;
-            if matches!(declarator, GroupedTypeQuery::FunctionPointer) {
-                if depth >= 64 {
-                    return self.fail("CUDA expression nesting limit exceeded");
-                }
-                if pointer_depth == 0
-                    && matches!(operand, Some(ty) if matches!(ty.ty, TypeSpecifier::Array(_)))
-                {
-                    return self.fail("function types cannot return arrays");
-                }
-                self.type_query_function_parameters(depth + 1)?;
-                self.type_query_function_noexcept(depth)?;
-                return Ok(TypeQueryType::Pointer);
+        }
+        let function_parameter = declarator.is_none()
+            && matches!(context, TypeQueryContext::FunctionParameter)
+            && self.lexer.peek()?.0 == Token::Paren('(');
+        if matches!(declarator, Some(GroupedTypeQuery::FunctionPointer)) || function_parameter {
+            if depth >= 64 {
+                return self.fail("CUDA expression nesting limit exceeded");
             }
+            if pointer_depth == 0
+                && matches!(operand, Some(ty) if matches!(ty.ty, TypeSpecifier::Array(_)))
+            {
+                return self.fail("function types cannot return arrays");
+            }
+            self.type_query_function_parameters(depth + 1)?;
+            self.type_query_function_noexcept(depth)?;
+            return Ok(TypeQueryType::Pointer);
+        }
+        if let Some(declarator) = declarator {
             let ty = operand.ok_or_else(|| ParseError {
                 message: String::from("array elements require a complete type"),
                 span,

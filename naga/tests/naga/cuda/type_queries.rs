@@ -4981,3 +4981,65 @@ fn cuda_layout_queries_nested_function_pointer_parameters_validate_signatures_an
         assert!(error.message.contains("nesting limit"), "{error}");
     }
 }
+
+#[test]
+fn cuda_layout_queries_function_parameters_adjust_plain_function_types() {
+    for parameter in [
+        "void(int)",
+        "int()",
+        "int*(float)",
+        "void(int, ...)",
+        "int(int) noexcept(true)",
+        "int(void(float))",
+        "void(int(*)(float))",
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof(int(*)({parameter}));
+                output[1] = __builtin_offsetof(Offsets, bytes[alignof(int(*)({parameter}))]);
+            }}"
+            ),
+            &[8, 32],
+        );
+    }
+}
+
+#[test]
+fn cuda_layout_queries_plain_function_parameters_reject_invalid_signatures_and_excessive_depth() {
+    for parameter in [
+        "void(void, int)",
+        "int(Missing)",
+        "int(int,)",
+        "void(..., int)",
+        "int(int) noexcept(runtime)",
+        "int()[2]",
+        "Row(int)",
+        "int(int)(float)",
+        "void(&)(int)",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof(int(*)({parameter}))");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }}; using Row = int[3];
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
+    }
+    rejected("__global__ void kernel(unsigned long *output) { output[0] = sizeof(int(int)); }");
+    let source = |count| {
+        format!(
+            "__global__ void kernel(unsigned long *output) {{ output[0] = sizeof(int(*)({}int{})); }}",
+            "int(".repeat(count),
+            ")".repeat(count),
+        )
+    };
+    assert_query_results(&source(63), &[8]);
+    let error = rejected(&source(64));
+    assert!(error.message.contains("nesting limit"), "{error}");
+}

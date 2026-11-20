@@ -565,6 +565,8 @@ Grouped parameter types such as `int (&)[3]` and `int (*)[3]` also check
 their array bounds and retain their reference or pointer declarator.
 A parameter may itself be a function pointer, as in `int (*)(void (*)(int))`.
 The nested signature follows the same type rules and nesting limit.
+Plain function parameters such as `void(int)` in `int (*)(void(int))`
+undergo the C++ function-to-pointer parameter adjustment.
 A variadic signature may use `(...)` or end its parameter list with `...`,
 with an optional comma before the ellipsis.
 The signature may end with `noexcept` or `noexcept(expression)`. The expression
