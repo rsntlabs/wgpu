@@ -1419,6 +1419,12 @@ saturates finite overflow and preserves the sign of underflow to zero. Exact
 cancellation and mixed-sign zero terms produce negative zero with `__fmaf_rd`
 and positive zero with `__fmaf_ru`. Same-sign zero terms retain their sign.
 
+`__ffma2_rn`, `__ffma2_rz`, `__ffma2_rd`, and `__ffma2_ru` take three
+`float2` operands and return a `float2`. Each lane computes one fused
+multiply-add using the matching scalar FMA rounding mode. Calls evaluate
+each vector argument once. See NVIDIA's
+[`__ffma2_*` specifications](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__SINGLE.html).
+
 `__fmaf_ieee_rn`, `__fmaf_ieee_rz`, `__fmaf_ieee_rd`, and `__fmaf_ieee_ru`
 share the corresponding FMA helpers. These helpers preserve subnormal inputs
 and results, matching the IEEE variants' behavior under CUDA's
@@ -1682,7 +1688,7 @@ Additional user-defined overloads participate alongside the predefined ones;
 definitions repeating a predefined parameter signature are rejected, including
 through aliases or top-level `const`. Local values and type names can hide these
 functions. Kernels and file-scope type aliases named `min`, `max`, `fminf`,
-`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fadd_rd`, `__fadd_ru`, `__fsub_rn`, `__fsub_rz`, `__fsub_rd`, `__fsub_ru`, `__fmul_rn`, `__fmul_rz`, `__fmul_rd`, `__fmul_ru`, `__fdiv_rn`, `__fdividef`, `__fdiv_rz`, `__fdiv_rd`, `__fdiv_ru`, `__frcp_rn`, `__frcp_rz`, `__frcp_rd`, `__frcp_ru`, `__fsqrt_rn`, `__fsqrt_rz`, `__fsqrt_rd`, `__fsqrt_ru`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `__fmaf_rd`, `__fmaf_ru`, `__fmaf_ieee_rn`, `__fmaf_ieee_rz`, `__fmaf_ieee_rd`, `__fmaf_ieee_ru`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, `signbit`, `__nv_finitef`, `__nv_isinff`, `__nv_isnanf`, or `__nv_signbitf` remain unsupported.
+`fmaxf`, `fabs`, `fabsf`, `__fadd_rn`, `__fadd_rz`, `__fadd_rd`, `__fadd_ru`, `__fsub_rn`, `__fsub_rz`, `__fsub_rd`, `__fsub_ru`, `__fmul_rn`, `__fmul_rz`, `__fmul_rd`, `__fmul_ru`, `__fdiv_rn`, `__fdividef`, `__fdiv_rz`, `__fdiv_rd`, `__fdiv_ru`, `__frcp_rn`, `__frcp_rz`, `__frcp_rd`, `__frcp_ru`, `__fsqrt_rn`, `__fsqrt_rz`, `__fsqrt_rd`, `__fsqrt_ru`, `__frsqrt_rn`, `__fmaf_rn`, `__fmaf_rz`, `__fmaf_rd`, `__fmaf_ru`, `__fmaf_ieee_rn`, `__fmaf_ieee_rz`, `__fmaf_ieee_rd`, `__fmaf_ieee_ru`, `__ffma2_rn`, `__ffma2_rz`, `__ffma2_rd`, `__ffma2_ru`, `fmaf`, `copysignf`, `nextafterf`, `fdimf`, `ilogbf`, `logbf`, `ldexpf`, `scalbnf`, `fmodf`, `remainderf`, `sqrt`, `sqrtf`, `rsqrtf`, `floorf`, `ceilf`, `roundf`, `truncf`, `rintf`, `nearbyintf`, `__saturatef`, `sinf`, `cosf`, `isfinite`, `isinf`, `isnan`, `signbit`, `__nv_finitef`, `__nv_isinff`, `__nv_isnanf`, or `__nv_signbitf` remain unsupported.
 
 ## Bit reinterpretation
 

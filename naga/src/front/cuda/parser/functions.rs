@@ -4,6 +4,7 @@ use super::atomics::{WrappingAtomicFunction, INTEGER_ATOMICS, WRAPPING_ATOMICS};
 use super::float_classification::FloatClassification;
 use super::float_exponent::ExponentResult;
 use super::float_helpers::FloatMathFunction;
+use super::fmaf_rn::FmaRounding;
 use super::fmodf::RemainderMode;
 use super::function_declarations::Inlining;
 use super::int_to_float::IntegerToFloatRounding;
@@ -944,10 +945,10 @@ const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 12] = [
 ];
 
 const SQRT_BUILTINS: [&str; 3] = ["sqrtf", "sqrt", "__fsqrt_rn"];
-const FMA_BUILTINS: [(&str, FunctionCandidate); 9] = {
+const FMA_BUILTINS: [(&str, FunctionCandidate); 13] = {
     use FunctionCandidate::{
         FusedMultiplyAddRoundDown, FusedMultiplyAddRoundNearest, FusedMultiplyAddRoundUp,
-        FusedMultiplyAddRoundZero,
+        FusedMultiplyAddRoundZero, VectorFusedMultiplyAdd,
     };
 
     [
@@ -960,6 +961,22 @@ const FMA_BUILTINS: [(&str, FunctionCandidate); 9] = {
         ("__fmaf_ieee_rd", FusedMultiplyAddRoundDown),
         ("__fmaf_ieee_ru", FusedMultiplyAddRoundUp),
         ("__fmaf_ieee_rn", FusedMultiplyAddRoundNearest),
+        (
+            "__ffma2_rn",
+            VectorFusedMultiplyAdd(FmaRounding::NearestEven),
+        ),
+        (
+            "__ffma2_rz",
+            VectorFusedMultiplyAdd(FmaRounding::TowardZero),
+        ),
+        (
+            "__ffma2_rd",
+            VectorFusedMultiplyAdd(FmaRounding::TowardNegative),
+        ),
+        (
+            "__ffma2_ru",
+            VectorFusedMultiplyAdd(FmaRounding::TowardPositive),
+        ),
     ]
 };
 const INTEGRAL_DOUBLE_BUILTINS: [&str; 2] = ["fabs", "sqrt"];
@@ -1408,6 +1425,7 @@ pub(super) enum FunctionCandidate {
     FusedMultiplyAddRoundZero,
     FusedMultiplyAddRoundDown,
     FusedMultiplyAddRoundUp,
+    VectorFusedMultiplyAdd(FmaRounding),
     DivideRoundNearest,
     DivideApproximate,
     DivideRoundZero,
@@ -2037,6 +2055,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::FusedMultiplyAddRoundDown
                         | FunctionCandidate::FusedMultiplyAddRoundUp
                         | FunctionCandidate::FusedMultiplyAddRoundNearest
+                        | FunctionCandidate::VectorFusedMultiplyAdd(_)
                         | FunctionCandidate::MultiplyRoundZero
                         | FunctionCandidate::MultiplyRoundDown
                         | FunctionCandidate::MultiplyRoundUp
@@ -2325,6 +2344,10 @@ impl<'a> Parser<'a> {
             FunctionCandidate::FloatClassification(_)
             | FunctionCandidate::FixedFloatClassification(_) => TypeSpecifier::Scalar(Scalar::I32),
             FunctionCandidate::FloatExponent(result) => TypeSpecifier::Scalar(result.scalar()),
+            FunctionCandidate::VectorFusedMultiplyAdd(_) => TypeSpecifier::Vector {
+                component_count: 2,
+                scalar: Scalar::F32,
+            },
             FunctionCandidate::WrappingAtomic(_)
             | FunctionCandidate::FunnelShift(_)
             | FunctionCandidate::Sad(_)
@@ -2704,6 +2727,9 @@ impl<'a> Parser<'a> {
         }
         if candidate == FunctionCandidate::SubtractRoundZero {
             return self.lower_fsub_rz_call(arguments, span);
+        }
+        if let FunctionCandidate::VectorFusedMultiplyAdd(rounding) = candidate {
+            return self.lower_ffma2_call(arguments, rounding, span);
         }
         if candidate == FunctionCandidate::FusedMultiplyAddRoundDown {
             return self.lower_fmaf_rd_call(arguments, span);
@@ -3694,7 +3720,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::FusedMultiplyAddRoundZero
             | FunctionCandidate::FusedMultiplyAddRoundDown
             | FunctionCandidate::FusedMultiplyAddRoundUp
-            | FunctionCandidate::FusedMultiplyAddRoundNearest => 3,
+            | FunctionCandidate::FusedMultiplyAddRoundNearest
+            | FunctionCandidate::VectorFusedMultiplyAdd(_) => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::LoadReadOnly { .. }
             | FunctionCandidate::ByteSwap32
@@ -3764,6 +3791,12 @@ impl<'a> Parser<'a> {
             }
             FunctionCandidate::ScaleByPowerOfTwo => {
                 return Some(scalar_resolution([Scalar::F32, Scalar::I32][logical_index]))
+            }
+            FunctionCandidate::VectorFusedMultiplyAdd(_) => {
+                return Some(TypeResolution::Value(TypeInner::Vector {
+                    size: VectorSize::Bi,
+                    scalar: Scalar::F32,
+                }))
             }
             FunctionCandidate::FloatMath(_)
             | FunctionCandidate::FloatClassification(_)

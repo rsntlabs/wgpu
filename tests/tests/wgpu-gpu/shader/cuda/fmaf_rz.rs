@@ -4,14 +4,20 @@ const SENTINEL: u32 = 0xdead_beef;
 pub(super) fn cases() -> Vec<ShaderTest> {
     let mut input = Vec::new();
     let mut expected = vec![SENTINEL; 4];
-    for line in include_str!("fmaf-rz-values.csv")
+    let rows: Vec<Vec<u32>> = include_str!("fmaf-rz-values.csv")
         .lines()
         .filter(|line| !line.starts_with('#'))
-    {
-        let words: Vec<_> = line
-            .split(',')
-            .map(|word| u32::from_str_radix(word, 16).unwrap())
-            .collect();
+        .map(|line| {
+            line.split(',')
+                .map(|word| u32::from_str_radix(word, 16).unwrap())
+                .collect()
+        })
+        .collect();
+    assert!(rows
+        .iter()
+        .enumerate()
+        .any(|(i, row)| row[4] != rows[i ^ 1][4]));
+    for (index, words) in rows.iter().enumerate() {
         let [first, second, third, toward_zero, nearest, downward, upward] = words[..] else {
             panic!("expected three inputs,exact bigint oracle");
         };
@@ -49,6 +55,18 @@ pub(super) fn cases() -> Vec<ShaderTest> {
             downward,
             3,
             upward,
+            3,
+            nearest,
+            rows[index ^ 1][4],
+            3,
+            toward_zero,
+            rows[index ^ 1][3],
+            3,
+            downward,
+            rows[index ^ 1][5],
+            3,
+            upward,
+            rows[index ^ 1][6],
             3,
         ]);
     }
