@@ -1388,6 +1388,7 @@ impl<'a> Parser<'a> {
             "__restrict",
             "__restrict__",
             "__launch_bounds__",
+            "__builtin_offsetof",
         ]
         .contains(&name)
     }

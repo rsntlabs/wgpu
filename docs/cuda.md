@@ -464,6 +464,12 @@ Query constants can supply global and local initializers, array bounds,
 template arguments, and launch bounds. Template instantiation resolves
 dependent operands such as `sizeof(Value)`.
 
+`__builtin_offsetof(Record, member)` is a `size_t` integral constant
+giving the byte offset of a direct member of a complete record. The record
+type can be qualified, named through an alias, or resolved during template
+instantiation. The offset includes preceding members and padding. Use a
+narrower constant type if the target shader needs only 32-bit values.
+
 `sizeof(object)` and `sizeof object` also accept a direct, unqualified object
 name. Supported objects include scalar, vector, record, and array variables,
 parameters, references, pointers, and constants, including integral template

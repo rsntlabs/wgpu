@@ -9,6 +9,28 @@ enum SizeofOperand {
 }
 
 impl Parser<'_> {
+    pub(super) fn record_offset_query(&mut self, span: Span) -> Result<Value, ParseError> {
+        self.lexer.expect_span(Token::Paren('('))?;
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        self.parameter_expansion_budget.charge_work(1, span)?;
+        let type_span = self.lexer.peek()?.1;
+        let TypeSpecifier::Structure(record) = self.parse_type()?.ty else {
+            return Err(ParseError {
+                message: String::from("__builtin_offsetof requires a complete record type"),
+                span: type_span,
+            });
+        };
+        self.lexer.expect_span(Token::Separator(','))?;
+        let (field, field_span) = self.identifier()?;
+        let closing = self.lexer.expect_span(Token::Paren(')'))?;
+        let (index, _) = self.field_type(&TypeResolution::Handle(record), field, field_span)?;
+        let TypeInner::Struct { ref members, .. } = self.module.types[record].inner else {
+            unreachable!();
+        };
+        self.type_query_result(members[index as usize].offset, span.until(&closing))
+    }
+
     pub(super) fn type_query(&mut self, name: &str, span: Span) -> Result<Value, ParseError> {
         let operand_start = self.lexer.clone();
         let parenthesized = self.lexer.next_if(Token::Paren('('))?;

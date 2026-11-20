@@ -397,6 +397,9 @@ impl Parser<'_> {
         if matches!(name, "sizeof" | "alignof") {
             return self.type_query(name, span).map(Into::into);
         }
+        if name == "__builtin_offsetof" {
+            return self.record_offset_query(span).map(Into::into);
+        }
         if name == "noexcept" {
             return Err(ParseError {
                 message: String::from("noexcept operator is unsupported"),

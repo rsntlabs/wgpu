@@ -80,6 +80,91 @@ fn rejected(source: &str) -> naga::front::cuda::ParseError {
 }
 
 #[test]
+fn cuda_record_offsetof_folds_source_layout_with_qualified_and_local_types() {
+    assert_query_results(
+        "struct Record {
+            short head; float2 pair; float3 packed; float scalar; float4 aligned; int row[2];
+        };
+        using Alias = const Record;
+        constexpr size_t Packed = __builtin_offsetof(Record, packed);
+        static_assert(Packed == 16);
+        struct Other { static_assert(__builtin_offsetof(Record, row) == 48); int value; };
+        __global__ void kernel(unsigned long *output) {
+            struct Local { int head; float2 pair; };
+            output[0] = __builtin_offsetof(Record, head);
+            output[1] = __builtin_offsetof(volatile Alias, pair);
+            output[2] = __builtin_offsetof(Record, packed);
+            output[3] = __builtin_offsetof(Record, scalar);
+            output[4] = __builtin_offsetof(Record, aligned);
+            output[5] = __builtin_offsetof(Alias, row);
+            output[6] = __builtin_offsetof(Local, pair);
+            int values[__builtin_offsetof(Record, scalar)];
+            output[7] = sizeof(values);
+            unsigned long offsetof = 7UL;
+            static_assert(__builtin_offsetof(Record, row) == 48);
+        }",
+        &[0, 8, 16, 28, 32, 48, 8, 112],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_uses_concrete_template_types() {
+    let module = roundtrip(
+        "struct Record { int head; float4 data; };
+        template<class T> __device__ size_t offset(size_t value = __builtin_offsetof(Record, data)) {
+            static_assert(__builtin_offsetof(T, data) == 16u);
+            return value + __builtin_offsetof(T, data);
+        }
+        __global__ void kernel(unsigned long *output) { output[0] = offset<Record>(); }",
+    );
+    assert_eq!(module.functions.len(), 1);
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_non_record_types_and_indirect_designators() {
+    for (operands, message) in [
+        ("int, x", "complete record"),
+        ("float2, x", "complete record"),
+        ("float3, x", "complete record"),
+        ("dim3, x", "complete record"),
+        ("Pointer, row", "complete record"),
+        ("Array, row", "complete record"),
+        ("Record, absent", "unknown or unsupported field"),
+        ("Record, nested.member", "expected"),
+        ("Record, row[0]", "expected"),
+        ("Record, nested->member", "expected"),
+        ("Record, Record::row", "expected"),
+        ("Record, row + 1", "expected"),
+        ("Record, 0", "expected"),
+        ("Record row", "expected"),
+    ] {
+        let error = rejected(&format!(
+            "struct Inner {{ int member; }};
+            struct Record {{ Inner nested; int row[3]; }};
+            using Pointer = Record *; using Array = Record[2];
+            __global__ void kernel(unsigned *output) {{
+                output[0] = unsigned(__builtin_offsetof({operands}));
+            }}"
+        ));
+        assert!(error.message.contains(message), "{operands}: {error}");
+    }
+    let error = rejected(
+        "struct Record { int head; static_assert(__builtin_offsetof(Record, head) == 0u); };
+         __global__ void kernel() {}",
+    );
+    assert!(error.message.contains("Record"), "{error}");
+    let error = rejected(
+        "struct Record { int head; }; using Alias = Record;
+         __global__ void kernel(unsigned *output) {
+             int Alias; output[0] = unsigned(__builtin_offsetof(Alias, head));
+         }",
+    );
+    assert!(error.message.contains("Alias"), "{error}");
+    let error = rejected("__global__ void kernel() { int __builtin_offsetof; }");
+    assert!(error.message.contains("reserved"), "{error}");
+}
+
+#[test]
 fn cuda_type_queries_cover_scalar_spellings_qualifiers_and_aliases() {
     for (spelling, size) in [
         ("bool", 1),

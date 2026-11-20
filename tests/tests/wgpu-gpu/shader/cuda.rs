@@ -18,6 +18,7 @@ mod auto_declarations;
 mod bitcasts;
 mod boolean_parameters;
 mod brevll;
+mod builtin_offsetof;
 mod byte_perm;
 mod byte_swap32;
 mod cached_math;
@@ -289,6 +290,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_INT2FLOAT_RD,
         CUDA_INT2FLOAT_RN,
         CUDA_INT2FLOAT_RZ,
+        CUDA_BUILTIN_OFFSETOF,
         CUDA_LDG,
         CUDA_LDG_FLOAT2,
         CUDA_LDG_NATIVE_VECTORS,
@@ -1384,3 +1386,6 @@ static CUDA_LDG_NATIVE_VECTORS: GpuTestConfiguration = configuration(ldg_native_
                 ..Limits::downlevel_defaults()
             }),
     );
+
+#[apply(gpu_test!)]
+static CUDA_BUILTIN_OFFSETOF: GpuTestConfiguration = configuration(builtin_offsetof::cases);

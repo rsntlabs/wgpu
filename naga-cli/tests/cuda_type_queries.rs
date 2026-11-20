@@ -3,6 +3,64 @@ mod common;
 use common::TestFiles;
 
 #[test]
+fn cuda_record_offsetof_cli_emits_32_bit_output_for_all_backends() {
+    let source = include_str!("../../naga/tests/in/cuda/builtin-offsetof.cu");
+    for compact in [false, true] {
+        let files = TestFiles::new("cu", source);
+        let outputs = ["wgsl", "spv", "hlsl", "metal", "comp"]
+            .map(|extension| files.output.with_extension(extension));
+        let paths = outputs.each_ref().map(|path| path.as_path());
+        let mut arguments = vec![
+            "--entry-point",
+            "record_offsets",
+            "--cuda-workgroup-size",
+            "4,1,1",
+        ];
+        if compact {
+            arguments.push("--compact");
+        }
+        let result = files.translate_outputs(&arguments, &paths);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert!(outputs
+            .iter()
+            .all(|output| std::fs::metadata(output).unwrap().len() > 0));
+        let module = files.read_module();
+        assert_eq!(module.entry_points[0].workgroup_size, [4, 1, 1]);
+        assert_eq!(module.global_variables.len(), 1);
+        let (_, output) = module.global_variables.iter().next().unwrap();
+        assert_eq!(
+            output.binding,
+            Some(naga::ResourceBinding {
+                group: 0,
+                binding: 0
+            })
+        );
+        assert_eq!(
+            output.space,
+            naga::AddressSpace::Storage {
+                access: naga::StorageAccess::LOAD | naga::StorageAccess::STORE,
+            }
+        );
+        let naga::TypeInner::Array {
+            base,
+            size: naga::ArraySize::Dynamic,
+            stride: 4,
+        } = module.types[output.ty].inner
+        else {
+            panic!("expected packed unsigned output");
+        };
+        assert_eq!(
+            module.types[base].inner,
+            naga::TypeInner::Scalar(naga::Scalar::U32)
+        );
+    }
+}
+
+#[test]
 fn cuda_type_queries_cli_preserves_byte_counted_copy_bindings_and_launch_shape() {
     let files = TestFiles::new(
         "cu",
