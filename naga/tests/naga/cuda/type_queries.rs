@@ -173,7 +173,7 @@ fn cuda_record_offsetof_rejects_invalid_array_indices_without_evaluating_them() 
     for (path, message) in [
         ("row[-1]", "integer literal"),
         ("row[1.0f]", "integer literal"),
-        ("row[true]", "integer literal"),
+        ("row[nullptr]", "integer literal"),
         ("row[0b2]", "integer literal"),
         ("row[4294967296ULL]", "integer literal"),
         ("row[]", "integer literal"),
@@ -697,6 +697,38 @@ fn cuda_record_offsetof_rejects_invalid_conditional_indices() {
         ));
         assert!(error.message.contains(message), "{index}: {error}");
     }
+}
+
+#[test]
+fn cuda_record_offsetof_evaluates_boolean_literal_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        #define YES true
+        #define NO false
+        struct Record { int head; int row[3]; };
+        __global__ void kernel(unsigned long *output, unsigned input) {
+            output[0] = __builtin_offsetof(Record, row[true]);
+            output[1] = offsetof(Record, row[false]);
+            output[2] = offsetof(Record, row[YES + true]);
+            output[3] = offsetof(Record, row[!NO]);
+            output[4] = offsetof(Record, row[-true + 2]);
+            output[5] = offsetof(Record, row[true << true]);
+            output[6] = offsetof(Record, row[false || true && false]);
+            output[7] = offsetof(Record, row[true || input]);
+            output[8] = offsetof(Record, row[false && (1 / 0)]);
+            output[9] = offsetof(Record, row[true ? false : true]);
+            output[10] = offsetof(Record, row[false ? input : true]);
+            output[11] = offsetof(Record, row[true || (false ? true : false)]);
+        }",
+        &[8, 4, 12, 8, 8, 12, 4, 8, 4, 4, 8, 8],
+    );
+    let error = rejected(
+        "struct Record { int row[1]; };
+         __global__ void kernel(unsigned *out) {
+             out[0] = unsigned(__builtin_offsetof(Record, row[true]));
+         }",
+    );
+    assert!(error.message.contains("out of bounds"), "{error}");
 }
 
 #[test]

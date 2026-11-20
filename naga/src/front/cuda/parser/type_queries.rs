@@ -250,6 +250,11 @@ impl Parser<'_> {
                 }
                 number::parse_integer(text)
             }
+            Token::Word(word @ ("true" | "false")) => {
+                self.parameter_expansion_budget
+                    .charge_work(word.len() + 1, span)?;
+                Some(Literal::Bool(word == "true").into())
+            }
             Token::Word(name) => {
                 self.parameter_expansion_budget
                     .charge_work(name.len() + 1, span)?;
@@ -498,7 +503,7 @@ impl Parser<'_> {
     fn invalid_record_offset_index(span: Span) -> ParseError {
         ParseError {
             message: String::from(
-                "__builtin_offsetof index requires an integer literal or named integral constant with a nonnegative value that fits in 32 bits",
+                "__builtin_offsetof index requires an integer literal, Boolean literal, or named integral constant with a nonnegative value that fits in 32 bits",
             ),
             span,
         }
@@ -1382,6 +1387,7 @@ mod tests {
             ("1 || (((((1 / 0)))))]", false, false),
             ("0 ? 1 / 0 : 0 ? 1 << 32 : 1]", true, true),
             ("1 ? 1 : (((0 ? 1 : 0)))]", false, false),
+            ("true || (false ? 1 / 0 : false)]", true, true),
         ] {
             let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             let span = Span::new(0, 1);
