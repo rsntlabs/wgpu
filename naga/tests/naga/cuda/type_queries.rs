@@ -732,6 +732,77 @@ fn cuda_record_offsetof_evaluates_boolean_literal_indices() {
 }
 
 #[test]
+fn cuda_record_offsetof_evaluates_integral_static_cast_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        #define NARROW short
+        struct Record { int head; int row[4]; };
+        using Index = unsigned short;
+        using Wide = unsigned long long;
+        constexpr int Known = 1;
+        __global__ void kernel(unsigned long *output, unsigned input, volatile int *observed) {
+            using Alias = Index;
+            const volatile int &readonly = observed[0];
+            output[0] = offsetof(Record, row[static_cast<NARROW>(65537u)]);
+            output[1] = offsetof(Record, row[static_cast<Alias>(65538u)]);
+            output[2] = offsetof(Record, row[static_cast<int>(0xffffffffu) + 2]);
+            output[3] = offsetof(Record, row[static_cast<long>(0xffffffffffffffffULL) + 2]);
+            output[4] = offsetof(Record, row[static_cast<long long>(0xffffffffffffffffULL) + 2]);
+            output[5] = offsetof(Record, row[static_cast<unsigned>(-1) % 2]);
+            output[6] = offsetof(Record, row[static_cast<bool>(-7)]);
+            output[7] = offsetof(Record, row[static_cast<bool>(0)]);
+            output[8] = offsetof(Record, row[static_cast<bool>(2)]);
+            output[9] = offsetof(Record, row[static_cast<const volatile int>(Known)]);
+            output[10] = offsetof(Record, row[true ? static_cast<int>(Known) : readonly]);
+            output[11] = offsetof(Record, row[(true ? -1 : static_cast<Wide>(input)) == 0xffffffffffffffffULL]);
+            output[12] = offsetof(Record, row[true || static_cast<int>(1 / 0)]);
+            output[13] = offsetof(Record, row[static_cast<unsigned>(static_cast<short>(4))>>2]);
+            output[14] = offsetof(Record, row[static_cast<decltype(input)>(2)]);
+            output[15] = offsetof(Record, row[static_cast<std::size_t>(3)]);
+            output[16] = offsetof(Record, row[static_cast<long>(-1) < 1u]);
+            output[17] = offsetof(Record, row[static_cast<long long>(-1) < 1ul]);
+        }",
+        &[8, 12, 8, 8, 8, 8, 8, 4, 8, 8, 8, 8, 8, 8, 12, 16, 8, 4],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_invalid_static_cast_indices() {
+    for (index, message) in [
+        ("static_cast<int>(input)", "integral constant"),
+        ("static_cast<int>(readonly)", "integral constant"),
+        ("static_cast<int>(1 / 0)", "division by zero"),
+        ("static_cast<int>(true ? Known : readonly)", "volatile"),
+        ("static_cast<float>(1)", "integral scalar target"),
+        ("true || static_cast<float>(1)", "integral scalar target"),
+        ("static_cast<Record>(1)", "integral scalar target"),
+        ("static_cast<float2>(1)", "integral scalar target"),
+        ("static_cast<Pointer>(0)", "integral scalar target"),
+        ("static_cast<int *>(0)", "expected"),
+        ("static_cast<int &>(Known)", "expected"),
+        ("static_cast<Missing>(1)", "type"),
+        ("static_cast<int>(1.0f)", "integer literal"),
+        ("true || static_cast<int>(nullptr)", "integer literal"),
+        ("static_cast<int>()", "integer literal"),
+        ("static_cast<int>>(1)", "expected"),
+        ("static_cast<int>(0, 1)", "expected"),
+        ("static_cast<int>(4)", "out of bounds"),
+        ("static_cast<short>(65535u)", "nonnegative"),
+    ] {
+        let error = rejected(&format!(
+            "struct Record {{ int row[4]; }};
+             using Pointer = int *;
+             constexpr int Known = 1;
+             __global__ void kernel(unsigned *out, unsigned input, volatile int *observed) {{
+                 const volatile int &readonly = observed[0];
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
+        assert!(error.message.contains(message), "{index}: {error}");
+    }
+}
+
+#[test]
 fn cuda_record_offsetof_resolves_named_integral_indices_in_scope() {
     assert_query_results(
         "#include <cstddef>\n#define COLUMN column\n

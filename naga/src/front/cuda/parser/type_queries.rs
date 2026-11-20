@@ -255,6 +255,9 @@ impl Parser<'_> {
                     .charge_work(word.len() + 1, span)?;
                 Some(Literal::Bool(word == "true").into())
             }
+            Token::Word("static_cast") => {
+                return self.record_offset_static_cast(depth, evaluate, span);
+            }
             Token::Word(name) => {
                 self.parameter_expansion_budget
                     .charge_work(name.len() + 1, span)?;
@@ -301,6 +304,49 @@ impl Parser<'_> {
             Literal::U64(value) => i128::from(value),
             _ => return None,
         })
+    }
+
+    fn record_offset_static_cast(
+        &mut self,
+        depth: u32,
+        evaluate: bool,
+        start: Span,
+    ) -> Result<(RecordOffsetIndex, Span), ParseError> {
+        if depth >= 64 {
+            return Err(ParseError {
+                message: String::from("CUDA expression nesting limit exceeded"),
+                span: start,
+            });
+        }
+        self.parameter_expansion_budget.charge_work(5, start)?;
+        self.lexer.expect_span(Token::Paren('<'))?;
+        let target_span = self.lexer.peek()?.1;
+        let scalar = self
+            .parse_type()?
+            .ty
+            .source_scalar()
+            .filter(|&scalar| Self::record_offset_integral_scalar(scalar))
+            .ok_or_else(|| ParseError {
+                message: String::from(
+                    "__builtin_offsetof static_cast requires an integral scalar target",
+                ),
+                span: target_span,
+            })?;
+        self.lexer.expect_span(Token::Paren('>'))?;
+        self.lexer.expect_span(Token::Paren('('))?;
+        let (operand, _) = self.record_offset_index(depth + 1, 0, evaluate)?;
+        let end = self.lexer.expect_span(Token::Paren(')'))?;
+        let value = operand.value.map(|value| match scalar.scalar() {
+            Scalar::BOOL => i128::from(value != 0),
+            Scalar::I16 => i128::from(value as i16),
+            Scalar::U16 => i128::from(value as u16),
+            Scalar::I32 => i128::from(value as i32),
+            Scalar::U32 => i128::from(value as u32),
+            Scalar::I64 => i128::from(value as i64),
+            Scalar::U64 => i128::from(value as u64),
+            _ => unreachable!(),
+        });
+        Ok((RecordOffsetIndex::prvalue(scalar, value), start.until(&end)))
     }
 
     fn record_offset_unary(
@@ -543,6 +589,10 @@ impl Parser<'_> {
             Symbol::TemplateParameter { scalar, .. } => (scalar, None),
             _ => return None,
         };
+        Self::record_offset_integral_scalar(scalar).then_some((scalar, lvalue))
+    }
+
+    const fn record_offset_integral_scalar(scalar: SourceScalar) -> bool {
         matches!(
             scalar.scalar(),
             Scalar::BOOL
@@ -553,7 +603,6 @@ impl Parser<'_> {
                 | Scalar::I64
                 | Scalar::U64
         )
-        .then_some((scalar, lvalue))
     }
 
     fn record_offset_named_constant(&self, symbol: Symbol) -> Option<Literal> {
@@ -1388,6 +1437,10 @@ mod tests {
             ("0 ? 1 / 0 : 0 ? 1 << 32 : 1]", true, true),
             ("1 ? 1 : (((0 ? 1 : 0)))]", false, false),
             ("true || (false ? 1 / 0 : false)]", true, true),
+            ("static_cast<unsigned short>(65537u)]", true, true),
+            ("true || static_cast<bool>(1 / 0)]", false, true),
+            ("static_cast<int>((((1))))]", true, true),
+            ("static_cast<int>(((((1)))))]", false, false),
         ] {
             let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             let span = Span::new(0, 1);
