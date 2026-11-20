@@ -1171,7 +1171,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__ldg",
         GlobalDeclaration::Functions(FunctionOverloads::default()),
     );
-    for name in ["copysignf", "nextafterf"] {
+    for name in ["copysignf", "nextafterf", "fdimf"] {
         declarations.insert(
             name,
             GlobalDeclaration::Functions(FunctionOverloads::default()),
@@ -1348,6 +1348,7 @@ pub(super) enum FunctionCandidate {
     Fmodf,
     CopySign,
     NextAfter,
+    PositiveDifference,
     FloatToIntegerRoundZero(Scalar),
     IntegerToFloat {
         source: Scalar,
@@ -1966,6 +1967,7 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::Fmodf
                         | FunctionCandidate::CopySign
                         | FunctionCandidate::NextAfter
+                        | FunctionCandidate::PositiveDifference
                         | FunctionCandidate::FloatToIntegerRoundZero(_)
                         | FunctionCandidate::IntegerToFloat { .. }
                         | FunctionCandidate::AddRoundZero
@@ -2266,6 +2268,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Fmodf
             | FunctionCandidate::CopySign
             | FunctionCandidate::NextAfter
+            | FunctionCandidate::PositiveDifference
             | FunctionCandidate::AddRoundZero
             | FunctionCandidate::AddRoundNearest
             | FunctionCandidate::SubtractRoundNearest
@@ -2560,6 +2563,9 @@ impl<'a> Parser<'a> {
         }
         if candidate == FunctionCandidate::NextAfter {
             return self.lower_nextafterf_call(arguments, span);
+        }
+        if candidate == FunctionCandidate::PositiveDifference {
+            return self.lower_fdimf_call(arguments, span);
         }
         if let FunctionCandidate::FloatToIntegerRoundZero(destination) = candidate {
             return self.lower_float_to_integer_rz_call(destination, arguments, span);
@@ -3304,6 +3310,7 @@ impl<'a> Parser<'a> {
             .chain(match (builtin_visible, name) {
                 (true, "copysignf") => Some(FunctionCandidate::CopySign),
                 (true, "nextafterf") => Some(FunctionCandidate::NextAfter),
+                (true, "fdimf") => Some(FunctionCandidate::PositiveDifference),
                 (true, "__float2int_rz") => {
                     Some(FunctionCandidate::FloatToIntegerRoundZero(Scalar::I32))
                 }
@@ -3477,6 +3484,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Fmodf
             | FunctionCandidate::CopySign
             | FunctionCandidate::NextAfter
+            | FunctionCandidate::PositiveDifference
             | FunctionCandidate::AddRoundZero
             | FunctionCandidate::AddRoundNearest
             | FunctionCandidate::SubtractRoundNearest
@@ -3564,6 +3572,7 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Fmodf
             | FunctionCandidate::CopySign
             | FunctionCandidate::NextAfter
+            | FunctionCandidate::PositiveDifference
             | FunctionCandidate::AddRoundZero
             | FunctionCandidate::AddRoundNearest
             | FunctionCandidate::SubtractRoundNearest

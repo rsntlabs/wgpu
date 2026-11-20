@@ -481,3 +481,5 @@ fn hlsl_dispatch_constants_are_required_only_for_selected_entry_points() {
         assert_eq!(result.is_ok(), entry_point == "empty");
     }
 }
+
+mod fdimf;

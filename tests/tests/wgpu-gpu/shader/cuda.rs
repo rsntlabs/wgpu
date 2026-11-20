@@ -52,6 +52,7 @@ mod empty_scalar_construction;
 mod fabs;
 mod fadd_rn;
 mod fadd_rz;
+mod fdimf;
 mod fdiv_rn;
 mod fdiv_rz;
 mod ffsll;
@@ -252,6 +253,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_CACHED_MATH,
         CUDA_ROUNDING_ZERO_SIGNS,
         CUDA_COPYSIGNF,
+        CUDA_FDIMF,
         CUDA_NEXTAFTERF,
         CUDA_CEILF,
         CUDA_CLASS_VALUES,
@@ -1412,3 +1414,6 @@ static CUDA_OFFSETOF_ARRAY_INDICES: GpuTestConfiguration =
 #[apply(gpu_test!)]
 static CUDA_OFFSETOF_NAMED_INDICES: GpuTestConfiguration =
     configuration(offsetof_named_indices::cases);
+
+#[apply(gpu_test!)]
+static CUDA_FDIMF: GpuTestConfiguration = configuration(fdimf::cases);

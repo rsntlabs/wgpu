@@ -39,6 +39,48 @@ impl Parser<'_> {
         self.lower_add_sub_call(arguments, true, AddRounding::TowardZero, span)
     }
 
+    pub(super) fn lower_fdimf_call(
+        &mut self,
+        arguments: Vec<Value>,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        use BinaryOperator as Op;
+
+        self.activate_parameter_expansion(span)?;
+        self.prepare_parameter_bindings(span)?;
+        let mut arguments = arguments.into_iter();
+        let left = self.convert_scalar(arguments.next().unwrap().into(), Scalar::F32)?;
+        let right = self.convert_scalar(arguments.next().unwrap().into(), Scalar::F32)?;
+        let left = self.bitcast_scalar(left.handle, Scalar::U32, span)?;
+        let right = self.bitcast_scalar(right.handle, Scalar::U32, span)?;
+        let zero = self.fadd_literal(0, span)?;
+        let sign = self.fadd_literal(0x8000_0000, span)?;
+        let magnitude_mask = self.fadd_literal(0x7fff_ffff, span)?;
+        let infinity = self.fadd_literal(0x7f80_0000, span)?;
+
+        // Equal infinities yield zero even though their difference is NaN.
+        let left_magnitude = self.fadd_binary(Op::And, left, magnitude_mask, span)?;
+        let infinite = self.fadd_binary(Op::Equal, left_magnitude, infinity, span)?;
+        let equal = self.fadd_binary(Op::Equal, left, right, span)?;
+        let equal_infinities = self.fadd_binary(Op::LogicalAnd, equal, infinite, span)?;
+
+        let negated_right = self.fadd_binary(Op::ExclusiveOr, right, sign, span)?;
+        let difference = self.call_fadd_rn_bits(left, negated_right, span)?;
+        let negative = self.fadd_binary(Op::GreaterEqual, difference, sign, span)?;
+        let clamp = self.fadd_binary(Op::LogicalOr, negative, equal_infinities, span)?;
+        let bits = self.fadd_select(clamp, zero, difference, span)?;
+        let handle = self.bitcast_scalar(bits, Scalar::F32, span)?;
+        Ok(Value {
+            category: ValueCategory::Prvalue,
+            qualifiers: Qualifiers::NONE,
+            constant: ConstantValue::default(),
+            handle,
+            ty: scalar_resolution(Scalar::F32),
+            span,
+        }
+        .into())
+    }
+
     fn lower_add_sub_call(
         &mut self,
         arguments: Vec<Value>,
