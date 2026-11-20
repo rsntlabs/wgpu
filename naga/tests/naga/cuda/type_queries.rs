@@ -1223,7 +1223,7 @@ fn cuda_record_offsetof_rejects_unsupported_named_sizeof_in_indices() {
         ("sizeof((input))", "type"),
         ("sizeof(input + 1)", "expected"),
         ("sizeof local[0]", "expected"),
-        ("sizeof(object.row)", "expected"),
+        ("sizeof(object.row[0])", "expected"),
         ("sizeof(*out)", "type"),
         ("sizeof(input++)", "expected"),
         ("sizeof helper()", "named object"),
@@ -1388,6 +1388,68 @@ fn cuda_record_offsetof_rejects_invalid_array_type_queries_in_indices() {
          }}"
     ));
     assert!(error.message.contains("array rank limit"), "{error}");
+}
+
+#[test]
+fn cuda_record_offsetof_evaluates_member_sizeof_in_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        struct Record { int head; int row[5]; };
+        struct Payload { float3 vector; short grid[2][3]; };
+        struct Outer { int tag; Payload payload; };
+        __constant__ Outer Global[2];
+        __global__ void kernel(unsigned long *output, volatile Outer *input) {
+            extern __shared__ Outer scratch[];
+            Outer object;
+            Outer &alias = object;
+            Outer local[2];
+            Outer *missing = nullptr;
+            float4 wide;
+            int grid = 0;
+            output[0] = offsetof(Record, row[sizeof(object.payload.grid) / 4]);
+            output[1] = offsetof(Record, row[sizeof alias.payload / 8]);
+            output[2] = offsetof(Record, row[sizeof input->payload.vector.z / 4 + 1]);
+            output[3] = offsetof(Record, row[sizeof(missing->payload.grid) / 4]);
+            output[4] = offsetof(Record, row[sizeof(local->payload.grid) / 4]);
+            output[5] = offsetof(Record, row[sizeof(Global->payload.grid) / 4]);
+            output[6] = offsetof(Record, row[sizeof(scratch->payload.grid) / 4]);
+            output[7] = offsetof(Record, row[sizeof(wide.w) / 4]);
+            output[8] = offsetof(Record, row[sizeof input->tag / 4]);
+            output[9] = offsetof(Record, row[true || sizeof(input->tag) / 0]);
+        }",
+        &[16, 16, 12, 16, 16, 16, 16, 8, 8, 8],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_unsupported_member_sizeof_in_indices() {
+    for (index, message) in [
+        ("sizeof(pointer.tag)", "member access"),
+        ("sizeof(object->tag)", "member access"),
+        ("sizeof(local.tag)", "field"),
+        ("sizeof(none->tag)", "member access"),
+        ("sizeof(object.missing)", "field"),
+        ("true || sizeof(pointer->missing)", "field"),
+        ("sizeof(pointer->tag.other)", "field"),
+        ("sizeof(vector.w)", "field"),
+        ("sizeof(object.)", "identifier"),
+        ("sizeof(object.row[0])", "expected"),
+        ("sizeof((object).row)", "type"),
+        ("sizeof(pointer->tag++)", "expected"),
+        ("alignof(object.tag)", "type"),
+    ] {
+        let error = rejected(&format!(
+            "struct Record {{ int tag; int row[5]; }};
+             __global__ void kernel(unsigned *out, Record *pointer) {{
+                 Record object;
+                 Record local[2];
+                 auto none = nullptr;
+                 float3 vector;
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
+        assert!(error.message.contains(message), "{index}: {error}");
+    }
 }
 
 #[test]

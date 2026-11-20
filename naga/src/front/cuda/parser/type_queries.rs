@@ -391,13 +391,16 @@ impl Parser<'_> {
                 .map(|symbol| (word, symbol)),
             _ => None,
         };
-        let size = if let Some((word, symbol)) = object {
+        let (size, operand_end) = if let Some((word, symbol)) = object {
             self.parameter_expansion_budget
                 .charge_work(word.len() + 1, target_span)?;
             self.lexer.next()?;
             self.record_offset_named_sizeof(symbol, target_span)?
         } else if parenthesized {
-            self.record_offset_type_layout(name, depth + 1, target_span)?
+            (
+                self.record_offset_type_layout(name, depth + 1, target_span)?,
+                target_span,
+            )
         } else {
             return Err(ParseError {
                 message: String::from("__builtin_offsetof nested sizeof expected a parenthesized type or a named object"),
@@ -407,7 +410,7 @@ impl Parser<'_> {
         let end = if parenthesized {
             self.lexer.expect_span(Token::Paren(')'))?
         } else {
-            target_span
+            operand_end
         };
         let value = evaluate.then_some(i128::from(size));
         Ok((
@@ -528,8 +531,17 @@ impl Parser<'_> {
         Ok(if name == "sizeof" { size } else { alignment })
     }
 
-    fn record_offset_named_sizeof(&self, symbol: Symbol, span: Span) -> Result<u32, ParseError> {
-        let size = match self.named_sizeof_operand(symbol, span)? {
+    fn record_offset_named_sizeof(
+        &mut self,
+        symbol: Symbol,
+        span: Span,
+    ) -> Result<(u32, Span), ParseError> {
+        let mut operand = self.named_sizeof_operand(symbol, span)?;
+        let mut end = span;
+        while matches!(self.lexer.peek()?.0, Token::Separator('.') | Token::Arrow) {
+            (operand, end) = self.sizeof_member(operand)?;
+        }
+        let size = match operand {
             SizeofOperand::Scalar(scalar) | SizeofOperand::IntegerZeroLiteral(scalar) => {
                 Some(u32::from(scalar.scalar().width))
             }
@@ -540,12 +552,13 @@ impl Parser<'_> {
             }
             SizeofOperand::IncompleteArray(_) => None,
         };
-        size.ok_or_else(|| ParseError {
+        let size = size.ok_or_else(|| ParseError {
             message: String::from(
                 "__builtin_offsetof nested sizeof requires a complete named object type",
             ),
-            span,
-        })
+            span: span.until(&end),
+        })?;
+        Ok((size, end))
     }
 
     fn record_offset_aggregate_size(&self, ty: TypeSpecifier) -> Option<u32> {
@@ -1445,40 +1458,47 @@ impl Parser<'_> {
                 operand = self.sizeof_subscript(operand, index, start.until(&end))?;
                 continue;
             }
-            let arrow = self.lexer.next()?.0 == Token::Arrow;
-            let (field, field_span) = self.identifier()?;
-            self.parameter_expansion_budget.charge_work(1, field_span)?;
-            let invalid = || ParseError {
-                message: String::from(
-                    "sizeof member access requires a record or vector object, or a pointer with ->",
-                ),
-                span: field_span,
-            };
-            let ty = match operand {
-                SizeofOperand::Object(ty) => {
-                    if arrow {
-                        let pointee = self
-                            .source_pointer_pointee(&ty)
-                            .or_else(|| match *ty.inner_with(&self.module.types) {
-                                TypeInner::Array { base, .. } => Some(base),
-                                _ => None,
-                            })
-                            .ok_or_else(invalid)?;
-                        TypeResolution::Handle(pointee)
-                    } else if self.source_pointer_pointee(&ty).is_some() {
-                        return Err(invalid());
-                    } else {
-                        ty
-                    }
-                }
-                SizeofOperand::IncompleteArray(element) if arrow => element,
-                _ => return Err(invalid()),
-            };
-            let (_, ty) = self.field_type(&ty, field, field_span)?;
-            operand = SizeofOperand::Object(ty);
-            end = field_span;
+            (operand, end) = self.sizeof_member(operand)?;
         }
         Ok((operand, start.until(&end)))
+    }
+
+    fn sizeof_member(
+        &mut self,
+        operand: SizeofOperand,
+    ) -> Result<(SizeofOperand, Span), ParseError> {
+        let arrow = self.lexer.next()?.0 == Token::Arrow;
+        let (field, field_span) = self.identifier()?;
+        self.parameter_expansion_budget
+            .charge_work(field.len() + 1, field_span)?;
+        let invalid = || ParseError {
+            message: String::from(
+                "sizeof member access requires a record or vector object, or a pointer with ->",
+            ),
+            span: field_span,
+        };
+        let ty = match operand {
+            SizeofOperand::Object(ty) => {
+                if arrow {
+                    let pointee = self
+                        .source_pointer_pointee(&ty)
+                        .or_else(|| match *ty.inner_with(&self.module.types) {
+                            TypeInner::Array { base, .. } => Some(base),
+                            _ => None,
+                        })
+                        .ok_or_else(invalid)?;
+                    TypeResolution::Handle(pointee)
+                } else if self.source_pointer_pointee(&ty).is_some() {
+                    return Err(invalid());
+                } else {
+                    ty
+                }
+            }
+            SizeofOperand::IncompleteArray(element) if arrow => element,
+            _ => return Err(invalid()),
+        };
+        let (_, ty) = self.field_type(&ty, field, field_span)?;
+        Ok((SizeofOperand::Object(ty), field_span))
     }
 
     fn sizeof_static_cast(&mut self, start: Span) -> Result<(SizeofOperand, Span), ParseError> {
@@ -1843,6 +1863,7 @@ mod tests {
             ("alignof(float3) / 4]", false, true),
             ("sizeof One / 4]", true, true),
             ("sizeof(One) / 4]", false, true),
+            ("sizeof Pair.y / 4]", true, true),
             ("sizeof(void const * const * volatile) / 8]", true, true),
             ("alignof(Fixed &) / 4]", false, true),
             ("sizeof(int[sizeof(int)][2]) / 32]", true, true),
@@ -1891,6 +1912,17 @@ mod tests {
                     handle: None,
                     ty: TypeResolution::Handle(element),
                     literal: Some(Literal::I32(1)),
+                },
+            );
+            parser.global_declarations.insert(
+                "Pair",
+                GlobalDeclaration::Constant {
+                    handle: None,
+                    ty: TypeResolution::Value(TypeInner::Vector {
+                        size: VectorSize::Bi,
+                        scalar: Scalar::I32,
+                    }),
+                    literal: None,
                 },
             );
             parser.function.expression_depth = 60;

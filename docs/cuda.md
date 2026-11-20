@@ -508,6 +508,9 @@ Inside an index, `sizeof(name)` and `sizeof name` also accept direct,
 unqualified object names. They use the source object type without reading
 the object. Fixed arrays retain their full extent and array parameters
 use their adjusted pointer type.
+Member paths rooted in a named object can use `.` and `->`, as in
+`sizeof(record.field)` and `sizeof pointer->field`. Array fields retain
+their full extent.
 Pointer type queries, including `void*`, use the CUDA source ABI size and
 alignment of eight bytes. Reference type queries use the referent's layout.
 Array type operands can include dimensions such as `int[2][3]`. Every
