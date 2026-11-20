@@ -566,6 +566,8 @@ outer bounds.
 Array type operands can include dimensions such as `int[2][3]`. Every
 explicit bound must be a positive integral constant, even in a skipped
 query. Only `alignof` accepts an omitted outer bound in this syntax.
+Arrays of pointers such as `int *[3]` use an eight-byte element stride and
+alignment in layout queries.
 Arithmetic that computes the `offsetof` index rejects signed overflow and
 zero divisors and wraps unsigned results at the operation's width. Shift
 counts must be nonnegative and less than the promoted left operand's bit

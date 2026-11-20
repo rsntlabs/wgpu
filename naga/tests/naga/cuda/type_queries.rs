@@ -1361,7 +1361,6 @@ fn cuda_record_offsetof_rejects_invalid_array_type_queries_in_indices() {
         ("sizeof(int[][2])", "complete"),
         ("alignof(int[2][])", "outermost"),
         ("alignof(Open[2])", "complete"),
-        ("sizeof(int *[2])", "direct arrays"),
         ("sizeof(int &[2])", "direct arrays"),
         ("sizeof(int[2)", "expected"),
     ] {
@@ -1910,7 +1909,6 @@ fn cuda_type_queries_reject_invalid_types_syntax_and_expression_operands() {
         "sizeof(int[-1])",
         "sizeof(int[18446744073709551615ULL])",
         "sizeof(int[2][])",
-        "sizeof(int*[2])",
         "sizeof(int&[3])",
         "sizeof(int int)",
         "alignof(const const int)",
@@ -4546,4 +4544,68 @@ fn cuda_layout_queries_grouped_references_to_array_pointers_reject_invalid_chain
                 __global__ void kernel(unsigned long *output) {{ int index; output[0] = {expression}; }}"));
         }
     }
+}
+
+#[test]
+fn cuda_layout_queries_direct_arrays_of_pointers_preserve_element_stride_and_alignment() {
+    for (query, size) in [
+        ("sizeof(int*[3])", 24),
+        ("alignof(int*[3])", 8),
+        ("sizeof(void**[2])", 16),
+        ("sizeof(P[2])", 16),
+        ("sizeof(const int*const[2][3])", 48),
+        ("alignof(int*volatile[2][3])", 8),
+        ("alignof(int*[])", 8),
+        ("alignof(void**[][3])", 8),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; using P = int*;
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = {query};
+                output[1] = __builtin_offsetof(Offsets, bytes[{query}]);
+            }}"
+            ),
+            &[size, size * 4],
+        );
+    }
+}
+
+#[test]
+fn cuda_layout_queries_direct_pointer_arrays_validate_bounds_and_reject_reference_elements() {
+    for query in [
+        "sizeof(int*[0])",
+        "sizeof(int*[-1])",
+        "sizeof(int*[index])",
+        "sizeof(int*[1.0f])",
+        "sizeof(int*[2][])",
+        "sizeof(int*[])",
+        "sizeof(int*[268435456u])",
+        "alignof(int*[][268435456u])",
+        "sizeof(int&[2])",
+        "alignof(int&&[2])",
+        "sizeof(void[2])",
+    ] {
+        for nested in [false, true] {
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query.to_owned()
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int index; output[0] = {expression}; }}"));
+        }
+    }
+    let suffixes = "[1]".repeat(65);
+    let error = rejected(&format!(
+        "__global__ void kernel(unsigned long *output) {{ output[0] = alignof(int *{suffixes}); }}"
+    ));
+    assert!(error.message.contains("array rank limit"), "{error}");
+    rejected(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = __builtin_offsetof(Offsets, bytes[true || sizeof(int*[0])]);
+        }",
+    );
 }

@@ -11,6 +11,7 @@ enum SizeofOperand {
 enum TypeQueryType {
     Pointer,
     PointerToArray(QualifiedType),
+    ArrayOfPointers,
     Object(QualifiedType),
 }
 
@@ -447,6 +448,11 @@ impl Parser<'_> {
                 self.record_offset_array_layout("alignof", ty.ty, depth, target_span)?;
                 Ok(8)
             }
+            TypeQueryType::ArrayOfPointers => {
+                self.type_query_array_layout(name, 8, 8, 0, |parser| {
+                    parser.record_offset_array_bound(depth)
+                })
+            }
             TypeQueryType::Object(ty) => {
                 if self.lexer.peek()?.0 == Token::Paren('[') {
                     self.record_offset_array_layout(name, ty.ty, depth, target_span)
@@ -500,14 +506,44 @@ impl Parser<'_> {
             TypeSpecifier::Array(handle) => self.array_shape(handle, span)?.1,
             _ => 0,
         };
-        let size_limit = |span| ParseError {
-            message: String::from("array exceeds Naga's type size limit"),
-            span,
-        };
-        let mut size = size
+        let stride = size
             .checked_next_multiple_of(alignment)
             .filter(|&size| size <= crate::valid::MAX_TYPE_SIZE)
-            .ok_or_else(|| size_limit(span))?;
+            .ok_or_else(|| Self::type_query_array_size_limit(span))?;
+        self.type_query_array_layout(name, stride, alignment, base_rank, |parser| {
+            parser.record_offset_array_bound(depth)
+        })
+    }
+
+    fn record_offset_array_bound(&mut self, depth: u32) -> Result<(u32, Span), ParseError> {
+        // A skipped query still requires a valid array type.
+        let (bound, span) = self.record_offset_index(depth, 0, RecordOffsetIndexMode::Evaluate)?;
+        let count = bound
+            .value
+            .and_then(|value| u32::try_from(value).ok())
+            .filter(|&count| count != 0)
+            .ok_or_else(|| ParseError {
+                message: String::from("array bound must be a positive 32-bit integral constant"),
+                span,
+            })?;
+        Ok((count, span))
+    }
+
+    fn type_query_array_size_limit(span: Span) -> ParseError {
+        ParseError {
+            message: String::from("array exceeds Naga's type size limit"),
+            span,
+        }
+    }
+
+    fn type_query_array_layout(
+        &mut self,
+        name: &str,
+        mut size: u32,
+        alignment: u32,
+        base_rank: usize,
+        mut parse_bound: impl FnMut(&mut Self) -> Result<(u32, Span), ParseError>,
+    ) -> Result<u32, ParseError> {
         let mut rank = base_rank;
         while let (Token::Paren('['), open) = self.lexer.peek()? {
             self.lexer.next()?;
@@ -534,24 +570,12 @@ impl Parser<'_> {
                 }
                 continue;
             }
-            // A skipped query still requires a valid array type.
-            let (bound, bound_span) =
-                self.record_offset_index(depth, 0, RecordOffsetIndexMode::Evaluate)?;
+            let (count, bound_span) = parse_bound(self)?;
             self.lexer.expect_span(Token::Paren(']'))?;
-            let count = bound
-                .value
-                .and_then(|value| u32::try_from(value).ok())
-                .filter(|&count| count != 0)
-                .ok_or_else(|| ParseError {
-                    message: String::from(
-                        "array bound must be a positive 32-bit integral constant",
-                    ),
-                    span: bound_span,
-                })?;
             size = size
                 .checked_mul(count)
                 .filter(|&size| size <= crate::valid::MAX_TYPE_SIZE)
-                .ok_or_else(|| size_limit(bound_span))?;
+                .ok_or_else(|| Self::type_query_array_size_limit(bound_span))?;
         }
         Ok(if name == "sizeof" { size } else { alignment })
     }
@@ -1228,6 +1252,11 @@ impl Parser<'_> {
                 self.array_alias_declarator(ty, span)?;
                 8
             }
+            TypeQueryType::ArrayOfPointers => {
+                self.type_query_array_layout(name, 8, 8, 0, |parser| {
+                    parser.array_size().map(|(count, span)| (count.get(), span))
+                })?
+            }
             TypeQueryType::Object(ty) => {
                 let ty = self.array_alias_declarator(ty, span)?.ty;
                 self.type_query_value(name, ty, span)?
@@ -1386,8 +1415,13 @@ impl Parser<'_> {
 
         let reference = self.lexer.next_if(Token::Operation('&'))?
             || self.lexer.next_if(Token::LogicalOperation('&'))?;
-        if (reference || pointer_depth != 0) && self.lexer.peek()?.0 == Token::Paren('[') {
-            return self.fail("direct arrays of pointers or references are unsupported");
+        if self.lexer.peek()?.0 == Token::Paren('[') {
+            if reference {
+                return self.fail("direct arrays of references are unsupported");
+            }
+            if pointer_depth != 0 {
+                return Ok(TypeQueryType::ArrayOfPointers);
+            }
         }
         Ok(if pointer_depth != 0 {
             TypeQueryType::Pointer
