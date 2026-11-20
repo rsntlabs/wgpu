@@ -2,11 +2,11 @@ using Sample = const float;
 using Bits = unsigned;
 
 __device__ Sample sine_value(Sample value) {
-    return sinf(value);
+    return __nv_sinf(value);
 }
 
 __host__ __device__ Sample cosine_value(Sample value) {
-    return cosf(value);
+    return __nv_cosf(value);
 }
 
 __device__ int sinf(bool value) {

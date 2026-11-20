@@ -881,7 +881,7 @@ const FLOAT_CLASSIFICATION_BUILTINS: &[(&str, FunctionCandidate)] = {
     ]
 };
 
-const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 12] = [
+const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 14] = [
     (
         "__clz",
         MathFunction::CountLeadingZeros,
@@ -932,6 +932,8 @@ const UNARY_BUILTINS: [(&str, MathFunction, Scalar, Scalar); 12] = [
     ),
     ("sinf", MathFunction::Sin, Scalar::F32, Scalar::F32),
     ("cosf", MathFunction::Cos, Scalar::F32, Scalar::F32),
+    ("__nv_sinf", MathFunction::Sin, Scalar::F32, Scalar::F32),
+    ("__nv_cosf", MathFunction::Cos, Scalar::F32, Scalar::F32),
     (
         "rsqrtf",
         MathFunction::InverseSqrt,
@@ -1288,6 +1290,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__sinf",
         "__cosf",
         "sincosf",
+        "__nv_sincosf",
         "__sincosf",
         "__fadd_rz",
         "__fadd_rn",
@@ -3569,7 +3572,7 @@ impl<'a> Parser<'a> {
                 )),
                 (true, "__sinf") => Some(FunctionCandidate::FastTrigonometry { cosine: false }),
                 (true, "__cosf") => Some(FunctionCandidate::FastTrigonometry { cosine: true }),
-                (true, "sincosf") => Some(FunctionCandidate::SinCos {
+                (true, "sincosf" | "__nv_sincosf") => Some(FunctionCandidate::SinCos {
                     flush_subnormals: false,
                 }),
                 (true, "__sincosf") => Some(FunctionCandidate::SinCos {

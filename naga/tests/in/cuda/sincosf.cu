@@ -6,7 +6,7 @@ __global__ void paired_trig(const float *input, float *output) {
     sincosf(value, &sine, &cosine);
     output[base] = sine; output[base + 1u] = cosine;
     unsigned cursor = base + 2u;
-    sincosf(value++, output + cursor++, output + cursor++);
+    __nv_sincosf(value++, output + cursor++, output + cursor++);
     output[base + 4u] = float(cursor);
     output[base + 5u] = value;
     sincosf(0.0f, &sine, &sine);
