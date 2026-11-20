@@ -131,6 +131,7 @@ mod noexcept;
 mod nonfinite_constants;
 mod null_pointers;
 mod nullptr;
+mod offsetof_member_paths;
 mod operator_addition;
 mod operator_compound_assignments;
 mod operator_functions;
@@ -291,6 +292,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_INT2FLOAT_RN,
         CUDA_INT2FLOAT_RZ,
         CUDA_BUILTIN_OFFSETOF,
+        CUDA_OFFSETOF_MEMBER_PATHS,
         CUDA_LDG,
         CUDA_LDG_FLOAT2,
         CUDA_LDG_NATIVE_VECTORS,
@@ -1389,3 +1391,7 @@ static CUDA_LDG_NATIVE_VECTORS: GpuTestConfiguration = configuration(ldg_native_
 
 #[apply(gpu_test!)]
 static CUDA_BUILTIN_OFFSETOF: GpuTestConfiguration = configuration(builtin_offsetof::cases);
+
+#[apply(gpu_test!)]
+static CUDA_OFFSETOF_MEMBER_PATHS: GpuTestConfiguration =
+    configuration(offsetof_member_paths::cases);

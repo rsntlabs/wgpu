@@ -15,20 +15,47 @@ impl Parser<'_> {
         self.prepare_parameter_bindings(span)?;
         self.parameter_expansion_budget.charge_work(1, span)?;
         let type_span = self.lexer.peek()?.1;
-        let TypeSpecifier::Structure(record) = self.parse_type()?.ty else {
+        let TypeSpecifier::Structure(mut record) = self.parse_type()?.ty else {
             return Err(ParseError {
                 message: String::from("__builtin_offsetof requires a complete record type"),
                 span: type_span,
             });
         };
         self.lexer.expect_span(Token::Separator(','))?;
-        let (field, field_span) = self.identifier()?;
-        let closing = self.lexer.expect_span(Token::Paren(')'))?;
-        let (index, _) = self.field_type(&TypeResolution::Handle(record), field, field_span)?;
-        let TypeInner::Struct { ref members, .. } = self.module.types[record].inner else {
-            unreachable!();
-        };
-        self.type_query_result(members[index as usize].offset, span.until(&closing))
+        let mut offset = 0u32;
+        loop {
+            let (field, field_span) = self.identifier()?;
+            let closing = if self.lexer.next_if(Token::Separator('.'))? {
+                None
+            } else {
+                Some(self.lexer.expect_span(Token::Paren(')'))?)
+            };
+            let (index, _) = self.field_type(&TypeResolution::Handle(record), field, field_span)?;
+            let TypeInner::Struct { ref members, .. } = self.module.types[record].inner else {
+                unreachable!();
+            };
+            let member = &members[index as usize];
+            offset = offset
+                .checked_add(member.offset)
+                .filter(|&total| total <= crate::valid::MAX_TYPE_SIZE)
+                .ok_or_else(|| ParseError {
+                    message: String::from("CUDA record member offset exceeds the type size limit"),
+                    span: field_span,
+                })?;
+            if let Some(closing) = closing {
+                return self.type_query_result(offset, span.until(&closing));
+            }
+            self.parameter_expansion_budget.charge_work(1, field_span)?;
+            record = member.ty;
+            if !self.structures.contains_key(&record) {
+                return Err(ParseError {
+                    message: String::from(
+                        "__builtin_offsetof member path requires a complete record field",
+                    ),
+                    span: field_span,
+                });
+            }
+        }
     }
 
     pub(super) fn type_query(&mut self, name: &str, span: Span) -> Result<Value, ParseError> {

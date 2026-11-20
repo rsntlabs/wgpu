@@ -110,14 +110,40 @@ fn cuda_record_offsetof_folds_source_layout_with_qualified_and_local_types() {
 #[test]
 fn cuda_record_offsetof_uses_concrete_template_types() {
     let module = roundtrip(
-        "struct Record { int head; float4 data; };
-        template<class T> __device__ size_t offset(size_t value = __builtin_offsetof(Record, data)) {
-            static_assert(__builtin_offsetof(T, data) == 16u);
-            return value + __builtin_offsetof(T, data);
+        "struct Inner { int head; float4 data; };
+        struct Record { int head; Inner inner; };
+        template<class T> __device__ size_t offset(size_t value = __builtin_offsetof(Record, inner)) {
+            static_assert(__builtin_offsetof(T, inner.data) == 32u);
+            return value + __builtin_offsetof(T, inner.data);
         }
         __global__ void kernel(unsigned long *output) { output[0] = offset<Record>(); }",
     );
     assert_eq!(module.functions.len(), 1);
+}
+
+#[test]
+fn cuda_record_offsetof_sums_nested_record_padding() {
+    assert_query_results(
+        "#include <cstddef>\n#define MEMBER middle.leaf.value\n
+        struct Leaf { short head; int value; int row[3]; float2 pair; };
+        struct Middle { int head; Leaf leaf; int last; };
+        struct Outer { float4 first; int guard; Middle middle; int second; };
+        using Alias = const Outer;
+        static_assert(offsetof(Alias, MEMBER) == 36u);
+        __global__ void kernel(unsigned long *output) {
+            struct Local { int head; Leaf leaf; };
+            int leaf = 0;
+            output[0] = offsetof(volatile Alias, MEMBER);
+            output[1] = __builtin_offsetof(Outer, middle.leaf.row);
+            output[2] = offsetof(Outer, middle.leaf.pair);
+            output[3] = offsetof(Outer, middle.last);
+            output[4] = offsetof(Outer, middle.leaf);
+            output[5] = offsetof(Local, leaf.value);
+            static_assert(offsetof(Outer, middle.leaf.value) ==
+                offsetof(Outer, middle) + offsetof(Middle, leaf) + offsetof(Leaf, value));
+        }",
+        &[36, 40, 56, 64, 32, 12],
+    );
 }
 
 #[test]
@@ -130,7 +156,16 @@ fn cuda_record_offsetof_rejects_non_record_types_and_indirect_designators() {
         ("Pointer, row", "complete record"),
         ("Array, row", "complete record"),
         ("Record, absent", "unknown or unsupported field"),
-        ("Record, nested.member", "expected"),
+        ("Record, nested.absent", "unknown or unsupported field"),
+        ("Record, absent.member", "unknown or unsupported field"),
+        ("Record, row.member", "complete record"),
+        ("Record, native.x", "complete record"),
+        ("Record, packed.x", "complete record"),
+        ("Record, nested.member.next", "complete record"),
+        ("Record, .nested.member", "expected"),
+        ("Record, nested..member", "expected"),
+        ("Record, nested.", "expected"),
+        ("Record, nested.member()", "expected"),
         ("Record, row[0]", "expected"),
         ("Record, nested->member", "expected"),
         ("Record, Record::row", "expected"),
@@ -140,7 +175,7 @@ fn cuda_record_offsetof_rejects_non_record_types_and_indirect_designators() {
     ] {
         let error = rejected(&format!(
             "struct Inner {{ int member; }};
-            struct Record {{ Inner nested; int row[3]; }};
+            struct Record {{ Inner nested; int row[3]; float2 native; float3 packed; }};
             using Pointer = Record *; using Array = Record[2];
             __global__ void kernel(unsigned *output) {{
                 output[0] = unsigned(__builtin_offsetof({operands}));

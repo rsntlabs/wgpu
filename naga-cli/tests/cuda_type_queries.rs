@@ -4,18 +4,27 @@ use common::TestFiles;
 
 #[test]
 fn cuda_record_offsetof_cli_emits_32_bit_output_for_all_backends() {
-    let source = include_str!("../../naga/tests/in/cuda/builtin-offsetof.cu");
+    emits_record_offsetof_all_backends(
+        include_str!("../../naga/tests/in/cuda/builtin-offsetof.cu"),
+        "record_offsets",
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_cli_emits_nested_offsets_for_all_backends() {
+    emits_record_offsetof_all_backends(
+        include_str!("../../naga/tests/in/cuda/offsetof-member-paths.cu"),
+        "nested_offsets",
+    );
+}
+
+fn emits_record_offsetof_all_backends(source: &str, entry: &str) {
     for compact in [false, true] {
         let files = TestFiles::new("cu", source);
         let outputs = ["wgsl", "spv", "hlsl", "metal", "comp"]
             .map(|extension| files.output.with_extension(extension));
         let paths = outputs.each_ref().map(|path| path.as_path());
-        let mut arguments = vec![
-            "--entry-point",
-            "record_offsets",
-            "--cuda-workgroup-size",
-            "4,1,1",
-        ];
+        let mut arguments = vec!["--entry-point", entry, "--cuda-workgroup-size", "4,1,1"];
         if compact {
             arguments.push("--compact");
         }

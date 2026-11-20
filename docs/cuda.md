@@ -465,9 +465,11 @@ template arguments, and launch bounds. Template instantiation resolves
 dependent operands such as `sizeof(Value)`.
 
 `__builtin_offsetof(Record, member)` is a `size_t` integral constant
-giving the byte offset of a direct member of a complete record. The record
-type can be qualified, named through an alias, or resolved during template
-instantiation. The offset includes preceding members and padding. Use a
+giving the byte offset of a member of a complete record. A path such as
+`outer.inner.value` can traverse nested record fields, and the final member
+may have any supported field type. The record type can be qualified, named
+through an alias, or resolved during template instantiation. The offset
+includes preceding members and padding at each level. Use a
 narrower constant type if the target shader needs only 32-bit values.
 The synthetic `<cstddef>` and `<stddef.h>` headers define the function-like
 macro `offsetof(Record, member)` on the first active inclusion of either

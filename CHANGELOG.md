@@ -223,6 +223,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support arithmetic C-style casts in CUDA `sizeof` operands.
 - Support CUDA `__builtin_offsetof` queries for direct members of complete records.
 - Expose CUDA `offsetof` through synthetic `<cstddef>` and `<stddef.h>` headers.
+- Support nested record member paths in CUDA `offsetof` queries.
 - Support CUDA `__ldg` loads of unsigned 32-bit values from read-only kernel buffers.
 - Support signed 32-bit and `float` CUDA `__ldg` loads from read-only kernel buffers.
 - Support `float2` CUDA `__ldg` loads from read-only kernel buffers.
