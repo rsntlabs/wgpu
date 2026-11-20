@@ -1,6 +1,6 @@
 using Sample = const float;
 
-__device__ Sample rounded(Sample value) { return roundf(value); }
+__device__ Sample rounded(Sample value) { return __nv_roundf(value); }
 __device__ int roundf(bool value) { return value ? 7 : 9; }
 __device__ float roundf(float first, float second) { return first + second; }
 

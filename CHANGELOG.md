@@ -297,6 +297,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support `int2`, `uint2`, `int4`, `uint4`, and `float4` CUDA `__ldg` loads from read-only kernel buffers.
 - Support CUDA `rintf` with portable rounding to the nearest even integer.
 - Support CUDA `nearbyintf` through the existing nearest-even rounding helper.
+- Support CUDA libdevice spellings for single-precision floor, ceiling, truncation, and nearest-integer rounding.
 - Support explicit scalar declaration conditions in CUDA `if` and `switch` statements.
 - Support scalar `auto` declaration conditions in CUDA `if` and `switch` statements.
 - Support scalar declaration conditions in CUDA `while` loops.

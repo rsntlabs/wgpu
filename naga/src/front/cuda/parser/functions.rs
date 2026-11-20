@@ -854,15 +854,21 @@ const BITCAST_BUILTINS: &[(&str, Scalar, Scalar)] = &[
     ("__nv_uint_as_float", Scalar::U32, Scalar::F32),
 ];
 
-const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 8] = [
+const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 14] = [
     ("floorf", FloatMathFunction::Floor),
+    ("__nv_floorf", FloatMathFunction::Floor),
     ("ceilf", FloatMathFunction::Ceil),
+    ("__nv_ceilf", FloatMathFunction::Ceil),
     ("fabsf", FloatMathFunction::AbsoluteValue),
     ("fabs", FloatMathFunction::AbsoluteValue),
     ("roundf", FloatMathFunction::Round),
+    ("__nv_roundf", FloatMathFunction::Round),
     ("truncf", FloatMathFunction::Truncate),
+    ("__nv_truncf", FloatMathFunction::Truncate),
     ("rintf", FloatMathFunction::NearestEven),
+    ("__nv_rintf", FloatMathFunction::NearestEven),
     ("nearbyintf", FloatMathFunction::NearestEven),
+    ("__nv_nearbyintf", FloatMathFunction::NearestEven),
 ];
 
 const FLOAT_CLASSIFICATION_BUILTINS: &[(&str, FunctionCandidate)] = {

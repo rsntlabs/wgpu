@@ -1,11 +1,11 @@
-__device__ float rounded_even(float value) { return rintf(value); }
+__device__ float rounded_even(float value) { return __nv_rintf(value); }
 __device__ int rintf(bool value) { return value ? 7 : 9; }
 __global__ void nearest_even(const unsigned *input, unsigned *output) {
     unsigned index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= 4096u) return;
     unsigned base = 4u + index * 14u;
     float value = __uint_as_float(input[index]);
-    output[base] = __float_as_uint(rintf(value));
+    output[base] = __float_as_uint(__nv_nearbyintf(value));
     output[base + 1u] = __float_as_uint(rounded_even(value));
     int cursor = 0;
     output[base + 2u] = __float_as_uint(rounded_even(__uint_as_float(input[index + unsigned(cursor++)])));

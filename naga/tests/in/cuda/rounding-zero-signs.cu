@@ -1,5 +1,5 @@
-__device__ float floor_value(float value) { return floorf(value); }
-__device__ float ceil_value(float value) { return ceilf(value); }
+__device__ float floor_value(float value) { return __nv_floorf(value); }
+__device__ float ceil_value(float value) { return __nv_ceilf(value); }
 __global__ void rounding_zero_signs(const unsigned *input, unsigned *output) {
     unsigned index = threadIdx.x;
     unsigned bits = input[index];

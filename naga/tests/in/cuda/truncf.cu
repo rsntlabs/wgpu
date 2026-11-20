@@ -1,4 +1,4 @@
-__device__ float truncated(float value) { return truncf(value); }
+__device__ float truncated(float value) { return __nv_truncf(value); }
 __device__ int truncf(bool value) { return value ? 7 : 9; }
 __global__ void truncations(const unsigned *input, unsigned *output) {
     unsigned index = threadIdx.x + blockIdx.x * blockDim.x;
