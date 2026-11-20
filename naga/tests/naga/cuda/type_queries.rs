@@ -5232,3 +5232,84 @@ fn cuda_layout_queries_grouped_function_pointer_arrays_validate_bounds_and_signa
         }
     }
 }
+
+#[test]
+fn cuda_layout_queries_arrays_of_array_pointers_keep_outer_and_pointee_shapes_distinct() {
+    for (ty, size) in [
+        ("int(*[2])[3]", 16),
+        ("const int(*const[2][3])[4]", 48),
+        ("Row(*[2])[3]", 16),
+        ("int(*[2])[]", 16),
+        ("int(*[2])[][3]", 16),
+        ("int(*)(int(*[2])[3])", 8),
+        ("int(*)(int(*[])[])", 8),
+        ("int(**[sizeof(int)])[sizeof(short)]", 32),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; using Row = int[3];
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof({ty}); output[1] = alignof({ty});
+                output[2] = __builtin_offsetof(Offsets, bytes[sizeof({ty})]);
+            }}"
+            ),
+            &[size, 8, size * 4],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = alignof(int(*[])[3]);
+            output[1] = __builtin_offsetof(Offsets, bytes[alignof(int(*[])[][3])]);
+        }",
+        &[8, 32],
+    );
+    let dimensions = "[1]".repeat(64);
+    assert_query_results(
+        &format!(
+            "__global__ void kernel(unsigned long *output) {{ output[0] = sizeof(int (*{dimensions}){dimensions}); }}"
+        ),
+        &[8],
+    );
+}
+
+#[test]
+fn cuda_layout_queries_arrays_of_array_pointers_validate_both_array_layers() {
+    for ty in [
+        "int(*[0])[3]",
+        "int(*[2])[0]",
+        "int(*[runtime])[3]",
+        "int(*[2])[runtime]",
+        "int(*[2][])[3]",
+        "int(*[2])[3][]",
+        "int(*[4294967295u])[3]",
+        "int(*[2])[4294967295u]",
+        "void(*[2])[3]",
+        "int&(*[2])[3]",
+        "int(&[2])[3]",
+        "int*(*[2])[3]",
+        "int(*[])[3]",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof({ty})");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
+    }
+    let dimensions = "[1]".repeat(64);
+    for ty in [
+        format!("int (*[1]{dimensions})[1]"),
+        format!("int (*[1])[1]{dimensions}"),
+    ] {
+        let error = rejected(&format!(
+            "__global__ void kernel(unsigned long *output) {{ output[0] = alignof({ty}); }}"
+        ));
+        assert!(error.message.contains("array rank limit"), "{error}");
+    }
+}

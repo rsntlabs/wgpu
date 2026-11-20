@@ -11,7 +11,7 @@ enum SizeofOperand {
 enum TypeQueryType {
     Pointer,
     FunctionReference,
-    ArrayOfFunctionPointers(u32),
+    PointerArrayLayout(u32),
     PointerToArray(QualifiedType),
     ArrayOfPointers,
     Object(QualifiedType),
@@ -27,7 +27,7 @@ enum GroupedTypeQuery {
     ArrayReference,
     FunctionPointer,
     FunctionReference,
-    ArrayOfFunctionPointers,
+    PointerArray,
 }
 
 struct RecordOffsetIndex {
@@ -453,7 +453,7 @@ impl Parser<'_> {
     ) -> Result<u32, ParseError> {
         match self.type_query_type_id(target_span, depth, TypeQueryContext::Operand(name))? {
             TypeQueryType::Pointer => Ok(8),
-            TypeQueryType::ArrayOfFunctionPointers(layout) => Ok(layout),
+            TypeQueryType::PointerArrayLayout(layout) => Ok(layout),
             TypeQueryType::FunctionReference => {
                 self.fail("function references have no object layout")
             }
@@ -1268,7 +1268,7 @@ impl Parser<'_> {
 
         let value = match self.type_query_type_id(span, 0, TypeQueryContext::Operand(name))? {
             TypeQueryType::Pointer => 8,
-            TypeQueryType::ArrayOfFunctionPointers(layout) => layout,
+            TypeQueryType::PointerArrayLayout(layout) => layout,
             TypeQueryType::FunctionReference => {
                 return self.fail("function references have no object layout")
             }
@@ -1418,16 +1418,31 @@ impl Parser<'_> {
             && matches!(context, TypeQueryContext::FunctionParameter)
             && self.lexer.peek()?.0 == Token::Paren('(');
         let function_reference = matches!(declarator, Some(GroupedTypeQuery::FunctionReference));
-        let function_pointer_array =
-            matches!(declarator, Some(GroupedTypeQuery::ArrayOfFunctionPointers));
-        if matches!(declarator, Some(GroupedTypeQuery::FunctionPointer))
+        let function = matches!(declarator, Some(GroupedTypeQuery::FunctionPointer))
             || function_reference
-            || function_parameter
-            || function_pointer_array
-        {
-            if depth >= 64 {
-                return self.fail("CUDA expression nesting limit exceeded");
+            || function_parameter;
+        let pointer_array = matches!(declarator, Some(GroupedTypeQuery::PointerArray));
+        if (function || pointer_array) && depth >= 64 {
+            return self.fail("CUDA expression nesting limit exceeded");
+        }
+        let array_layout = if pointer_array {
+            let name = match context {
+                TypeQueryContext::Operand(name) => name,
+                TypeQueryContext::FunctionParameter => "alignof",
+            };
+            let layout = self.record_offset_pointer_array_layout(name, depth + 1)?;
+            self.lexer.expect_span(Token::Paren(')'))?;
+            if self.lexer.peek()?.0 == Token::Paren('[') {
+                let ty =
+                    self.type_query_grouped_array_element(operand, pointer_depth, reference, span)?;
+                self.record_offset_array_layout("alignof", ty.ty, depth + 1, span)?;
+                return Ok(TypeQueryType::PointerArrayLayout(layout));
             }
+            Some(layout)
+        } else {
+            None
+        };
+        if function || array_layout.is_some() {
             if pointer_depth == 0 {
                 if reference && operand.is_none() {
                     return self.fail("function types cannot return references to void");
@@ -1438,21 +1453,10 @@ impl Parser<'_> {
                     return self.fail("function types cannot return arrays");
                 }
             }
-            let array_layout = if function_pointer_array {
-                let name = match context {
-                    TypeQueryContext::Operand(name) => name,
-                    TypeQueryContext::FunctionParameter => "alignof",
-                };
-                let layout = self.record_offset_pointer_array_layout(name, depth + 1)?;
-                self.lexer.expect_span(Token::Paren(')'))?;
-                Some(layout)
-            } else {
-                None
-            };
             self.type_query_function_parameters(depth + 1)?;
             self.type_query_function_noexcept(depth)?;
             return Ok(if let Some(layout) = array_layout {
-                TypeQueryType::ArrayOfFunctionPointers(layout)
+                TypeQueryType::PointerArrayLayout(layout)
             } else if function_reference {
                 TypeQueryType::FunctionReference
             } else {
@@ -1460,17 +1464,8 @@ impl Parser<'_> {
             });
         }
         if let Some(declarator) = declarator {
-            if reference {
-                return self.fail("arrays of references are unsupported");
-            }
-            let ty = operand.ok_or_else(|| ParseError {
-                message: String::from("array elements require a complete type"),
-                span,
-            })?;
-            if pointer_depth != 0 {
-                return self
-                    .fail("grouped declarators with pointer array elements are unsupported");
-            }
+            let ty =
+                self.type_query_grouped_array_element(operand, pointer_depth, reference, span)?;
             return Ok(if matches!(declarator, GroupedTypeQuery::PointerToArray) {
                 TypeQueryType::PointerToArray(ty)
             } else {
@@ -1503,6 +1498,26 @@ impl Parser<'_> {
         } else {
             TypeQueryType::Object(operand.unwrap())
         })
+    }
+
+    fn type_query_grouped_array_element(
+        &mut self,
+        operand: Option<QualifiedType>,
+        pointer_depth: usize,
+        reference: bool,
+        span: Span,
+    ) -> Result<QualifiedType, ParseError> {
+        if reference {
+            return self.fail("arrays of references are unsupported");
+        }
+        let ty = operand.ok_or_else(|| ParseError {
+            message: String::from("array elements require a complete type"),
+            span,
+        })?;
+        if pointer_depth != 0 {
+            return self.fail("grouped declarators with pointer array elements are unsupported");
+        }
+        Ok(ty)
     }
 
     fn type_query_base(&mut self) -> Result<Option<QualifiedType>, ParseError> {
@@ -1575,7 +1590,7 @@ impl Parser<'_> {
                     }
                     TypeQueryType::Pointer
                     | TypeQueryType::FunctionReference
-                    | TypeQueryType::ArrayOfFunctionPointers(_) => {}
+                    | TypeQueryType::PointerArrayLayout(_) => {}
                 }
             }
             if self.lexer.next_if(Token::Paren(')'))? {
@@ -1658,7 +1673,7 @@ impl Parser<'_> {
                 let (token, reference_span) = lookahead.peek()?;
                 if token == Token::Paren('[') {
                     *lexer = lookahead;
-                    return Ok(Some(GroupedTypeQuery::ArrayOfFunctionPointers));
+                    return Ok(Some(GroupedTypeQuery::PointerArray));
                 }
                 if matches!(token, Token::Operation('&') | Token::LogicalOperation('&')) {
                     budget.charge_work(1, reference_span)?;

@@ -582,6 +582,8 @@ produce `false`, `true`, `0`, or `1`.
 Grouped type operands such as `int (*)[3]` and `int (**)[3]` also use the
 pointer layout. Both queries accept an omitted outer bound in the array,
 as in `sizeof(int (*)[])`.
+An array of pointers to arrays, such as `int (*[2])[3]`, uses the outer
+shape to compute the layout and validates the pointee shape independently.
 References to those pointers, such as `int (*&)[3]` and `int (*&&)[3]`,
 have the same layout for both queries.
 Grouped array references such as `int (&)[3]` and `int (&&)[3]` follow the
