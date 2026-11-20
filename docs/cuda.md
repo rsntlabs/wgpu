@@ -471,6 +471,9 @@ may have any supported field type. The record type can be qualified, named
 through an alias, or resolved during template instantiation. The offset
 includes preceding members and padding at each level. Use a
 narrower constant type if the target shader needs only 32-bit values.
+Designators can also index fixed array fields, as in `grid[1][2]` or
+`leaves[1].value`. Each index must be an in-range, nonnegative integer
+literal. The offset uses the declared stride of each array dimension.
 The synthetic `<cstddef>` and `<stddef.h>` headers define the function-like
 macro `offsetof(Record, member)` on the first active inclusion of either
 header. The macro follows the normal `#undef` and redefinition rules.

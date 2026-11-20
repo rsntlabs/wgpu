@@ -25,28 +25,31 @@ impl Parser<'_> {
         let mut offset = 0u32;
         loop {
             let (field, field_span) = self.identifier()?;
-            let closing = if self.lexer.next_if(Token::Separator('.'))? {
-                None
-            } else {
-                Some(self.lexer.expect_span(Token::Paren(')'))?)
+            let mut closing = match self.lexer.peek()?.0 {
+                Token::Separator('.') | Token::Paren('[') => None,
+                _ => Some(self.lexer.expect_span(Token::Paren(')'))?),
             };
             let (index, _) = self.field_type(&TypeResolution::Handle(record), field, field_span)?;
             let TypeInner::Struct { ref members, .. } = self.module.types[record].inner else {
                 unreachable!();
             };
             let member = &members[index as usize];
-            offset = offset
-                .checked_add(member.offset)
-                .filter(|&total| total <= crate::valid::MAX_TYPE_SIZE)
-                .ok_or_else(|| ParseError {
-                    message: String::from("CUDA record member offset exceeds the type size limit"),
-                    span: field_span,
-                })?;
+            offset = Self::checked_record_offset(offset, u64::from(member.offset), field_span)?;
+            let mut member_type = member.ty;
+            if closing.is_none() {
+                while self.lexer.next_if(Token::Paren('['))? {
+                    (member_type, offset) =
+                        self.record_offset_array_element(member_type, offset)?;
+                }
+                if !self.lexer.next_if(Token::Separator('.'))? {
+                    closing = Some(self.lexer.expect_span(Token::Paren(')'))?);
+                }
+            }
             if let Some(closing) = closing {
                 return self.type_query_result(offset, span.until(&closing));
             }
             self.parameter_expansion_budget.charge_work(1, field_span)?;
-            record = member.ty;
+            record = member_type;
             if !self.structures.contains_key(&record) {
                 return Err(ParseError {
                     message: String::from(
@@ -56,6 +59,70 @@ impl Parser<'_> {
                 });
             }
         }
+    }
+
+    fn record_offset_array_element(
+        &mut self,
+        array: Handle<Type>,
+        offset: u32,
+    ) -> Result<(Handle<Type>, u32), ParseError> {
+        let (token, span) = self.lexer.next()?;
+        let invalid = || {
+            ParseError {
+            message: String::from(
+                "__builtin_offsetof index requires a nonnegative integer literal that fits in 32 bits",
+            ),
+            span,
+        }
+        };
+        let Token::Number(text) = token else {
+            return Err(invalid());
+        };
+        self.parameter_expansion_budget
+            .charge_work(text.len() + 1, span)?;
+        if text.contains('\'') {
+            self.parameter_expansion_budget
+                .charge_bytes(text.len(), span)?;
+        }
+        let index = match number::parse_integer(text).map(|number| number.literal) {
+            Some(Literal::I32(value)) => u32::try_from(value).ok(),
+            Some(Literal::U32(value)) => Some(value),
+            Some(Literal::I64(value)) => u32::try_from(value).ok(),
+            Some(Literal::U64(value)) => u32::try_from(value).ok(),
+            _ => None,
+        }
+        .ok_or_else(invalid)?;
+        self.lexer.expect_span(Token::Paren(']'))?;
+        let TypeInner::Array {
+            base,
+            size: ArraySize::Constant(count),
+            stride,
+        } = self.module.types[array].inner
+        else {
+            return Err(ParseError {
+                message: String::from("__builtin_offsetof subscript requires a fixed array"),
+                span,
+            });
+        };
+        if index >= count.get() {
+            return Err(ParseError {
+                message: String::from("__builtin_offsetof index is out of bounds"),
+                span,
+            });
+        }
+        let bytes = u64::from(stride) * u64::from(index);
+        Ok((base, Self::checked_record_offset(offset, bytes, span)?))
+    }
+
+    fn checked_record_offset(offset: u32, bytes: u64, span: Span) -> Result<u32, ParseError> {
+        u64::from(offset)
+            .checked_add(bytes)
+            .filter(|&total| total <= u64::from(crate::valid::MAX_TYPE_SIZE))
+            .map(|total| total as u32)
+            .ok_or_else(|| ParseError {
+                message: String::from("CUDA record member offset exceeds the type size limit"),
+                span,
+            })
     }
 
     pub(super) fn type_query(&mut self, name: &str, span: Span) -> Result<Value, ParseError> {

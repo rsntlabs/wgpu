@@ -147,6 +147,67 @@ fn cuda_record_offsetof_sums_nested_record_padding() {
 }
 
 #[test]
+fn cuda_record_offsetof_indexes_fixed_arrays_at_their_declared_strides() {
+    assert_query_results(
+        "#include <stddef.h>\n#define ROW_INDEX 01u\n
+        struct Leaf { int first; int values[3]; };
+        using Row = int[3];
+        struct Outer { int prefix; Leaf leaves[2]; Row grid[2]; float3 packed[2]; short3 compact[2]; };
+        using Alias = const Outer;
+        static_assert(offsetof(Outer, leaves[1].values[2]) == 32u);
+        __global__ void kernel(unsigned long *output) {
+            output[0] = offsetof(volatile Alias, leaves[ROW_INDEX].values[0b10]);
+            output[1] = __builtin_offsetof(Outer, grid[0ULL][0x1ul]);
+            output[2] = offsetof(Outer, grid[1][2U]);
+            output[3] = offsetof(Outer, grid[0'1]);
+            output[4] = offsetof(Outer, leaves[1]);
+            output[5] = offsetof(Outer, packed[1]);
+            output[6] = offsetof(Outer, compact[1]);
+        }",
+        &[32, 40, 56, 48, 20, 72, 90],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_invalid_array_indices_without_evaluating_them() {
+    for (path, message) in [
+        ("row[-1]", "integer literal"),
+        ("row[+1]", "integer literal"),
+        ("row[1.0f]", "integer literal"),
+        ("row[true]", "integer literal"),
+        ("row[0b2]", "integer literal"),
+        ("row[4294967296ULL]", "integer literal"),
+        ("row[]", "integer literal"),
+        ("row[(1)]", "integer literal"),
+        ("row[index]", "integer literal"),
+        ("row[constant_index]", "integer literal"),
+        ("row[helper()]", "integer literal"),
+        ("row[index++]", "integer literal"),
+        ("row[0+1]", "expected"),
+        ("row[0,1]", "expected"),
+        ("row[1", "expected"),
+        ("row[3]", "out of bounds"),
+        ("row[0xffffffffu]", "out of bounds"),
+        ("grid[2][0]", "out of bounds"),
+        ("grid[0][3]", "out of bounds"),
+        ("grid[0][2][0]", "fixed array"),
+        ("scalar[0]", "fixed array"),
+        ("vector[0]", "fixed array"),
+        ("vectors[0].x", "complete record"),
+    ] {
+        let error = rejected(&format!(
+            "struct Record {{ int row[3]; int grid[2][3]; int scalar; float2 vector; float3 vectors[2]; }};
+            __device__ unsigned helper() {{ return 1u; }}
+            __global__ void kernel(unsigned *output) {{
+                unsigned index = 0u; constexpr unsigned constant_index = 1u;
+                output[0] = unsigned(true ? 0u : __builtin_offsetof(Record, {path}));
+            }}"
+        ));
+        assert!(error.message.contains(message), "{path}: {error}");
+    }
+}
+
+#[test]
 fn cuda_record_offsetof_rejects_non_record_types_and_indirect_designators() {
     for (operands, message) in [
         ("int, x", "complete record"),
@@ -166,7 +227,6 @@ fn cuda_record_offsetof_rejects_non_record_types_and_indirect_designators() {
         ("Record, nested..member", "expected"),
         ("Record, nested.", "expected"),
         ("Record, nested.member()", "expected"),
-        ("Record, row[0]", "expected"),
         ("Record, nested->member", "expected"),
         ("Record, Record::row", "expected"),
         ("Record, row + 1", "expected"),
