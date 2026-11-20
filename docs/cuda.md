@@ -512,10 +512,11 @@ Member paths rooted in a named object can use `.` and `->`, as in
 `sizeof(record.field)` and `sizeof pointer->field`. Array fields retain
 their full extent.
 These paths can also subscript arrays and pointers, as in
-`sizeof(record.grid[row])` and `sizeof pointer[index].field`. Subscripts
-accept integer literals, Boolean literals, and named integral objects,
-optionally grouped in parentheses. The index value is unevaluated and
-does not need to be constant. Selecting a row preserves its array type.
+`sizeof(record.grid[row + 1])` and `sizeof pointer[index].field`.
+Subscripts accept the integral operators, casts, and layout queries
+supported in `offsetof` indices. They check operand types and can use
+runtime or volatile integral objects without reading them. Selecting a
+row preserves its array type.
 Pointer type queries, including `void*`, use the CUDA source ABI size and
 alignment of eight bytes. Reference type queries use the referent's layout.
 Array type operands can include dimensions such as `int[2][3]`. Every
@@ -524,8 +525,9 @@ query. Only `alignof` accepts an omitted outer bound in this syntax.
 Arithmetic rejects signed overflow and zero divisors, and wraps unsigned
 results at the operation's width. Shift counts must be nonnegative and less
 than the promoted left operand's bit width. Left shifts wrap at that width
-and signed right shifts are arithmetic. The final index must be nonnegative
-and in bounds. The offset uses the declared stride of each array dimension.
+and signed right shifts are arithmetic. The final `offsetof` index must be
+nonnegative and in bounds. The offset uses the declared stride of each array
+dimension.
 The synthetic `<cstddef>` and `<stddef.h>` headers define the function-like
 macro `offsetof(Record, member)` on the first active inclusion of either
 header. The macro follows the normal `#undef` and redefinition rules.

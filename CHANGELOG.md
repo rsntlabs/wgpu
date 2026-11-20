@@ -248,6 +248,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support array type dimensions in CUDA `offsetof` layout queries.
 - Support named member paths in CUDA `offsetof` size queries.
 - Support unevaluated array and pointer subscripts in CUDA `offsetof` size queries.
+- Support unevaluated integral expressions in CUDA `offsetof` size-query subscripts.
 - Support CUDA `__ldg` loads of unsigned 32-bit values from read-only kernel buffers.
 - Support signed 32-bit and `float` CUDA `__ldg` loads from read-only kernel buffers.
 - Support `float2` CUDA `__ldg` loads from read-only kernel buffers.

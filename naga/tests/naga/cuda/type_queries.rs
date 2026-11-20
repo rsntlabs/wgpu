@@ -1222,7 +1222,7 @@ fn cuda_record_offsetof_rejects_unsupported_named_sizeof_in_indices() {
         ("true || sizeof scratch", "complete"),
         ("sizeof((input))", "type"),
         ("sizeof(input + 1)", "expected"),
-        ("sizeof local[0 + 1]", "expected"),
+        ("sizeof local[0++]", "expected"),
         ("sizeof(object.row[0)", "expected"),
         ("sizeof(*out)", "type"),
         ("sizeof(input++)", "expected"),
@@ -2787,7 +2787,7 @@ fn cuda_record_offsetof_nested_sizeof_subscripts_allow_unevaluated_default_param
     roundtrip(
         "struct Offsets { int bytes[64]; };
         __device__ unsigned selected(int *parameter, int index,
-            unsigned bytes = unsigned(__builtin_offsetof(Offsets, bytes[sizeof(parameter[index])]))) {
+            unsigned bytes = unsigned(__builtin_offsetof(Offsets, bytes[sizeof(parameter[index + index * 2])]))) {
             return bytes;
         }
         __global__ void kernel(unsigned *output, int *input) {
@@ -2806,11 +2806,8 @@ fn cuda_record_offsetof_nested_sizeof_subscripts_reject_invalid_or_broader_index
         "grid[vector]",
         "grid[missing]",
         "grid[Integer]",
-        "grid[index + 1]",
         "grid[index++]",
         "grid[helper()]",
-        "grid[int(index)]",
-        "grid[index ? 0 : 1]",
         "grid[(index, 0)]",
         "grid[]",
         "index[grid]",
@@ -2828,4 +2825,106 @@ fn cuda_record_offsetof_nested_sizeof_subscripts_reject_invalid_or_broader_index
             }}"
         ));
     }
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_subscript_integral_expressions_never_evaluate_values() {
+    for index in [
+        "+index",
+        "-index",
+        "~index",
+        "!index",
+        "index + watched * 2",
+        "1 / 0",
+        "1 % 0",
+        "2147483647 + 1",
+        "-(-2147483647 - 1)",
+        "1 << 999",
+        "1 >> -1",
+        "index & 3 | watched ^ 1",
+        "index < watched",
+        "index == watched",
+        "index && watched",
+        "index || watched",
+        "index ? watched : 1 / 0",
+        "false ? 1 / 0 : index",
+        "static_cast<unsigned>(watched)",
+        "int(index)",
+        "unsigned()",
+        "(short)watched",
+        "sizeof(int) + alignof(int)",
+        "sizeof(int[2])",
+        "sizeof(index)",
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output, volatile int *input) {{
+                    int grid[2][3]; int index = -1;
+                    volatile int &watched = input[0];
+                    output[0] = __builtin_offsetof(Offsets, bytes[sizeof(grid[{index}])]);
+                }}"
+            ),
+            &[48],
+        );
+    }
+    let module = roundtrip(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output, volatile int *input) {
+            int grid[2][3]; volatile int &index = input[0];
+            output[0] = __builtin_offsetof(Offsets, bytes[sizeof(grid[index + index * 2])]);
+        }",
+    );
+    assert!(module.entry_points[0]
+        .function
+        .expressions
+        .iter()
+        .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_subscript_checks_skipped_operand_types() {
+    for index in [
+        "false && pointer",
+        "true || record",
+        "true ? 0 : pointer",
+        "false ? vector : 1",
+        "index + 1.0f",
+        "static_cast<int>(pointer)",
+        "false && helper()",
+        "true ? 0 : index++",
+        "index, 0",
+    ] {
+        rejected(&format!(
+            "struct Offsets {{ int bytes[64]; }};
+            struct Record {{ int value; }};
+            __device__ int helper() {{ return 0; }}
+            __global__ void kernel(unsigned long *output) {{
+                int grid[2][3]; int index; int *pointer; Record record; float2 vector;
+                output[0] = __builtin_offsetof(Offsets, bytes[sizeof(grid[{index}])]);
+            }}"
+        ));
+    }
+}
+
+#[test]
+fn cuda_record_offsetof_nested_sizeof_subscript_type_bounds_keep_default_and_noexcept_guards() {
+    let error = rejected(
+        "struct Offsets { int bytes[64]; };
+        __device__ unsigned selected(int *grid, int parameter,
+            unsigned bytes = unsigned(__builtin_offsetof(Offsets, bytes[sizeof(grid[sizeof(int[true || parameter])])]))) {
+            return bytes;
+        }
+        __global__ void kernel() {}",
+    );
+    assert!(error.message.contains("integral constant"), "{error}");
+    let error = rejected(
+        "struct Offsets { int bytes[64]; };
+        __device__ unsigned selected(int *grid, int parameter)
+            noexcept(__builtin_offsetof(Offsets, bytes[sizeof(grid[sizeof(int[true || parameter])])]) != 0) {
+            return 0u;
+        }
+        __global__ void kernel() {}",
+    );
+    assert!(error.message.contains("integral constant"), "{error}");
 }

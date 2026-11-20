@@ -19,6 +19,22 @@ struct RecordOffsetIndex {
     lvalue: Option<Qualifiers>,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+enum RecordOffsetIndexMode {
+    Evaluate,
+    Discarded,
+    Unevaluated,
+}
+
+impl RecordOffsetIndexMode {
+    const fn discard_if(self, condition: bool) -> Self {
+        match self {
+            Self::Evaluate if condition => Self::Discarded,
+            _ => self,
+        }
+    }
+}
+
 impl RecordOffsetIndex {
     const fn prvalue(scalar: SourceScalar, value: Option<i128>) -> Self {
         Self {
@@ -91,7 +107,11 @@ impl Parser<'_> {
         array: Handle<Type>,
         offset: u32,
     ) -> Result<(Handle<Type>, u32), ParseError> {
-        let (index, span) = self.record_offset_index(self.function.expression_depth, 0, true)?;
+        let (index, span) = self.record_offset_index(
+            self.function.expression_depth,
+            0,
+            RecordOffsetIndexMode::Evaluate,
+        )?;
         let index = index
             .value
             .and_then(|value| u32::try_from(value).ok())
@@ -122,9 +142,9 @@ impl Parser<'_> {
         &mut self,
         depth: u32,
         minimum_precedence: u8,
-        evaluate: bool,
+        mode: RecordOffsetIndexMode,
     ) -> Result<(RecordOffsetIndex, Span), ParseError> {
-        let (mut left, mut span) = self.record_offset_index_prefix(depth, evaluate)?;
+        let (mut left, mut span) = self.record_offset_index_prefix(depth, mode)?;
         while let Some((operator, precedence)) = expressions::binary_operator(self.lexer.peek()?.0)
         {
             if precedence < minimum_precedence {
@@ -141,7 +161,7 @@ impl Parser<'_> {
             let (right, right_span) = self.record_offset_index(
                 depth,
                 precedence + 1,
-                evaluate && short_circuit.is_none(),
+                mode.discard_if(short_circuit.is_some()),
             )?;
             left = match short_circuit {
                 Some(value) => RecordOffsetIndex::boolean(value),
@@ -163,11 +183,12 @@ impl Parser<'_> {
         self.parameter_expansion_budget
             .charge_work(1, question_span)?;
         let condition = left.value.map(|value| value != 0);
-        let (accept, _) = self.record_offset_index(depth + 1, 0, condition == Some(true))?;
+        let (accept, _) =
+            self.record_offset_index(depth + 1, 0, mode.discard_if(condition != Some(true)))?;
         let colon_span = self.lexer.expect_span(Token::Separator(':'))?;
         self.parameter_expansion_budget.charge_work(1, colon_span)?;
         let (reject, reject_span) =
-            self.record_offset_index(depth + 1, 0, condition == Some(false))?;
+            self.record_offset_index(depth + 1, 0, mode.discard_if(condition != Some(false)))?;
         let result = Self::record_offset_conditional(condition, accept, reject, question_span)?;
         Ok((result, span.until(&reject_span)))
     }
@@ -222,17 +243,29 @@ impl Parser<'_> {
     fn record_offset_index_prefix(
         &mut self,
         depth: u32,
-        evaluate: bool,
+        mode: RecordOffsetIndexMode,
     ) -> Result<(RecordOffsetIndex, Span), ParseError> {
         if let Some(name) = self.qualified_item()? {
             self.parameter_expansion_budget.charge_work(3, name.span)?;
             let cooperative_groups::QualifiedItem::Type(target) = name.item else {
                 return Err(Self::invalid_record_offset_index(name.span));
             };
-            return self.record_offset_functional_cast(target, depth, evaluate, name.span);
+            return self.record_offset_functional_cast(target, depth, mode, name.span);
         }
         let (token, span) = self.lexer.next()?;
-        let invalid = || Self::invalid_record_offset_index(span);
+        let evaluate = mode == RecordOffsetIndexMode::Evaluate;
+        let invalid = || {
+            if mode == RecordOffsetIndexMode::Unevaluated {
+                ParseError {
+                    message: String::from(
+                        "nested sizeof subscript requires a supported integral expression",
+                    ),
+                    span,
+                }
+            } else {
+                Self::invalid_record_offset_index(span)
+            }
+        };
         let number = match token {
             Token::Paren('(') | Token::Operation('+' | '-' | '~' | '!') => {
                 if depth >= 64 {
@@ -244,7 +277,7 @@ impl Parser<'_> {
                 self.parameter_expansion_budget.charge_work(1, span)?;
                 if let Token::Operation(operator) = token {
                     let (operand, operand_span) =
-                        self.record_offset_index_prefix(depth + 1, evaluate)?;
+                        self.record_offset_index_prefix(depth + 1, mode)?;
                     let result = Self::record_offset_unary(operator, operand, span)?;
                     return Ok((result, span.until(&operand_span)));
                 }
@@ -266,23 +299,31 @@ impl Parser<'_> {
                             })?;
                         self.lexer = lookahead;
                         let (operand, end) =
-                            self.record_offset_index_prefix(depth + 1, evaluate)?;
+                            self.record_offset_index_prefix(depth + 1, mode)?;
                         return Ok((Self::record_offset_cast(scalar, operand.value), span.until(&end)));
                     }
                 }
-                let (operand, _) = self.record_offset_index(depth + 1, 0, evaluate)?;
+                let (operand, _) = self.record_offset_index(depth + 1, 0, mode)?;
                 let closing = self.lexer.expect_span(Token::Paren(')'))?;
                 self.parameter_expansion_budget.charge_work(1, closing)?;
                 return Ok((operand, span.until(&closing)));
             }
-            Token::Number(text) => self.record_offset_integer_literal(text, span)?,
+            Token::Number(text) => {
+                self.parameter_expansion_budget
+                    .charge_work(text.len() + 1, span)?;
+                if text.contains('\'') {
+                    self.parameter_expansion_budget
+                        .charge_bytes(text.len(), span)?;
+                }
+                number::parse_integer(text)
+            }
             Token::Word(word @ ("true" | "false")) => {
                 self.parameter_expansion_budget
                     .charge_work(word.len() + 1, span)?;
                 Some(Literal::Bool(word == "true").into())
             }
             Token::Word("static_cast") => {
-                return self.record_offset_static_cast(depth, evaluate, span);
+                return self.record_offset_static_cast(depth, mode, span);
             }
             Token::Word(name @ ("sizeof" | "alignof")) => {
                 return self.record_offset_type_query(name, depth, evaluate, span);
@@ -290,7 +331,7 @@ impl Parser<'_> {
             Token::Word("decltype") => {
                 self.parameter_expansion_budget.charge_work(4, span)?;
                 let (target, end) = self.decltype_operand_type()?;
-                return self.record_offset_functional_cast(target, depth, evaluate, span.until(&end));
+                return self.record_offset_functional_cast(target, depth, mode, span.until(&end));
             }
             Token::Word(name) => {
                 self.parameter_expansion_budget
@@ -301,7 +342,16 @@ impl Parser<'_> {
                     None
                 };
                 if let Some(target) = target {
-                    return self.record_offset_functional_cast(target, depth, evaluate, span);
+                    return self.record_offset_functional_cast(target, depth, mode, span);
+                }
+                if mode == RecordOffsetIndexMode::Unevaluated {
+                    let symbol = self.lookup_symbol(name).ok_or_else(invalid)?;
+                    let operand = self.named_sizeof_operand(symbol, span)?;
+                    let scalar = self
+                        .sizeof_source_scalar(&operand)
+                        .filter(|&scalar| Self::record_offset_integral_scalar(scalar))
+                        .ok_or_else(invalid)?;
+                    return Ok((RecordOffsetIndex::prvalue(scalar, None), span));
                 }
                 let symbol = self.record_offset_index_symbol(name).ok_or_else(invalid)?;
                 let (scalar, lvalue) = self
@@ -503,7 +553,8 @@ impl Parser<'_> {
                 continue;
             }
             // A skipped query still requires a valid array type.
-            let (bound, bound_span) = self.record_offset_index(depth, 0, true)?;
+            let (bound, bound_span) =
+                self.record_offset_index(depth, 0, RecordOffsetIndexMode::Evaluate)?;
             self.lexer.expect_span(Token::Paren(']'))?;
             let count = bound
                 .value
@@ -539,9 +590,14 @@ impl Parser<'_> {
                 (Token::Paren('['), opening) => {
                     self.parameter_expansion_budget.charge_work(2, opening)?;
                     self.lexer.next()?;
-                    let index = self.record_offset_sizeof_subscript_index(depth + 1)?;
+                    let (index, _) =
+                        self.record_offset_index(depth + 1, 0, RecordOffsetIndexMode::Unevaluated)?;
                     end = self.lexer.expect_span(Token::Paren(']'))?;
-                    operand = self.sizeof_subscript(operand, index, span.until(&end))?;
+                    operand = self.sizeof_subscript(
+                        operand,
+                        SizeofOperand::Scalar(index.scalar),
+                        span.until(&end),
+                    )?;
                 }
                 _ => break,
             }
@@ -564,73 +620,6 @@ impl Parser<'_> {
             span: span.until(&end),
         })?;
         Ok((size, end))
-    }
-
-    fn record_offset_sizeof_subscript_index(
-        &mut self,
-        depth: u32,
-    ) -> Result<SizeofOperand, ParseError> {
-        let mut groups = 0;
-        let (token, span) = loop {
-            let (token, span) = self.lexer.next()?;
-            if depth + groups >= 64 {
-                return Err(ParseError {
-                    message: String::from("CUDA expression nesting limit exceeded"),
-                    span,
-                });
-            }
-            if token != Token::Paren('(') {
-                break (token, span);
-            }
-            self.parameter_expansion_budget.charge_work(2, span)?;
-            groups += 1;
-        };
-        let invalid = || {
-            ParseError {
-            message: String::from(
-                "__builtin_offsetof nested sizeof subscript requires an integer literal, Boolean literal, or named integral object",
-            ),
-            span,
-        }
-        };
-        let index = match token {
-            Token::Number(text) => {
-                let number = self
-                    .record_offset_integer_literal(text, span)?
-                    .ok_or_else(invalid)?;
-                SizeofOperand::Scalar(number.scalar)
-            }
-            Token::Word(word) => {
-                self.parameter_expansion_budget
-                    .charge_work(word.len() + 1, span)?;
-                match word {
-                    "true" | "false" => SizeofOperand::Scalar(SourceScalar::Scalar(Scalar::BOOL)),
-                    _ => {
-                        let symbol = self.lookup_symbol(word).ok_or_else(invalid)?;
-                        self.named_sizeof_operand(symbol, span)?
-                    }
-                }
-            }
-            _ => return Err(invalid()),
-        };
-        for _ in 0..groups {
-            self.lexer.expect_span(Token::Paren(')'))?;
-        }
-        Ok(index)
-    }
-
-    fn record_offset_integer_literal(
-        &mut self,
-        text: &str,
-        span: Span,
-    ) -> Result<Option<number::Number>, ParseError> {
-        self.parameter_expansion_budget
-            .charge_work(text.len() + 1, span)?;
-        if text.contains('\'') {
-            self.parameter_expansion_budget
-                .charge_bytes(text.len(), span)?;
-        }
-        Ok(number::parse_integer(text))
     }
 
     fn record_offset_aggregate_size(&self, ty: TypeSpecifier) -> Option<u32> {
@@ -720,7 +709,7 @@ impl Parser<'_> {
     fn record_offset_static_cast(
         &mut self,
         depth: u32,
-        evaluate: bool,
+        mode: RecordOffsetIndexMode,
         start: Span,
     ) -> Result<(RecordOffsetIndex, Span), ParseError> {
         if depth >= 64 {
@@ -745,7 +734,7 @@ impl Parser<'_> {
             })?;
         self.lexer.expect_span(Token::Paren('>'))?;
         self.lexer.expect_span(Token::Paren('('))?;
-        let (operand, _) = self.record_offset_index(depth + 1, 0, evaluate)?;
+        let (operand, _) = self.record_offset_index(depth + 1, 0, mode)?;
         let end = self.lexer.expect_span(Token::Paren(')'))?;
         Ok((
             Self::record_offset_cast(scalar, operand.value),
@@ -757,7 +746,7 @@ impl Parser<'_> {
         &mut self,
         target: QualifiedType,
         depth: u32,
-        evaluate: bool,
+        mode: RecordOffsetIndexMode,
         start: Span,
     ) -> Result<(RecordOffsetIndex, Span), ParseError> {
         if depth >= 64 {
@@ -779,9 +768,9 @@ impl Parser<'_> {
         self.parameter_expansion_budget.charge_work(2, start)?;
         self.lexer.expect_span(Token::Paren('('))?;
         let value = if self.lexer.peek()?.0 == Token::Paren(')') {
-            evaluate.then_some(0)
+            (mode == RecordOffsetIndexMode::Evaluate).then_some(0)
         } else {
-            self.record_offset_index(depth + 1, 0, evaluate)?.0.value
+            self.record_offset_index(depth + 1, 0, mode)?.0.value
         };
         let end = self.lexer.expect_span(Token::Paren(')'))?;
         Ok((Self::record_offset_cast(scalar, value), start.until(&end)))
@@ -1937,6 +1926,8 @@ mod tests {
             ("sizeof Pair.y / 4]", true, true),
             ("sizeof Items[((One))] / 4]", true, true),
             ("sizeof(Items[false]) / 4]", false, true),
+            ("sizeof Items[One ? short(1 / 0) : -1] / 4]", true, true),
+            ("sizeof Items[One + sizeof(int[1 + 1])] / 4]", false, true),
             ("sizeof Items[((((One))))] / 4]", false, false),
             ("sizeof(void const * const * volatile) / 8]", true, true),
             ("alignof(Fixed &) / 4]", false, true),
@@ -2030,7 +2021,9 @@ mod tests {
     fn offsetof_indirect_type_queries_charge_for_pointer_qualifiers() {
         let source = format!("sizeof(void *{})", "__restrict__ ".repeat(64));
         let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
-        let (index, _) = parser.record_offset_index(0, 0, true).unwrap();
+        let (index, _) = parser
+            .record_offset_index(0, 0, RecordOffsetIndexMode::Evaluate)
+            .unwrap();
         assert_eq!(index.value, Some(8));
 
         let mut parser = Parser::new(Lexer::new(&source).unwrap(), &Options::default());
@@ -2041,7 +2034,9 @@ mod tests {
                 .parameter_expansion_budget
                 .charge_work(1usize << bit, span);
         }
-        assert!(parser.record_offset_index(0, 0, true).is_err());
+        assert!(parser
+            .record_offset_index(0, 0, RecordOffsetIndexMode::Evaluate)
+            .is_err());
         assert!(parser.parameter_expansion_budget.is_exhausted());
         assert!(parser.function.ir.expressions.is_empty());
         assert!(parser.module.types.is_empty());
