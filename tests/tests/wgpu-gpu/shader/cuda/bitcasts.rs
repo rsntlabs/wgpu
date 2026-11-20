@@ -36,6 +36,10 @@ pub(super) fn cases() -> Vec<ShaderTest> {
         ("__float_as_uint", "float", "unsigned"),
         ("__int_as_float", "int", "float"),
         ("__uint_as_float", "unsigned", "float"),
+        ("__nv_float_as_int", "float", "int"),
+        ("__nv_float_as_uint", "float", "unsigned"),
+        ("__nv_int_as_float", "int", "float"),
+        ("__nv_uint_as_float", "unsigned", "float"),
     ] {
         let mut input = [0x0123_4567_u32; 32];
         input[..RAW_BITS.len()].copy_from_slice(&RAW_BITS);
@@ -75,7 +79,7 @@ pub(super) fn cases() -> Vec<ShaderTest> {
 }
 
 fn conversions_and_side_effects() -> ShaderTest {
-    let mut expected = [SENTINEL; 32];
+    let mut expected = [SENTINEL; 56];
     expected[..30].copy_from_slice(&[
         0x3f80_0000,
         0x4040_0000,
@@ -108,6 +112,8 @@ fn conversions_and_side_effects() -> ShaderTest {
         0x3f80_0000,
         0x3f80_0000,
     ]);
+    expected.copy_within(..16, 30);
+    expected.copy_within(16..24, 46);
     output_case(
         "bitcast parameter conversions, aliases, helper returns and argument-once updates",
         include_str!("../../../../../naga/tests/in/cuda/bitcasts.cu"),
@@ -154,12 +160,12 @@ fn overloads_and_control_flow() -> ShaderTest {
     )
 }
 
-fn output_case(name: &str, source: &str, expected: &[u32; 32]) -> ShaderTest {
+fn output_case(name: &str, source: &str, expected: &[u32]) -> ShaderTest {
     module_case(name, source, [1, 1, 1], expected).module_buffers(
         vec![ShaderBuffer::new(
             0,
             wgpu::BufferBindingType::Storage { read_only: false },
-            &[SENTINEL; 32],
+            &vec![SENTINEL; expected.len()],
         )],
         0,
         [1, 1, 1],

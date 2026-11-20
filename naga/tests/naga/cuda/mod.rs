@@ -524,3 +524,5 @@ mod fdividef;
 mod fmaf_ieee;
 
 mod libdevice_float_classification;
+
+mod libdevice_bitcasts;

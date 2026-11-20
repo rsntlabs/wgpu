@@ -840,11 +840,15 @@ const HALF_ADD_BUILTINS: [(&str, HalfAddBuiltin); 4] = [
     ),
 ];
 
-const BITCAST_BUILTINS: [(&str, Scalar, Scalar); 4] = [
+const BITCAST_BUILTINS: &[(&str, Scalar, Scalar)] = &[
     ("__float_as_int", Scalar::F32, Scalar::I32),
     ("__float_as_uint", Scalar::F32, Scalar::U32),
     ("__int_as_float", Scalar::I32, Scalar::F32),
     ("__uint_as_float", Scalar::U32, Scalar::F32),
+    ("__nv_float_as_int", Scalar::F32, Scalar::I32),
+    ("__nv_float_as_uint", Scalar::F32, Scalar::U32),
+    ("__nv_int_as_float", Scalar::I32, Scalar::F32),
+    ("__nv_uint_as_float", Scalar::U32, Scalar::F32),
 ];
 
 const FLOAT_MATH_BUILTINS: [(&str, FloatMathFunction); 8] = [
@@ -1066,7 +1070,7 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
             )
         }))
-        .chain(BITCAST_BUILTINS.into_iter().map(|(name, _, _)| {
+        .chain(BITCAST_BUILTINS.iter().map(|&(name, _, _)| {
             (
                 name,
                 GlobalDeclaration::Functions(FunctionOverloads::default()),
@@ -3402,10 +3406,10 @@ impl<'a> Parser<'a> {
             )
             .chain(
                 BITCAST_BUILTINS
-                    .into_iter()
-                    .find(|&(candidate, _, _)| candidate == name)
+                    .iter()
+                    .find(|&&(candidate, _, _)| candidate == name)
                     .filter(move |_| builtin_visible)
-                    .map(|(_, source, result)| FunctionCandidate::Bitcast { source, result }),
+                    .map(|&(_, source, result)| FunctionCandidate::Bitcast { source, result }),
             )
             .chain(
                 UNARY_BUILTINS

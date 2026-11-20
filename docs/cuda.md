@@ -1695,6 +1695,11 @@ These predefined functions reinterpret a 32-bit scalar's representation:
 | `__int_as_float` | `int` | `float` |
 | `__uint_as_float` | `unsigned int` | `float` |
 
+The corresponding libdevice spellings `__nv_float_as_int`,
+`__nv_float_as_uint`, `__nv_int_as_float`, and `__nv_uint_as_float`
+use the same signatures and bit reinterpretation. See NVIDIA's
+[libdevice function signatures](https://docs.nvidia.com/cuda/libdevice-users-guide/libdevice_users_guide/functions.html).
+
 Each call first converts its argument to the parameter type, then reinterprets
 the bits as the result type. For example, `__float_as_uint(1u)` returns
 `0x3f800000u`, the representation of `1.0f`. Ordinary casts still perform numeric
