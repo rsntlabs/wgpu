@@ -639,9 +639,13 @@ For example, `sizeof((value, matrix))` gives the full size of `matrix`.
 A comma expression ending in `0` has integer type and cannot serve as a null
 pointer constant.
 
-Pointer, array, record, and vector binary operators remain unsupported within
-these queries. Calls, updates, assignments, and nested type queries also
-remain unsupported.
+Within a `sizeof` operand, nested queries such as `sizeof(sizeof(value))`
+and `sizeof(alignof(int))` use the inner query's `size_t` type. The inner
+query follows the layout rules for `offsetof` indices, including validation
+of explicit array bounds, and emits no shader expression.
+
+Pointer, array, record, and vector binary operators, calls, updates, and
+assignments remain unsupported within these queries.
 
 `sizeof(static_cast<short>(value))` uses the cast's destination type and gives
 two bytes. This form supports existing arithmetic scalar types as both source

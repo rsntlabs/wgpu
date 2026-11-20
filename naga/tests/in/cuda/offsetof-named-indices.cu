@@ -26,7 +26,8 @@ __device__ void check_member_size(Outer *layout, unsigned index)
              || (sizeof short(index) != 2u) || (sizeof(bool(layout)) != 1u)
              || (sizeof ::size_t(index) != 8u) || (sizeof(std::size_t(index)) != 8u)
              || (sizeof decltype(RowIndex)(index) != 4u)
-             || (sizeof((short())) != 2u) || (sizeof ::size_t() != 8u)]) == 48u);
+             || (sizeof((short())) != 2u) || (sizeof ::size_t() != 8u)
+             || (sizeof(sizeof layout->grid) != 8u) || (sizeof(alignof(::size_t)) != 8u)]) == 48u);
 
 __global__ void named_offsets(unsigned *output) {
     unsigned lane = threadIdx.x;

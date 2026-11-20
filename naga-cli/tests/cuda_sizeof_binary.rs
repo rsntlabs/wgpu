@@ -10,7 +10,8 @@ fn cuda_sizeof_binary_cli_emits_all_backends_without_evaluating_operands() {
         constexpr unsigned Comparison=unsigned(sizeof(first<second));
         constexpr unsigned Undefined=unsigned(sizeof(1/0));
         constexpr unsigned Row=unsigned(sizeof(grid[first+second]));
-        output[0]=Sum+Product+Comparison+Undefined+Row;
+        constexpr unsigned Layout=unsigned(sizeof(sizeof(input[99])+alignof(int)));
+        output[0]=Sum+Product+Comparison+Undefined+Row+Layout;
         output[1]=unsigned(first);
     }"#;
     emits_all_backends(source);
@@ -226,7 +227,7 @@ fn emits_entry_all_backends(source: &str, entry: &str) {
 #[test]
 fn cuda_sizeof_binary_cli_rejects_invalid_types_and_out_of_scope_expressions() {
     for body in [
-        "int value=1;unsigned n=sizeof(value+sizeof(int));",
+        "int value=1;unsigned n=sizeof(value+sizeof(int[0]));",
         "int *p=nullptr; unsigned n=sizeof(p+1);",
         "float2 value{}; unsigned n=sizeof(value+value);",
         "int value=1; unsigned n=sizeof((value,,2));",

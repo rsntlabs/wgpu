@@ -1924,7 +1924,6 @@ fn cuda_type_queries_reject_invalid_types_syntax_and_expression_operands() {
         "alignof int",
         "alignof(1)",
         "sizeof(++value)",
-        "sizeof(sizeof(int))",
         "sizeof(cooperative_groups::thread_block)",
     ] {
         rejected(&format!(
@@ -4037,6 +4036,102 @@ fn cuda_sizeof_empty_functional_casts_keep_function_types_and_zero_provenance_re
                 __global__ void kernel(unsigned long *output) {{
                     int target; bool flag; int *pointer;
                     output[0] = {expression};
+                }}"
+            ));
+        }
+    }
+}
+
+#[test]
+fn cuda_sizeof_nested_layout_query_operands_have_size_t_type_and_normal_precedence() {
+    for (query, size) in [
+        ("sizeof(sizeof(int))", 8),
+        ("sizeof(alignof(int))", 8),
+        ("sizeof(sizeof(value))", 8),
+        ("sizeof(sizeof(1.0f))", 8),
+        ("sizeof(sizeof(record.matrix))", 8),
+        ("sizeof(sizeof(grid[index]))", 8),
+        ("sizeof(alignof(Record))", 8),
+        ("sizeof(sizeof(int[2][3]))", 8),
+        ("sizeof(alignof(int[][3]))", 8),
+        ("sizeof(sizeof(sizeof(value)))", 8),
+        ("sizeof(sizeof(value) + 1u)", 8),
+        ("sizeof((sizeof(value), true))", 1),
+        ("sizeof((alignof(int), grid))", 24),
+        ("sizeof sizeof value + 1", 9),
+        ("sizeof alignof(int) + 1", 9),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; struct Record {{ int matrix[2][3]; }};
+            __global__ void kernel(unsigned long *output) {{
+                int value; int index; int grid[2][3]; Record record;
+                output[0] = sizeof(int[{query}]);
+                output[1] = __builtin_offsetof(Offsets, bytes[{query}]);
+            }}"
+            ),
+            &[size * 4, size * 4],
+        );
+    }
+}
+
+#[test]
+fn cuda_sizeof_nested_layout_query_operands_do_not_materialize_inner_results_or_reads() {
+    for nested in [false, true] {
+        let source = |operand: &str| {
+            let query = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[sizeof({operand})])")
+            } else {
+                format!("sizeof({operand})")
+            };
+            format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output, volatile int *input) {{
+                    output[0] = {query};
+                }}"
+            )
+        };
+        let queries = roundtrip(&source("sizeof(*input) + alignof(int)"));
+        let control = roundtrip(&source("unsigned long"));
+        assert_eq!(
+            queries.entry_points[0]
+                .function
+                .expressions
+                .iter()
+                .collect::<Vec<_>>(),
+            control.entry_points[0]
+                .function
+                .expressions
+                .iter()
+                .collect::<Vec<_>>()
+        );
+        assert!(queries.entry_points[0]
+            .function
+            .expressions
+            .iter()
+            .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    }
+}
+
+#[test]
+fn cuda_sizeof_nested_layout_query_operands_validate_inner_types_and_bounds_when_skipped() {
+    for query in [
+        "sizeof(sizeof(Missing))",
+        "sizeof(sizeof(*nullptr))",
+        "sizeof(alignof(value))",
+        "sizeof(sizeof(int[0]))",
+        "sizeof(sizeof(int[-1]))",
+        "sizeof(sizeof(int[index]))",
+        "sizeof(sizeof(int[]))",
+        "sizeof(sizeof(grid[1.0f]))",
+        "sizeof(alignof(int)) + sizeof(sizeof(Unknown))",
+    ] {
+        for prefix in ["", "true || "] {
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{
+                    int value; int index; int grid[2][3];
+                    output[0] = __builtin_offsetof(Offsets, bytes[{prefix}{query}]);
                 }}"
             ));
         }

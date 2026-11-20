@@ -426,7 +426,9 @@ impl Parser<'_> {
             (size, end)
         } else {
             return Err(ParseError {
-                message: String::from("__builtin_offsetof nested sizeof expected a parenthesized type or a named object"),
+                message: String::from(
+                    "nested sizeof expected a parenthesized type or a named object",
+                ),
                 span: target_span,
             });
         };
@@ -435,6 +437,16 @@ impl Parser<'_> {
             RecordOffsetIndex::prvalue(SourceScalar::Long(ScalarKind::Uint), value),
             start.until(&end),
         ))
+    }
+
+    fn sizeof_layout_operand(
+        &mut self,
+        name: &str,
+        depth: u32,
+        start: Span,
+    ) -> Result<(SizeofOperand, Span), ParseError> {
+        let (result, span) = self.record_offset_type_query(name, depth, false, start)?;
+        Ok((SizeofOperand::Scalar(result.scalar), span))
     }
 
     fn record_offset_type_layout(
@@ -464,17 +476,20 @@ impl Parser<'_> {
             // The supported scalar types have natural alignment equal to their size.
             Ok(u32::from(scalar.scalar().width))
         } else if name == "sizeof" {
-            self.record_offset_aggregate_size(ty).ok_or_else(|| ParseError {
+            self.record_offset_aggregate_size(ty)
+                .ok_or_else(|| {
+                    ParseError {
                 message: String::from(
-                    "__builtin_offsetof nested sizeof requires a scalar, vector, complete record, or fixed-array type",
+                    "nested sizeof requires a scalar, vector, complete record, or fixed-array type",
                 ),
                 span: target_span,
-            })
+            }
+                })
         } else {
             self.record_offset_aggregate_alignment(ty, target_span)?
                 .ok_or_else(|| ParseError {
                     message: String::from(
-                        "__builtin_offsetof nested alignof requires a scalar, vector, complete record, or array type with a supported element",
+                        "nested alignof requires a scalar, vector, complete record, or array type with a supported element",
                     ),
                     span: target_span,
                 })
@@ -643,6 +658,9 @@ impl Parser<'_> {
                 start,
             ),
             Token::Word("nullptr") => (SizeofOperand::NullPointer, start),
+            Token::Word(name @ ("sizeof" | "alignof")) => {
+                return self.sizeof_layout_operand(name, depth + 1, start);
+            }
             Token::Word("static_cast") => self.sizeof_static_cast(start, |parser| {
                 parser.record_offset_sizeof_conditional(depth + 1)
             })?,
@@ -706,9 +724,7 @@ impl Parser<'_> {
             SizeofOperand::IncompleteArray(_) => None,
         };
         size.ok_or_else(|| ParseError {
-            message: String::from(
-                "__builtin_offsetof nested sizeof requires a complete object type",
-            ),
+            message: String::from("nested sizeof requires a complete object type"),
             span,
         })
     }
@@ -1230,7 +1246,9 @@ impl Parser<'_> {
             Token::Operation('*' | '+' | '-' | '~' | '!')
             | Token::Paren('(')
             | Token::Number(_)
-            | Token::Word("true" | "false" | "nullptr" | "static_cast") => return Ok(true),
+            | Token::Word("true" | "false" | "nullptr" | "static_cast" | "sizeof" | "alignof") => {
+                return Ok(true);
+            }
             Token::Word(_) | Token::ScopeResolution => {}
             _ => return Ok(false),
         }
@@ -1668,6 +1686,9 @@ impl Parser<'_> {
                 start,
             ),
             Token::Word("nullptr") => (SizeofOperand::NullPointer, start),
+            Token::Word(name @ ("sizeof" | "alignof")) => {
+                return self.sizeof_layout_operand(name, self.function.expression_depth, start);
+            }
             Token::Word("static_cast") => {
                 self.sizeof_static_cast(start, Self::sizeof_conditional_expression)?
             }
@@ -2227,6 +2248,9 @@ mod tests {
             ("sizeof((short)(+One)) / 2]", true, true),
             ("sizeof((short)(short)(short)(short)1) / 2]", false, false),
             ("sizeof short(One) / 2]", true, true),
+            ("sizeof sizeof One / 8]", true, true),
+            ("sizeof(alignof(int[sizeof(One)])) / 8]", false, true),
+            ("sizeof sizeof sizeof sizeof sizeof One / 8]", false, false),
             ("sizeof(short() + 1) / 4]", true, true),
             ("sizeof((true ? short() : short())) / 2]", false, true),
             ("sizeof decltype(One)(1) / 4]", true, true),
