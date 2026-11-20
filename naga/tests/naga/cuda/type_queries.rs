@@ -5596,3 +5596,75 @@ fn cuda_layout_queries_redundant_indirect_groups_validate_matching_delimiters_an
     ));
     assert!(error.message.contains("pointer nesting limit"), "{error}");
 }
+
+#[test]
+fn cuda_layout_queries_grouped_pointer_arrays_without_following_suffix_keep_full_layout() {
+    for (ty, size) in [
+        ("int((*[2]))", 16),
+        ("void(*[3])", 24),
+        ("int(*(&)[2])", 16),
+        ("int(*(*)[])", 8),
+        ("Value(*const[2])", 16),
+        ("int(*)(int(*[2]))", 8),
+        ("int(*)(int(*[2]), ...)", 8),
+        ("P(*[sizeof(int)])", 32),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; using Value = unsigned; using P = int*;
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof({ty}); output[1] = alignof({ty});
+                output[2] = __builtin_offsetof(Offsets, bytes[sizeof({ty})]);
+            }}"
+            ),
+            &[size, 8, size * 4],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = alignof(int(*[]));
+            output[1] = __builtin_offsetof(Offsets, bytes[alignof(int(*(&)[]))]);
+        }",
+        &[8, 32],
+    );
+}
+
+#[test]
+fn cuda_layout_queries_grouped_pointer_arrays_without_suffix_reject_invalid_layers() {
+    for ty in [
+        "int(*[0])",
+        "int(*[-1])",
+        "int(*[runtime])",
+        "int(*[2][])",
+        "int(&[2])",
+        "void(&[2])",
+        "int(*(&const)[2])",
+        "int((*[2])",
+        "int(*[])",
+        "int(*(&)[])",
+        "int&(*[2])",
+        "int(*[268435456u])",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof({ty})");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
+    }
+    let source = |count| {
+        format!(
+            "__global__ void kernel(unsigned long *output) {{ output[0] = sizeof(int {}(**[2])); }}",
+            "*".repeat(count)
+        )
+    };
+    assert_query_results(&source(62), &[16]);
+    let error = rejected(&source(63));
+    assert!(error.message.contains("pointer nesting limit"), "{error}");
+}

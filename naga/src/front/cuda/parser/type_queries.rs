@@ -41,6 +41,7 @@ enum GroupedTypeQuery {
     PointerArray {
         through_pointer: bool,
         groups: usize,
+        pointers: usize,
     },
 }
 
@@ -1466,6 +1467,7 @@ impl Parser<'_> {
         let array_type = if let Some(GroupedTypeQuery::PointerArray {
             through_pointer,
             groups,
+            pointers,
         }) = declarator
         {
             let name = if through_pointer {
@@ -1482,7 +1484,8 @@ impl Parser<'_> {
             for _ in 0..groups {
                 self.lexer.expect_span(Token::Paren(')'))?;
             }
-            if self.lexer.peek()?.0 == Token::Paren('[') {
+            let suffix = self.lexer.peek()?.0;
+            if suffix == Token::Paren('[') {
                 let element =
                     self.type_query_grouped_array_element(operand, pointer_depth, reference, span)?;
                 match element {
@@ -1492,6 +1495,18 @@ impl Parser<'_> {
                     GroupedArrayElement::Value(ty) => {
                         self.record_offset_array_layout("alignof", ty.ty, depth + 1, span)?;
                     }
+                }
+                return Ok(ty);
+            }
+            if matches!(
+                suffix,
+                Token::Paren(')') | Token::Separator(',') | Token::Ellipsis
+            ) {
+                if reference {
+                    return self.fail("arrays of references are unsupported");
+                }
+                if pointer_depth + pointers > 64 {
+                    return self.fail("CUDA pointer nesting limit exceeded");
                 }
                 return Ok(ty);
             }
@@ -1791,6 +1806,7 @@ impl Parser<'_> {
                     return Ok(Some(GroupedTypeQuery::PointerArray {
                         through_pointer,
                         groups,
+                        pointers,
                     }));
                 }
                 Self::scan_type_query_reference(&mut lookahead, budget)?;
