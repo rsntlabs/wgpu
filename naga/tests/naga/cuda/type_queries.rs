@@ -5668,3 +5668,69 @@ fn cuda_layout_queries_grouped_pointer_arrays_without_suffix_reject_invalid_laye
     let error = rejected(&source(63));
     assert!(error.message.contains("pointer nesting limit"), "{error}");
 }
+
+#[test]
+fn cuda_layout_queries_terminal_grouped_array_declarators_preserve_array_layout() {
+    for (ty, size, alignment) in [
+        ("int([3])", 12, 4),
+        ("int(([2][3]))", 24, 4),
+        ("Row([2])", 24, 4),
+        ("const unsigned([3])", 12, 4),
+        ("int(*)(int([3]))", 8, 8),
+        ("int(*)(Row(([2])))", 8, 8),
+        ("int*([3])", 24, 8),
+        ("void*(([2]))", 16, 8),
+        ("P([sizeof(int)])", 32, 8),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; using Row = int[3]; using P = int*;
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof({ty}); output[1] = alignof({ty});
+                output[2] = __builtin_offsetof(Offsets, bytes[sizeof({ty})]);
+            }}"
+            ),
+            &[size, alignment, size * 4],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = alignof(int(([][3])));
+            output[1] = __builtin_offsetof(Offsets, bytes[alignof(int([]))]);
+        }",
+        &[4, 16],
+    );
+}
+
+#[test]
+fn cuda_layout_queries_terminal_grouped_array_declarators_validate_elements_bounds_and_termination()
+{
+    for ty in [
+        "void([3])",
+        "int&([3])",
+        "int([0])",
+        "int([-1])",
+        "int([runtime])",
+        "int([2][])",
+        "int([4294967295u])",
+        "int(([3])",
+        "int([3]])",
+        "int([3])(int)",
+        "int([])",
+        "int*&([3])",
+        "int*([268435456u])",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof({ty})");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
+    }
+}

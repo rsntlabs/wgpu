@@ -14,6 +14,10 @@ enum TypeQueryType {
     PointerArrayLayout(u32),
     PointerToArray(QualifiedType),
     ArrayOfPointers,
+    GroupedArray {
+        element: GroupedArrayElement,
+        groups: usize,
+    },
     Object(QualifiedType),
 }
 
@@ -36,6 +40,9 @@ enum GroupedTypeQuery {
     Reference,
     PointerToArray,
     ArrayReference,
+    Array {
+        groups: usize,
+    },
     FunctionPointer,
     FunctionReference,
     PointerArray {
@@ -483,6 +490,12 @@ impl Parser<'_> {
                 Ok(8)
             }
             TypeQueryType::ArrayOfPointers => self.record_offset_pointer_array_layout(name, depth),
+            TypeQueryType::GroupedArray { element, groups } => {
+                let layout =
+                    self.record_offset_grouped_array_layout(name, element, depth, target_span)?;
+                self.close_type_query_groups(groups)?;
+                Ok(layout)
+            }
             TypeQueryType::Object(ty) => {
                 if self.lexer.peek()?.0 == Token::Paren('[') {
                     self.record_offset_array_layout(name, ty.ty, depth, target_span)
@@ -567,6 +580,21 @@ impl Parser<'_> {
         self.type_query_array_layout(name, 8, 8, 0, |parser| {
             parser.record_offset_array_bound(depth)
         })
+    }
+
+    fn record_offset_grouped_array_layout(
+        &mut self,
+        name: &str,
+        element: GroupedArrayElement,
+        depth: u32,
+        span: Span,
+    ) -> Result<u32, ParseError> {
+        match element {
+            GroupedArrayElement::Pointer => self.record_offset_pointer_array_layout(name, depth),
+            GroupedArrayElement::Value(ty) => {
+                self.record_offset_array_layout(name, ty.ty, depth, span)
+            }
+        }
     }
 
     fn type_query_array_size_limit(span: Span) -> ParseError {
@@ -1296,10 +1324,17 @@ impl Parser<'_> {
                 self.array_alias_declarator(ty, span)?;
                 8
             }
-            TypeQueryType::ArrayOfPointers => {
-                self.type_query_array_layout(name, 8, 8, 0, |parser| {
-                    parser.array_size().map(|(count, span)| (count.get(), span))
-                })?
+            TypeQueryType::ArrayOfPointers => self.type_query_pointer_array_layout(name)?,
+            TypeQueryType::GroupedArray { element, groups } => {
+                let layout = match element {
+                    GroupedArrayElement::Pointer => self.type_query_pointer_array_layout(name)?,
+                    GroupedArrayElement::Value(ty) => {
+                        let ty = self.array_alias_declarator(ty, span)?.ty;
+                        self.type_query_value(name, ty, span)?
+                    }
+                };
+                self.close_type_query_groups(groups)?;
+                layout
             }
             TypeQueryType::Object(ty) => {
                 let ty = self.array_alias_declarator(ty, span)?.ty;
@@ -1308,6 +1343,19 @@ impl Parser<'_> {
         };
         let closing = self.lexer.expect_span(Token::Paren(')'))?;
         self.type_query_result(value, span.until(&closing))
+    }
+
+    fn type_query_pointer_array_layout(&mut self, name: &str) -> Result<u32, ParseError> {
+        self.type_query_array_layout(name, 8, 8, 0, |parser| {
+            parser.array_size().map(|(count, span)| (count.get(), span))
+        })
+    }
+
+    fn close_type_query_groups(&mut self, groups: usize) -> Result<(), ParseError> {
+        for _ in 0..groups {
+            self.lexer.expect_span(Token::Paren(')'))?;
+        }
+        Ok(())
     }
 
     fn sizeof_starts_expression(&mut self, parenthesized: bool) -> Result<bool, ParseError> {
@@ -1429,6 +1477,11 @@ impl Parser<'_> {
         if declarator.is_some() {
             self.lexer = lookahead;
         }
+        if let Some(GroupedTypeQuery::Array { groups }) = declarator {
+            let element =
+                self.type_query_grouped_array_element(operand, pointer_depth, reference, span)?;
+            return Ok(TypeQueryType::GroupedArray { element, groups });
+        }
         let grouped_pointers = match declarator {
             Some(GroupedTypeQuery::Pointer(count)) => Some(count),
             Some(GroupedTypeQuery::Reference) => Some(0),
@@ -1481,21 +1534,12 @@ impl Parser<'_> {
             } else {
                 TypeQueryType::PointerArrayLayout(layout)
             };
-            for _ in 0..groups {
-                self.lexer.expect_span(Token::Paren(')'))?;
-            }
+            self.close_type_query_groups(groups)?;
             let suffix = self.lexer.peek()?.0;
             if suffix == Token::Paren('[') {
                 let element =
                     self.type_query_grouped_array_element(operand, pointer_depth, reference, span)?;
-                match element {
-                    GroupedArrayElement::Pointer => {
-                        self.record_offset_pointer_array_layout("alignof", depth + 1)?;
-                    }
-                    GroupedArrayElement::Value(ty) => {
-                        self.record_offset_array_layout("alignof", ty.ty, depth + 1, span)?;
-                    }
-                }
+                self.record_offset_grouped_array_layout("alignof", element, depth + 1, span)?;
                 return Ok(ty);
             }
             if matches!(
@@ -1677,6 +1721,15 @@ impl Parser<'_> {
                     TypeQueryType::ArrayOfPointers => {
                         self.record_offset_pointer_array_layout("alignof", depth + 1)?;
                     }
+                    TypeQueryType::GroupedArray { element, groups } => {
+                        self.record_offset_grouped_array_layout(
+                            "alignof",
+                            element,
+                            depth + 1,
+                            parameter_span,
+                        )?;
+                        self.close_type_query_groups(groups)?;
+                    }
                     TypeQueryType::Pointer
                     | TypeQueryType::FunctionReference
                     | TypeQueryType::PointerArrayLayout(_) => {}
@@ -1781,6 +1834,11 @@ impl Parser<'_> {
             groups += 1;
         }
         let pointers = match lookahead.peek()?.0 {
+            Token::Paren('[') => {
+                budget.charge_work(2, span)?;
+                *lexer = lookahead;
+                return Ok(Some(GroupedTypeQuery::Array { groups }));
+            }
             Token::Operation('*') => {
                 budget.charge_work(2, span)?;
                 let pointers = Self::scan_type_query_pointer_chain(&mut lookahead, budget, 0)?;
