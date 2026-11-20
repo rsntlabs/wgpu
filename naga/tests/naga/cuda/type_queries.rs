@@ -4889,8 +4889,6 @@ fn cuda_layout_queries_function_pointer_grouped_array_parameters_reject_invalid_
         "int(&*)[3]",
         "int(*)[3",
         "int(*)[3](int)",
-        "int(*)(int)",
-        "void(*)(int, ...)",
     ] {
         for nested in [false, true] {
             let query = format!("sizeof(int(*)({parameter}))");
@@ -4903,5 +4901,83 @@ fn cuda_layout_queries_function_pointer_grouped_array_parameters_reject_invalid_
                 "struct Offsets {{ int bytes[64]; }};
                 __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
         }
+    }
+}
+
+#[test]
+fn cuda_layout_queries_function_pointer_parameters_can_nest_bounded_signatures() {
+    for parameter in [
+        "int(*)(int)",
+        "void(*)(int, ...)",
+        "int(*)(int) noexcept(true)",
+        "int(**const)(int[3])",
+        "void(*&)(int(&)[3], ...)",
+        "int(*)(void(*)(float))",
+        "int(*)(int(*)[3]) noexcept(sizeof(int) == 4)",
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof(int(*)({parameter}));
+                output[1] = __builtin_offsetof(Offsets, bytes[alignof(int(*)({parameter}))]);
+            }}"
+            ),
+            &[8, 32],
+        );
+    }
+}
+
+#[test]
+fn cuda_layout_queries_nested_function_pointer_parameters_validate_signatures_and_depth() {
+    for parameter in [
+        "int(*)(Missing)",
+        "void(*)(void, int)",
+        "int(*)(int,)",
+        "int(*)(int[0])",
+        "int(*)(int) noexcept(runtime)",
+        "int(*)(void(*)(int, ..., float))",
+        "int(*)(int)(float)",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof(int(*)({parameter}))");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
+    }
+    let query = |count| {
+        format!(
+            "sizeof({}int{})",
+            "int(*)(".repeat(count),
+            ")".repeat(count)
+        )
+    };
+    assert_query_results(
+        &format!(
+            "__global__ void kernel(unsigned long *output) {{ output[0] = {}; }}",
+            query(64)
+        ),
+        &[8],
+    );
+    for expression in [
+        query(65),
+        format!("__builtin_offsetof(Offsets, bytes[{}])", query(64)),
+        format!(
+            "sizeof(int(*)({}int{}))",
+            "int[sizeof(int(*)(".repeat(24),
+            "))]".repeat(24)
+        ),
+    ] {
+        let error = rejected(&format!(
+            "struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{ output[0] = {expression}; }}"
+        ));
+        assert!(error.message.contains("nesting limit"), "{error}");
     }
 }

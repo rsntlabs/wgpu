@@ -1394,16 +1394,15 @@ impl Parser<'_> {
         if let Some(declarator) = self.scan_grouped_query_declarator(&mut lookahead)? {
             self.lexer = lookahead;
             if matches!(declarator, GroupedTypeQuery::FunctionPointer) {
-                if matches!(context, TypeQueryContext::FunctionParameter) {
-                    return self
-                        .fail("function pointer parameters in type queries are unsupported");
+                if depth >= 64 {
+                    return self.fail("CUDA expression nesting limit exceeded");
                 }
                 if pointer_depth == 0
                     && matches!(operand, Some(ty) if matches!(ty.ty, TypeSpecifier::Array(_)))
                 {
                     return self.fail("function types cannot return arrays");
                 }
-                self.type_query_function_parameters(depth)?;
+                self.type_query_function_parameters(depth + 1)?;
                 self.type_query_function_noexcept(depth)?;
                 return Ok(TypeQueryType::Pointer);
             }

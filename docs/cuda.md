@@ -563,6 +563,8 @@ query rules for array bounds, including an optional outer bound. C++ adjusts
 these array parameters to pointers.
 Grouped parameter types such as `int (&)[3]` and `int (*)[3]` also check
 their array bounds and retain their reference or pointer declarator.
+A parameter may itself be a function pointer, as in `int (*)(void (*)(int))`.
+The nested signature follows the same type rules and nesting limit.
 A variadic signature may use `(...)` or end its parameter list with `...`,
 with an optional comma before the ellipsis.
 The signature may end with `noexcept` or `noexcept(expression)`. The expression
