@@ -516,3 +516,5 @@ mod fsqrt_ru;
 
 mod fmul_rd;
 mod fmul_ru;
+
+mod fmaf_directed;

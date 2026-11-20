@@ -160,14 +160,14 @@ fn truncate_fused(first: f32, second: f32, third: f32) -> f32 {
 }
 
 fn _fmaf_rz(first_1: bool, second_1: bool, third_1: bool) -> i32 {
-    var local_18: i32;
+    var local_28: i32;
 
     if first_1 {
-        local_18 = 7i;
+        local_28 = 7i;
     } else {
-        local_18 = 9i;
+        local_28 = 9i;
     }
-    let _e6 = local_18;
+    let _e6 = local_28;
     return _e6;
 }
 
@@ -331,6 +331,314 @@ fn gen__naga_fmaf_rn(left_bits_1: u32, right_bits_1: u32, addend_bits_1: u32) ->
     return (_e229 | ((select(0u, u32(max(_e498, 0i)), (_e494 >= 8388608u)) << 23u) | (_e494 & 8388607u)));
 }
 
+fn gen__naga_fmaf_rd(left_bits_2: u32, right_bits_2: u32, addend_bits_2: u32) -> u32 {
+    var stage_36: u32;
+    var stage_37: u32;
+    var stage_38: u32;
+    var stage_39: u32;
+    var stage_40: u32;
+    var stage_41: u32;
+    var stage_42: i32;
+    var stage_43: i32;
+    var stage_44: u32;
+    var stage_45: i32;
+    var stage_46: u32;
+    var stage_47: u32;
+    var stage_48: u32;
+    var stage_49: u32;
+    var stage_50: i32;
+    var stage_51: i32;
+    var stage_52: u32;
+    var stage_53: u32;
+
+    let _e12 = (left_bits_2 & 2147483647u);
+    let _e14 = (_e12 == 2139095040u);
+    let _e15 = (_e12 == 0u);
+    let _e16 = (right_bits_2 & 2147483647u);
+    let _e18 = (_e16 == 2139095040u);
+    let _e19 = (_e16 == 0u);
+    let _e20 = (addend_bits_2 & 2147483647u);
+    let _e22 = (_e20 == 2139095040u);
+    let _e23 = (_e20 == 0u);
+    if (((_e12 > 2139095040u) || (_e16 > 2139095040u)) || (_e20 > 2139095040u)) {
+        return 2143289344u;
+    }
+    if ((_e15 && _e18) || (_e19 && _e14)) {
+        return 2143289344u;
+    }
+    let _e30 = ((left_bits_2 ^ right_bits_2) & 2147483648u);
+    let _e31 = (addend_bits_2 & 2147483648u);
+    let _e32 = (_e30 != _e31);
+    let _e33 = (_e14 || _e18);
+    if (_e33 && (_e22 && _e32)) {
+        return 2143289344u;
+    }
+    if _e33 {
+        return (_e30 | 2139095040u);
+    }
+    if _e22 {
+        return addend_bits_2;
+    }
+    let _e37 = (_e15 || _e19);
+    if (_e37 && _e23) {
+        return (_e30 | _e31);
+    }
+    if _e37 {
+        return addend_bits_2;
+    }
+    let _e40 = (_e12 >> 23u);
+    let _e41 = (_e40 != 0u);
+    let _e44 = ((_e12 & 8388607u) | select(0u, 8388608u, _e41));
+    let _e49 = (_e16 >> 23u);
+    let _e50 = (_e49 != 0u);
+    let _e53 = ((_e16 & 8388607u) | select(0u, 8388608u, _e50));
+    let _e58 = (_e20 >> 23u);
+    let _e59 = (_e58 != 0u);
+    let _e62 = ((_e20 & 8388607u) | select(0u, 8388608u, _e59));
+    let _e69 = (_e44 & 4095u);
+    let _e70 = (_e44 >> 12u);
+    let _e71 = (_e53 & 4095u);
+    let _e72 = (_e53 >> 12u);
+    let _e73 = (_e69 * _e71);
+    let _e78 = (((_e69 * _e72) + (_e70 * _e71)) + (_e73 >> 12u));
+    let _e81 = ((_e70 * _e72) + (_e78 >> 12u));
+    stage_36 = (((_e73 & 4095u) | ((_e78 & 4095u) << 12u)) | (_e81 << 24u));
+    let _e92 = stage_36;
+    stage_37 = (_e81 >> 8u);
+    let _e94 = stage_37;
+    let _e107 = i32(select((31u - countLeadingZeros((_e92 | 1u))), (63u - countLeadingZeros((_e94 | 1u))), (_e94 != 0u)));
+    let _e109 = (50i - _e107);
+    let _e119 = (u32(min(max(_e109, 0i), 31i)) & 31u);
+    let _e143 = (_e109 < 32i);
+    stage_38 = select(0u, (_e92 << _e119), _e143);
+    let _e147 = stage_38;
+    stage_39 = select((_e92 << (u32(min(max((_e109 - 32i), 0i), 31i)) & 31u)), ((_e94 << _e119) | select(0u, (_e92 >> (u32(min(max((32i - _e109), 0i), 31i)) & 31u)), (_e109 > 0i))), _e143);
+    let _e149 = stage_39;
+    let _e151 = (((i32(select(1u, _e40, _e41)) - 150i) + (i32(select(1u, _e49, _e50)) - 150i)) + _e107);
+    let _e164 = i32(select((31u - countLeadingZeros((_e62 | 1u))), (63u - countLeadingZeros((0u | 1u))), (0u != 0u)));
+    let _e165 = (50i - _e164);
+    let _e175 = (u32(min(max(_e165, 0i), 31i)) & 31u);
+    let _e199 = (_e165 < 32i);
+    stage_40 = select(0u, (_e62 << _e175), _e199);
+    let _e203 = stage_40;
+    stage_41 = select((_e62 << (u32(min(max((_e165 - 32i), 0i), 31i)) & 31u)), ((0u << _e175) | select(0u, (_e62 >> (u32(min(max((32i - _e165), 0i), 31i)) & 31u)), (_e165 > 0i))), _e199);
+    let _e205 = stage_41;
+    let _e207 = select(((i32(select(1u, _e58, _e59)) - 150i) + _e164), _e151, _e23);
+    let _e216 = ((_e151 < _e207) || ((_e151 == _e207) && ((_e149 < _e205) || ((_e149 == _e205) && (_e147 < _e203)))));
+    let _e217 = select(_e147, _e203, _e216);
+    let _e218 = select(_e149, _e205, _e216);
+    let _e219 = select(_e203, _e147, _e216);
+    let _e220 = select(_e205, _e149, _e216);
+    stage_42 = select(_e151, _e207, _e216);
+    let _e225 = stage_42;
+    stage_43 = select(_e207, _e151, _e216);
+    let _e227 = stage_43;
+    stage_44 = select(_e30, _e31, _e216);
+    let _e229 = stage_44;
+    stage_45 = (_e225 - _e227);
+    let _e232 = stage_45;
+    let _e244 = (u32(min(max(_e232, 0i), 31i)) & 31u);
+    let _e272 = (u32(min(max((_e232 - 32i), 0i), 31i)) & 31u);
+    let _e281 = (_e232 < 32i);
+    let _e287 = (_e232 < 64i);
+    let _e290 = (0i - _e232);
+    let _e300 = (u32(min(max(_e290, 0i), 31i)) & 31u);
+    let _e324 = (_e290 < 32i);
+    let _e327 = (_e232 <= 0i);
+    stage_46 = select(select(u32(((_e220 | _e219) != 0u)), select(((_e220 >> _e272) | u32((((_e220 & ((1u << _e272) - 1u)) | _e219) != 0u))), (((_e219 >> _e244) | select(0u, (_e220 << (u32(min(max((32i - _e232), 0i), 31i)) & 31u)), (_e232 > 0i))) | u32(((_e219 & ((1u << _e244) - 1u)) != 0u))), _e281), _e287), select(0u, (_e219 << _e300), _e324), _e327);
+    let _e331 = stage_46;
+    stage_47 = select(select(0u, select(0u, (_e220 >> _e244), _e281), _e287), select((_e219 << (u32(min(max((_e290 - 32i), 0i), 31i)) & 31u)), ((_e220 << _e300) | select(0u, (_e219 >> (u32(min(max((32i - _e290), 0i), 31i)) & 31u)), (_e290 > 0i))), _e324), _e327);
+    let _e333 = stage_47;
+    let _e334 = (_e217 + _e331);
+    stage_48 = select(_e334, (_e217 - _e331), _e32);
+    let _e347 = stage_48;
+    stage_49 = select(((_e218 + _e333) + u32((_e334 < _e217))), ((_e218 - _e333) - u32((_e217 < _e331))), _e32);
+    let _e349 = stage_49;
+    if ((_e347 | _e349) == 0u) {
+        return 2147483648u;
+    }
+    let _e365 = (_e225 - 50i);
+    let _e370 = max(((i32(select((31u - countLeadingZeros((_e347 | 1u))), (63u - countLeadingZeros((_e349 | 1u))), (_e349 != 0u))) + _e365) - 23i), -149i);
+    stage_50 = _e370;
+    let _e375 = stage_50;
+    stage_51 = ((_e370 - _e365) - 3i);
+    let _e377 = stage_51;
+    let _e389 = (u32(min(max(_e377, 0i), 31i)) & 31u);
+    let _e417 = (u32(min(max((_e377 - 32i), 0i), 31i)) & 31u);
+    let _e426 = (_e377 < 32i);
+    let _e432 = (_e377 < 64i);
+    let _e435 = (0i - _e377);
+    let _e445 = (u32(min(max(_e435, 0i), 31i)) & 31u);
+    let _e469 = (_e435 < 32i);
+    let _e472 = (_e377 <= 0i);
+    stage_52 = select(select(u32(((_e349 | _e347) != 0u)), select(((_e349 >> _e417) | u32((((_e349 & ((1u << _e417) - 1u)) | _e347) != 0u))), (((_e347 >> _e389) | select(0u, (_e349 << (u32(min(max((32i - _e377), 0i), 31i)) & 31u)), (_e377 > 0i))) | u32(((_e347 & ((1u << _e389) - 1u)) != 0u))), _e426), _e432), select(0u, (_e347 << _e445), _e469), _e472);
+    let _e476 = stage_52;
+    stage_53 = select(select(0u, select(0u, (_e349 >> _e389), _e426), _e432), select((_e347 << (u32(min(max((_e435 - 32i), 0i), 31i)) & 31u)), ((_e349 << _e445) | select(0u, (_e347 >> (u32(min(max((32i - _e435), 0i), 31i)) & 31u)), (_e435 > 0i))), _e469), _e472);
+    let _e479 = (_e229 != 0u);
+    let _e486 = ((_e476 >> 3u) + u32((_e479 && ((_e476 & 7u) > 0u))));
+    let _e488 = (_e486 >= 16777216u);
+    let _e490 = select(_e486, (_e486 >> 1u), _e488);
+    let _e494 = ((_e375 + i32(_e488)) + 150i);
+    if (_e494 >= 255i) {
+        return (_e229 | select(2139095039u, 2139095040u, _e479));
+    }
+    return (_e229 | ((select(0u, u32(max(_e494, 0i)), (_e490 >= 8388608u)) << 23u) | (_e490 & 8388607u)));
+}
+
+fn gen__naga_fmaf_ru(left_bits_3: u32, right_bits_3: u32, addend_bits_3: u32) -> u32 {
+    var stage_54: u32;
+    var stage_55: u32;
+    var stage_56: u32;
+    var stage_57: u32;
+    var stage_58: u32;
+    var stage_59: u32;
+    var stage_60: i32;
+    var stage_61: i32;
+    var stage_62: u32;
+    var stage_63: i32;
+    var stage_64: u32;
+    var stage_65: u32;
+    var stage_66: u32;
+    var stage_67: u32;
+    var stage_68: i32;
+    var stage_69: i32;
+    var stage_70: u32;
+    var stage_71: u32;
+
+    let _e12 = (left_bits_3 & 2147483647u);
+    let _e14 = (_e12 == 2139095040u);
+    let _e15 = (_e12 == 0u);
+    let _e16 = (right_bits_3 & 2147483647u);
+    let _e18 = (_e16 == 2139095040u);
+    let _e19 = (_e16 == 0u);
+    let _e20 = (addend_bits_3 & 2147483647u);
+    let _e22 = (_e20 == 2139095040u);
+    let _e23 = (_e20 == 0u);
+    if (((_e12 > 2139095040u) || (_e16 > 2139095040u)) || (_e20 > 2139095040u)) {
+        return 2143289344u;
+    }
+    if ((_e15 && _e18) || (_e19 && _e14)) {
+        return 2143289344u;
+    }
+    let _e30 = ((left_bits_3 ^ right_bits_3) & 2147483648u);
+    let _e31 = (addend_bits_3 & 2147483648u);
+    let _e32 = (_e30 != _e31);
+    let _e33 = (_e14 || _e18);
+    if (_e33 && (_e22 && _e32)) {
+        return 2143289344u;
+    }
+    if _e33 {
+        return (_e30 | 2139095040u);
+    }
+    if _e22 {
+        return addend_bits_3;
+    }
+    let _e37 = (_e15 || _e19);
+    if (_e37 && _e23) {
+        return (_e30 & _e31);
+    }
+    if _e37 {
+        return addend_bits_3;
+    }
+    let _e40 = (_e12 >> 23u);
+    let _e41 = (_e40 != 0u);
+    let _e44 = ((_e12 & 8388607u) | select(0u, 8388608u, _e41));
+    let _e49 = (_e16 >> 23u);
+    let _e50 = (_e49 != 0u);
+    let _e53 = ((_e16 & 8388607u) | select(0u, 8388608u, _e50));
+    let _e58 = (_e20 >> 23u);
+    let _e59 = (_e58 != 0u);
+    let _e62 = ((_e20 & 8388607u) | select(0u, 8388608u, _e59));
+    let _e69 = (_e44 & 4095u);
+    let _e70 = (_e44 >> 12u);
+    let _e71 = (_e53 & 4095u);
+    let _e72 = (_e53 >> 12u);
+    let _e73 = (_e69 * _e71);
+    let _e78 = (((_e69 * _e72) + (_e70 * _e71)) + (_e73 >> 12u));
+    let _e81 = ((_e70 * _e72) + (_e78 >> 12u));
+    stage_54 = (((_e73 & 4095u) | ((_e78 & 4095u) << 12u)) | (_e81 << 24u));
+    let _e92 = stage_54;
+    stage_55 = (_e81 >> 8u);
+    let _e94 = stage_55;
+    let _e107 = i32(select((31u - countLeadingZeros((_e92 | 1u))), (63u - countLeadingZeros((_e94 | 1u))), (_e94 != 0u)));
+    let _e109 = (50i - _e107);
+    let _e119 = (u32(min(max(_e109, 0i), 31i)) & 31u);
+    let _e143 = (_e109 < 32i);
+    stage_56 = select(0u, (_e92 << _e119), _e143);
+    let _e147 = stage_56;
+    stage_57 = select((_e92 << (u32(min(max((_e109 - 32i), 0i), 31i)) & 31u)), ((_e94 << _e119) | select(0u, (_e92 >> (u32(min(max((32i - _e109), 0i), 31i)) & 31u)), (_e109 > 0i))), _e143);
+    let _e149 = stage_57;
+    let _e151 = (((i32(select(1u, _e40, _e41)) - 150i) + (i32(select(1u, _e49, _e50)) - 150i)) + _e107);
+    let _e164 = i32(select((31u - countLeadingZeros((_e62 | 1u))), (63u - countLeadingZeros((0u | 1u))), (0u != 0u)));
+    let _e165 = (50i - _e164);
+    let _e175 = (u32(min(max(_e165, 0i), 31i)) & 31u);
+    let _e199 = (_e165 < 32i);
+    stage_58 = select(0u, (_e62 << _e175), _e199);
+    let _e203 = stage_58;
+    stage_59 = select((_e62 << (u32(min(max((_e165 - 32i), 0i), 31i)) & 31u)), ((0u << _e175) | select(0u, (_e62 >> (u32(min(max((32i - _e165), 0i), 31i)) & 31u)), (_e165 > 0i))), _e199);
+    let _e205 = stage_59;
+    let _e207 = select(((i32(select(1u, _e58, _e59)) - 150i) + _e164), _e151, _e23);
+    let _e216 = ((_e151 < _e207) || ((_e151 == _e207) && ((_e149 < _e205) || ((_e149 == _e205) && (_e147 < _e203)))));
+    let _e217 = select(_e147, _e203, _e216);
+    let _e218 = select(_e149, _e205, _e216);
+    let _e219 = select(_e203, _e147, _e216);
+    let _e220 = select(_e205, _e149, _e216);
+    stage_60 = select(_e151, _e207, _e216);
+    let _e225 = stage_60;
+    stage_61 = select(_e207, _e151, _e216);
+    let _e227 = stage_61;
+    stage_62 = select(_e30, _e31, _e216);
+    let _e229 = stage_62;
+    stage_63 = (_e225 - _e227);
+    let _e232 = stage_63;
+    let _e244 = (u32(min(max(_e232, 0i), 31i)) & 31u);
+    let _e272 = (u32(min(max((_e232 - 32i), 0i), 31i)) & 31u);
+    let _e281 = (_e232 < 32i);
+    let _e287 = (_e232 < 64i);
+    let _e290 = (0i - _e232);
+    let _e300 = (u32(min(max(_e290, 0i), 31i)) & 31u);
+    let _e324 = (_e290 < 32i);
+    let _e327 = (_e232 <= 0i);
+    stage_64 = select(select(u32(((_e220 | _e219) != 0u)), select(((_e220 >> _e272) | u32((((_e220 & ((1u << _e272) - 1u)) | _e219) != 0u))), (((_e219 >> _e244) | select(0u, (_e220 << (u32(min(max((32i - _e232), 0i), 31i)) & 31u)), (_e232 > 0i))) | u32(((_e219 & ((1u << _e244) - 1u)) != 0u))), _e281), _e287), select(0u, (_e219 << _e300), _e324), _e327);
+    let _e331 = stage_64;
+    stage_65 = select(select(0u, select(0u, (_e220 >> _e244), _e281), _e287), select((_e219 << (u32(min(max((_e290 - 32i), 0i), 31i)) & 31u)), ((_e220 << _e300) | select(0u, (_e219 >> (u32(min(max((32i - _e290), 0i), 31i)) & 31u)), (_e290 > 0i))), _e324), _e327);
+    let _e333 = stage_65;
+    let _e334 = (_e217 + _e331);
+    stage_66 = select(_e334, (_e217 - _e331), _e32);
+    let _e347 = stage_66;
+    stage_67 = select(((_e218 + _e333) + u32((_e334 < _e217))), ((_e218 - _e333) - u32((_e217 < _e331))), _e32);
+    let _e349 = stage_67;
+    if ((_e347 | _e349) == 0u) {
+        return 0u;
+    }
+    let _e365 = (_e225 - 50i);
+    let _e370 = max(((i32(select((31u - countLeadingZeros((_e347 | 1u))), (63u - countLeadingZeros((_e349 | 1u))), (_e349 != 0u))) + _e365) - 23i), -149i);
+    stage_68 = _e370;
+    let _e375 = stage_68;
+    stage_69 = ((_e370 - _e365) - 3i);
+    let _e377 = stage_69;
+    let _e389 = (u32(min(max(_e377, 0i), 31i)) & 31u);
+    let _e417 = (u32(min(max((_e377 - 32i), 0i), 31i)) & 31u);
+    let _e426 = (_e377 < 32i);
+    let _e432 = (_e377 < 64i);
+    let _e435 = (0i - _e377);
+    let _e445 = (u32(min(max(_e435, 0i), 31i)) & 31u);
+    let _e469 = (_e435 < 32i);
+    let _e472 = (_e377 <= 0i);
+    stage_70 = select(select(u32(((_e349 | _e347) != 0u)), select(((_e349 >> _e417) | u32((((_e349 & ((1u << _e417) - 1u)) | _e347) != 0u))), (((_e347 >> _e389) | select(0u, (_e349 << (u32(min(max((32i - _e377), 0i), 31i)) & 31u)), (_e377 > 0i))) | u32(((_e347 & ((1u << _e389) - 1u)) != 0u))), _e426), _e432), select(0u, (_e347 << _e445), _e469), _e472);
+    let _e476 = stage_70;
+    stage_71 = select(select(0u, select(0u, (_e349 >> _e389), _e426), _e432), select((_e347 << (u32(min(max((_e435 - 32i), 0i), 31i)) & 31u)), ((_e349 << _e445) | select(0u, (_e347 >> (u32(min(max((32i - _e435), 0i), 31i)) & 31u)), (_e435 > 0i))), _e469), _e472);
+    let _e479 = (_e229 == 0u);
+    let _e486 = ((_e476 >> 3u) + u32((_e479 && ((_e476 & 7u) > 0u))));
+    let _e488 = (_e486 >= 16777216u);
+    let _e490 = select(_e486, (_e486 >> 1u), _e488);
+    let _e494 = ((_e375 + i32(_e488)) + 150i);
+    if (_e494 >= 255i) {
+        return (_e229 | select(2139095039u, 2139095040u, _e479));
+    }
+    return (_e229 | ((select(0u, u32(max(_e494, 0i)), (_e490 >= 8388608u)) << 23u) | (_e490 & 8388607u)));
+}
+
 @compute @workgroup_size(32, 1, 1)
 fn fused_round_zero(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin(workgroup_id) blockIdx: vec3<u32>) {
     var local: u32;
@@ -352,12 +660,23 @@ fn fused_round_zero(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin
     var local_15: u32;
     var local_16: f32;
     var local_17: u32;
+    var directed_cursor: i32;
+    var local_18: u32;
+    var local_19: u32;
+    var local_20: u32;
+    var local_21: u32;
+    var local_22: u32;
+    var local_23: u32;
+    var local_24: u32;
+    var local_25: u32;
+    var local_26: u32;
+    var local_27: u32;
 
     let index = (threadIdx.x + (blockIdx.x * 32u));
     if (index >= 4096u) {
         return;
     }
-    let base = (4u + (index * 10u));
+    let base = (4u + (index * 14u));
     local = u32((index * 3u));
     let _e17 = local;
     let _e20 = input[_e17];
@@ -450,4 +769,52 @@ fn fused_round_zero(@builtin(local_invocation_id) threadIdx: vec3<u32>, @builtin
     local_17 = u32((base + 9u));
     let _e239 = local_17;
     output[_e239] = bitcast<u32>(bitcast<f32>(_e232));
+    directed_cursor = 0i;
+    let _e245 = directed_cursor;
+    directed_cursor = (_e245 + 1i);
+    local_19 = u32(((index * 3u) + u32(_e245)));
+    let _e252 = local_19;
+    let _e254 = input[_e252];
+    let _e258 = directed_cursor;
+    directed_cursor = (_e258 + 1i);
+    local_20 = u32(((index * 3u) + u32(_e258)));
+    let _e265 = local_20;
+    let _e267 = input[_e265];
+    let _e271 = directed_cursor;
+    directed_cursor = (_e271 + 1i);
+    local_21 = u32(((index * 3u) + u32(_e271)));
+    let _e278 = local_21;
+    let _e280 = input[_e278];
+    let _e285 = gen__naga_fmaf_rd(bitcast<u32>(bitcast<f32>(_e254)), bitcast<u32>(bitcast<f32>(_e267)), bitcast<u32>(bitcast<f32>(_e280)));
+    local_18 = u32((base + 10u));
+    let _e292 = local_18;
+    output[_e292] = bitcast<u32>(bitcast<f32>(_e285));
+    let _e294 = directed_cursor;
+    local_22 = u32((base + 11u));
+    let _e300 = local_22;
+    output[_e300] = u32(_e294);
+    directed_cursor = 0i;
+    let _e305 = directed_cursor;
+    directed_cursor = (_e305 + 1i);
+    local_24 = u32(((index * 3u) + u32(_e305)));
+    let _e312 = local_24;
+    let _e314 = input[_e312];
+    let _e318 = directed_cursor;
+    directed_cursor = (_e318 + 1i);
+    local_25 = u32(((index * 3u) + u32(_e318)));
+    let _e325 = local_25;
+    let _e327 = input[_e325];
+    let _e331 = directed_cursor;
+    directed_cursor = (_e331 + 1i);
+    local_26 = u32(((index * 3u) + u32(_e331)));
+    let _e338 = local_26;
+    let _e340 = input[_e338];
+    let _e345 = gen__naga_fmaf_ru(bitcast<u32>(bitcast<f32>(_e314)), bitcast<u32>(bitcast<f32>(_e327)), bitcast<u32>(bitcast<f32>(_e340)));
+    local_23 = u32((base + 12u));
+    let _e352 = local_23;
+    output[_e352] = bitcast<u32>(bitcast<f32>(_e345));
+    let _e354 = directed_cursor;
+    local_27 = u32((base + 13u));
+    let _e360 = local_27;
+    output[_e360] = u32(_e354);
 }

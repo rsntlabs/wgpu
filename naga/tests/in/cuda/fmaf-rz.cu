@@ -3,7 +3,7 @@ __device__ int __fmaf_rz(bool first, bool second, bool third) { return first ? 7
 __global__ void fused_round_zero(const unsigned *input, unsigned *output) {
     unsigned index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= 4096u) return;
-    unsigned base = 4u + index * 10u;
+    unsigned base = 4u + index * 14u;
     float first = __uint_as_float(input[index * 3u]);
     float second = __uint_as_float(input[index * 3u + 1u]);
     float third = __uint_as_float(input[index * 3u + 2u]);
@@ -20,4 +20,11 @@ __global__ void fused_round_zero(const unsigned *input, unsigned *output) {
     output[base + 7u] = unsigned(__fmaf_rz(true, false, true));
     output[base + 8u] = __float_as_uint(true ? __fmaf_rz(first, second, third) : __fmaf_rz(float(cursor++), first, second));
     output[base + 9u] = __float_as_uint(__fmaf_rn(first, second, third));
+    int directed_cursor = 0;
+    output[base + 10u] = __float_as_uint(__fmaf_rd(__uint_as_float(input[index * 3u + unsigned(directed_cursor++)]), __uint_as_float(input[index * 3u + unsigned(directed_cursor++)]), __uint_as_float(input[index * 3u + unsigned(directed_cursor++)])));
+    output[base + 11u] = unsigned(directed_cursor);
+    directed_cursor = 0;
+    output[base + 12u] = __float_as_uint(__fmaf_ru(__uint_as_float(input[index * 3u + unsigned(directed_cursor++)]), __uint_as_float(input[index * 3u + unsigned(directed_cursor++)]), __uint_as_float(input[index * 3u + unsigned(directed_cursor++)])));
+    output[base + 13u] = unsigned(directed_cursor);
+
 }

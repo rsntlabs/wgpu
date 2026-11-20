@@ -1259,16 +1259,15 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
         "__fdiv_ru",
         "__frcp_rd",
         "__frcp_ru",
+        "__fmaf_rz",
+        "__fmaf_rd",
+        "__fmaf_ru",
     ] {
         declarations.insert(
             name,
             GlobalDeclaration::Functions(FunctionOverloads::default()),
         );
     }
-    declarations.insert(
-        "__fmaf_rz",
-        GlobalDeclaration::Functions(Default::default()),
-    );
     declarations.extend(FMA_BUILTINS.into_iter().map(|name| {
         (
             name,
@@ -1378,6 +1377,8 @@ pub(super) enum FunctionCandidate {
     MultiplyRoundUp,
     FusedMultiplyAddRoundNearest,
     FusedMultiplyAddRoundZero,
+    FusedMultiplyAddRoundDown,
+    FusedMultiplyAddRoundUp,
     DivideRoundNearest,
     DivideRoundZero,
     DivideRoundDown,
@@ -2002,6 +2003,8 @@ impl<'a> Parser<'a> {
                         | FunctionCandidate::SubtractRoundDown
                         | FunctionCandidate::SubtractRoundUp
                         | FunctionCandidate::FusedMultiplyAddRoundZero
+                        | FunctionCandidate::FusedMultiplyAddRoundDown
+                        | FunctionCandidate::FusedMultiplyAddRoundUp
                         | FunctionCandidate::FusedMultiplyAddRoundNearest
                         | FunctionCandidate::MultiplyRoundZero
                         | FunctionCandidate::MultiplyRoundDown
@@ -2317,6 +2320,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::SubtractRoundDown
             | FunctionCandidate::SubtractRoundUp
             | FunctionCandidate::FusedMultiplyAddRoundZero
+            | FunctionCandidate::FusedMultiplyAddRoundDown
+            | FunctionCandidate::FusedMultiplyAddRoundUp
             | FunctionCandidate::FusedMultiplyAddRoundNearest
             | FunctionCandidate::MultiplyRoundZero
             | FunctionCandidate::MultiplyRoundDown
@@ -2663,6 +2668,12 @@ impl<'a> Parser<'a> {
         }
         if candidate == FunctionCandidate::SubtractRoundZero {
             return self.lower_fsub_rz_call(arguments, span);
+        }
+        if candidate == FunctionCandidate::FusedMultiplyAddRoundDown {
+            return self.lower_fmaf_rd_call(arguments, span);
+        }
+        if candidate == FunctionCandidate::FusedMultiplyAddRoundUp {
+            return self.lower_fmaf_ru_call(arguments, span);
         }
         if candidate == FunctionCandidate::FusedMultiplyAddRoundZero {
             return self.lower_fmaf_rz_call(arguments, span);
@@ -3399,6 +3410,8 @@ impl<'a> Parser<'a> {
                 (true, "remainderf") => Some(FunctionCandidate::FloatRemainder(
                     RemainderMode::NearestEven,
                 )),
+                (true, "__fmaf_rd") => Some(FunctionCandidate::FusedMultiplyAddRoundDown),
+                (true, "__fmaf_ru") => Some(FunctionCandidate::FusedMultiplyAddRoundUp),
                 (true, "__fadd_rd") => Some(FunctionCandidate::AddRoundDown),
                 (true, "__fadd_ru") => Some(FunctionCandidate::AddRoundUp),
                 (true, "__fsub_rd") => Some(FunctionCandidate::SubtractRoundDown),
@@ -3641,6 +3654,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::Dot2 { .. }
             | FunctionCandidate::Fns
             | FunctionCandidate::FusedMultiplyAddRoundZero
+            | FunctionCandidate::FusedMultiplyAddRoundDown
+            | FunctionCandidate::FusedMultiplyAddRoundUp
             | FunctionCandidate::FusedMultiplyAddRoundNearest => 3,
             FunctionCandidate::Bitcast { .. }
             | FunctionCandidate::LoadReadOnly { .. }
@@ -3731,6 +3746,8 @@ impl<'a> Parser<'a> {
             | FunctionCandidate::SubtractRoundDown
             | FunctionCandidate::SubtractRoundUp
             | FunctionCandidate::FusedMultiplyAddRoundZero
+            | FunctionCandidate::FusedMultiplyAddRoundDown
+            | FunctionCandidate::FusedMultiplyAddRoundUp
             | FunctionCandidate::FusedMultiplyAddRoundNearest
             | FunctionCandidate::MultiplyRoundZero
             | FunctionCandidate::MultiplyRoundDown

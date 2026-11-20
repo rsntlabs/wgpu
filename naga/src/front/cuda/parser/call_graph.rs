@@ -312,6 +312,8 @@ impl Parser<'_> {
             &mut self.fmul_ru_function,
             &mut self.fmaf_rn_function,
             &mut self.fmaf_rz_function,
+            &mut self.fmaf_rd_function,
+            &mut self.fmaf_ru_function,
             &mut self.frsqrt_rn_function,
             &mut self.trigonometry_function,
             &mut self.fns_function,
