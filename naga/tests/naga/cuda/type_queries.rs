@@ -5017,7 +5017,6 @@ fn cuda_layout_queries_plain_function_parameters_reject_invalid_signatures_and_e
         "int()[2]",
         "Row(int)",
         "int(int)(float)",
-        "void(&)(int)",
     ] {
         for nested in [false, true] {
             let query = format!("sizeof(int(*)({parameter}))");
@@ -5041,5 +5040,77 @@ fn cuda_layout_queries_plain_function_parameters_reject_invalid_signatures_and_e
     };
     assert_query_results(&source(63), &[8]);
     let error = rejected(&source(64));
+    assert!(error.message.contains("nesting limit"), "{error}");
+}
+
+#[test]
+fn cuda_layout_queries_function_parameters_accept_grouped_function_references() {
+    for parameter in [
+        "void(&)(int)",
+        "int(&&)()",
+        "int*(&)(float)",
+        "void(&)(int, ...) noexcept",
+        "int(&&)(int) noexcept(false)",
+        "int(&)(void(&)(float))",
+        "int(&&)(int(*)(int))",
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof(int(*)({parameter}));
+                output[1] = __builtin_offsetof(Offsets, bytes[alignof(int(*)({parameter}))]);
+            }}"
+            ),
+            &[8, 32],
+        );
+    }
+}
+
+#[test]
+fn cuda_layout_queries_function_reference_parameters_reject_invalid_qualifiers_and_signatures() {
+    for parameter in [
+        "void(&const)(int)",
+        "void(&&volatile)(int)",
+        "void(& &)(int)",
+        "void(&*)(int)",
+        "void(&)(void, int)",
+        "int(&)(int[0])",
+        "void(&)(int,)",
+        "int(&)(int) noexcept(runtime)",
+        "int(&)(int)[2]",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof(int(*)({parameter}))");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
+    }
+    for query in ["sizeof(void(&)(int))", "alignof(int(&&)())"] {
+        let error = rejected(&format!(
+            "__global__ void kernel(unsigned long *output) {{ output[0] = {query}; }}"
+        ));
+        assert!(error.message.contains("no object layout"), "{error}");
+        rejected(&format!(
+            "struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = __builtin_offsetof(Offsets, bytes[true || {query}]);
+            }}"
+        ));
+    }
+    let query = format!(
+        "sizeof(int(*)({}int{}))",
+        "int(&)(".repeat(64),
+        ")".repeat(64)
+    );
+    let error = rejected(&format!(
+        "__global__ void kernel(unsigned long *output) {{ output[0] = {query}; }}"
+    ));
     assert!(error.message.contains("nesting limit"), "{error}");
 }

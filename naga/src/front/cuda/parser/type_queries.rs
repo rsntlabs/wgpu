@@ -10,6 +10,7 @@ enum SizeofOperand {
 
 enum TypeQueryType {
     Pointer,
+    FunctionReference,
     PointerToArray(QualifiedType),
     ArrayOfPointers,
     Object(QualifiedType),
@@ -24,6 +25,7 @@ enum GroupedTypeQuery {
     PointerToArray,
     ArrayReference,
     FunctionPointer,
+    FunctionReference,
 }
 
 struct RecordOffsetIndex {
@@ -449,6 +451,9 @@ impl Parser<'_> {
     ) -> Result<u32, ParseError> {
         match self.type_query_type_id(target_span, depth, TypeQueryContext::Operand)? {
             TypeQueryType::Pointer => Ok(8),
+            TypeQueryType::FunctionReference => {
+                self.fail("function references have no object layout")
+            }
             TypeQueryType::PointerToArray(ty) => {
                 // The pointee may have an omitted outer bound.
                 self.record_offset_array_layout("alignof", ty.ty, depth, target_span)?;
@@ -1260,6 +1265,9 @@ impl Parser<'_> {
 
         let value = match self.type_query_type_id(span, 0, TypeQueryContext::Operand)? {
             TypeQueryType::Pointer => 8,
+            TypeQueryType::FunctionReference => {
+                return self.fail("function references have no object layout")
+            }
             TypeQueryType::PointerToArray(ty) => {
                 self.array_alias_declarator(ty, span)?;
                 8
@@ -1398,7 +1406,11 @@ impl Parser<'_> {
         let function_parameter = declarator.is_none()
             && matches!(context, TypeQueryContext::FunctionParameter)
             && self.lexer.peek()?.0 == Token::Paren('(');
-        if matches!(declarator, Some(GroupedTypeQuery::FunctionPointer)) || function_parameter {
+        let function_reference = matches!(declarator, Some(GroupedTypeQuery::FunctionReference));
+        if matches!(declarator, Some(GroupedTypeQuery::FunctionPointer))
+            || function_reference
+            || function_parameter
+        {
             if depth >= 64 {
                 return self.fail("CUDA expression nesting limit exceeded");
             }
@@ -1409,7 +1421,11 @@ impl Parser<'_> {
             }
             self.type_query_function_parameters(depth + 1)?;
             self.type_query_function_noexcept(depth)?;
-            return Ok(TypeQueryType::Pointer);
+            return Ok(if function_reference {
+                TypeQueryType::FunctionReference
+            } else {
+                TypeQueryType::Pointer
+            });
         }
         if let Some(declarator) = declarator {
             let ty = operand.ok_or_else(|| ParseError {
@@ -1529,7 +1545,7 @@ impl Parser<'_> {
                     TypeQueryType::ArrayOfPointers => {
                         self.record_offset_pointer_array_layout("alignof", depth + 1)?;
                     }
-                    TypeQueryType::Pointer => {}
+                    TypeQueryType::Pointer | TypeQueryType::FunctionReference => {}
                 }
             }
             if self.lexer.next_if(Token::Paren(')'))? {
@@ -1628,6 +1644,7 @@ impl Parser<'_> {
         }
         let declarator = match (pointer, lookahead.peek()?.0) {
             (true, Token::Paren('(')) => GroupedTypeQuery::FunctionPointer,
+            (false, Token::Paren('(')) => GroupedTypeQuery::FunctionReference,
             (true, Token::Paren('[')) => GroupedTypeQuery::PointerToArray,
             (false, Token::Paren('[')) => GroupedTypeQuery::ArrayReference,
             _ => return Ok(None),
