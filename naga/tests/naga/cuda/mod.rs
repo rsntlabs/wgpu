@@ -487,3 +487,5 @@ mod fdimf;
 
 mod ilogbf;
 mod logbf;
+
+mod float2int_ru;

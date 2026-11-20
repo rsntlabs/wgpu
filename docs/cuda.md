@@ -1624,11 +1624,14 @@ return type's range or the input is nonfinite. In the unsigned form, negative
 fractions greater than `-1` truncate to zero. Both intrinsics follow the runtime
 and overload rules for predefined device functions.
 
-`__float2int_rd(float)` converts its argument to `float`, rounds toward
-negative infinity, and returns `int`. It reuses `floorf`'s integer helper,
-so negative subnormals round to `-1`. CUDA leaves nonfinite inputs and
-rounded values outside the signed integer range undefined. This intrinsic
-follows the same runtime and overload rules as the round-toward-zero forms.
+`__float2int_rd(float)` and `__float2int_ru(float)` convert their arguments
+to `float`, round toward negative and positive infinity respectively, and
+return `int`. They reuse the integer helpers for `floorf` and `ceilf`.
+For example, `__float2int_rd` rounds negative subnormals to `-1` and
+`__float2int_ru` rounds positive subnormals to `1`. CUDA leaves nonfinite
+inputs and rounded values outside the signed integer range undefined.
+Both intrinsics follow the same runtime and overload rules as the
+round-toward-zero forms.
 See NVIDIA's [conversion intrinsics](https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/group__CUDA__MATH__INTRINSIC__CAST.html).
 
 `__int2float_rz(int)` and `__uint2float_rz(unsigned int)` convert the argument
