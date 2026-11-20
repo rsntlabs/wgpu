@@ -420,7 +420,7 @@ impl Parser<'_> {
                 Token::Operation('*' | '+' | '-' | '~' | '!')
                 | Token::Paren('(')
                 | Token::Number(_)
-                | Token::Word("true" | "false" | "nullptr") => true,
+                | Token::Word("true" | "false" | "nullptr" | "static_cast") => true,
                 Token::Word(word) => self.lookup_symbol(word).is_some_and(|symbol| {
                     !matches!(
                         symbol,
@@ -603,7 +603,9 @@ impl Parser<'_> {
         let (token, start) = self.lexer.next()?;
         if matches!(
             token,
-            Token::Operation('*' | '+' | '-' | '~' | '!') | Token::Paren('(')
+            Token::Operation('*' | '+' | '-' | '~' | '!')
+                | Token::Paren('(')
+                | Token::Word("static_cast")
         ) && depth >= 64
         {
             return Err(ParseError {
@@ -641,6 +643,9 @@ impl Parser<'_> {
                 start,
             ),
             Token::Word("nullptr") => (SizeofOperand::NullPointer, start),
+            Token::Word("static_cast") => self.sizeof_static_cast(start, |parser| {
+                parser.record_offset_sizeof_conditional(depth + 1)
+            })?,
             Token::Word(word) => {
                 self.parameter_expansion_budget
                     .charge_work(word.len() + 1, start)?;
@@ -1593,7 +1598,9 @@ impl Parser<'_> {
                 start,
             ),
             Token::Word("nullptr") => (SizeofOperand::NullPointer, start),
-            Token::Word("static_cast") => self.sizeof_static_cast(start)?,
+            Token::Word("static_cast") => {
+                self.sizeof_static_cast(start, Self::sizeof_conditional_expression)?
+            }
             Token::Word(name) => {
                 let target = if self.lexer.peek()?.0 == Token::Paren('(') {
                     self.parameter_expansion_budget.charge_work(1, start)?;
@@ -1677,7 +1684,11 @@ impl Parser<'_> {
         Ok((SizeofOperand::Object(ty), field_span))
     }
 
-    fn sizeof_static_cast(&mut self, start: Span) -> Result<(SizeofOperand, Span), ParseError> {
+    fn sizeof_static_cast(
+        &mut self,
+        start: Span,
+        parse_conditional: impl Fn(&mut Self) -> Result<(SizeofOperand, Span), ParseError>,
+    ) -> Result<(SizeofOperand, Span), ParseError> {
         // Account for parsing the bounded type syntax and the four delimiters.
         self.parameter_expansion_budget.charge_work(5, start)?;
         self.lexer.expect_span(Token::Paren('<'))?;
@@ -1692,8 +1703,7 @@ impl Parser<'_> {
             })?;
         self.lexer.expect_span(Token::Paren('>'))?;
         self.lexer.expect_span(Token::Paren('('))?;
-        let (operand, operand_span) =
-            self.sizeof_comma_expression(Self::sizeof_conditional_expression)?;
+        let (operand, operand_span) = self.sizeof_comma_expression(parse_conditional)?;
         let end = self.lexer.expect_span(Token::Paren(')'))?;
         Ok((
             self.sizeof_scalar_cast_result(scalar, &operand, operand_span)?,
@@ -2048,6 +2058,8 @@ mod tests {
             ("sizeof(true ? 0L, 1 : 1) / 4]", false, true),
             ("sizeof(((((1 + 1))))) / 4]", false, false),
             ("sizeof(true ? 1 : false ? 0L : 4) / 8]", true, true),
+            ("sizeof static_cast<unsigned long>(0) / 8]", true, true),
+            ("sizeof(static_cast<short>(static_cast<short>(static_cast<short>(static_cast<short>(1))))) / 2]", false, false),
             (
                 "sizeof(true ? 1 : true ? 1 : true ? 1 : true ? 1 : 1) / 4]",
                 false,
