@@ -587,6 +587,8 @@ shape to compute the layout and validates the pointee shape independently.
 With additional grouping, `int ((*[2])[3])[4]` still has two pointer
 elements. Both `[3]` and `[4]` belong to the pointee. A function signature
 may also appear inside an enclosing group, as in `int ((*[2])(int))`.
+Pointers and references to arrays may split their pointee dimensions the
+same way, as in `int ((&)[2])[3]`.
 A reference to either kind of pointer array, such as `int (*(&)[2])[3]`
 or `int (*(&)[2])(int)`, uses the referred array's layout.
 An additional pointer, as in `int (*(*)[2])[3]`, uses the pointer layout.

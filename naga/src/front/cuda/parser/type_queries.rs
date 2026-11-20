@@ -12,7 +12,10 @@ enum TypeQueryType {
     Pointer,
     FunctionReference,
     PointerArrayLayout(u32),
-    PointerToArray(QualifiedType),
+    PointerToArray {
+        ty: QualifiedType,
+        groups: usize,
+    },
     ArrayOfPointers,
     GroupedArray {
         element: GroupedArrayElement,
@@ -38,13 +41,17 @@ impl TypeQueryContext<'_> {
 enum GroupedTypeQuery {
     Pointer(usize),
     Reference,
-    PointerToArray,
-    ArrayReference,
+    IndirectArray {
+        pointer: bool,
+        groups: usize,
+    },
     Array {
         groups: usize,
     },
-    FunctionPointer,
-    FunctionReference,
+    Function {
+        pointer: bool,
+        groups: usize,
+    },
     PointerArray {
         through_pointer: bool,
         groups: usize,
@@ -484,9 +491,9 @@ impl Parser<'_> {
             TypeQueryType::FunctionReference => {
                 self.fail("function references have no object layout")
             }
-            TypeQueryType::PointerToArray(ty) => {
+            TypeQueryType::PointerToArray { ty, groups } => {
                 // The pointee may have an omitted outer bound.
-                self.record_offset_array_layout("alignof", ty.ty, depth, target_span, 0)?;
+                self.record_offset_array_layout("alignof", ty.ty, depth, target_span, groups)?;
                 Ok(8)
             }
             TypeQueryType::ArrayOfPointers => {
@@ -1324,8 +1331,8 @@ impl Parser<'_> {
             TypeQueryType::FunctionReference => {
                 return self.fail("function references have no object layout")
             }
-            TypeQueryType::PointerToArray(ty) => {
-                self.array_alias_declarator(ty, span)?;
+            TypeQueryType::PointerToArray { ty, groups } => {
+                self.array_alias_declarator_with_groups(ty, groups, span)?;
                 8
             }
             TypeQueryType::ArrayOfPointers => self.type_query_pointer_array_layout(name, 0)?,
@@ -1516,10 +1523,11 @@ impl Parser<'_> {
         let function_parameter = declarator.is_none()
             && matches!(context, TypeQueryContext::FunctionParameter)
             && self.lexer.peek()?.0 == Token::Paren('(');
-        let function_reference = matches!(declarator, Some(GroupedTypeQuery::FunctionReference));
-        let function = matches!(declarator, Some(GroupedTypeQuery::FunctionPointer))
-            || function_reference
-            || function_parameter;
+        let (function_reference, function_groups) = match declarator {
+            Some(GroupedTypeQuery::Function { pointer, groups }) => (!pointer, Some(groups)),
+            _ => (false, None),
+        };
+        let function = function_groups.is_some() || function_parameter;
         if (function || matches!(declarator, Some(GroupedTypeQuery::PointerArray { .. })))
             && depth >= 64
         {
@@ -1591,8 +1599,11 @@ impl Parser<'_> {
             }
             self.type_query_function_parameters(depth + 1)?;
             self.type_query_function_noexcept(depth)?;
-            return Ok(if let Some((ty, groups)) = array_type {
-                self.close_type_query_groups(groups)?;
+            let groups = array_type
+                .as_ref()
+                .map_or(function_groups.unwrap_or(0), |&(_, groups)| groups);
+            self.close_type_query_groups(groups)?;
+            return Ok(if let Some((ty, _)) = array_type {
                 ty
             } else if function_reference {
                 TypeQueryType::FunctionReference
@@ -1600,13 +1611,14 @@ impl Parser<'_> {
                 TypeQueryType::Pointer
             });
         }
-        if let Some(declarator) = declarator {
+        if let Some(GroupedTypeQuery::IndirectArray { pointer, groups }) = declarator {
             let element =
                 self.type_query_grouped_array_element(operand, pointer_depth, reference, span)?;
-            let pointer = matches!(declarator, GroupedTypeQuery::PointerToArray);
             return Ok(match element {
-                GroupedArrayElement::Value(ty) if pointer => TypeQueryType::PointerToArray(ty),
-                GroupedArrayElement::Value(ty) => TypeQueryType::Object(ty),
+                GroupedArrayElement::Value(ty) if pointer => {
+                    TypeQueryType::PointerToArray { ty, groups }
+                }
+                GroupedArrayElement::Value(_) => TypeQueryType::GroupedArray { element, groups },
                 GroupedArrayElement::Pointer => {
                     if depth >= 64 {
                         return self.fail("CUDA expression nesting limit exceeded");
@@ -1616,7 +1628,8 @@ impl Parser<'_> {
                     } else {
                         context.array_query_name()
                     };
-                    let layout = self.record_offset_pointer_array_layout(name, depth + 1, 0)?;
+                    let layout =
+                        self.record_offset_pointer_array_layout(name, depth + 1, groups)?;
                     if pointer {
                         TypeQueryType::Pointer
                     } else {
@@ -1731,13 +1744,22 @@ impl Parser<'_> {
                     return self.fail("CUDA expression nesting limit exceeded");
                 }
                 match parameter {
-                    TypeQueryType::Object(ty) | TypeQueryType::PointerToArray(ty) => {
+                    TypeQueryType::Object(ty) => {
                         self.record_offset_array_layout(
                             "alignof",
                             ty.ty,
                             depth + 1,
                             parameter_span,
                             0,
+                        )?;
+                    }
+                    TypeQueryType::PointerToArray { ty, groups } => {
+                        self.record_offset_array_layout(
+                            "alignof",
+                            ty.ty,
+                            depth + 1,
+                            parameter_span,
+                            groups,
                         )?;
                     }
                     TypeQueryType::ArrayOfPointers => {
@@ -1899,21 +1921,23 @@ impl Parser<'_> {
             }
             _ => return Ok(None),
         };
-        for _ in 0..groups {
-            if !lookahead.next_if(Token::Paren(')'))? {
-                return Ok(None);
-            }
+        if !lookahead.next_if(Token::Paren(')'))? {
+            return Ok(None);
         }
-        let declarator = match (pointers != 0, lookahead.peek()?.0) {
-            (true, Token::Paren('(')) => GroupedTypeQuery::FunctionPointer,
-            (false, Token::Paren('(')) => GroupedTypeQuery::FunctionReference,
-            (true, Token::Paren('[')) => GroupedTypeQuery::PointerToArray,
-            (false, Token::Paren('[')) => GroupedTypeQuery::ArrayReference,
-            (true, Token::Paren(')') | Token::Separator(',') | Token::Ellipsis) => {
-                GroupedTypeQuery::Pointer(pointers)
-            }
-            (false, Token::Paren(')') | Token::Separator(',') | Token::Ellipsis) => {
-                GroupedTypeQuery::Reference
+        groups -= 1;
+        while groups != 0 && lookahead.next_if(Token::Paren(')'))? {
+            groups -= 1;
+        }
+        let pointer = pointers != 0;
+        let declarator = match lookahead.peek()?.0 {
+            Token::Paren('(') => GroupedTypeQuery::Function { pointer, groups },
+            Token::Paren('[') => GroupedTypeQuery::IndirectArray { pointer, groups },
+            Token::Paren(')') | Token::Separator(',') | Token::Ellipsis if groups == 0 => {
+                if pointer {
+                    GroupedTypeQuery::Pointer(pointers)
+                } else {
+                    GroupedTypeQuery::Reference
+                }
             }
             _ => return Ok(None),
         };

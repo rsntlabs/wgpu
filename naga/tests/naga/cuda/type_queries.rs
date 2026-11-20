@@ -5887,3 +5887,72 @@ fn cuda_layout_queries_split_array_and_enclosed_function_suffixes_validate_all_l
     let error = rejected(&source(32));
     assert!(error.message.contains("array rank limit"), "{error}");
 }
+
+#[test]
+fn cuda_layout_queries_split_dimensions_after_nonarray_pointer_and_reference_groups_preserve_binding(
+) {
+    for (ty, size, alignment) in [
+        ("int((&)[2])[3]", 24, 4),
+        ("int((&&)[2])[3]", 24, 4),
+        ("int((*)[2])[3]", 8, 8),
+        ("int*((&)[2])[3]", 48, 8),
+        ("Row((&)[2])[3]", 72, 4),
+        ("int(*)(int((&)[2])[3])", 8, 8),
+        ("int((*)(int))", 8, 8),
+        ("int(*)(int((&)(int) noexcept))", 8, 8),
+        ("void((( * ))(int) noexcept)", 8, 8),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[128]; }}; using Row = int[3];
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof({ty}); output[1] = alignof({ty});
+                output[2] = __builtin_offsetof(Offsets, bytes[sizeof({ty})]);
+            }}"
+            ),
+            &[size, alignment, size * 4],
+        );
+    }
+    assert_query_results(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = alignof(int((&)[])[3]);
+            output[1] = __builtin_offsetof(Offsets, bytes[sizeof(int((*)[])[3])]);
+        }",
+        &[4, 32],
+    );
+}
+
+#[test]
+fn cuda_layout_queries_nonarray_indirect_split_dimensions_reject_bad_bounds_and_layers() {
+    for ty in [
+        "int((&)[0])[3]",
+        "int((*)[2])[0]",
+        "int((&)[runtime])[3]",
+        "int((*)[2])[runtime]",
+        "int((&)[2])[]",
+        "int((&const)[2])[3]",
+        "int((&)[65536])[65536]",
+        "void((&)[2])[3]",
+        "int((*)(Missing))",
+        "int((*)(int) noexcept(runtime))",
+        "void((*)(void, int))",
+        "int((&)[2])[3",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof({ty})");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[128]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
+    }
+    let error = rejected(
+        "__global__ void kernel(unsigned long *output) { output[0] = sizeof(int ((&)(int))); }",
+    );
+    assert!(error.message.contains("no object layout"), "{error}");
+}
