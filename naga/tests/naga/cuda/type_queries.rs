@@ -3708,7 +3708,6 @@ fn cuda_record_offsetof_nested_sizeof_functional_casts_do_not_emit_narrow_values
 fn cuda_record_offsetof_nested_sizeof_functional_casts_reject_broader_syntax_and_shadowed_types() {
     for operand in [
         "int()",
-        "(int())",
         "int(value, value)",
         "int(value,)",
         "int{value}",
@@ -3929,6 +3928,117 @@ fn cuda_sizeof_decltype_functional_casts_reject_invalid_targets_arguments_and_pr
                     int value; int &reference = value; bool flag; int *pointer; Record record; float2 vector;
                     output[0] = {query};
                 }}"));
+        }
+    }
+}
+
+#[test]
+fn cuda_sizeof_empty_functional_casts_preserve_expression_and_function_type_ambiguity() {
+    for (query, size) in [
+        ("sizeof((int()))", 4),
+        ("sizeof int()", 4),
+        ("sizeof(int() + 1)", 4),
+        ("sizeof(((int())) + 1)", 4),
+        ("sizeof((int()) / 1)", 4),
+        ("sizeof((short()))", 2),
+        ("sizeof short() + 1", 3),
+        ("sizeof(short() + 1)", 4),
+        ("sizeof((bool()))", 1),
+        ("sizeof((float()))", 4),
+        ("sizeof((std::size_t()))", 8),
+        ("sizeof std::size_t()", 8),
+        ("sizeof(std::size_t() + 1)", 8),
+        ("sizeof((decltype(target)()))", 4),
+        ("sizeof decltype(target)()", 4),
+        ("sizeof(decltype(target)() + 1)", 4),
+        ("sizeof((short(int())))", 2),
+        ("sizeof(short(int() + 1))", 2),
+        ("sizeof(static_cast<short>(int()))", 2),
+    ] {
+        assert_query_results(
+            &format!(
+                "#include <cstddef>\nstruct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{
+                int target;
+                output[0] = sizeof(int[{query}]);
+                output[1] = __builtin_offsetof(Offsets, bytes[{query}]);
+            }}"
+            ),
+            &[size * 4, size * 4],
+        );
+    }
+}
+
+#[test]
+fn cuda_sizeof_empty_functional_casts_emit_no_runtime_initialization() {
+    for nested in [false, true] {
+        let source = |operand: &str| {
+            let query = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[sizeof({operand})])")
+            } else {
+                format!("sizeof({operand})")
+            };
+            format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ output[0] = {query}; }}"
+            )
+        };
+        let cast = roundtrip(&source("(short())"));
+        let control = roundtrip(&source("short"));
+        assert_eq!(
+            cast.entry_points[0]
+                .function
+                .expressions
+                .iter()
+                .collect::<Vec<_>>(),
+            control.entry_points[0]
+                .function
+                .expressions
+                .iter()
+                .collect::<Vec<_>>()
+        );
+        assert!(cast.entry_points[0]
+            .function
+            .expressions
+            .iter()
+            .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    }
+}
+
+#[test]
+fn cuda_sizeof_empty_functional_casts_keep_function_types_and_zero_provenance_rejected() {
+    for query in [
+        "sizeof(int())",
+        "sizeof(std::size_t())",
+        "sizeof(decltype(target)())",
+        "sizeof(short(int()))",
+        "sizeof(short((int())))",
+        "sizeof(short((int(), int())))",
+        "sizeof(short(std::size_t()))",
+        "sizeof(short(decltype(target)()))",
+        "sizeof((int()) + 1)",
+        "sizeof((static_cast<int>()))",
+        "sizeof(int{})",
+        "sizeof(int(1, 2))",
+        "sizeof(flag ? pointer : int())",
+        "sizeof(flag ? pointer : (int()))",
+        "sizeof((Record()))",
+        "sizeof((void()))",
+    ] {
+        for nested in [false, true] {
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query.to_owned()
+            };
+            rejected(&format!(
+                "#include <cstddef>\nstruct Offsets {{ int bytes[64]; }};
+                struct Record {{ int field; }};
+                __global__ void kernel(unsigned long *output) {{
+                    int target; bool flag; int *pointer;
+                    output[0] = {expression};
+                }}"
+            ));
         }
     }
 }

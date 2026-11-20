@@ -232,7 +232,6 @@ fn cuda_sizeof_functional_casts_resolve_types_without_evaluating_operands() {
 fn cuda_sizeof_functional_casts_reject_other_forms_and_clear_zero_provenance() {
     for operand in [
         "int()",
-        "(int())",
         "int(value, value)",
         "int(value,)",
         "int{value}",
