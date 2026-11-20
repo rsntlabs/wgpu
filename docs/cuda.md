@@ -561,6 +561,8 @@ a list of unnamed supported types with optional pointer or reference suffixes.
 Direct array suffixes, such as `int[2][3]` and `void *[2]`, use the layout
 query rules for array bounds, including an optional outer bound. C++ adjusts
 these array parameters to pointers.
+Grouped parameter types such as `int (&)[3]` and `int (*)[3]` also check
+their array bounds and retain their reference or pointer declarator.
 A variadic signature may use `(...)` or end its parameter list with `...`,
 with an optional comma before the ellipsis.
 The signature may end with `noexcept` or `noexcept(expression)`. The expression

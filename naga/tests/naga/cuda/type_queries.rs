@@ -4850,3 +4850,58 @@ fn cuda_layout_queries_function_pointer_array_parameters_validate_declared_eleme
     ));
     assert!(error.message.contains("nesting limit"), "{error}");
 }
+
+#[test]
+fn cuda_layout_queries_function_pointer_grouped_array_parameters_preserve_type_shapes() {
+    for parameter in [
+        "int(&)[3]",
+        "int(&&)[][3]",
+        "int(*const &)[3]",
+        "int(**)[3]",
+        "Row(&)[2]",
+        "Row(*)[2]",
+        "int(*)[]",
+        "int(*volatile &&)[][3]",
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; using Row = int[3];
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof(int(*)({parameter}));
+                output[1] = __builtin_offsetof(Offsets, bytes[alignof(int(*)({parameter}))]);
+            }}"
+            ),
+            &[8, 32],
+        );
+    }
+}
+
+#[test]
+fn cuda_layout_queries_function_pointer_grouped_array_parameters_reject_invalid_declarators() {
+    for parameter in [
+        "int(&)[0]",
+        "int(*)[runtime]",
+        "int(&)[-1]",
+        "int(&)[2][]",
+        "int(&const)[3]",
+        "int(*&volatile)[3]",
+        "int(&& &)[3]",
+        "int(&*)[3]",
+        "int(*)[3",
+        "int(*)[3](int)",
+        "int(*)(int)",
+        "void(*)(int, ...)",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof(int(*)({parameter}))");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ int runtime; output[0] = {expression}; }}"));
+        }
+    }
+}

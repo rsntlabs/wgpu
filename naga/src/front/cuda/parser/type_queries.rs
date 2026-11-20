@@ -15,6 +15,11 @@ enum TypeQueryType {
     Object(QualifiedType),
 }
 
+enum TypeQueryContext {
+    Operand,
+    FunctionParameter,
+}
+
 enum GroupedTypeQuery {
     PointerToArray,
     ArrayReference,
@@ -442,7 +447,7 @@ impl Parser<'_> {
         depth: u32,
         target_span: Span,
     ) -> Result<u32, ParseError> {
-        match self.type_query_type_id(target_span, depth)? {
+        match self.type_query_type_id(target_span, depth, TypeQueryContext::Operand)? {
             TypeQueryType::Pointer => Ok(8),
             TypeQueryType::PointerToArray(ty) => {
                 // The pointee may have an omitted outer bound.
@@ -1253,7 +1258,7 @@ impl Parser<'_> {
             return self.fail("type queries require a parenthesized type or sizeof a named object");
         }
 
-        let value = match self.type_query_type_id(span, 0)? {
+        let value = match self.type_query_type_id(span, 0, TypeQueryContext::Operand)? {
             TypeQueryType::Pointer => 8,
             TypeQueryType::PointerToArray(ty) => {
                 self.array_alias_declarator(ty, span)?;
@@ -1377,13 +1382,22 @@ impl Parser<'_> {
         }
     }
 
-    fn type_query_type_id(&mut self, span: Span, depth: u32) -> Result<TypeQueryType, ParseError> {
+    fn type_query_type_id(
+        &mut self,
+        span: Span,
+        depth: u32,
+        context: TypeQueryContext,
+    ) -> Result<TypeQueryType, ParseError> {
         let operand = self.type_query_base()?;
         let pointer_depth = self.type_query_pointer_depth(operand.as_ref())?;
         let mut lookahead = self.lexer.clone();
         if let Some(declarator) = self.scan_grouped_query_declarator(&mut lookahead)? {
             self.lexer = lookahead;
             if matches!(declarator, GroupedTypeQuery::FunctionPointer) {
+                if matches!(context, TypeQueryContext::FunctionParameter) {
+                    return self
+                        .fail("function pointer parameters in type queries are unsupported");
+                }
                 if pointer_depth == 0
                     && matches!(operand, Some(ty) if matches!(ty.ty, TypeSpecifier::Array(_)))
                 {
@@ -1410,13 +1424,23 @@ impl Parser<'_> {
 
         if operand.is_none() && pointer_depth == 0 {
             return Err(ParseError {
-                message: String::from("type queries require a complete object type"),
+                message: String::from(match context {
+                    TypeQueryContext::Operand => "type queries require a complete object type",
+                    TypeQueryContext::FunctionParameter => {
+                        "void must be the only function parameter"
+                    }
+                }),
                 span,
             });
         }
 
-        let reference = self.lexer.next_if(Token::Operation('&'))?
-            || self.lexer.next_if(Token::LogicalOperation('&'))?;
+        let (token, reference_span) = self.lexer.peek()?;
+        let reference = matches!(token, Token::Operation('&') | Token::LogicalOperation('&'));
+        if reference {
+            self.parameter_expansion_budget
+                .charge_work(1, reference_span)?;
+            self.lexer.next()?;
+        }
         if self.lexer.peek()?.0 == Token::Paren('[') {
             if reference {
                 return self.fail("direct arrays of references are unsupported");
@@ -1479,29 +1503,28 @@ impl Parser<'_> {
             }
             self.parameter_expansion_budget
                 .charge_work(1, parameter_span)?;
-            let operand = self.type_query_base()?;
-            let pointer_depth = self.type_query_pointer_depth(operand.as_ref())?;
-            if operand.is_none() && pointer_depth == 0 {
-                return self.fail("void must be the only function parameter");
-            }
-            let (token, span) = self.lexer.peek()?;
-            let reference = matches!(token, Token::Operation('&') | Token::LogicalOperation('&'));
-            if reference {
-                self.parameter_expansion_budget.charge_work(1, span)?;
-                self.lexer.next()?;
-            }
+            let parameter = self.type_query_type_id(
+                parameter_span,
+                depth,
+                TypeQueryContext::FunctionParameter,
+            )?;
             if self.lexer.peek()?.0 == Token::Paren('[') {
-                if reference {
-                    return self.fail("direct arrays of references are unsupported");
-                }
                 if depth >= 64 {
                     return self.fail("CUDA expression nesting limit exceeded");
                 }
-                // Validate the type before array-to-pointer parameter adjustment.
-                if pointer_depth != 0 {
-                    self.record_offset_pointer_array_layout("alignof", depth + 1)?;
-                } else if let Some(ty) = operand {
-                    self.record_offset_array_layout("alignof", ty.ty, depth + 1, parameter_span)?;
+                match parameter {
+                    TypeQueryType::Object(ty) | TypeQueryType::PointerToArray(ty) => {
+                        self.record_offset_array_layout(
+                            "alignof",
+                            ty.ty,
+                            depth + 1,
+                            parameter_span,
+                        )?;
+                    }
+                    TypeQueryType::ArrayOfPointers => {
+                        self.record_offset_pointer_array_layout("alignof", depth + 1)?;
+                    }
+                    TypeQueryType::Pointer => {}
                 }
             }
             if self.lexer.next_if(Token::Paren(')'))? {
