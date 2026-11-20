@@ -19,14 +19,20 @@ fn directed_product(first: u32, second: u32, upward: bool) -> u32 {
 pub(super) fn cases() -> Vec<ShaderTest> {
     let mut input = Vec::new();
     let mut expected = vec![SENTINEL; 4];
-    for line in include_str!("fmul-rz-values.csv")
+    let rows: Vec<Vec<u32>> = include_str!("fmul-rz-values.csv")
         .lines()
         .filter(|line| !line.starts_with('#'))
-    {
-        let words: Vec<_> = line
-            .split(',')
-            .map(|word| u32::from_str_radix(word, 16).unwrap())
-            .collect();
+        .map(|line| {
+            line.split(',')
+                .map(|word| u32::from_str_radix(word, 16).unwrap())
+                .collect()
+        })
+        .collect();
+    assert!(rows
+        .iter()
+        .enumerate()
+        .any(|(index, row)| row[3] != rows[index ^ 1][3]));
+    for (index, words) in rows.iter().enumerate() {
         let [first, second, toward_zero, nearest] = words[..] else {
             panic!("expected input,input,exact bigint oracle");
         };
@@ -54,6 +60,18 @@ pub(super) fn cases() -> Vec<ShaderTest> {
             directed_product(first, second, false),
             2,
             directed_product(first, second, true),
+            2,
+            nearest,
+            rows[index ^ 1][3],
+            2,
+            toward_zero,
+            rows[index ^ 1][2],
+            2,
+            directed_product(first, second, false),
+            directed_product(rows[index ^ 1][0], rows[index ^ 1][1], false),
+            2,
+            directed_product(first, second, true),
+            directed_product(rows[index ^ 1][0], rows[index ^ 1][1], true),
             2,
         ]);
     }

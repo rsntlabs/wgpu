@@ -9,7 +9,7 @@ struct _mslBufferSizes {
     uint size1;
 };
 
-typedef uint type_4[1];
+typedef uint type_5[1];
 
 uint _naga_fmul_rz(
     uint left_bits,
@@ -71,13 +71,13 @@ int _fmul_rz(
     bool first_1,
     bool second_1
 ) {
-    int local_23 = {};
+    int local_45 = {};
     if (first_1) {
-        local_23 = 7;
+        local_45 = 7;
     } else {
-        local_23 = 9;
+        local_45 = 9;
     }
-    int _e6 = local_23;
+    int _e6 = local_45;
     return _e6;
 }
 
@@ -253,8 +253,8 @@ struct multiply_round_zeroInput {
 kernel void multiply_round_zero(
   metal::uint3 threadIdx [[thread_position_in_threadgroup]]
 , metal::uint3 blockIdx [[threadgroup_position_in_grid]]
-, device type_4 const& input [[buffer(0)]]
-, device type_4& output [[buffer(1)]]
+, device type_5 const& input [[buffer(0)]]
+, device type_5& output [[buffer(1)]]
 , constant _mslBufferSizes& _buffer_sizes [[buffer(2)]]
 ) {
     uint local = {};
@@ -282,11 +282,47 @@ kernel void multiply_round_zero(
     uint local_20 = {};
     uint local_21 = {};
     uint local_22 = {};
+    metal::float2 pair_first = {};
+    uint local_23 = {};
+    metal::float2 pair_second = {};
+    uint local_24 = {};
+    metal::float2 pair_rn = {};
+    metal::float2 local_25 = {};
+    metal::float2 local_26 = {};
+    uint local_27 = {};
+    uint local_28 = {};
+    uint local_29 = {};
+    metal::float2 pair_rz = {};
+    metal::float2 local_30 = {};
+    metal::float2 local_31 = {};
+    uint local_32 = {};
+    uint local_33 = {};
+    uint local_34 = {};
+    metal::float2 pair_rd = {};
+    metal::float2 local_35 = {};
+    metal::float2 local_36 = {};
+    uint local_37 = {};
+    uint local_38 = {};
+    uint local_39 = {};
+    metal::float2 pair_ru = {};
+    metal::float2 local_40 = {};
+    metal::float2 local_41 = {};
+    uint local_42 = {};
+    uint local_43 = {};
+    uint local_44 = {};
+    metal::float2 value = {};
+    metal::float2 value_1 = {};
+    metal::float2 value_2 = {};
+    metal::float2 value_3 = {};
+    metal::float2 value_4 = {};
+    metal::float2 value_5 = {};
+    metal::float2 value_6 = {};
+    metal::float2 value_7 = {};
     uint index = threadIdx.x + (blockIdx.x * 32u);
     if (index >= 4096u) {
         return;
     }
-    uint base = 4u + (index * 14u);
+    uint base = 4u + (index * 26u);
     local = static_cast<uint>(index * 2u);
     uint _e17 = local;
     uint _e20 = input[_e17];
@@ -399,4 +435,141 @@ kernel void multiply_round_zero(
     local_22 = static_cast<uint>(base + 13u);
     uint _e283 = local_22;
     output[_e283] = static_cast<uint>(_e277);
+    uint other = index ^ 1u;
+    local_23 = static_cast<uint>(other * 2u);
+    uint _e291 = local_23;
+    uint _e293 = input[_e291];
+    pair_first = metal::float2(first_2, as_type<float>(_e293));
+    local_24 = static_cast<uint>((other * 2u) + 1u);
+    uint _e303 = local_24;
+    uint _e305 = input[_e303];
+    pair_second = metal::float2(second_2, as_type<float>(_e305));
+    directed_cursor = 0;
+    metal::float2 _e310 = pair_first;
+    value = metal::float2 {};
+    value = _e310;
+    int _e314 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e314) + as_type<uint>(1));
+    metal::float2 _e317 = value;
+    local_25 = _e317;
+    metal::float2 _e319 = local_25;
+    metal::float2 _e320 = pair_second;
+    value_1 = metal::float2 {};
+    value_1 = _e320;
+    int _e324 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e324) + as_type<uint>(1));
+    metal::float2 _e327 = value_1;
+    local_26 = _e327;
+    metal::float2 _e329 = local_26;
+    uint _e334 = _naga_fmul_rn(as_type<uint>(_e319.x), as_type<uint>(_e329.x));
+    uint _e340 = _naga_fmul_rn(as_type<uint>(_e319.y), as_type<uint>(_e329.y));
+    pair_rn = metal::float2(as_type<float>(_e334), as_type<float>(_e340));
+    float _e345 = pair_rn.x;
+    local_27 = static_cast<uint>(base + 14u);
+    uint _e351 = local_27;
+    output[_e351] = as_type<uint>(_e345);
+    float _e354 = pair_rn.y;
+    local_28 = static_cast<uint>(base + 15u);
+    uint _e360 = local_28;
+    output[_e360] = as_type<uint>(_e354);
+    int _e362 = directed_cursor;
+    local_29 = static_cast<uint>(base + 16u);
+    uint _e368 = local_29;
+    output[_e368] = static_cast<uint>(_e362);
+    directed_cursor = 0;
+    metal::float2 _e371 = pair_first;
+    value_2 = metal::float2 {};
+    value_2 = _e371;
+    int _e375 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e375) + as_type<uint>(1));
+    metal::float2 _e378 = value_2;
+    local_30 = _e378;
+    metal::float2 _e380 = local_30;
+    metal::float2 _e381 = pair_second;
+    value_3 = metal::float2 {};
+    value_3 = _e381;
+    int _e385 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e385) + as_type<uint>(1));
+    metal::float2 _e388 = value_3;
+    local_31 = _e388;
+    metal::float2 _e390 = local_31;
+    uint _e395 = _naga_fmul_rz(as_type<uint>(_e380.x), as_type<uint>(_e390.x));
+    uint _e401 = _naga_fmul_rz(as_type<uint>(_e380.y), as_type<uint>(_e390.y));
+    pair_rz = metal::float2(as_type<float>(_e395), as_type<float>(_e401));
+    float _e406 = pair_rz.x;
+    local_32 = static_cast<uint>(base + 17u);
+    uint _e412 = local_32;
+    output[_e412] = as_type<uint>(_e406);
+    float _e415 = pair_rz.y;
+    local_33 = static_cast<uint>(base + 18u);
+    uint _e421 = local_33;
+    output[_e421] = as_type<uint>(_e415);
+    int _e423 = directed_cursor;
+    local_34 = static_cast<uint>(base + 19u);
+    uint _e429 = local_34;
+    output[_e429] = static_cast<uint>(_e423);
+    directed_cursor = 0;
+    metal::float2 _e432 = pair_first;
+    value_4 = metal::float2 {};
+    value_4 = _e432;
+    int _e436 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e436) + as_type<uint>(1));
+    metal::float2 _e439 = value_4;
+    local_35 = _e439;
+    metal::float2 _e441 = local_35;
+    metal::float2 _e442 = pair_second;
+    value_5 = metal::float2 {};
+    value_5 = _e442;
+    int _e446 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e446) + as_type<uint>(1));
+    metal::float2 _e449 = value_5;
+    local_36 = _e449;
+    metal::float2 _e451 = local_36;
+    uint _e456 = _naga_fmul_rd(as_type<uint>(_e441.x), as_type<uint>(_e451.x));
+    uint _e462 = _naga_fmul_rd(as_type<uint>(_e441.y), as_type<uint>(_e451.y));
+    pair_rd = metal::float2(as_type<float>(_e456), as_type<float>(_e462));
+    float _e467 = pair_rd.x;
+    local_37 = static_cast<uint>(base + 20u);
+    uint _e473 = local_37;
+    output[_e473] = as_type<uint>(_e467);
+    float _e476 = pair_rd.y;
+    local_38 = static_cast<uint>(base + 21u);
+    uint _e482 = local_38;
+    output[_e482] = as_type<uint>(_e476);
+    int _e484 = directed_cursor;
+    local_39 = static_cast<uint>(base + 22u);
+    uint _e490 = local_39;
+    output[_e490] = static_cast<uint>(_e484);
+    directed_cursor = 0;
+    metal::float2 _e493 = pair_first;
+    value_6 = metal::float2 {};
+    value_6 = _e493;
+    int _e497 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e497) + as_type<uint>(1));
+    metal::float2 _e500 = value_6;
+    local_40 = _e500;
+    metal::float2 _e502 = local_40;
+    metal::float2 _e503 = pair_second;
+    value_7 = metal::float2 {};
+    value_7 = _e503;
+    int _e507 = directed_cursor;
+    directed_cursor = as_type<int>(as_type<uint>(_e507) + as_type<uint>(1));
+    metal::float2 _e510 = value_7;
+    local_41 = _e510;
+    metal::float2 _e512 = local_41;
+    uint _e517 = _naga_fmul_ru(as_type<uint>(_e502.x), as_type<uint>(_e512.x));
+    uint _e523 = _naga_fmul_ru(as_type<uint>(_e502.y), as_type<uint>(_e512.y));
+    pair_ru = metal::float2(as_type<float>(_e517), as_type<float>(_e523));
+    float _e528 = pair_ru.x;
+    local_42 = static_cast<uint>(base + 23u);
+    uint _e534 = local_42;
+    output[_e534] = as_type<uint>(_e528);
+    float _e537 = pair_ru.y;
+    local_43 = static_cast<uint>(base + 24u);
+    uint _e543 = local_43;
+    output[_e543] = as_type<uint>(_e537);
+    int _e545 = directed_cursor;
+    local_44 = static_cast<uint>(base + 25u);
+    uint _e551 = local_44;
+    output[_e551] = static_cast<uint>(_e545);
 }

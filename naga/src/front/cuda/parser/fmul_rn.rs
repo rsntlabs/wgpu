@@ -1,7 +1,7 @@
 use super::*;
 
-#[derive(Clone, Copy)]
-enum MultiplyRounding {
+#[derive(Clone, Copy, PartialEq)]
+pub(super) enum MultiplyRounding {
     NearestEven,
     TowardZero,
     TowardNegative,
@@ -39,6 +39,18 @@ impl Parser<'_> {
         span: Span,
     ) -> Result<ExpressionResult, ParseError> {
         self.lower_fmul_call(arguments, MultiplyRounding::TowardPositive, span)
+    }
+
+    pub(super) fn lower_fmul2_call(
+        &mut self,
+        arguments: Vec<Value>,
+        rounding: MultiplyRounding,
+        span: Span,
+    ) -> Result<ExpressionResult, ParseError> {
+        let arguments: [Value; 2] = arguments.try_into().ok().unwrap();
+        self.lower_float2_lanes(arguments, span, |parser, [left, right]| {
+            parser.call_fmul_bits(left, right, rounding, span)
+        })
     }
 
     fn lower_fmul_call(
