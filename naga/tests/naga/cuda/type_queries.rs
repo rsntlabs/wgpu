@@ -1289,7 +1289,6 @@ fn cuda_record_offsetof_rejects_invalid_indirect_type_queries_in_indices() {
         ("sizeof(int &*)", "expected"),
         ("sizeof(int *)", "out of bounds"),
         ("sizeof(int (*)(int))", "expected"),
-        ("alignof(int (&)[2])", "expected"),
         ("sizeof(int &[2])", "direct arrays"),
         ("alignof(int * const const)", "duplicate const"),
         (
@@ -4346,6 +4345,73 @@ fn cuda_layout_queries_grouped_pointer_to_array_type_ids_validate_bounds_and_rej
         "struct Offsets { int bytes[64]; };
         __global__ void kernel(unsigned long *output) {
             output[0] = __builtin_offsetof(Offsets, bytes[true || sizeof(int(*)[0])]);
+        }",
+    );
+}
+
+#[test]
+fn cuda_layout_queries_grouped_array_references_preserve_referred_layout() {
+    for (query, size) in [
+        ("sizeof(int(&)[3])", 12),
+        ("sizeof(int(&&)[3])", 12),
+        ("alignof(int(&)[3])", 4),
+        ("alignof(int(&&)[3])", 4),
+        ("sizeof(const int(&)[2][3])", 24),
+        ("sizeof(Row(&&)[2])", 24),
+        ("alignof(Row(&)[2])", 4),
+        ("alignof(int(&)[])", 4),
+        ("alignof(int(&&)[][3])", 4),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; using Row = int[3];
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = {query};
+                output[1] = __builtin_offsetof(Offsets, bytes[{query}]);
+            }}"
+            ),
+            &[size, size * 4],
+        );
+    }
+}
+
+#[test]
+fn cuda_layout_queries_grouped_array_references_reject_invalid_qualifiers_bounds_and_address_casts()
+{
+    for query in [
+        "sizeof(int(&)[])",
+        "sizeof(int(&&)[][3])",
+        "sizeof(int(&)[0])",
+        "sizeof(int(&&)[-1])",
+        "sizeof(int(&)[index])",
+        "sizeof(int(&)[1.0f])",
+        "sizeof(int(&)[2][])",
+        "sizeof(void(&)[2])",
+        "sizeof(int(&)(int))",
+        "alignof(int(& const)[2])",
+        "alignof(int(&& volatile)[2])",
+        "sizeof(int(&& &)[2])",
+        "sizeof(int(&object))",
+        "sizeof(int(&&object))",
+    ] {
+        for nested in [false, true] {
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query.to_owned()
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{
+                    int index; int object; output[0] = {expression};
+                }}"
+            ));
+        }
+    }
+    rejected(
+        "struct Offsets { int bytes[64]; };
+        __global__ void kernel(unsigned long *output) {
+            output[0] = __builtin_offsetof(Offsets, bytes[true || alignof(int(&&)[0])]);
         }",
     );
 }
