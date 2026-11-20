@@ -498,6 +498,9 @@ Integral type names and aliases also accept functional cast syntax, such as
 Empty parentheses produce the type's zero value.
 C-style casts such as `(unsigned short)value` use the same integral
 conversion rules and bind to the next unary operand.
+Nested `sizeof(T)` and `alignof(T)` queries accept parenthesized scalar
+types, including aliases and qualified scalar types. They produce `size_t`
+values before the index is folded.
 Arithmetic rejects signed overflow and zero divisors, and wraps unsigned
 results at the operation's width. Shift counts must be nonnegative and less
 than the promoted left operand's bit width. Left shifts wrap at that width

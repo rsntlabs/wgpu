@@ -1008,6 +1008,65 @@ fn cuda_record_offsetof_rejects_invalid_qualified_and_decltype_cast_indices() {
 }
 
 #[test]
+fn cuda_record_offsetof_evaluates_scalar_layout_queries_in_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        #define WORD_BYTES sizeof(int)
+        struct Record { int head; int row[4]; };
+        using Half = const unsigned short;
+        template<class T> __device__ size_t selected() {
+            return offsetof(Record, row[sizeof(T) / alignof(T)]);
+        }
+        __global__ void kernel(unsigned long *output, unsigned input) {
+            output[0] = offsetof(Record, row[WORD_BYTES / sizeof(short)]);
+            output[1] = offsetof(Record, row[alignof(long) / WORD_BYTES]);
+            output[2] = offsetof(Record, row[sizeof(volatile float) / alignof(bool) - 1]);
+            output[3] = offsetof(Record, row[alignof(Half)]);
+            output[4] = offsetof(Record, row[sizeof(decltype(input)) / WORD_BYTES]);
+            output[5] = offsetof(Record, row[sizeof(std::size_t) / alignof(unsigned long long)]);
+            output[6] = offsetof(Record, row[(true ? -1 : sizeof(int)) == 0xffffffffffffffffULL]);
+            output[7] = offsetof(Record, row[true || alignof(int) / 0]);
+            output[8] = offsetof(Record, row[sizeof(bool) + alignof(bool)]);
+            size_t instantiated = selected<short>();
+        }",
+        &[12, 12, 16, 12, 8, 8, 8, 8, 12],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_unsupported_scalar_layout_queries_in_indices() {
+    for (index, message) in [
+        ("sizeof(Record)", "scalar type"),
+        ("alignof(Array)", "scalar type"),
+        ("sizeof(float2)", "scalar type"),
+        ("true || alignof(Pointer)", "scalar type"),
+        ("sizeof(int *)", "expected"),
+        ("alignof(int &)", "expected"),
+        ("sizeof(int[2])", "expected"),
+        ("sizeof(int())", "expected"),
+        ("sizeof()", "type"),
+        ("sizeof(input)", "type"),
+        ("sizeof(1)", "type"),
+        ("sizeof int", "expected"),
+        ("alignof(int", "expected"),
+        ("sizeof(Shadowed)", "type"),
+        ("sizeof(int)", "out of bounds"),
+    ] {
+        let error = rejected(&format!(
+            "struct Record {{ int row[4]; }};
+             using Array = int[2];
+             using Pointer = int *;
+             using Shadowed = int;
+             __global__ void kernel(unsigned *out, unsigned input) {{
+                 int Shadowed = 0;
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
+        assert!(error.message.contains(message), "{index}: {error}");
+    }
+}
+
+#[test]
 fn cuda_record_offsetof_resolves_named_integral_indices_in_scope() {
     assert_query_results(
         "#include <cstddef>\n#define COLUMN column\n

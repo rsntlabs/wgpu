@@ -287,6 +287,9 @@ impl Parser<'_> {
             Token::Word("static_cast") => {
                 return self.record_offset_static_cast(depth, evaluate, span);
             }
+            Token::Word("sizeof" | "alignof") => {
+                return self.record_offset_scalar_layout(depth, evaluate, span);
+            }
             Token::Word("decltype") => {
                 self.parameter_expansion_budget.charge_work(4, span)?;
                 let (target, end) = self.decltype_operand_type()?;
@@ -346,6 +349,40 @@ impl Parser<'_> {
             Literal::U64(value) => i128::from(value),
             _ => return None,
         })
+    }
+
+    fn record_offset_scalar_layout(
+        &mut self,
+        depth: u32,
+        evaluate: bool,
+        start: Span,
+    ) -> Result<(RecordOffsetIndex, Span), ParseError> {
+        if depth >= 64 {
+            return Err(ParseError {
+                message: String::from("CUDA expression nesting limit exceeded"),
+                span: start,
+            });
+        }
+        self.parameter_expansion_budget.charge_work(3, start)?;
+        self.lexer.expect_span(Token::Paren('('))?;
+        let target_span = self.lexer.peek()?.1;
+        let scalar = self
+            .parse_type()?
+            .ty
+            .source_scalar()
+            .ok_or_else(|| ParseError {
+                message: String::from(
+                    "__builtin_offsetof nested type query requires a scalar type",
+                ),
+                span: target_span,
+            })?;
+        let end = self.lexer.expect_span(Token::Paren(')'))?;
+        // The supported scalar types have natural alignment equal to their size.
+        let value = evaluate.then_some(i128::from(scalar.scalar().width));
+        Ok((
+            RecordOffsetIndex::prvalue(SourceScalar::Long(ScalarKind::Uint), value),
+            start.until(&end),
+        ))
     }
 
     fn record_offset_static_cast(
@@ -1534,6 +1571,9 @@ mod tests {
             ("::Index((((65537u))))]", true, true),
             ("decltype(One)(((((1))))) ]", false, false),
             ("true || decltype(One)(1 / 0)]", true, true),
+            ("sizeof(bool) * alignof(bool)]", true, true),
+            ("true || (sizeof(float) / alignof(long))]", false, true),
+            ("((((sizeof(bool)))))]", false, false),
         ] {
             let mut parser = Parser::new(Lexer::new(source).unwrap(), &Options::default());
             let span = Span::new(0, 1);
