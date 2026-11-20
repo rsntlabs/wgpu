@@ -2,7 +2,7 @@ use super::{module_case, ShaderBuffer, ShaderTest};
 
 const SENTINEL: u32 = 0xdead_beef;
 
-fn exponent(bits: u32) -> i32 {
+pub(super) fn exponent(bits: u32) -> i32 {
     let value = f32::from_bits(bits);
     if value == 0.0 || value.is_nan() {
         i32::MIN
@@ -14,7 +14,7 @@ fn exponent(bits: u32) -> i32 {
     }
 }
 
-pub(super) fn cases() -> Vec<ShaderTest> {
+pub(super) fn exponent_inputs() -> Vec<u32> {
     let mut input = vec![
         0u32,
         0x8000_0000,
@@ -41,6 +41,11 @@ pub(super) fn cases() -> Vec<ShaderTest> {
             }
         }
     }
+    input
+}
+
+pub(super) fn cases() -> Vec<ShaderTest> {
+    let input = exponent_inputs();
     assert_eq!(exponent(1), -149);
     assert_eq!(exponent(0x007f_ffff), -127);
     assert_eq!(exponent(0x0080_0000), -126);

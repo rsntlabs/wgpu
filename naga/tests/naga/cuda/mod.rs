@@ -485,3 +485,4 @@ fn hlsl_dispatch_constants_are_required_only_for_selected_entry_points() {
 mod fdimf;
 
 mod ilogbf;
+mod logbf;

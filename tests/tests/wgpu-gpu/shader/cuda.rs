@@ -121,6 +121,7 @@ mod literals;
 mod local_arrays;
 mod local_declarators;
 mod local_pointers;
+mod logbf;
 mod logical_operators;
 mod long_types;
 mod multidimensional_arrays;
@@ -256,6 +257,7 @@ pub fn all_tests(tests: &mut Vec<GpuTestInitializer>) {
         CUDA_COPYSIGNF,
         CUDA_FDIMF,
         CUDA_ILOGBF,
+        CUDA_LOGBF,
         CUDA_NEXTAFTERF,
         CUDA_CEILF,
         CUDA_CLASS_VALUES,
@@ -1422,3 +1424,6 @@ static CUDA_FDIMF: GpuTestConfiguration = configuration(fdimf::cases);
 
 #[apply(gpu_test!)]
 static CUDA_ILOGBF: GpuTestConfiguration = configuration(ilogbf::cases);
+
+#[apply(gpu_test!)]
+static CUDA_LOGBF: GpuTestConfiguration = configuration(logbf::cases);
