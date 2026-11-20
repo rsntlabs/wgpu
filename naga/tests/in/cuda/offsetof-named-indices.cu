@@ -5,7 +5,7 @@ constexpr int ColumnIndex = 2;
 struct Leaf { int first; int values[3]; };
 struct Outer { int prefix; Leaf leaves[2]; int grid[2][3]; };
 template<unsigned Index> __device__ unsigned selected_offset() {
-    constexpr unsigned offset = unsigned(offsetof(Outer, leaves[((+(Index) * 2u / 2u + 0u) << 1u) >> 1u].values[ColumnIndex]));
+    constexpr unsigned offset = unsigned(offsetof(Outer, leaves[(((+(Index) * 2u / 2u + 0u) << 1u) >> 1u) & 1u].values[ColumnIndex]));
     return offset;
 }
 __global__ void named_offsets(unsigned *output) {
@@ -16,7 +16,7 @@ __global__ void named_offsets(unsigned *output) {
     const int LocalRow = 1;
     const auto Zero = 0u;
     constexpr bool LastRow = true;
-    constexpr unsigned Global = unsigned(offsetof(Outer, grid[(+RowIndex * 3u % 2u + 1u - 1u) << 0u][(-(-ColumnIndex) * 3 / 2 - 1 + 0) >> 0]));
+    constexpr unsigned Global = unsigned(offsetof(Outer, grid[((+RowIndex * 3u % 2u + 1u - 1u) << 0u) ^ 0u][((-(-ColumnIndex) * 3 / 2 - 1 + 0) >> 0) | 0]));
     constexpr unsigned Local = unsigned(__builtin_offsetof(Outer, grid[-(-LocalRow) - 0][+LocalColumn + 0u]));
     constexpr unsigned Mixed = unsigned(offsetof(Outer, leaves[(1u)].values[((LocalColumn))]));
     constexpr unsigned ZeroIndex = unsigned(offsetof(Outer, leaves[~(~Zero) * 7u + 1u - 1u].values[!LastRow % 2 + 0]));

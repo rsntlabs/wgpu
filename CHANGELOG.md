@@ -231,6 +231,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support integral addition and subtraction in CUDA `offsetof` array indices.
 - Support integral multiplication, division, and remainder in CUDA `offsetof` array indices.
 - Support integral shifts in CUDA `offsetof` array indices.
+- Support integral bitwise operators in CUDA `offsetof` array indices.
 - Support CUDA `__ldg` loads of unsigned 32-bit values from read-only kernel buffers.
 - Support signed 32-bit and `float` CUDA `__ldg` loads from read-only kernel buffers.
 - Support `float2` CUDA `__ldg` loads from read-only kernel buffers.

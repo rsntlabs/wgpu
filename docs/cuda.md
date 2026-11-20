@@ -476,10 +476,12 @@ Designators can also index fixed array fields, as in `grid[1][2]` or
 integral constant names, including global `constexpr` values, local integral
 constants and instantiated integral template parameters. Indices may use
 parentheses, unary `+`, `-`, `~` and `!`, arithmetic `+`, `-`, `*`, `/`
-and `%`, and shifts `<<` and `>>`. Binary arithmetic applies the usual
-arithmetic conversions after integer promotion. Multiplication, division
-and remainder bind more tightly than addition and subtraction, and shifts
-bind more loosely. Operators of the same precedence associate left to right.
+and `%`, shifts `<<` and `>>`, and bitwise `&`, `^` and `|`. Binary
+arithmetic and bitwise operators apply the usual arithmetic conversions
+after integer promotion. In order from highest to lowest binary precedence,
+indices support multiplication, division and remainder, addition and
+subtraction, shifts, bitwise AND, bitwise XOR, and bitwise OR. Operators of
+the same precedence associate left to right.
 Arithmetic rejects signed overflow and zero divisors, and wraps unsigned
 results at the operation's width. Shift counts must be nonnegative and less
 than the promoted left operand's bit width. Left shifts wrap at that width
