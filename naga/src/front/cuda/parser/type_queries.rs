@@ -1398,6 +1398,13 @@ impl Parser<'_> {
     ) -> Result<TypeQueryType, ParseError> {
         let operand = self.type_query_base()?;
         let pointer_depth = self.type_query_pointer_depth(operand.as_ref())?;
+        let (token, reference_span) = self.lexer.peek()?;
+        let reference = matches!(token, Token::Operation('&') | Token::LogicalOperation('&'));
+        if reference {
+            self.parameter_expansion_budget
+                .charge_work(1, reference_span)?;
+            self.lexer.next()?;
+        }
         let mut lookahead = self.lexer.clone();
         let declarator = self.scan_grouped_query_declarator(&mut lookahead)?;
         if declarator.is_some() {
@@ -1414,10 +1421,15 @@ impl Parser<'_> {
             if depth >= 64 {
                 return self.fail("CUDA expression nesting limit exceeded");
             }
-            if pointer_depth == 0
-                && matches!(operand, Some(ty) if matches!(ty.ty, TypeSpecifier::Array(_)))
-            {
-                return self.fail("function types cannot return arrays");
+            if pointer_depth == 0 {
+                if reference && operand.is_none() {
+                    return self.fail("function types cannot return references to void");
+                }
+                if !reference
+                    && matches!(operand, Some(ty) if matches!(ty.ty, TypeSpecifier::Array(_)))
+                {
+                    return self.fail("function types cannot return arrays");
+                }
             }
             self.type_query_function_parameters(depth + 1)?;
             self.type_query_function_noexcept(depth)?;
@@ -1428,6 +1440,9 @@ impl Parser<'_> {
             });
         }
         if let Some(declarator) = declarator {
+            if reference {
+                return self.fail("arrays of references are unsupported");
+            }
             let ty = operand.ok_or_else(|| ParseError {
                 message: String::from("array elements require a complete type"),
                 span,
@@ -1455,13 +1470,6 @@ impl Parser<'_> {
             });
         }
 
-        let (token, reference_span) = self.lexer.peek()?;
-        let reference = matches!(token, Token::Operation('&') | Token::LogicalOperation('&'));
-        if reference {
-            self.parameter_expansion_budget
-                .charge_work(1, reference_span)?;
-            self.lexer.next()?;
-        }
         if self.lexer.peek()?.0 == Token::Paren('[') {
             if reference {
                 return self.fail("direct arrays of references are unsupported");

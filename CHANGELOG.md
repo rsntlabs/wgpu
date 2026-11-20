@@ -258,6 +258,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support nested function pointer parameters in CUDA layout queries.
 - Support plain function parameters in CUDA function pointer layout queries.
 - Support function reference parameters in CUDA function pointer layout queries.
+- Support reference return types in CUDA function pointer layout queries.
 - Support array type dimensions in CUDA `offsetof` layout queries.
 - Support named member paths in CUDA `offsetof` size queries.
 - Support unevaluated array and pointer subscripts in CUDA `offsetof` size queries.

@@ -5114,3 +5114,60 @@ fn cuda_layout_queries_function_reference_parameters_reject_invalid_qualifiers_a
     ));
     assert!(error.message.contains("nesting limit"), "{error}");
 }
+
+#[test]
+fn cuda_layout_queries_function_signatures_returning_references_preserve_pointer_layout() {
+    for signature in [
+        "int&(*)(int)",
+        "const int&&(*)(void)",
+        "int*&(*)(int)",
+        "Row&(*)()",
+        "Open&(*)(void)",
+        "void*&(*)()",
+        "Row&&(*)(int) noexcept",
+        "int&(*)(int&(float))",
+        "int&(*)(int&(&)(float))",
+        "int&(*)(int&&(*)(int))",
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }}; using Row = int[3]; using Open = int[];
+            __global__ void kernel(unsigned long *output) {{
+                output[0] = sizeof({signature});
+                output[1] = __builtin_offsetof(Offsets, bytes[alignof({signature})]);
+            }}"
+            ),
+            &[8, 32],
+        );
+    }
+}
+
+#[test]
+fn cuda_layout_queries_function_reference_returns_reject_invalid_reference_types() {
+    for signature in [
+        "void&(*)()",
+        "void&&(*)(int)",
+        "int& &(*)(int)",
+        "int&& &(*)()",
+        "int&const(*)()",
+        "int&*(*)()",
+        "int&(*)[3]",
+        "int&(&)[3]",
+        "int(&[2])(int)",
+        "int&(*)(int&[2])",
+        "int&(*)(void&(int))",
+    ] {
+        for nested in [false, true] {
+            let query = format!("sizeof({signature})");
+            let expression = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[{query}])")
+            } else {
+                query
+            };
+            rejected(&format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output) {{ output[0] = {expression}; }}"
+            ));
+        }
+    }
+}

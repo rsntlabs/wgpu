@@ -569,6 +569,8 @@ Plain function parameters such as `void(int)` in `int (*)(void(int))`
 undergo the C++ function-to-pointer parameter adjustment.
 Grouped function reference parameters such as `void (&)(int)` retain their
 reference type and follow the same signature validation rules.
+Function signatures may return references to supported types, including
+array aliases, as in `Row &(*)(int)`.
 A variadic signature may use `(...)` or end its parameter list with `...`,
 with an optional comma before the ellipsis.
 The signature may end with `noexcept` or `noexcept(expression)`. The expression
