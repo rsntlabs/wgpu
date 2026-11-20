@@ -239,7 +239,6 @@ fn cuda_sizeof_functional_casts_reject_other_forms_and_clear_zero_provenance() {
         "const int(value)",
         "unsigned int(value)",
         "long long(value)",
-        "decltype(value)(1)",
         "Pointer(value)",
         "Row(value)",
         "Record(value)",

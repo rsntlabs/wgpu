@@ -546,7 +546,8 @@ Arithmetic C-style casts also work in grouped operands such as
 `sizeof((short)value + 1)` uses the promoted type of the sum.
 Functional-style casts such as `sizeof(short(value))` accept a single
 operand and use a scalar type name or alias as the target. Qualified
-aliases such as `std::size_t` also work.
+aliases such as `std::size_t` also work. A supported scalar
+`decltype(name)` can supply the target, as in `sizeof(decltype(count)(value))`.
 Pointer type queries, including `void*`, use the CUDA source ABI size and
 alignment of eight bytes. Reference type queries use the referent's layout.
 Array type operands can include dimensions such as `int[2][3]`. Every
@@ -649,7 +650,8 @@ supported comma expression.
 Functional casts such as `sizeof(short(value))` also use the destination
 type's size. They accept a single parenthesized argument and a single-word
 arithmetic type name or a visible scalar alias, including qualified aliases
-such as `std::size_t`. A grouped comma expression
+such as `std::size_t`, or a supported scalar `decltype(name)`.
+A grouped comma expression
 such as `int((left, right))` counts as one argument. Functional casts in these
 queries use the same type conversion rules as `static_cast`.
 

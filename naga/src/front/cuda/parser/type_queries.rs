@@ -584,7 +584,7 @@ impl Parser<'_> {
         &mut self,
         depth: u32,
     ) -> Result<(SizeofOperand, Span), ParseError> {
-        if let Some((scalar, span)) = self.sizeof_qualified_functional_cast_target()? {
+        if let Some((scalar, span)) = self.sizeof_qualified_or_decltype_cast_target()? {
             if depth >= 64 {
                 return Err(ParseError {
                     message: String::from("CUDA expression nesting limit exceeded"),
@@ -1226,6 +1226,13 @@ impl Parser<'_> {
 
     fn sizeof_starts_expression(&mut self) -> Result<bool, ParseError> {
         let (token, span) = self.lexer.peek()?;
+        if token == Token::Word("decltype") {
+            self.parameter_expansion_budget.charge_work(4, span)?;
+            let mut lookahead = self.lexer.clone();
+            lookahead.next()?;
+            self.decltype_operand_type_from(&mut lookahead)?;
+            return Ok(lookahead.peek()?.0 == Token::Paren('('));
+        }
         if matches!(token, Token::Word(_) | Token::ScopeResolution) {
             let mut lookahead = self.lexer.clone();
             if let Some(name) = cooperative_groups::try_qualified_name(
@@ -1576,7 +1583,7 @@ impl Parser<'_> {
     }
 
     fn sizeof_operand_inner(&mut self) -> Result<(SizeofOperand, Span), ParseError> {
-        if let Some((scalar, start)) = self.sizeof_qualified_functional_cast_target()? {
+        if let Some((scalar, start)) = self.sizeof_qualified_or_decltype_cast_target()? {
             let (operand, end) =
                 self.sizeof_functional_cast(scalar, start, Self::sizeof_conditional_expression)?;
             return self.sizeof_postfix_operand(operand, start, end);
@@ -1753,22 +1760,35 @@ impl Parser<'_> {
         ))
     }
 
-    fn sizeof_qualified_functional_cast_target(
+    fn sizeof_qualified_or_decltype_cast_target(
         &mut self,
     ) -> Result<Option<(SourceScalar, Span)>, ParseError> {
-        let Some(name) = self.qualified_item()? else {
-            return Ok(None);
+        let (token, start) = self.lexer.peek()?;
+        let (target, span) = if token == Token::Word("decltype") {
+            self.parameter_expansion_budget.charge_work(4, start)?;
+            self.lexer.next()?;
+            let (ty, end) = self.decltype_operand_type()?;
+            (Some(ty), start.until(&end))
+        } else {
+            let Some(name) = self.qualified_item()? else {
+                return Ok(None);
+            };
+            self.parameter_expansion_budget.charge_work(3, name.span)?;
+            let target = match name.item {
+                cooperative_groups::QualifiedItem::Type(ty) => Some(ty),
+                _ => None,
+            };
+            (target, name.span)
         };
-        self.parameter_expansion_budget.charge_work(3, name.span)?;
-        if let cooperative_groups::QualifiedItem::Type(ty) = name.item {
-            if let Some(scalar) = ty.ty.source_scalar() {
-                return Ok(Some((scalar, name.span)));
-            }
-        }
-        Err(ParseError {
-            message: String::from("sizeof functional cast requires an arithmetic scalar target"),
-            span: name.span,
-        })
+        let scalar = target
+            .and_then(|ty| ty.ty.source_scalar())
+            .ok_or_else(|| ParseError {
+                message: String::from(
+                    "sizeof functional cast requires an arithmetic scalar target",
+                ),
+                span,
+            })?;
+        Ok(Some((scalar, span)))
     }
 
     fn sizeof_functional_cast_target(
@@ -2135,6 +2155,12 @@ mod tests {
             ("sizeof((short)(+One)) / 2]", true, true),
             ("sizeof((short)(short)(short)(short)1) / 2]", false, false),
             ("sizeof short(One) / 2]", true, true),
+            ("sizeof decltype(One)(1) / 4]", true, true),
+            (
+                "sizeof(decltype(One)(decltype(One)(decltype(One)(decltype(One)(1))))) / 4]",
+                false,
+                false,
+            ),
             ("sizeof ::Index(One) / 2]", true, true),
             ("sizeof(::Index(::Index(::Index(::Index(1))))) / 2]", false, false),
             ("sizeof(short(short(short(short(1))))) / 2]", false, false),

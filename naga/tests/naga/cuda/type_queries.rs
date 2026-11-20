@@ -3715,7 +3715,6 @@ fn cuda_record_offsetof_nested_sizeof_functional_casts_reject_broader_syntax_and
         "unsigned int(value)",
         "const int(value)",
         "long long(value)",
-        "decltype(value)(value)",
         "Record(value)",
         "float2(value)",
         "int(pointer)",
@@ -3832,6 +3831,104 @@ fn cuda_sizeof_qualified_functional_casts_reject_empty_multiarg_and_invalid_name
             rejected(&format!("#include <cstddef>\nstruct Offsets {{ int bytes[64]; }};
                 struct Record {{ int field; }}; constexpr int Constant = 1;
                 __global__ void kernel(unsigned long *output) {{ int value; output[0] = {query}; }}"));
+        }
+    }
+}
+
+#[test]
+fn cuda_sizeof_decltype_functional_casts_preserve_scalar_targets_and_type_query_fallback() {
+    for (declaration, size) in [
+        ("short target;", 2),
+        ("bool target;", 1),
+        ("unsigned target;", 4),
+        ("float target;", 4),
+        ("long target;", 8),
+        ("long long target;", 8),
+        ("const unsigned target = 1u;", 4),
+    ] {
+        assert_query_results(
+            &format!(
+                "struct Offsets {{ int bytes[64]; }};
+            __global__ void kernel(unsigned long *output) {{
+                {declaration} int value;
+                output[0] = sizeof(decltype(target)(value));
+                output[1] = __builtin_offsetof(Offsets, bytes[sizeof(decltype(target)(value))]);
+                output[2] = sizeof(decltype(target));
+                output[3] = __builtin_offsetof(Offsets, bytes[sizeof(decltype(target))]);
+            }}"
+            ),
+            &[size, size * 4, size, size * 4],
+        );
+    }
+}
+
+#[test]
+fn cuda_sizeof_decltype_functional_casts_do_not_read_target_or_argument() {
+    for nested in [false, true] {
+        let source = |operand: &str| {
+            let query = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[sizeof({operand})])")
+            } else {
+                format!("sizeof({operand})")
+            };
+            format!(
+                "struct Offsets {{ int bytes[64]; }};
+                __global__ void kernel(unsigned long *output, volatile int *input) {{
+                    int target; volatile int &argument = input[1];
+                    output[0] = {query};
+                }}"
+            )
+        };
+        let cast = roundtrip(&source("decltype(target)(argument)"));
+        let control = roundtrip(&source("decltype(target)"));
+        assert_eq!(
+            cast.entry_points[0]
+                .function
+                .expressions
+                .iter()
+                .collect::<Vec<_>>(),
+            control.entry_points[0]
+                .function
+                .expressions
+                .iter()
+                .collect::<Vec<_>>()
+        );
+        assert!(cast.entry_points[0]
+            .function
+            .expressions
+            .iter()
+            .all(|(_, expression)| !matches!(expression, naga::Expression::Load { .. })));
+    }
+}
+
+#[test]
+fn cuda_sizeof_decltype_functional_casts_reject_invalid_targets_arguments_and_provenance() {
+    for operand in [
+        "decltype(value)()",
+        "decltype(value)(value, value)",
+        "decltype(value)(value,)",
+        "decltype((value))(value)",
+        "decltype(value + 1)(value)",
+        "decltype(missing)(value)",
+        "decltype(Record)(value)",
+        "decltype(pointer)(value)",
+        "decltype(record)(value)",
+        "decltype(vector)(value)",
+        "decltype(reference)(value)",
+        "decltype(value)(record)",
+        "flag ? pointer : decltype(value)(0)",
+    ] {
+        for nested in [false, true] {
+            let query = if nested {
+                format!("__builtin_offsetof(Offsets, bytes[sizeof({operand})])")
+            } else {
+                format!("sizeof({operand})")
+            };
+            rejected(&format!("struct Offsets {{ int bytes[64]; }}; struct Record {{ int field; }};
+                __global__ void kernel(unsigned long *output) {{
+                    int value; int &reference = value; bool flag; int *pointer; Record record; float2 vector;
+                    output[0] = {query};
+                }}"));
         }
     }
 }
