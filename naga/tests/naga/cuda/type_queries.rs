@@ -185,7 +185,7 @@ fn cuda_record_offsetof_rejects_invalid_array_indices_without_evaluating_them() 
         ("row[index]", "integer literal"),
         ("row[helper()]", "integer literal"),
         ("row[index++]", "integer literal"),
-        ("row[0<1]", "expected"),
+        ("row[0||1]", "expected"),
         ("row[0,1]", "expected"),
         ("row[1", "expected"),
         ("row[3]", "out of bounds"),
@@ -249,7 +249,7 @@ fn cuda_record_offsetof_rejects_invalid_unary_indices() {
         ("--Zero", "integer literal"),
         ("++Zero", "integer literal"),
         ("+Zero++", "expected"),
-        ("+Zero==1", "expected"),
+        ("+Zero||1", "expected"),
         ("+dynamic", "integer literal"),
     ] {
         let source = format!(
@@ -442,7 +442,6 @@ fn cuda_record_offsetof_rejects_invalid_shift_indices() {
         ("1 >>", "integer literal"),
         ("1 <<= 1", "expected"),
         ("1 >>= 1", "expected"),
-        ("1 > > 1", "expected"),
     ] {
         let error = rejected(&format!(
             "struct Record {{ int row[5]; }};
@@ -500,8 +499,6 @@ fn cuda_record_offsetof_rejects_invalid_bitwise_indices() {
         ("1 |= 1", "expected"),
         ("1 && 1", "expected"),
         ("1 || 1", "expected"),
-        ("(1 == 1)", "expected"),
-        ("(1 < 2)", "expected"),
         ("1 ? 0 : 1", "expected"),
         ("1, 0", "expected"),
     ] {
@@ -509,6 +506,66 @@ fn cuda_record_offsetof_rejects_invalid_bitwise_indices() {
             "struct Record {{ int row[4]; }};
              __global__ void kernel(unsigned *out, int runtime) {{
                  constexpr int Zero = 0;
+                 out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
+             }}"
+        ));
+        assert!(error.message.contains(message), "{index}: {error}");
+    }
+}
+
+#[test]
+fn cuda_record_offsetof_evaluates_comparison_indices() {
+    assert_query_results(
+        "#include <cstddef>
+        #define SMALLER(left, right) ((left) < (right))
+        struct Record { int head; int row[4]; };
+        constexpr unsigned Max = 0xffffffffu;
+        constexpr unsigned long Wide = 0xfffffffffffffffful;
+        constexpr unsigned short Narrow = 65535;
+        constexpr bool Flag = true;
+        template<int Index> __device__ size_t index_offset() {
+            return offsetof(Record, row[Index >= -1]);
+        }
+        __global__ void kernel(unsigned long *output) {
+            output[0] = offsetof(Record, row[SMALLER(-1, 1u)]);
+            output[1] = offsetof(Record, row[-1L < 1u]);
+            output[2] = offsetof(Record, row[-1LL < 1ul]);
+            output[3] = offsetof(Record, row[-1L == 0xffffffffffffffffULL]);
+            output[4] = offsetof(Record, row[Max != -1]);
+            output[5] = offsetof(Record, row[Wide > Max]);
+            output[6] = offsetof(Record, row[Flag <= Narrow]);
+            output[7] = offsetof(Record, row[2 >= 3]);
+            output[8] = offsetof(Record, row[2 < 1 < 1]);
+            output[9] = offsetof(Record, row[2 == 1 < 2]);
+            output[10] = offsetof(Record, row[2 | 1 == 1]);
+            output[11] = offsetof(Record, row[1 << 2 > 2]);
+            output[12] = offsetof(Record, row[!(2 < 1) + (3 >= 3)]);
+            size_t instantiated = index_offset<-1>();
+        }",
+        &[4, 8, 4, 8, 4, 8, 8, 4, 8, 4, 16, 8, 12],
+    );
+}
+
+#[test]
+fn cuda_record_offsetof_rejects_invalid_comparison_indices() {
+    for (index, message) in [
+        ("1 < runtime", "integral constant"),
+        ("1.0f == 1", "integer literal"),
+        ("1 != 1.0f", "integer literal"),
+        ("1 <=", "integer literal"),
+        ("1 > > 1", "integer literal"),
+        ("1 <=> 1", "integer literal"),
+        ("1 = 1", "expected"),
+        ("1 == 1 && 2 > 1", "expected"),
+        ("1 > 0 ? 1 : 0", "expected"),
+        ("1 == (1 / 0)", "division by zero"),
+        ("(1 << 32) > 0", "shift count"),
+        ("(1 < 2) - 2", "nonnegative"),
+        ("3 + (2 >= 2)", "out of bounds"),
+    ] {
+        let error = rejected(&format!(
+            "struct Record {{ int row[4]; }};
+             __global__ void kernel(unsigned *out, int runtime) {{
                  out[0] = unsigned(__builtin_offsetof(Record, row[{index}]));
              }}"
         ));
