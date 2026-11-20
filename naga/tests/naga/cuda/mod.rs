@@ -525,6 +525,7 @@ mod fmaf_ieee;
 
 mod libdevice_float_classification;
 
+mod libdevice_binary_float;
 mod libdevice_bitcasts;
 mod libdevice_exponents;
 mod libdevice_trigonometry;

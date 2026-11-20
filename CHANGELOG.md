@@ -408,6 +408,7 @@ By @alextechcc in [#8014](https://github.com/gfx-rs/wgpu/pull/8014).
 - Support CUDA libdevice `__nv_fast_sinf`, `__nv_fast_cosf`, and `__nv_fast_sincosf` with sign-preserving subnormal flushing.
 - Support CUDA `nextafterf` with exact single-precision steps, including signed zeros and subnormals.
 - Support CUDA `fdimf` with correctly rounded single-precision positive differences.
+- Support CUDA libdevice spellings `__nv_copysignf` and `__nv_fdimf`.
 - Support CUDA `ilogbf` with exact exponents for finite and subnormal inputs.
 - Support CUDA `logbf` with exact single-precision exponents and special values.
 - Support CUDA `ldexpf` with exact power-of-two scaling and ties-to-even underflow.

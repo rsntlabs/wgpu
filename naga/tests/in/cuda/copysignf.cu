@@ -1,4 +1,4 @@
-__device__ float copied(float value, float sign) { return copysignf(value, sign); }
+__device__ float copied(float value, float sign) { return __nv_copysignf(value, sign); }
 __device__ int copysignf(bool value, bool sign) { return value ? 7 : 9; }
 __global__ void copy_signs(const unsigned *input, unsigned *output) {
     unsigned index = threadIdx.x + blockIdx.x * blockDim.x;

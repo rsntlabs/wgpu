@@ -1222,8 +1222,10 @@ pub(super) fn builtin_declarations<'a>() -> FastHashMap<&'a str, GlobalDeclarati
     );
     for &name in &[
         "copysignf",
+        "__nv_copysignf",
         "nextafterf",
         "fdimf",
+        "__nv_fdimf",
         "ilogbf",
         "__nv_ilogbf",
         "logbf",
@@ -3638,9 +3640,9 @@ impl<'a> Parser<'a> {
                 (true, "__fdiv_ru") => Some(FunctionCandidate::DivideRoundUp),
                 (true, "__frcp_rd") => Some(FunctionCandidate::ReciprocalRoundDown),
                 (true, "__frcp_ru") => Some(FunctionCandidate::ReciprocalRoundUp),
-                (true, "copysignf") => Some(FunctionCandidate::CopySign),
+                (true, "copysignf" | "__nv_copysignf") => Some(FunctionCandidate::CopySign),
                 (true, "nextafterf") => Some(FunctionCandidate::NextAfter),
-                (true, "fdimf") => Some(FunctionCandidate::PositiveDifference),
+                (true, "fdimf" | "__nv_fdimf") => Some(FunctionCandidate::PositiveDifference),
                 (true, "ldexpf" | "scalbnf" | "__nv_ldexpf" | "__nv_scalbnf") => {
                     Some(FunctionCandidate::ScaleByPowerOfTwo)
                 }
